@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useAuth } from '~/composables/useAuth'
+
 const { data: page } = await useAsyncData('pricing', () => queryCollection('pricing').first())
 
 const title = page.value?.seo?.title || page.value?.title
@@ -25,6 +27,49 @@ const items = ref([
     value: '1'
   }
 ])
+
+const toast = useToast()
+const auth = useAuth()
+
+async function startCheckout(priceId: string) {
+  await auth.ensureReady()
+
+  if (!auth.isAuthenticated.value) {
+    await navigateTo('/login')
+    return
+  }
+
+  try {
+    const { url } = await $fetch<{ url: string }>('/api/billing/checkout', {
+      method: 'POST',
+      body: { priceId }
+    })
+
+    await navigateTo(url, { external: true })
+  }
+  catch (error: any) {
+    const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível iniciar o checkout'
+    toast.add({ title: 'Erro', description: message, color: 'error' })
+  }
+}
+
+const plansWithActions = computed(() => {
+  const plans = (page.value?.plans || []) as any[]
+
+  return plans.map((plan) => {
+    const priceId = isYearly.value === '1' ? plan?.stripePriceId?.year : plan?.stripePriceId?.month
+    if (!priceId)
+      return plan
+
+    return {
+      ...plan,
+      button: {
+        ...(plan.button || {}),
+        onClick: () => startCheckout(priceId)
+      }
+    }
+  })
+})
 </script>
 
 <template>
@@ -52,7 +97,7 @@ const items = ref([
     <UContainer>
       <UPricingPlans scale>
         <UPricingPlan
-          v-for="(plan, index) in page.plans"
+          v-for="(plan, index) in plansWithActions"
           :key="index"
           v-bind="plan"
           :price="isYearly === '1' ? plan.price.year : plan.price.month"

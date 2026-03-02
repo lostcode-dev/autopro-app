@@ -36,7 +36,19 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   icon: 'i-lucide-user'
 }, {
   label: 'Assinatura',
-  icon: 'i-lucide-credit-card'
+  icon: 'i-lucide-credit-card',
+  async onSelect(e) {
+    e.preventDefault()
+
+    try {
+      const { url } = await $fetch<{ url: string }>('/api/billing/portal', { method: 'POST' })
+      await navigateTo(url, { external: true })
+    }
+    catch (error: any) {
+      const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível abrir o portal'
+      toast.add({ title: 'Erro', description: message, color: 'error' })
+    }
+  }
 }, {
   label: 'Configurações',
   icon: 'i-lucide-settings',

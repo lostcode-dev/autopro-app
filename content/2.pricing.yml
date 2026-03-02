@@ -10,6 +10,9 @@ plans:
     price:
       month: R$ 19
       year: R$ 190
+    stripePriceId:
+      month: ''
+      year: ''
     button:
       label: Começar
       color: neutral
@@ -26,6 +29,9 @@ plans:
     price:
       month: R$ 39
       year: R$ 390
+    stripePriceId:
+      month: ''
+      year: ''
     highlight: true
     scale: true
     button:

@@ -42,6 +42,12 @@ const links = [[{
       open.value = false
     }
   }, {
+    label: 'Faturamento',
+    to: '/app/settings/billing',
+    onSelect: () => {
+      open.value = false
+    }
+  }, {
     label: 'Membros',
     to: '/app/settings/members',
     onSelect: () => {

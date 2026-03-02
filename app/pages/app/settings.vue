@@ -8,20 +8,24 @@ definePageMeta({
 const links = [[{
   label: 'General',
   icon: 'i-lucide-user',
-  to: '/settings',
+  to: '/app/settings',
   exact: true
 }, {
   label: 'Members',
   icon: 'i-lucide-users',
-  to: '/settings/members'
+  to: '/app/settings/members'
 }, {
   label: 'Notifications',
   icon: 'i-lucide-bell',
-  to: '/settings/notifications'
+  to: '/app/settings/notifications'
 }, {
   label: 'Security',
   icon: 'i-lucide-shield',
-  to: '/settings/security'
+  to: '/app/settings/security'
+}, {
+  label: 'Billing',
+  icon: 'i-lucide-receipt',
+  to: '/app/settings/billing'
 }], [{
   label: 'Documentation',
   icon: 'i-lucide-book-open',

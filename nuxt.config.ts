@@ -16,7 +16,11 @@ export default defineNuxtConfig({
   runtimeConfig: {
     supabaseUrl: process.env.SUPABASE_URL,
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
-    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
+    supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+
+    stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    stripeAllowedPriceIds: process.env.STRIPE_ALLOWED_PRICE_IDS,
+    stripeBillingPortalConfigurationId: process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID
   },
 
   css: ['~/assets/css/main.css'],
