@@ -2,8 +2,10 @@
 import { sub } from "date-fns";
 import type { DropdownMenuItem } from "@nuxt/ui";
 import type { Period, Range } from "~/types";
+import { useNotifications } from "~/composables/useNotifications";
 
 const { isNotificationsSlideoverOpen } = useDashboard();
+const notifications = useNotifications();
 
 definePageMeta({
   layout: "app",
@@ -47,7 +49,7 @@ const period = ref<Period>("daily");
               square
               @click="isNotificationsSlideoverOpen = true"
             >
-              <UChip color="error" inset>
+              <UChip color="error" inset :show="notifications.unreadCount > 0" :text="String(notifications.unreadCount)">
                 <UIcon name="i-lucide-bell" class="size-5 shrink-0" />
               </UChip>
             </UButton>

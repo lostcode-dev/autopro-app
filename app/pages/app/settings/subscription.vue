@@ -39,7 +39,14 @@ async function cancelAtPeriodEnd(_event: MouseEvent) {
   try {
     await $fetch('/api/billing/cancel', { method: 'POST' })
     toast.add({ title: 'Assinatura', description: 'Cancelamento agendado para o fim do período.', color: 'success' })
-    await refresh()
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await refresh()
+      if (data.value?.subscription?.cancel_at_period_end)
+        break
+
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
   }
   catch (error: any) {
     const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível cancelar a assinatura'

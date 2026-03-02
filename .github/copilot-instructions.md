@@ -158,3 +158,37 @@ Improve code readability, avoid `../../..` paths, and make refactors and structu
 - Para muito dado: paginação/filtros server-side.
 - Integrações externas só em `server/api/**`.
 
+### Enums and Type Safety (TypeScript Rule)
+
+Always use **TypeScript enums** for fixed sets of values and ensure that **all code is fully typed with TypeScript**.
+
+#### Rules
+
+- Always use `enum` for:
+  - Statuses
+  - Types
+  - Categories
+  - Modes
+  - Any finite and predefined set of values
+- Never use raw strings or numbers to represent types or statuses
+- Do not rely on implicit `any`
+- Always explicitly type:
+  - Function parameters
+  - Function return types
+  - Object properties
+  - API request and response payloads
+
+#### Examples
+
+**Enum definition**
+```ts
+enum UserRole {
+  Admin = 'admin',
+  User = 'user',
+  Guest = 'guest',
+}```
+
+## Goal
+
+Guarantee type safety, consistency, and maintainability across the codebase, reduce runtime errors, and make refactoring safer and more predictable.
+

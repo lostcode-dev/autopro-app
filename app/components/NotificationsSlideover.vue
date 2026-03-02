@@ -1,10 +1,42 @@
 <script setup lang="ts">
 import { formatTimeAgo } from '@vueuse/core'
-import type { Notification } from '~/types'
+import { useNotifications } from '~/composables/useNotifications'
 
 const { isNotificationsSlideoverOpen } = useDashboard()
 
-const { data: notifications } = await useFetch<Notification[]>('/api/notifications')
+const toast = useToast()
+const notifications = useNotifications()
+
+watch(isNotificationsSlideoverOpen, async (open) => {
+  if (!open)
+    return
+  try {
+    await notifications.ensureReady()
+  }
+  catch (error: any) {
+    const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível carregar as notificações'
+    toast.add({ title: 'Erro', description: message, color: 'error' })
+  }
+})
+
+async function markAllRead() {
+  try {
+    await notifications.markAllRead()
+  }
+  catch (error: any) {
+    const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível marcar como lidas'
+    toast.add({ title: 'Erro', description: message, color: 'error' })
+  }
+}
+
+async function onOpen(notificationId: number) {
+  try {
+    await notifications.markRead(notificationId)
+  }
+  catch {
+    // ignore
+  }
+}
 </script>
 
 <template>
@@ -12,12 +44,33 @@ const { data: notifications } = await useFetch<Notification[]>('/api/notificatio
     v-model:open="isNotificationsSlideoverOpen"
     title="Notificações"
   >
+    <template #header>
+      <div class="flex items-center justify-between gap-2 w-full">
+        <span class="text-sm font-medium">Notificações</span>
+        <UButton
+          label="Marcar todas como lidas"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          @click="markAllRead"
+        />
+      </div>
+    </template>
+
     <template #body>
+      <div v-if="notifications.pending" class="space-y-3">
+        <USkeleton class="h-12 w-full" />
+        <USkeleton class="h-12 w-full" />
+        <USkeleton class="h-12 w-full" />
+      </div>
+
       <NuxtLink
-        v-for="notification in notifications"
+        v-else
+        v-for="notification in notifications.items"
         :key="notification.id"
-        :to="`/inbox?id=${notification.id}`"
+        :to="notification.linkPath || '/app'"
         class="px-3 py-2.5 rounded-md hover:bg-elevated/50 flex items-center gap-3 relative -mx-3 first:-mt-3 last:-mb-3"
+        @click="onOpen(notification.id)"
       >
         <UChip
           color="error"

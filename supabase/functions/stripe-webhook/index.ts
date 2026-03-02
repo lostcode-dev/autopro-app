@@ -26,6 +26,54 @@ function toIso(seconds: number | null | undefined) {
   return new Date(seconds * 1000).toISOString()
 }
 
+async function safeInsertNotification(
+  supabase: ReturnType<typeof createClient>,
+  payload: {
+    user_id: string
+    body: string
+    link_path?: string | null
+    sender_name?: string | null
+    sender_email?: string | null
+    sender_avatar_url?: string | null
+    metadata?: Record<string, unknown>
+  }
+) {
+  try {
+    const { error } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: payload.user_id,
+        type: 'system',
+        body: payload.body,
+        link_path: payload.link_path ?? null,
+        sender_name: payload.sender_name ?? 'Second Brain',
+        sender_email: payload.sender_email ?? null,
+        sender_avatar_url: payload.sender_avatar_url ?? null,
+        metadata: payload.metadata ?? {}
+      })
+
+    if (!error)
+      return
+
+    // Backwards-compat (if DB still has is_system)
+    await supabase
+      .from('notifications')
+      .insert({
+        user_id: payload.user_id,
+        is_system: true,
+        body: payload.body,
+        link_path: payload.link_path ?? null,
+        sender_name: payload.sender_name ?? 'Second Brain',
+        sender_email: payload.sender_email ?? null,
+        sender_avatar_url: payload.sender_avatar_url ?? null,
+        metadata: payload.metadata ?? {}
+      } as unknown as Record<string, unknown>)
+  }
+  catch {
+    // best-effort
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const env = getEnv()
@@ -160,17 +208,90 @@ Deno.serve(async (req) => {
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)
         await upsertSubscription(subscription, supabaseUserId)
+
+        if (supabaseUserId) {
+          await safeInsertNotification(supabase, {
+            user_id: supabaseUserId,
+            body: 'Assinatura iniciada com sucesso.',
+            link_path: '/app/settings/subscription',
+            metadata: {
+              stripe_subscription_id: subscription.id,
+              stripe_customer_id: customerId
+            }
+          })
+        }
       }
     }
 
     if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
       const subscription = event.data.object as Stripe.Subscription
       await upsertSubscription(subscription, null)
+
+      const stripeCustomerId = typeof subscription.customer === 'string'
+        ? subscription.customer
+        : subscription.customer?.id
+
+      if (stripeCustomerId) {
+        const { data } = await supabase
+          .from('stripe_customers')
+          .select('user_id')
+          .eq('stripe_customer_id', stripeCustomerId)
+          .maybeSingle<{ user_id: string }>()
+
+        const userId = data?.user_id
+        if (userId) {
+          if (event.type === 'customer.subscription.deleted') {
+            await safeInsertNotification(supabase, {
+              user_id: userId,
+              body: 'Sua assinatura foi cancelada.',
+              link_path: '/app/settings/subscription',
+              metadata: { stripe_subscription_id: subscription.id }
+            })
+          }
+
+          if (event.type === 'customer.subscription.updated' && subscription.cancel_at_period_end) {
+            await safeInsertNotification(supabase, {
+              user_id: userId,
+              body: 'Cancelamento da assinatura agendado para o fim do período.',
+              link_path: '/app/settings/subscription',
+              metadata: { stripe_subscription_id: subscription.id }
+            })
+          }
+        }
+      }
     }
 
     if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
       const invoice = event.data.object as Stripe.Invoice
       await upsertInvoice(invoice)
+
+      const stripeCustomerId = typeof invoice.customer === 'string'
+        ? invoice.customer
+        : invoice.customer?.id
+
+      if (stripeCustomerId) {
+        const { data: customerRow } = await supabase
+          .from('stripe_customers')
+          .select('user_id')
+          .eq('stripe_customer_id', stripeCustomerId)
+          .maybeSingle<{ user_id: string }>()
+
+        const userId = customerRow?.user_id
+        if (userId) {
+          await safeInsertNotification(supabase, {
+            user_id: userId,
+            body: event.type === 'invoice.paid'
+              ? 'Pagamento confirmado. Sua fatura está disponível.'
+              : 'Falha no pagamento. Atualize sua forma de pagamento.',
+            link_path: '/app/settings/billing',
+            metadata: {
+              stripe_invoice_id: invoice.id,
+              stripe_subscription_id: typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id
+            }
+          })
+        }
+      }
+
       const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id
       if (subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId)

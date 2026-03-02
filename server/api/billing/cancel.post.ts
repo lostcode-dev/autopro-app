@@ -53,10 +53,5 @@ export default eventHandler(async (event) => {
 
   const updated = (updatedResponse as any).data ?? updatedResponse
 
-  await (supabase as any)
-    .from('subscriptions')
-    .update({ cancel_at_period_end: true } as any)
-    .eq('stripe_subscription_id', updated.id)
-
   return { ok: true, cancelAtPeriodEnd: Boolean(updated.cancel_at_period_end) }
 })
