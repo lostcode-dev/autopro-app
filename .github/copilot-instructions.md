@@ -133,6 +133,22 @@ Padrão recomendado:
 - Evitar `any`.
 - Preferir funções pequenas e puras quando possível.
 
+### Imports with Aliases
+
+Whenever possible, prefer using **project aliases** instead of long relative paths.
+
+- `~/` for imports starting from the Nuxt source root (e.g. `~/server`, `~/app`, etc.)
+- `@/` as an equivalent root alias (when appropriate)
+
+#### Examples
+
+- `import { useAuth } from '~/composables/useAuth'`
+- `import { getSupabaseAdminClient } from '~/server/utils/supabase'`
+
+#### Goal
+
+Improve code readability, avoid `../../..` paths, and make refactors and structural changes easier and safer.
+
 ## Checklist antes de finalizar
 
 - UI usa componentes Nuxt UI e tokens existentes.
@@ -141,4 +157,4 @@ Padrão recomendado:
 - Form com Zod + erro abaixo do input.
 - Para muito dado: paginação/filtros server-side.
 - Integrações externas só em `server/api/**`.
-- Passa `pnpm lint` e `pnpm typecheck`.
+
