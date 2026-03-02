@@ -14,6 +14,10 @@ const UCheckbox = resolveComponent('UCheckbox')
 const toast = useToast()
 const table = useTemplateRef('table')
 
+definePageMeta({
+  layout: 'app',
+})
+
 const columnFilters = ref([{
   id: 'email',
   value: ''

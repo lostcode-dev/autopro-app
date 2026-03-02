@@ -2,6 +2,10 @@
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
+definePageMeta({
+  layout: 'app',
+})
+
 const fileRef = ref<HTMLInputElement>()
 
 const profileSchema = z.object({

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+definePageMeta({
+  layout: 'app',
+})
+
 const state = reactive<{ [key: string]: boolean }>({
   email: true,
   desktop: false,

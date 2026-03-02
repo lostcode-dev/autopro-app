@@ -9,14 +9,14 @@ const open = ref(false)
 const links = [[{
   label: 'Home',
   icon: 'i-lucide-house',
-  to: '/',
+  to: '/app',
   onSelect: () => {
     open.value = false
   }
 }, {
   label: 'Inbox',
   icon: 'i-lucide-inbox',
-  to: '/inbox',
+  to: '/app/inbox',
   badge: '4',
   onSelect: () => {
     open.value = false
@@ -24,38 +24,38 @@ const links = [[{
 }, {
   label: 'Customers',
   icon: 'i-lucide-users',
-  to: '/customers',
+  to: '/app/customers',
   onSelect: () => {
     open.value = false
   }
 }, {
   label: 'Settings',
-  to: '/settings',
+  to: '/app/settings',
   icon: 'i-lucide-settings',
   defaultOpen: true,
   type: 'trigger',
   children: [{
     label: 'General',
-    to: '/settings',
+    to: '/app/settings',
     exact: true,
     onSelect: () => {
       open.value = false
     }
   }, {
     label: 'Members',
-    to: '/settings/members',
+    to: '/app/settings/members',
     onSelect: () => {
       open.value = false
     }
   }, {
     label: 'Notifications',
-    to: '/settings/notifications',
+    to: '/app/settings/notifications',
     onSelect: () => {
       open.value = false
     }
   }, {
     label: 'Security',
-    to: '/settings/security',
+    to: '/app/settings/security',
     onSelect: () => {
       open.value = false
     }
