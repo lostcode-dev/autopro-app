@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
+import { useAuth } from '~/composables/useAuth'
 
 definePageMeta({
   layout: 'auth'
@@ -12,6 +13,8 @@ useSeoMeta({
 })
 
 const toast = useToast()
+const auth = useAuth()
+const router = useRouter()
 
 const fields = [{
   name: 'name',
@@ -34,13 +37,13 @@ const providers = [{
   label: 'Google',
   icon: 'i-simple-icons-google',
   onClick: () => {
-    toast.add({ title: 'Google', description: 'Entrar com Google' })
+    navigateTo('/api/auth/oauth/start?provider=google')
   }
 }, {
   label: 'GitHub',
   icon: 'i-simple-icons-github',
   onClick: () => {
-    toast.add({ title: 'GitHub', description: 'Entrar com GitHub' })
+    navigateTo('/api/auth/oauth/start?provider=github')
   }
 }]
 
@@ -52,8 +55,39 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>
 
-function onSubmit(payload: FormSubmitEvent<Schema>) {
-  console.log('Submitted', payload)
+async function onSubmit(payload: FormSubmitEvent<Schema>) {
+  try {
+    const response = await auth.signup({
+      name: payload.data.name,
+      email: payload.data.email,
+      password: payload.data.password
+    })
+
+    if (!response.session) {
+      toast.add({
+        title: 'Conta criada',
+        description: 'Verifique seu email para confirmar o cadastro.',
+        color: 'success'
+      })
+      await router.push('/login')
+      return
+    }
+
+    toast.add({
+      title: 'Conta criada',
+      description: 'Você já está logado.',
+      color: 'success'
+    })
+    await router.push('/app')
+  }
+  catch (error: any) {
+    const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível criar a conta'
+    toast.add({
+      title: 'Erro',
+      description: message,
+      color: 'error'
+    })
+  }
 }
 </script>
 

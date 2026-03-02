@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { DropdownMenuItem } from '@nuxt/ui'
+import { useAuth } from '~/composables/useAuth';
 
 defineProps<{
   collapsed?: boolean
@@ -7,15 +8,22 @@ defineProps<{
 
 const colorMode = useColorMode()
 const appConfig = useAppConfig()
+const toast = useToast()
+const auth = useAuth()
+const router = useRouter()
 
 const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
 const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
 
-const user = ref({
-  name: 'Benjamin Canac',
-  avatar: {
-    src: 'https://github.com/benjamincanac.png',
-    alt: 'Benjamin Canac'
+const user = computed(() => {
+  const name = (auth.user.value?.user_metadata as any)?.name || auth.user.value?.email || 'Conta'
+
+  return {
+    name,
+    avatar: {
+      src: (auth.user.value?.user_metadata as any)?.avatar_url || 'https://github.com/benjamincanac.png',
+      alt: String(name)
+    }
   }
 })
 
@@ -78,10 +86,10 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     }))
   }]
 }, {
-    label: 'Aparência',
+  label: 'Aparência',
   icon: 'i-lucide-sun-moon',
   children: [{
-      label: 'Claro',
+    label: 'Claro',
     icon: 'i-lucide-sun',
     type: 'checkbox',
     checked: colorMode.value === 'light',
@@ -110,7 +118,19 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   to: '/docs/getting-started'
 }, {
   label: 'Sair',
-  icon: 'i-lucide-log-out'
+  icon: 'i-lucide-log-out',
+  async onSelect(e) {
+    e.preventDefault()
+
+    try {
+      await auth.logout()
+      toast.add({ title: 'Sessão encerrada', color: 'success' })
+      await router.push('/login')
+    }
+    catch {
+      toast.add({ title: 'Erro', description: 'Não foi possível sair', color: 'error' })
+    }
+  }
 }]]))
 </script>
 
