@@ -16,7 +16,10 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   routeRules: {
-    '/docs': { redirect: '/docs/getting-started', prerender: false }
+    '/docs': { redirect: '/docs/getting-started', prerender: false },
+    '/api/**': {
+      cors: true
+    }
   },
 
   compatibilityDate: '2024-07-11',
@@ -39,3 +42,4 @@ export default defineNuxtConfig({
     }
   }
 })
+
