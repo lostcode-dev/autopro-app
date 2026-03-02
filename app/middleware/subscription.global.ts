@@ -1,5 +1,11 @@
+import { useAuth } from "~/composables/useAuth"
+import { useBilling } from "~/composables/useBilling"
+
 export default defineNuxtRouteMiddleware(async (to) => {
   if (!to.path.startsWith('/app'))
+    return
+
+  if (to.path === '/app/subscribe')
     return
 
   const auth = useAuth()
@@ -29,9 +35,9 @@ export default defineNuxtRouteMiddleware(async (to) => {
     const statusCode = error?.statusCode || error?.status
     if (statusCode === 401)
       return navigateTo('/login')
-    return navigateTo('/pricing')
+    return navigateTo('/app/subscribe')
   }
 
   if (!billing.hasAccess.value)
-    return navigateTo('/pricing')
+    return navigateTo('/app/subscribe')
 })

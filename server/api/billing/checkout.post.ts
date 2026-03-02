@@ -6,7 +6,9 @@ import { getAllowedStripePriceIds, getStripe } from '../../utils/stripe'
 
 const schema = z.object({
   priceId: z.string().min(1),
-  quantity: z.number().int().positive().optional()
+  quantity: z.number().int().positive().optional(),
+  successPath: z.string().min(1).optional(),
+  cancelPath: z.string().min(1).optional()
 })
 
 export default eventHandler(async (event) => {
@@ -33,6 +35,23 @@ export default eventHandler(async (event) => {
   const stripe = getStripe()
   const supabase = getSupabaseAdminClient()
   const quantity = parsed.data.quantity ?? 1
+
+  const successPath = parsed.data.successPath
+  const cancelPath = parsed.data.cancelPath
+
+  if (successPath && !successPath.startsWith('/')) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Invalid successPath'
+    })
+  }
+
+  if (cancelPath && !cancelPath.startsWith('/')) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Invalid cancelPath'
+    })
+  }
 
   const { data: existingCustomer } = await supabase
     .from('stripe_customers')
@@ -69,8 +88,8 @@ export default eventHandler(async (event) => {
       price: parsed.data.priceId,
       quantity
     }],
-    success_url: `${origin}/app?checkout=success`,
-    cancel_url: `${origin}/pricing?checkout=cancel`,
+    success_url: `${origin}${successPath || '/app?checkout=success'}`,
+    cancel_url: `${origin}${cancelPath || '/pricing?checkout=cancel'}`,
     subscription_data: {
       metadata: {
         supabase_user_id: user.id

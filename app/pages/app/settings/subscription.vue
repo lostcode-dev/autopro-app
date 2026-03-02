@@ -29,6 +29,27 @@ async function onRefresh(_event: MouseEvent) {
   await refresh()
 }
 
+const isCancelling = ref(false)
+
+async function cancelAtPeriodEnd(_event: MouseEvent) {
+  if (isCancelling.value)
+    return
+
+  isCancelling.value = true
+  try {
+    await $fetch('/api/billing/cancel', { method: 'POST' })
+    toast.add({ title: 'Assinatura', description: 'Cancelamento agendado para o fim do período.', color: 'success' })
+    await refresh()
+  }
+  catch (error: any) {
+    const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível cancelar a assinatura'
+    toast.add({ title: 'Erro', description: message, color: 'error' })
+  }
+  finally {
+    isCancelling.value = false
+  }
+}
+
 function formatDate(date: string | null) {
   if (!date)
     return '-'
@@ -66,6 +87,15 @@ async function openPortal() {
             color="neutral"
             variant="outline"
             @click="openPortal"
+          />
+
+          <UButton
+            v-if="data?.subscription && (data.subscription.status === 'active' || data.subscription.status === 'trialing') && !data.subscription.cancel_at_period_end"
+            label="Cancelar no fim do período"
+            color="neutral"
+            variant="ghost"
+            :loading="isCancelling"
+            @click="cancelAtPeriodEnd"
           />
           <UButton
             label="Ver faturas"
