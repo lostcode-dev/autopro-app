@@ -6,22 +6,50 @@ defineProps<{
   collapsed?: boolean
 }>()
 
-const colorMode = useColorMode()
-const appConfig = useAppConfig()
 const toast = useToast()
 const auth = useAuth()
 const router = useRouter()
+const { state: prefs, setPrimaryColor, setNeutralColor, setColorMode } = useUserPreferences()
 
-const colors = ['red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose']
-const neutrals = ['slate', 'gray', 'zinc', 'neutral', 'stone']
+const colorLabels: Record<string, string> = {
+  red: 'Vermelho',
+  orange: 'Laranja',
+  amber: 'Âmbar',
+  yellow: 'Amarelo',
+  lime: 'Lima',
+  green: 'Verde',
+  emerald: 'Esmeralda',
+  teal: 'Azul-petróleo',
+  cyan: 'Ciano',
+  sky: 'Celeste',
+  blue: 'Azul',
+  indigo: 'Índigo',
+  violet: 'Violeta',
+  purple: 'Roxo',
+  fuchsia: 'Fúcsia',
+  pink: 'Rosa',
+  rose: 'Rosé'
+}
+
+const neutralLabels: Record<string, string> = {
+  slate: 'Ardósia',
+  gray: 'Cinza',
+  zinc: 'Zinco',
+  neutral: 'Neutro',
+  stone: 'Pedra'
+}
+
+const colors = Object.keys(colorLabels)
+const neutrals = Object.keys(neutralLabels)
 
 const user = computed(() => {
-  const name = (auth.user.value?.user_metadata as any)?.name || auth.user.value?.email || 'Conta'
+  const meta = auth.user.value?.user_metadata as Record<string, string> | undefined
+  const name = meta?.name || auth.user.value?.email || 'Conta'
 
   return {
     name,
     avatar: {
-      src: (auth.user.value?.user_metadata as any)?.avatar_url || 'https://github.com/benjamincanac.png',
+      src: meta?.avatar_url,
       alt: String(name)
     }
   }
@@ -33,66 +61,55 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   avatar: user.value.avatar
 }], [{
   label: 'Perfil',
-  icon: 'i-lucide-user'
+  icon: 'i-lucide-user',
+  to: '/app/settings'
 }, {
   label: 'Assinatura',
   icon: 'i-lucide-credit-card',
-  async onSelect(e) {
-    e.preventDefault()
-
-    try {
-      const { url } = await $fetch<{ url: string }>('/api/billing/portal', { method: 'POST' })
-      await navigateTo(url, { external: true })
-    } catch (error: any) {
-      const message = error?.data?.statusMessage || error?.statusMessage || 'Não foi possível abrir o portal'
-      toast.add({ title: 'Erro', description: message, color: 'error' })
-    }
-  }
+  to: '/app/settings/subscription'
 }, {
   label: 'Configurações',
   icon: 'i-lucide-settings',
-  to: '/settings'
+  to: '/app/settings'
 }], [{
   label: 'Tema',
   icon: 'i-lucide-palette',
   children: [{
     label: 'Primária',
     slot: 'chip',
-    chip: appConfig.ui.colors.primary,
+    chip: prefs.value.primary_color,
     content: {
       align: 'center',
       collisionPadding: 16
     },
     children: colors.map(color => ({
-      label: color,
+      label: colorLabels[color] || color,
       chip: color,
       slot: 'chip',
-      checked: appConfig.ui.colors.primary === color,
+      checked: prefs.value.primary_color === color,
       type: 'checkbox',
-      onSelect: (e) => {
+      onSelect: (e: Event) => {
         e.preventDefault()
-
-        appConfig.ui.colors.primary = color
+        setPrimaryColor(color)
       }
     }))
   }, {
     label: 'Neutra',
     slot: 'chip',
-    chip: appConfig.ui.colors.neutral === 'neutral' ? 'old-neutral' : appConfig.ui.colors.neutral,
+    chip: prefs.value.neutral_color === 'neutral' ? 'old-neutral' : prefs.value.neutral_color,
     content: {
       align: 'end',
       collisionPadding: 16
     },
     children: neutrals.map(color => ({
-      label: color,
+      label: neutralLabels[color] || color,
       chip: color === 'neutral' ? 'old-neutral' : color,
       slot: 'chip',
       type: 'checkbox',
-      checked: appConfig.ui.colors.neutral === color,
-      onSelect: (e) => {
+      checked: prefs.value.neutral_color === color,
+      onSelect: (e: Event) => {
         e.preventDefault()
-
-        appConfig.ui.colors.neutral = color
+        setNeutralColor(color)
       }
     }))
   }]
@@ -103,24 +120,19 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     label: 'Claro',
     icon: 'i-lucide-sun',
     type: 'checkbox',
-    checked: colorMode.value === 'light',
+    checked: prefs.value.color_mode === 'light',
     onSelect(e: Event) {
       e.preventDefault()
-
-      colorMode.preference = 'light'
+      setColorMode('light')
     }
   }, {
     label: 'Escuro',
     icon: 'i-lucide-moon',
     type: 'checkbox',
-    checked: colorMode.value === 'dark',
-    onUpdateChecked(checked: boolean) {
-      if (checked) {
-        colorMode.preference = 'dark'
-      }
-    },
+    checked: prefs.value.color_mode === 'dark',
     onSelect(e: Event) {
       e.preventDefault()
+      setColorMode('dark')
     }
   }]
 }], [{
@@ -171,8 +183,8 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
         <span
           class="rounded-full ring ring-bg bg-(--chip-light) dark:bg-(--chip-dark) size-2"
           :style="{
-            '--chip-light': `var(--color-${(item as any).chip}-500)`,
-            '--chip-dark': `var(--color-${(item as any).chip}-400)`
+            '--chip-light': `var(--color-${(item as Record<string, string>).chip}-500)`,
+            '--chip-dark': `var(--color-${(item as Record<string, string>).chip}-400)`
           }"
         />
       </div>

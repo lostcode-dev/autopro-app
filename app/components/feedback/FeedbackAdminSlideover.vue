@@ -245,12 +245,13 @@ function onClose() {
 
           <div class="flex flex-col gap-2">
             <USelect
-              v-model="linkEntityType as string"
+              :model-value="linkEntityType"
               :items="entityTypeOptions"
               value-key="value"
               placeholder="Tipo de entidade"
               size="sm"
               class="w-full"
+              @update:model-value="linkEntityType = $event"
             />
             <UInput
               v-if="linkEntityType && linkEntityType !== 'external'"

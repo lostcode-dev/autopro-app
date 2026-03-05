@@ -162,16 +162,18 @@ function onAdminPageUpdate(page: number) {
               class="w-full sm:w-64"
             />
             <USelect
-              v-model="listType as string"
+              :model-value="listType"
               :items="typeFilterOptions"
               value-key="value"
               class="w-40"
+              @update:model-value="listType = $event"
             />
             <USelect
-              v-model="listStatus as string"
+              :model-value="listStatus"
               :items="statusFilterOptions"
               value-key="value"
               class="w-40"
+              @update:model-value="listStatus = $event"
             />
           </div>
 
@@ -197,22 +199,25 @@ function onAdminPageUpdate(page: number) {
               class="w-full sm:w-64"
             />
             <USelect
-              v-model="adminType as string"
+              :model-value="adminType"
               :items="typeFilterOptions"
               value-key="value"
               class="w-40"
+              @update:model-value="adminType = $event"
             />
             <USelect
-              v-model="adminStatus as string"
+              :model-value="adminStatus"
               :items="statusFilterOptions"
               value-key="value"
               class="w-40"
+              @update:model-value="adminStatus = $event"
             />
             <USelect
-              v-model="adminPriority as string"
+              :model-value="adminPriority"
               :items="priorityFilterOptions"
               value-key="value"
               class="w-40"
+              @update:model-value="adminPriority = $event"
             />
           </div>
 

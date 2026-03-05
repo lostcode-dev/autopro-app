@@ -119,7 +119,11 @@ const groups = computed(() => [
   }
 ])
 
+const { load: loadPreferences } = useUserPreferences()
+
 onMounted(async () => {
+  await loadPreferences()
+
   const cookie = useCookie('cookie-consent')
   if (cookie.value === 'accepted') {
     return
