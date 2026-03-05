@@ -43,6 +43,13 @@ const links = [[{
     open.value = false
   }
 }, {
+  label: 'Tarefas',
+  icon: 'i-lucide-check-square',
+  to: '/app/tasks',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
   label: 'Configurações',
   to: '/app/settings',
   icon: 'i-lucide-settings',
