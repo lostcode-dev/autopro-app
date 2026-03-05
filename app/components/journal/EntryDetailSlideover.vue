@@ -1,0 +1,210 @@
+<script setup lang="ts">
+import type { JournalEntry, MetricDefinition, MetricValueWithDefinition } from '~/types/journal'
+
+const props = defineProps<{
+  open: boolean
+  date: string
+}>()
+
+const emit = defineEmits<{
+  'update:open': [value: boolean]
+  'updated': []
+}>()
+
+const { fetchEntryByDate, upsertEntry, metricDefinitions } = useJournal()
+
+const loading = ref(false)
+const entry = ref<JournalEntry | null>(null)
+const entryTags = ref<string[]>([])
+const entryMetrics = ref<MetricValueWithDefinition[]>([])
+
+const title = ref('')
+const content = ref('')
+const editing = ref(false)
+const saving = ref(false)
+
+watch(() => props.open, async (isOpen) => {
+  if (isOpen && props.date) {
+    await loadEntry()
+  }
+}, { immediate: true })
+
+watch(() => props.date, async () => {
+  if (props.open && props.date) {
+    editing.value = false
+    await loadEntry()
+  }
+})
+
+async function loadEntry() {
+  loading.value = true
+  try {
+    const data = await fetchEntryByDate(props.date)
+    if (data) {
+      entry.value = data.entry
+      entryTags.value = (data.tags ?? []).map((t: unknown) => (t as { name: string }).name)
+      entryMetrics.value = data.metrics ?? []
+      title.value = data.entry?.title ?? ''
+      content.value = data.entry?.content ?? ''
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+function startEditing() {
+  editing.value = true
+}
+
+async function onSave() {
+  if (!content.value.trim()) return
+  saving.value = true
+  try {
+    const result = await upsertEntry({
+      entryDate: props.date,
+      title: title.value || null,
+      content: content.value,
+      tags: entryTags.value.length > 0 ? entryTags.value : undefined
+    })
+    if (result) {
+      editing.value = false
+      await loadEntry()
+      emit('updated')
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+const defs = computed<MetricDefinition[]>(() => metricDefinitions.value ?? [])
+</script>
+
+<template>
+  <USlideover
+    :open="props.open"
+    :title="formatDate(props.date)"
+    @update:open="emit('update:open', $event)"
+  >
+    <template #body>
+      <div
+        v-if="loading"
+        class="space-y-4"
+      >
+        <USkeleton class="h-6 w-2/3" />
+        <USkeleton class="h-4 w-full" />
+        <USkeleton class="h-32 w-full" />
+      </div>
+
+      <div
+        v-else
+        class="space-y-6"
+      >
+        <!-- No entry yet -->
+        <div
+          v-if="!entry && !editing"
+          class="flex flex-col items-center justify-center py-8 gap-3"
+        >
+          <UIcon
+            name="i-lucide-book-open"
+            class="size-12 text-dimmed"
+          />
+          <p class="text-sm text-muted">
+            Nenhuma entrada para este dia.
+          </p>
+          <UButton
+            label="Criar entrada"
+            icon="i-lucide-plus"
+            @click="startEditing"
+          />
+        </div>
+
+        <!-- View mode -->
+        <template v-if="entry && !editing">
+          <div class="flex items-start justify-between">
+            <h3
+              v-if="entry.title"
+              class="text-lg font-semibold text-highlighted"
+            >
+              {{ entry.title }}
+            </h3>
+            <UButton
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="startEditing"
+            />
+          </div>
+
+          <div class="text-sm text-highlighted whitespace-pre-wrap">
+            {{ entry.content }}
+          </div>
+
+          <!-- Tags -->
+          <div
+            v-if="entry.tags && entry.tags.length > 0"
+            class="flex flex-wrap gap-1"
+          >
+            <UBadge
+              v-for="tag in entry.tags"
+              :key="tag.id"
+              :label="tag.name"
+              variant="subtle"
+              color="neutral"
+              size="xs"
+            />
+          </div>
+
+          <!-- Metrics -->
+          <JournalMetricsPanel
+            :definitions="defs"
+            :existing-values="entryMetrics"
+            :entry-date="props.date"
+            @saved="loadEntry(); emit('updated')"
+          />
+        </template>
+
+        <!-- Edit mode -->
+        <template v-if="editing">
+          <div class="space-y-3">
+            <UInput
+              v-model="title"
+              placeholder="Título (opcional)"
+              size="lg"
+            />
+            <UTextarea
+              v-model="content"
+              placeholder="Escreva sua entrada..."
+              :rows="8"
+              autoresize
+            />
+          </div>
+
+          <div class="flex justify-end gap-2">
+            <UButton
+              label="Cancelar"
+              color="neutral"
+              variant="outline"
+              @click="editing = false"
+            />
+            <UButton
+              label="Salvar"
+              :loading="saving"
+              :disabled="!content.trim()"
+              @click="onSave"
+            />
+          </div>
+        </template>
+      </div>
+    </template>
+  </USlideover>
+</template>

@@ -1,0 +1,174 @@
+<script setup lang="ts">
+import type { JournalEntry, MetricDefinition, MetricValueWithDefinition } from '~/types/journal'
+
+const props = defineProps<{
+  todayEntry: JournalEntry | null
+  todayMetrics: MetricValueWithDefinition[]
+  metricDefinitions: MetricDefinition[]
+  loading: boolean
+}>()
+
+const emit = defineEmits<{
+  saved: []
+  metricsSaved: []
+}>()
+
+const { upsertEntry } = useJournal()
+
+const today = new Date().toISOString().split('T')[0] ?? ''
+
+const title = ref(props.todayEntry?.title ?? '')
+const content = ref(props.todayEntry?.content ?? '')
+const tagInput = ref('')
+const entryTags = ref<string[]>([])
+
+watch(() => props.todayEntry, (entry) => {
+  if (entry) {
+    title.value = entry.title ?? ''
+    content.value = entry.content ?? ''
+    entryTags.value = (entry.tags ?? []).map(t => t.name)
+  } else {
+    title.value = ''
+    content.value = ''
+    entryTags.value = []
+  }
+}, { immediate: true })
+
+function addTag() {
+  const tag = tagInput.value.trim()
+  if (tag && !entryTags.value.includes(tag)) {
+    entryTags.value.push(tag)
+  }
+  tagInput.value = ''
+}
+
+function removeTag(tag: string) {
+  entryTags.value = entryTags.value.filter(t => t !== tag)
+}
+
+const saving = ref(false)
+
+async function onSave() {
+  if (!content.value.trim()) return
+  saving.value = true
+  try {
+    const result = await upsertEntry({
+      entryDate: today,
+      title: title.value || null,
+      content: content.value,
+      tags: entryTags.value.length > 0 ? entryTags.value : undefined
+    })
+    if (result) {
+      emit('saved')
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+function formatToday(): string {
+  return new Date(today + 'T12:00:00').toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+</script>
+
+<template>
+  <div class="space-y-6">
+    <!-- Loading skeleton -->
+    <template v-if="props.loading">
+      <USkeleton class="h-6 w-48" />
+      <USkeleton class="h-10 w-full" />
+      <USkeleton class="h-40 w-full" />
+      <USkeleton class="h-32 w-full" />
+    </template>
+
+    <template v-else>
+      <!-- Date header -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-lg font-semibold text-highlighted capitalize">
+            {{ formatToday() }}
+          </h3>
+          <p class="text-sm text-muted">
+            Como foi o seu dia?
+          </p>
+        </div>
+        <UButton
+          label="Salvar"
+          icon="i-lucide-save"
+          :loading="saving"
+          :disabled="!content.trim()"
+          @click="onSave"
+        />
+      </div>
+
+      <!-- Entry editor -->
+      <div class="space-y-3">
+        <UInput
+          v-model="title"
+          placeholder="Título (opcional)"
+          size="lg"
+        />
+
+        <UTextarea
+          v-model="content"
+          placeholder="O que aconteceu hoje? O que você aprendeu? O que sentiu?"
+          :rows="8"
+          autoresize
+        />
+      </div>
+
+      <!-- Tags -->
+      <div class="space-y-2">
+        <label class="text-sm font-medium text-highlighted">Tags</label>
+        <div class="flex flex-wrap gap-1 mb-2">
+          <UBadge
+            v-for="tag in entryTags"
+            :key="tag"
+            :label="tag"
+            variant="subtle"
+            color="neutral"
+          >
+            <template #trailing>
+              <UButton
+                icon="i-lucide-x"
+                size="xs"
+                color="neutral"
+                variant="ghost"
+                class="ml-1"
+                @click="removeTag(tag)"
+              />
+            </template>
+          </UBadge>
+        </div>
+        <div class="flex items-center gap-2">
+          <UInput
+            v-model="tagInput"
+            placeholder="Adicionar tag..."
+            size="sm"
+            class="flex-1"
+            @keydown.enter.prevent="addTag"
+          />
+          <UButton
+            icon="i-lucide-plus"
+            size="sm"
+            :disabled="!tagInput.trim()"
+            @click="addTag"
+          />
+        </div>
+      </div>
+
+      <!-- Metrics panel -->
+      <JournalMetricsPanel
+        :definitions="metricDefinitions"
+        :existing-values="todayMetrics"
+        :entry-date="today"
+        @saved="emit('metricsSaved')"
+      />
+    </template>
+  </div>
+</template>

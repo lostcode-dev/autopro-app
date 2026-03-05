@@ -50,6 +50,13 @@ const links = [[{
     open.value = false
   }
 }, {
+  label: 'Diário',
+  icon: 'i-lucide-book-open',
+  to: '/app/journal',
+  onSelect: () => {
+    open.value = false
+  }
+}, {
   label: 'Configurações',
   to: '/app/settings',
   icon: 'i-lucide-settings',
