@@ -9,6 +9,11 @@ export default defineNuxtConfig({
     'nuxt-og-image'
   ],
 
+  sourcemap: {
+    server: false,
+    client: true
+  },
+
   devtools: {
     enabled: true
   },
