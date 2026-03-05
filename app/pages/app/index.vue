@@ -1,65 +1,180 @@
 <script setup lang="ts">
-import { sub } from 'date-fns'
-import type { DropdownMenuItem } from '@nuxt/ui'
-import type { Period, Range } from '~/types'
-
 definePageMeta({
   layout: 'app'
 })
 
-const items = [
-  [
-    {
-      label: 'New mail',
-      icon: 'i-lucide-send',
-      to: '/inbox'
-    },
-    {
-      label: 'New customer',
-      icon: 'i-lucide-user-plus',
-      to: '/customers'
-    }
-  ]
-] satisfies DropdownMenuItem[][]
+const {
+  dashboard,
+  dashboardStatus,
+  insights,
+  insightsStatus,
+  areas,
+  areasStatus,
+  refreshDashboard,
+  refreshInsights,
+  createArea,
+  updateArea,
+  deleteArea
+} = useLifeOS()
 
-const range = shallowRef<Range>({
-  start: sub(new Date(), { days: 14 }),
-  end: new Date()
+const isLoading = computed(() => dashboardStatus.value === 'pending')
+const isInsightsLoading = computed(() => insightsStatus.value === 'pending')
+
+const todayFormatted = computed(() => {
+  const d = new Date()
+  return d.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 })
-const period = ref<Period>('daily')
+
+async function handleRefresh() {
+  await Promise.all([refreshDashboard(), refreshInsights()])
+}
 </script>
 
 <template>
-  <UDashboardPanel id="home">
+  <UDashboardPanel id="life-os">
     <template #header>
-      <UDashboardNavbar title="Home" :ui="{ right: 'gap-3' }">
+      <UDashboardNavbar title="Life OS" :ui="{ right: 'gap-3' }">
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
 
         <template #right>
           <NotificationsButton />
-
-          <UDropdownMenu :items="items">
-            <UButton icon="i-lucide-plus" size="md" class="rounded-full" />
-          </UDropdownMenu>
+          <UTooltip text="Atualizar">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              icon="i-lucide-refresh-cw"
+              square
+              :loading="isLoading"
+              @click="handleRefresh"
+            />
+          </UTooltip>
         </template>
       </UDashboardNavbar>
-
-      <UDashboardToolbar>
-        <template #left>
-          <!-- NOTE: The `-ms-1` class is used to align with the `DashboardSidebarCollapse` button here. -->
-          <HomeDateRangePicker v-model="range" class="-ms-1" />
-
-          <HomePeriodSelect v-model="period" :range="range" />
-        </template>
-      </UDashboardToolbar>
     </template>
 
     <template #body>
-      <HomeStats :period="period" :range="range" />
-      <HomeChart :period="period" :range="range" />
-      <HomeSales :period="period" :range="range" />
+      <!-- Loading skeleton -->
+      <DashboardSkeleton v-if="isLoading && !dashboard" />
+
+      <div v-else class="space-y-6 p-4 md:p-6">
+        <!-- Greeting -->
+        <div>
+          <h2 class="text-lg font-semibold text-highlighted">
+            Seu dia — {{ todayFormatted }}
+          </h2>
+          <p class="text-sm text-muted">
+            Capturar → Planejar → Executar → Refletir → Aprender
+          </p>
+        </div>
+
+        <!-- Quick stats -->
+        <div v-if="dashboard" class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <UCard :ui="{ body: 'p-3 sm:p-4' }">
+            <div class="flex items-center gap-3">
+              <UIcon name="i-lucide-calendar-check" class="size-5 shrink-0 text-success" />
+              <div>
+                <p class="text-lg font-bold leading-tight">
+                  {{ dashboard.habits.completedCount }}/{{ dashboard.habits.totalCount }}
+                </p>
+                <p class="text-xs text-muted">
+                  Hábitos
+                </p>
+              </div>
+            </div>
+          </UCard>
+          <UCard :ui="{ body: 'p-3 sm:p-4' }">
+            <div class="flex items-center gap-3">
+              <UIcon name="i-lucide-check-square" class="size-5 shrink-0 text-primary" />
+              <div>
+                <p class="text-lg font-bold leading-tight">
+                  {{ dashboard.tasks.pendingCount }}
+                </p>
+                <p class="text-xs text-muted">
+                  Tarefas pendentes
+                </p>
+              </div>
+            </div>
+          </UCard>
+          <UCard :ui="{ body: 'p-3 sm:p-4' }">
+            <div class="flex items-center gap-3">
+              <UIcon name="i-lucide-calendar" class="size-5 shrink-0 text-info" />
+              <div>
+                <p class="text-lg font-bold leading-tight">
+                  {{ dashboard.events.totalCount }}
+                </p>
+                <p class="text-xs text-muted">
+                  Eventos hoje
+                </p>
+              </div>
+            </div>
+          </UCard>
+          <UCard :ui="{ body: 'p-3 sm:p-4' }">
+            <div class="flex items-center gap-3">
+              <UIcon
+                :name="dashboard.journal.exists ? 'i-lucide-book-open-check' : 'i-lucide-book-open'"
+                class="size-5 shrink-0"
+                :class="dashboard.journal.exists ? 'text-success' : 'text-warning'"
+              />
+              <div>
+                <p class="text-lg font-bold leading-tight">
+                  {{ dashboard.journal.exists ? '✓' : '—' }}
+                </p>
+                <p class="text-xs text-muted">
+                  Diário
+                </p>
+              </div>
+            </div>
+          </UCard>
+        </div>
+
+        <!-- Main cards grid -->
+        <div v-if="dashboard" class="grid gap-4 md:grid-cols-2">
+          <DashboardTodayHabits
+            :habits="dashboard.habits.items"
+            :completed-count="dashboard.habits.completedCount"
+            :total-count="dashboard.habits.totalCount"
+          />
+          <DashboardTodayTasks
+            :tasks="dashboard.tasks.items"
+            :pending-count="dashboard.tasks.pendingCount"
+            :overdue-count="dashboard.tasks.overdueCount"
+          />
+          <DashboardTodayEvents
+            :events="dashboard.events.items"
+            :total-count="dashboard.events.totalCount"
+          />
+          <DashboardQuickJournal
+            :journal="dashboard.journal"
+          />
+        </div>
+
+        <!-- Life Areas -->
+        <DashboardLifeAreas
+          :areas="areas"
+          :loading="areasStatus === 'pending'"
+          @create="name => createArea({ name })"
+          @update="(id, name) => updateArea(id, { name })"
+          @remove="id => deleteArea(id)"
+        />
+
+        <!-- Insights section -->
+        <div>
+          <h3 class="mb-4 text-base font-semibold text-highlighted">
+            Insights de produtividade
+          </h3>
+
+          <div v-if="isInsightsLoading && !insights" class="grid gap-4 md:grid-cols-2">
+            <USkeleton v-for="i in 4" :key="i" class="h-44 w-full rounded-lg" />
+          </div>
+
+          <DashboardInsights
+            v-else-if="insights"
+            :insights="insights"
+          />
+        </div>
+      </div>
     </template>
   </UDashboardPanel>
 </template>
