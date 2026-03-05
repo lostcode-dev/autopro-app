@@ -67,6 +67,7 @@ const eventsList = computed(() => eventsData.value?.data ?? [])
         </template>
 
         <template #right>
+          <NotificationsButton />
           <UInput
             v-model="searchQuery"
             placeholder="Buscar eventos..."

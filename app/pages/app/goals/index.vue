@@ -117,6 +117,7 @@ const statusFilterOptions = computed(() => [
         </template>
 
         <template #right>
+          <NotificationsButton />
           <UButton
             label="Nova meta"
             icon="i-lucide-plus"

@@ -89,6 +89,7 @@ const tagFilterOptions = computed(() => [
         </template>
 
         <template #right>
+          <NotificationsButton />
           <UButton
             label="Nova métrica"
             icon="i-lucide-gauge"

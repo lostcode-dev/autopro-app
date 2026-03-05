@@ -45,6 +45,10 @@ const links = [[{
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+
+        <template #right>
+          <NotificationsButton />
+        </template>
       </UDashboardNavbar>
 
       <UDashboardToolbar>

@@ -116,6 +116,7 @@ const listFilterOptions = computed(() => [
         </template>
 
         <template #right>
+          <NotificationsButton />
           <UButton
             label="Nova lista"
             icon="i-lucide-folder-plus"

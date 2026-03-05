@@ -141,6 +141,7 @@ const todayFormatted = computed(() => {
         </template>
 
         <template #right>
+          <NotificationsButton />
           <UButton
             label="Nova identidade"
             icon="i-lucide-user-plus"

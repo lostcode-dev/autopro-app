@@ -39,6 +39,7 @@ async function handleRefresh() {
         </template>
 
         <template #right>
+          <NotificationsButton />
           <UTooltip text="Atualizar">
             <UButton
               color="neutral"

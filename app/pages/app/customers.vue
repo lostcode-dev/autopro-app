@@ -219,6 +219,7 @@ const pagination = ref({
         </template>
 
         <template #right>
+          <NotificationsButton />
           <CustomersAddModal />
         </template>
       </UDashboardNavbar>

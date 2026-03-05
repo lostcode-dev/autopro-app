@@ -20,6 +20,10 @@ const { data: page, status } = await useAsyncData(
         <template #leading>
           <UDashboardSidebarCollapse />
         </template>
+
+        <template #right>
+          <NotificationsButton />
+        </template>
       </UDashboardNavbar>
     </template>
 
