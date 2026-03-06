@@ -40,9 +40,9 @@ const allDone = computed(() => props.totalCount > 0 && props.completedCount === 
     <div v-if="totalCount > 0" class="space-y-1">
       <div class="flex items-center justify-between text-sm">
         <span class="text-muted">Progresso do dia</span>
-        <span class="font-medium text-highlighted">{{ completedCount }}/{{ totalCount }}</span>
+          <span class="font-medium text-highlighted">{{ completedCount }}/{{ totalCount }}</span>
       </div>
-      <UProgress :value="progress" size="sm" />
+      <UProgress :value="progress" size="sm" v-model="completedCount" :max="totalCount" />
     </div>
 
     <!-- All done state -->
