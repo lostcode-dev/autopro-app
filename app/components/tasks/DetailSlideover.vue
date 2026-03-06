@@ -55,6 +55,7 @@ const addingSubtask = ref(false)
 
 async function onAddSubtask() {
   if (!newSubtaskTitle.value.trim() || !props.task) return
+  if (addingSubtask.value) return
   addingSubtask.value = true
   try {
     const result = await createSubtask(props.task.id, { title: newSubtaskTitle.value.trim() })
@@ -245,7 +246,7 @@ function formatDueDate(dateStr: string): string {
               icon="i-lucide-plus"
               size="sm"
               :loading="addingSubtask"
-              :disabled="!newSubtaskTitle.trim()"
+              :disabled="addingSubtask || !newSubtaskTitle.trim()"
               @click="onAddSubtask"
             />
           </div>

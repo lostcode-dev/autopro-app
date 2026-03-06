@@ -38,6 +38,7 @@ const activeDefinitions = computed(() => props.definitions.filter(d => d.isActiv
 const saving = ref(false)
 
 async function onSave() {
+  if (saving.value) return
   saving.value = true
   try {
     const values = activeDefinitions.value.map(def => ({
@@ -106,7 +107,7 @@ function setSelectValue(key: string, val: string) {
         label="Salvar métricas"
         size="sm"
         :loading="saving"
-        :disabled="activeDefinitions.length === 0"
+        :disabled="saving || activeDefinitions.length === 0"
         @click="onSave"
       />
     </div>

@@ -50,6 +50,7 @@ const saving = ref(false)
 
 async function onSave() {
   if (!content.value.trim()) return
+  if (saving.value) return
   saving.value = true
   try {
     const result = await upsertEntry({
@@ -101,7 +102,7 @@ function formatToday(): string {
           label="Salvar"
           icon="i-lucide-save"
           :loading="saving"
-          :disabled="!content.trim()"
+          :disabled="saving || !content.trim()"
           @click="onSave"
         />
       </div>

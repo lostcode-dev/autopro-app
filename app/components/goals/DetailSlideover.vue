@@ -56,6 +56,7 @@ const addingTask = ref(false)
 
 async function onAddTask() {
   if (!newTaskTitle.value.trim() || !props.goal) return
+  if (addingTask.value) return
   addingTask.value = true
   try {
     const result = await createTask(props.goal.id, { title: newTaskTitle.value.trim() })
@@ -241,7 +242,7 @@ async function onUnlinkHabit(linkId: string) {
               icon="i-lucide-plus"
               size="sm"
               :loading="addingTask"
-              :disabled="!newTaskTitle.trim()"
+              :disabled="addingTask || !newTaskTitle.trim()"
               @click="onAddTask"
             />
           </div>

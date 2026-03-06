@@ -49,6 +49,7 @@ function cancel() {
 }
 
 async function onSubmit(evt: FormSubmitEvent<Schema>) {
+  if (saving.value) return
   saving.value = true
   try {
     if (editingId.value) {
@@ -146,7 +147,7 @@ async function seedDefaults() {
               placeholder="Nome da área"
               class="flex-1"
             />
-            <UButton type="submit" size="sm" :loading="saving">
+            <UButton type="submit" size="sm" :loading="saving" :disabled="saving">
               {{ editingId ? 'Salvar' : 'Criar' }}
             </UButton>
             <UButton

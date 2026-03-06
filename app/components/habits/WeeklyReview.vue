@@ -36,6 +36,7 @@ watch(() => props.existingReflection, (reflection) => {
 const loading = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return
   loading.value = true
   try {
     const result = await saveReflection({
@@ -136,6 +137,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             label="Salvar reflexão"
             type="submit"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>

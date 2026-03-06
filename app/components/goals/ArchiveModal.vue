@@ -17,6 +17,7 @@ const loading = ref(false)
 
 async function onConfirm() {
   if (!props.goal) return
+  if (loading.value) return
   loading.value = true
   try {
     const ok = await archiveGoal(props.goal.id, props.goal.title)
@@ -60,6 +61,7 @@ function onClose() {
           label="Arquivar"
           color="error"
           :loading="loading"
+          :disabled="loading"
           @click="onConfirm"
         />
       </div>

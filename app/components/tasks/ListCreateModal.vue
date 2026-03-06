@@ -38,6 +38,7 @@ const colorOptions = [
 ]
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return
   loading.value = true
   try {
     const result = await createTaskList(event.data)
@@ -98,6 +99,7 @@ function onClose() {
             label="Criar lista"
             type="submit"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>

@@ -111,6 +111,7 @@ function onFileClick() {
         color="neutral"
         type="submit"
         :loading="isSaving"
+        :disabled="isSaving"
         class="w-fit lg:ms-auto"
       />
     </UPageCard>

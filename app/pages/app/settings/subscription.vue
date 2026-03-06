@@ -280,6 +280,7 @@ async function openInvoice(url: string | null) {
             color="neutral"
             variant="ghost"
             :loading="isCancelling"
+            :disabled="isCancelling"
             @click="cancelAtPeriodEnd"
           />
         </div>

@@ -16,6 +16,8 @@ const toast = useToast()
 const auth = useAuth()
 const router = useRouter()
 
+const submitting = ref(false)
+
 const fields = [{
   name: 'email',
   type: 'text' as const,
@@ -30,7 +32,8 @@ const fields = [{
 }, {
   name: 'remember',
   label: 'Lembrar de mim',
-  type: 'checkbox' as const
+  type: 'checkbox' as const,
+  defaultValue: true
 }]
 
 const providers = [{
@@ -50,17 +53,20 @@ const providers = [{
 const schema = z.object({
   email: z.email('Email inválido'),
   password: z.string().min(8, 'A senha deve ter pelo menos 8 caracteres'),
-  remember: z.boolean().optional().default(true)
+  remember: z.boolean().optional()
 })
 
-type Schema = z.output<typeof schema>
+type Schema = z.input<typeof schema>
 
-async function onSubmit(payload: FormSubmitEvent<Schema>) {
+async function onSubmit(payload?: FormSubmitEvent<Schema>) {
+  if (!payload) return
+  if (submitting.value) return
+  submitting.value = true
   try {
     await auth.login({
       email: payload.data.email,
       password: payload.data.password,
-      remember: payload.data.remember
+      remember: payload.data.remember ?? true
     })
 
     toast.add({
@@ -77,6 +83,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       description: message,
       color: 'error'
     })
+  } finally {
+    submitting.value = false
   }
 }
 </script>
@@ -86,6 +94,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     :fields="fields"
     :schema="schema"
     :providers="providers"
+    :loading="submitting"
+    :disabled="submitting"
     title="Bem-vindo de volta"
     icon="i-lucide-lock"
     @submit="onSubmit"

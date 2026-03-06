@@ -67,6 +67,7 @@ watch(() => props.calendars, (cals) => {
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
 async function onSubmit() {
+  if (loading.value) return
   const startAt = `${state.startDate}T${state.allDay ? '00:00:00' : state.startTime + ':00'}`
   const endAt = `${state.endDate}T${state.allDay ? '23:59:59' : state.endTime + ':00'}`
 
@@ -270,6 +271,7 @@ const reminderOptions = [
             type="submit"
             label="Criar evento"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>

@@ -29,6 +29,7 @@ const loading = ref(false)
 const archivingId = ref<string | null>(null)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return
   loading.value = true
   try {
     const result = await createIdentity(event.data)
@@ -95,6 +96,7 @@ async function onArchive(identityId: string, identityName: string) {
               label="Criar identidade"
               type="submit"
               :loading="loading"
+              :disabled="loading"
             />
           </div>
         </UForm>
@@ -133,6 +135,7 @@ async function onArchive(identityId: string, identityName: string) {
                   variant="subtle"
                   size="sm"
                   :loading="archivingId === identity.id"
+                  :disabled="archivingId === identity.id"
                   aria-label="Arquivar identidade"
                   @click="onArchive(identity.id, identity.name)"
                 />

@@ -17,6 +17,7 @@ const loading = ref(false)
 
 async function onConfirm() {
   if (!props.task) return
+  if (loading.value) return
   loading.value = true
   try {
     const ok = await archiveTask(props.task.id, props.task.title)
@@ -60,6 +61,7 @@ function onClose() {
           label="Arquivar"
           color="error"
           :loading="loading"
+          :disabled="loading"
           @click="onConfirm"
         />
       </div>

@@ -58,6 +58,7 @@ function startEditing() {
 
 async function onSave() {
   if (!content.value.trim()) return
+  if (saving.value) return
   saving.value = true
   try {
     const result = await upsertEntry({
@@ -199,7 +200,7 @@ const defs = computed<MetricDefinition[]>(() => metricDefinitions.value ?? [])
             <UButton
               label="Salvar"
               :loading="saving"
-              :disabled="!content.trim()"
+              :disabled="saving || !content.trim()"
               @click="onSave"
             />
           </div>

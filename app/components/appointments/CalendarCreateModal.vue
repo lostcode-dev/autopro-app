@@ -42,6 +42,7 @@ const colorOptions = [
 ]
 
 async function onSubmit() {
+  if (loading.value) return
   loading.value = true
   try {
     const result = await createCalendar({
@@ -131,6 +132,7 @@ void props
             type="submit"
             label="Criar"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>

@@ -16,6 +16,8 @@ const toast = useToast()
 const auth = useAuth()
 const router = useRouter()
 
+const submitting = ref(false)
+
 const fields = [{
   name: 'name',
   type: 'text' as const,
@@ -56,6 +58,8 @@ const schema = z.object({
 type Schema = z.output<typeof schema>
 
 async function onSubmit(payload: FormSubmitEvent<Schema>) {
+  if (submitting.value) return
+  submitting.value = true
   try {
     const response = await auth.signup({
       name: payload.data.name,
@@ -86,6 +90,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       description: message,
       color: 'error'
     })
+  } finally {
+    submitting.value = false
   }
 }
 </script>
@@ -97,6 +103,8 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     :providers="providers"
     title="Crie sua conta"
     :submit="{ label: 'Criar conta' }"
+    :loading="submitting"
+    :disabled="submitting"
     @submit="onSubmit"
   >
     <template #description>

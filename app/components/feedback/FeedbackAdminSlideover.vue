@@ -75,6 +75,7 @@ function formatDate(iso: string) {
 
 function onSendResponse() {
   if (!detailData.value || !responseText.value.trim()) return
+  if (sendingResponse.value) return
   sendingResponse.value = true
   emit('respond', detailData.value.id, responseText.value.trim())
   responseText.value = ''
@@ -208,7 +209,7 @@ function onClose() {
               size="sm"
               label="Enviar"
               :loading="sendingResponse"
-              :disabled="!responseText.trim()"
+              :disabled="sendingResponse || !responseText.trim()"
               @click="onSendResponse"
             />
           </div>

@@ -42,6 +42,7 @@ const state = reactive<Schema>({
 const loading = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return
   loading.value = true
   try {
     const optionsList = event.data.options
@@ -210,6 +211,7 @@ const _props = props
             label="Criar"
             type="submit"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>

@@ -23,6 +23,7 @@ const {
 
 const isLoading = computed(() => dashboardStatus.value === 'pending')
 const isInsightsLoading = computed(() => insightsStatus.value === 'pending')
+const isRefreshing = computed(() => isLoading.value || isInsightsLoading.value)
 
 const todayFormatted = computed(() => {
   const d = new Date()
@@ -30,6 +31,7 @@ const todayFormatted = computed(() => {
 })
 
 async function handleRefresh() {
+  if (isRefreshing.value) return
   await Promise.all([refreshDashboard(), refreshInsights()])
 }
 </script>
@@ -50,7 +52,8 @@ async function handleRefresh() {
               variant="ghost"
               icon="i-lucide-refresh-cw"
               square
-              :loading="isLoading"
+              :loading="isRefreshing"
+              :disabled="isRefreshing"
               @click="handleRefresh"
             />
           </UTooltip>

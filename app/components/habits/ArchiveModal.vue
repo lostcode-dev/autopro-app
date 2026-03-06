@@ -15,6 +15,7 @@ const { archiveHabit } = useHabits()
 const loading = ref(false)
 
 async function onConfirm() {
+  if (loading.value) return
   loading.value = true
   try {
     const success = await archiveHabit(props.habitId, props.habitName)
@@ -53,6 +54,7 @@ async function onConfirm() {
           label="Arquivar"
           color="error"
           :loading="loading"
+          :disabled="loading"
           @click="onConfirm"
         />
       </div>

@@ -63,6 +63,7 @@ function resetForm() {
 }
 
 async function onSubmit(evt: FormSubmitEvent<Schema>) {
+  if (saving.value) return
   saving.value = true
   try {
     const payload: CreateFeedbackPayload = {
@@ -129,7 +130,7 @@ function onClose() {
             label="Cancelar"
             @click="onClose"
           />
-          <UButton type="submit" label="Enviar" :loading="saving" />
+          <UButton type="submit" label="Enviar" :loading="saving" :disabled="saving" />
         </div>
       </UForm>
     </template>

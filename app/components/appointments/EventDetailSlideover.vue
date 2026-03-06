@@ -38,6 +38,7 @@ function startEdit() {
 
 async function saveEdit() {
   if (!props.event) return
+  if (loading.value) return
   loading.value = true
   try {
     const success = await updateEvent(props.event.id, {
@@ -56,6 +57,7 @@ async function saveEdit() {
 
 async function onArchive() {
   if (!props.event) return
+  if (archiving.value) return
   archiving.value = true
   try {
     const success = await archiveEvent(props.event.id)
@@ -251,6 +253,7 @@ const eventObj = computed(() => props.event as Record<string, unknown> | null)
               size="sm"
               color="error"
               :loading="archiving"
+              :disabled="archiving"
               @click="onArchive"
             />
           </template>
@@ -261,6 +264,7 @@ const eventObj = computed(() => props.event as Record<string, unknown> | null)
               icon="i-lucide-check"
               size="sm"
               :loading="loading"
+              :disabled="loading"
               @click="saveEdit"
             />
             <UButton

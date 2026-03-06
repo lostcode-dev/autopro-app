@@ -50,6 +50,7 @@ const state = reactive<Partial<Schema>>({
 const loading = ref(false);
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return;
   loading.value = true;
   try {
     const result = await createHabit(event.data);
@@ -197,7 +198,12 @@ const identityItems = computed(() => {
             variant="subtle"
             @click="onClose"
           />
-          <UButton label="Criar hábito" type="submit" :loading="loading" />
+          <UButton
+            label="Criar hábito"
+            type="submit"
+            :loading="loading"
+            :disabled="loading"
+          />
         </div>
       </UForm>
     </template>

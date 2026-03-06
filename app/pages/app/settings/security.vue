@@ -132,6 +132,7 @@ async function deleteAccount() {
         class="w-fit"
         type="submit"
         :loading="isChangingPassword"
+        :disabled="isChangingPassword"
       />
     </UForm>
   </UPageCard>
@@ -146,6 +147,7 @@ async function deleteAccount() {
         label="Excluir conta"
         color="error"
         :loading="isDeletingAccount"
+        :disabled="isDeletingAccount"
         @click="deleteAccount"
       />
     </template>

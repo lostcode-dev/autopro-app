@@ -28,6 +28,7 @@ const reply = ref('')
 const loading = ref(false)
 
 function onSubmit() {
+  if (loading.value) return
   loading.value = true
 
   setTimeout(() => {
@@ -153,6 +154,7 @@ function onSubmit() {
                 type="submit"
                 color="neutral"
                 :loading="loading"
+                :disabled="loading"
                 label="Send"
                 icon="i-lucide-send"
               />

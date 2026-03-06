@@ -43,6 +43,7 @@ watch(() => props.goal, (goal) => {
 const loading = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return
   if (!props.goal) return
   loading.value = true
   try {
@@ -120,6 +121,7 @@ function onClose() {
             label="Salvar"
             type="submit"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>

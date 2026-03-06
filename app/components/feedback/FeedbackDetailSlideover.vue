@@ -60,6 +60,7 @@ function formatDate(iso: string) {
 
 async function onSubmitResponse(evt: FormSubmitEvent<ResponseSchema>) {
   if (!detailData.value) return
+  if (sendingResponse.value) return
   sendingResponse.value = true
   try {
     emit('respond', detailData.value.id, evt.data.content)
@@ -243,6 +244,7 @@ function onClose() {
                 size="sm"
                 label="Enviar resposta"
                 :loading="sendingResponse"
+                :disabled="sendingResponse"
               />
             </div>
           </UForm>

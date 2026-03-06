@@ -46,6 +46,7 @@ watch(() => props.task, (task) => {
 const loading = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return
   if (!props.task) return
   loading.value = true
   try {
@@ -136,6 +137,7 @@ const listItems = computed(() => [
             label="Salvar"
             type="submit"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>

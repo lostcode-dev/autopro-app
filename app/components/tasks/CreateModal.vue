@@ -34,6 +34,7 @@ const state = reactive<Partial<Schema>>({
 const loading = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
+  if (loading.value) return
   loading.value = true
   try {
     const result = await createTask(event.data)
@@ -132,6 +133,7 @@ const listItems = computed(() => [
             label="Criar tarefa"
             type="submit"
             :loading="loading"
+            :disabled="loading"
           />
         </div>
       </UForm>
