@@ -7,6 +7,7 @@ const bodySchema = z.object({
   description: z.string().max(1000).optional(),
   frequency: z.enum(['daily', 'weekly', 'custom']).default('daily'),
   difficulty: z.enum(['tiny', 'normal', 'hard']).default('normal'),
+  habitType: z.enum(['positive', 'negative']).default('positive'),
   identityId: z.string().uuid().optional(),
   customDays: z.array(z.number().int().min(0).max(6)).optional()
 }).refine(
@@ -30,6 +31,7 @@ export default eventHandler(async (event) => {
       description: parsed.description ?? null,
       frequency: parsed.frequency,
       difficulty: parsed.difficulty,
+      habit_type: parsed.habitType,
       identity_id: parsed.identityId ?? null,
       custom_days: parsed.customDays ?? null
     })

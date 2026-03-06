@@ -87,13 +87,15 @@ async function onArchive(identityId: string, identityName: string) {
 
           <div class="flex justify-end gap-2 pt-2">
             <UButton
+              icon="i-lucide-x"
               label="Fechar"
               color="neutral"
               variant="subtle"
               @click="emit('update:open', false)"
             />
             <UButton
-              label="Criar identidade"
+              icon="i-lucide-check"
+              label="Salvar"
               type="submit"
               :loading="loading"
               :disabled="loading"

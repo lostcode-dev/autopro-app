@@ -7,7 +7,12 @@ const props = defineProps<{
   weekKey: string
   existingReflection?: HabitReflection | null
   editable?: boolean
+  loading?: boolean
   onSave?: (payload: { weekKey: string, wins?: string, improvements?: string }) => Promise<boolean>
+}>()
+
+const emit = defineEmits<{
+  'navigate-week': [direction: 'prev' | 'next']
 }>()
 
 const canEdit = computed(() => props.editable !== false)
@@ -49,12 +54,12 @@ watch(() => props.existingReflection, (reflection) => {
   }
 }, { immediate: true })
 
-const loading = ref(false)
+const submitting = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
-  if (loading.value) return
+  if (submitting.value) return
   if (!props.onSave) return
-  loading.value = true
+  submitting.value = true
   try {
     const ok = await props.onSave({
       weekKey: props.weekKey,
@@ -65,24 +70,43 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       isEditing.value = false
     }
   } finally {
-    loading.value = false
+    submitting.value = false
   }
 }
 </script>
 
 <template>
   <div class="space-y-4">
+    <!-- Header with week arrows -->
     <div class="flex items-center justify-between">
-      <div>
-        <h3 class="font-semibold text-highlighted">
-          Revisão Semanal
-        </h3>
-        <p class="text-sm text-muted">
-          Semana {{ props.weekKey }}
-        </p>
+      <div class="flex items-center gap-2">
+        <UButton
+          icon="i-lucide-chevron-left"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          aria-label="Semana anterior"
+          @click="emit('navigate-week', 'prev')"
+        />
+        <div>
+          <h3 class="font-semibold text-highlighted">
+            Revisão Semanal
+          </h3>
+          <p class="text-sm text-muted">
+            Semana {{ props.weekKey }}
+          </p>
+        </div>
+        <UButton
+          icon="i-lucide-chevron-right"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          aria-label="Próxima semana"
+          @click="emit('navigate-week', 'next')"
+        />
       </div>
       <UButton
-        v-if="canEdit && !isEditing && existingReflection"
+        v-if="canEdit && !isEditing && existingReflection && !props.loading"
         label="Editar"
         icon="i-lucide-pencil"
         color="neutral"
@@ -92,15 +116,27 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       />
     </div>
 
+    <!-- Loading skeleton -->
+    <template v-if="props.loading">
+      <UCard>
+        <div class="space-y-4">
+          <USkeleton class="h-4 w-32" />
+          <USkeleton class="h-20 w-full" />
+          <USkeleton class="h-4 w-32" />
+          <USkeleton class="h-20 w-full" />
+        </div>
+      </UCard>
+    </template>
+
     <!-- Read-only view -->
-    <template v-if="!isEditing && existingReflection">
+    <template v-else-if="!isEditing && existingReflection">
       <UCard>
         <div class="space-y-4">
           <div>
             <p class="text-sm font-medium text-highlighted">
               O que deu certo?
             </p>
-            <p class="text-sm text-muted mt-1">
+            <p class="text-sm text-muted mt-1 whitespace-pre-line">
               {{ existingReflection.wins || '—' }}
             </p>
           </div>
@@ -108,7 +144,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             <p class="text-sm font-medium text-highlighted">
               O que posso melhorar?
             </p>
-            <p class="text-sm text-muted mt-1">
+            <p class="text-sm text-muted mt-1 whitespace-pre-line">
               {{ existingReflection.improvements || '—' }}
             </p>
           </div>
@@ -145,40 +181,31 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
         <div class="flex justify-end gap-2">
           <UButton
             v-if="existingReflection"
+            icon="i-lucide-x"
             label="Cancelar"
             color="neutral"
             variant="subtle"
             @click="isEditing = false"
           />
           <UButton
-            label="Salvar reflexão"
+            icon="i-lucide-check"
+            label="Salvar"
             type="submit"
-            :loading="loading"
-            :disabled="loading"
+            :loading="submitting"
+            :disabled="submitting"
           />
         </div>
       </UForm>
     </template>
 
+    <!-- No reflection, not editable -->
     <template v-else>
       <UCard>
-        <div class="space-y-4">
-          <div>
-            <p class="text-sm font-medium text-highlighted">
-              O que deu certo?
-            </p>
-            <p class="text-sm text-muted mt-1">
-              {{ existingReflection?.wins || '—' }}
-            </p>
-          </div>
-          <div>
-            <p class="text-sm font-medium text-highlighted">
-              O que posso melhorar?
-            </p>
-            <p class="text-sm text-muted mt-1">
-              {{ existingReflection?.improvements || '—' }}
-            </p>
-          </div>
+        <div class="flex flex-col items-center gap-2 py-4">
+          <UIcon name="i-lucide-notebook-pen" class="size-8 text-dimmed" />
+          <p class="text-sm text-muted">
+            Nenhuma reflexão registrada para esta semana.
+          </p>
         </div>
       </UCard>
     </template>

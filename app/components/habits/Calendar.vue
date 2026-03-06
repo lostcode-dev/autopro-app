@@ -29,6 +29,23 @@ const firstDayOffset = computed(() => {
   return first.getDay()
 })
 
+const today = computed(() => new Date().toISOString().split('T')[0]!)
+
+function isFutureDay(dateStr: string): boolean {
+  return dateStr > today.value
+}
+
+function getDayTooltip(day: { date: string; completed: boolean; note: string | null }): string {
+  if (isFutureDay(day.date)) return ''
+  if (day.note) return day.note
+  return day.completed ? 'Concluído' : 'Não feito'
+}
+
+function getDayClass(day: { date: string; completed: boolean }): string {
+  if (isFutureDay(day.date)) return 'text-dimmed opacity-40'
+  return day.completed ? 'bg-primary/20 text-primary' : 'text-muted hover:bg-elevated'
+}
+
 async function loadCalendar() {
   loading.value = true
   try {
@@ -105,15 +122,12 @@ onMounted(() => loadCalendar())
       <UTooltip
         v-for="day in calendar"
         :key="day.date"
-        :text="day.note || (day.completed ? 'Concluído' : 'Não feito')"
+        :text="getDayTooltip(day)"
+        :disabled="isFutureDay(day.date)"
       >
         <div
           class="aspect-square flex items-center justify-center rounded text-xs font-medium transition-colors"
-          :class="[
-            day.completed
-              ? 'bg-primary/20 text-primary'
-              : 'text-muted hover:bg-elevated'
-          ]"
+          :class="getDayClass(day)"
         >
           {{ new Date(day.date + 'T12:00:00Z').getUTCDate() }}
         </div>

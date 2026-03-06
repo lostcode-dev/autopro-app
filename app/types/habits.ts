@@ -12,6 +12,11 @@ export enum HabitDifficulty {
   Hard = 'hard'
 }
 
+export enum HabitType {
+  Positive = 'positive',
+  Negative = 'negative'
+}
+
 export enum CueType {
   Time = 'time',
   Location = 'location',
@@ -23,6 +28,25 @@ export enum RewardType {
   Points = 'points',
   Badge = 'badge',
   Unlockable = 'unlockable'
+}
+
+// ─── Icon & Color Mappings ────────────────────────────────────────────────────
+
+export const DIFFICULTY_META: Record<HabitDifficulty, { label: string; icon: string; color: 'success' | 'warning' | 'error' }> = {
+  [HabitDifficulty.Tiny]: { label: 'Pequeno', icon: 'i-lucide-feather', color: 'success' },
+  [HabitDifficulty.Normal]: { label: 'Normal', icon: 'i-lucide-shield', color: 'warning' },
+  [HabitDifficulty.Hard]: { label: 'Difícil', icon: 'i-lucide-mountain', color: 'error' }
+}
+
+export const FREQUENCY_META: Record<HabitFrequency, { label: string; icon: string }> = {
+  [HabitFrequency.Daily]: { label: 'Diário', icon: 'i-lucide-calendar-days' },
+  [HabitFrequency.Weekly]: { label: 'Semanal', icon: 'i-lucide-calendar-range' },
+  [HabitFrequency.Custom]: { label: 'Personalizado', icon: 'i-lucide-calendar-cog' }
+}
+
+export const HABIT_TYPE_META: Record<HabitType, { label: string; icon: string; color: 'success' | 'error' }> = {
+  [HabitType.Positive]: { label: 'Positivo', icon: 'i-lucide-thumbs-up', color: 'success' },
+  [HabitType.Negative]: { label: 'Negativo', icon: 'i-lucide-thumbs-down', color: 'error' }
 }
 
 // ─── Entities ─────────────────────────────────────────────────────────────────
@@ -45,7 +69,9 @@ export interface Habit {
   description: string | null
   frequency: HabitFrequency
   difficulty: HabitDifficulty
+  habitType: HabitType
   customDays: number[] | null
+  sortOrder: number
   timezone: string | null
   archivedAt: string | null
   createdAt: string
@@ -53,6 +79,16 @@ export interface Habit {
   // Populated via joins
   identity?: Identity | null
   streak?: HabitStreak | null
+}
+
+export interface HabitChangeHistory {
+  id: string
+  habitId: string
+  userId: string
+  field: string
+  oldValue: string | null
+  newValue: string | null
+  createdAt: string
 }
 
 export interface HabitCue {
@@ -137,6 +173,7 @@ export interface CreateHabitPayload {
   description?: string
   frequency: HabitFrequency
   difficulty: HabitDifficulty
+  habitType?: HabitType
   identityId?: string
   customDays?: number[]
 }
@@ -146,8 +183,10 @@ export interface UpdateHabitPayload {
   description?: string
   frequency?: HabitFrequency
   difficulty?: HabitDifficulty
+  habitType?: HabitType
   identityId?: string | null
   customDays?: number[]
+  sortOrder?: number
 }
 
 export interface LogHabitPayload {

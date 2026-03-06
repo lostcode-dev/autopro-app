@@ -45,12 +45,14 @@ async function onConfirm() {
     <template #footer>
       <div class="flex justify-end gap-2">
         <UButton
+          icon="i-lucide-x"
           label="Cancelar"
           color="neutral"
           variant="ghost"
           @click="emit('update:open', false)"
         />
         <UButton
+          icon="i-lucide-archive"
           label="Arquivar"
           color="error"
           :loading="loading"

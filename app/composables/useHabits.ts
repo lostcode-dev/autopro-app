@@ -4,6 +4,7 @@ import type {
   CreateHabitPayload,
   CreateIdentityPayload,
   CreateReflectionPayload,
+  HabitChangeHistory,
   HabitInsights,
   HabitListResponse,
   HabitReflection,
@@ -13,7 +14,7 @@ import type {
   UpdateHabitPayload,
   Habit
 } from '~/types/habits'
-import { HabitDifficulty, HabitFrequency } from '~/types/habits'
+import { HabitDifficulty, HabitFrequency, HabitType } from '~/types/habits'
 
 export function useHabits() {
   const toast = useToast()
@@ -227,6 +228,17 @@ export function useHabits() {
     }
   }
 
+  async function fetchHistory(habitId: string, page = 1): Promise<HabitChangeHistory[]> {
+    try {
+      return await $fetch<HabitChangeHistory[]>(`/api/habits/${habitId}/history`, {
+        query: { page, pageSize: 20 }
+      })
+    } catch {
+      toast.add({ title: 'Erro', description: 'Não foi possível carregar o histórico.', color: 'error' })
+      return []
+    }
+  }
+
   // ─── Helpers ────────────────────────────────────────────────────────────────
 
   const frequencyOptions = [
@@ -239,6 +251,11 @@ export function useHabits() {
     { label: 'Pequeno', value: HabitDifficulty.Tiny, description: 'Ex: 1 flexão, 1 página' },
     { label: 'Normal', value: HabitDifficulty.Normal, description: 'Ex: 20 min exercício' },
     { label: 'Difícil', value: HabitDifficulty.Hard, description: 'Ex: 1h de estudo' }
+  ]
+
+  const habitTypeOptions = [
+    { label: 'Positivo', value: HabitType.Positive },
+    { label: 'Negativo', value: HabitType.Negative }
   ]
 
   const dayOptions = [
@@ -295,9 +312,11 @@ export function useHabits() {
     saveReflection,
     fetchCalendar,
     fetchHabit,
+    fetchHistory,
     // Helpers
     frequencyOptions,
     difficultyOptions,
+    habitTypeOptions,
     dayOptions,
     getCurrentWeekKey
   }

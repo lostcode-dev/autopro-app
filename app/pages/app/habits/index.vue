@@ -78,9 +78,21 @@ const listDifficultyModel = computed({
 
 // ─── Today actions ────────────────────────────────────────────────────────────
 async function onToggleHabit(habitId: string, completed: boolean) {
-  const today = todayDate.value ?? new Date().toISOString().split("T")[0]!;
-  await logHabit({ habitId, logDate: today, completed });
+  const date = todayDate.value ?? new Date().toISOString().split("T")[0]!;
+  await logHabit({ habitId, logDate: date, completed });
   await refreshInsights();
+}
+
+async function onLogWithNote(habitId: string, completed: boolean, note: string) {
+  const date = todayDate.value ?? new Date().toISOString().split("T")[0]!;
+  await logHabit({ habitId, logDate: date, completed, note });
+  await refreshInsights();
+}
+
+function onNavigateDate(direction: "prev" | "next") {
+  const current = new Date((todayDate.value ?? new Date().toISOString().split("T")[0]!) + "T12:00:00");
+  current.setDate(current.getDate() + (direction === "next" ? 1 : -1));
+  todayDate.value = current.toISOString().split("T")[0]!;
 }
 
 async function onSelectHabit(habitId: string) {
@@ -137,6 +149,28 @@ const reviewWeekOptions = computed(() => {
 });
 
 const reviewEditable = computed(() => reviewWeekKey.value === currentWeekKey.value);
+
+/** Navigate week for review */
+function navigateReviewWeek(direction: "prev" | "next") {
+  const match = reviewWeekKey.value.match(/^(\d{4})-W(\d{2})$/);
+  if (!match) return;
+  let year = parseInt(match[1]!);
+  let week = parseInt(match[2]!);
+  if (direction === "prev") {
+    week--;
+    if (week < 1) {
+      year--;
+      week = 52;
+    }
+  } else {
+    week++;
+    if (week > 52) {
+      year++;
+      week = 1;
+    }
+  }
+  reviewWeekKey.value = `${year}-W${String(week).padStart(2, "0")}`;
+}
 
 async function loadReflectionsList(reset = false) {
   if (reflectionsListLoading.value) return;
@@ -225,19 +259,10 @@ const difficultyFilterOptions = computed(() => [
   ...difficultyOptions,
 ]);
 
-const identityFilterOptions = computed(() => [
+const _identityFilterOptions = computed(() => [
   { label: "Todas", value: ALL_FILTER_VALUE },
   ...(identities.value ?? []).map((i) => ({ label: i.name, value: i.id })),
 ]);
-
-// Format today's date for display
-const todayFormatted = computed(() => {
-  return new Date().toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-});
 </script>
 
 <template>
@@ -275,16 +300,16 @@ const todayFormatted = computed(() => {
 
         <!-- TODAY TAB -->
         <div v-if="activeTab === 'today'">
-          <p class="text-sm text-muted mb-4 capitalize">
-            {{ todayFormatted }}
-          </p>
           <HabitsTodayList
             :habits="todayData?.habits ?? []"
             :completed-count="todayData?.completedCount ?? 0"
             :total-count="todayData?.totalCount ?? 0"
             :loading="todayStatus === 'pending'"
+            :current-date="todayDate ?? new Date().toISOString().split('T')[0]!"
             @toggle="onToggleHabit"
             @select="onSelectHabit"
+            @log-with-note="onLogWithNote"
+            @navigate-date="onNavigateDate"
           />
         </div>
 
@@ -329,40 +354,35 @@ const todayFormatted = computed(() => {
 
         <!-- REVIEW TAB -->
         <div v-if="activeTab === 'review'">
-          <template v-if="reflectionLoading">
-            <div class="space-y-4">
-              <USkeleton class="h-6 w-40" />
-              <USkeleton class="h-32 w-full" />
-            </div>
-          </template>
-
-          <template v-else>
-            <div class="flex flex-wrap items-center gap-2 mb-4">
-              <USelect
-                v-model="reviewWeekKey"
-                :items="reviewWeekOptions"
-                value-key="value"
-                class="min-w-56"
-              />
-              <UButton
-                v-if="reflectionsHasMore"
-                label="Carregar mais"
-                color="neutral"
-                variant="subtle"
-                size="sm"
-                :loading="reflectionsListLoading"
-                :disabled="reflectionsListLoading"
-                @click="onLoadMoreReflections"
-              />
-            </div>
-
-            <HabitsWeeklyReview
-              :week-key="reviewWeekKey"
-              :existing-reflection="currentReflection"
-              :editable="reviewEditable"
-              :on-save="reviewEditable ? onSaveWeeklyReview : undefined"
+          <!-- Week selector dropdown -->
+          <div class="flex flex-wrap items-center gap-2 mb-4">
+            <USelect
+              v-model="reviewWeekKey"
+              :items="reviewWeekOptions"
+              value-key="value"
+              class="min-w-56"
             />
-          </template>
+            <UButton
+              v-if="reflectionsHasMore"
+              label="Carregar mais"
+              icon="i-lucide-download"
+              color="neutral"
+              variant="subtle"
+              size="sm"
+              :loading="reflectionsListLoading"
+              :disabled="reflectionsListLoading"
+              @click="onLoadMoreReflections"
+            />
+          </div>
+
+          <HabitsWeeklyReview
+            :week-key="reviewWeekKey"
+            :existing-reflection="currentReflection"
+            :editable="reviewEditable"
+            :loading="reflectionLoading"
+            :on-save="reviewEditable ? onSaveWeeklyReview : undefined"
+            @navigate-week="navigateReviewWeek"
+          />
         </div>
       </div>
     </template>
@@ -391,7 +411,6 @@ const todayFormatted = computed(() => {
     :habit-name="selectedHabit.name"
     @update:open="archiveModalOpen = $event"
     @archived="onHabitArchived"
-    @identityModalOpen="identityModalOpen = true"
   />
 
   <HabitsDetailSlideover
@@ -401,7 +420,6 @@ const todayFormatted = computed(() => {
     @update:open="detailSlideoverOpen = $event"
     @edit="editModalOpen = true"
     @archive="archiveModalOpen = true"
-    @identityModalOpen="identityModalOpen = true"
   />
 
   <HabitsIdentityCreateModal
@@ -409,3 +427,26 @@ const todayFormatted = computed(() => {
     @update:open="identityModalOpen = $event"
   />
 </template>
+
+<!--
+  DONE:
+   ✅ Transformar Diário em tag, e ficar tudo embaixo de título em todos
+   ✅ Adicionar icons para dificuldade e frequência, mapeado em enum (DIFFICULTY_META, FREQUENCY_META, HABIT_TYPE_META)
+   ✅ Sem tabs em Detalhes: visão geral + calendário juntos, icons em streak
+   ✅ Revisão com setas para navegar entre semanas + dropdown + loading skeleton
+   ✅ Padrão nos botões: icon + "Salvar", "Cancelar" com icon
+   ✅ Em "todos", exibir dias personalizados quando frequência é custom
+   ✅ Rastrear mudanças de dificuldade/frequência/identidade (habit_change_history table + API)
+   ✅ Hábitos positivos/negativos com indicador visual (cores/ícones)
+   ✅ Navegar entre dias na tab de Hoje
+   ✅ Adicionar observação ao marcar como feito/não feito
+   ✅ Futuro no calendário não mostra status de feito/não feito
+
+  TODO (futuras iterações):
+   - Escolher dia da semana para revisão (configurável por usuário)
+   - Notificações/lembretes para revisão
+   - Compartilhar hábitos e progresso
+   - Definir ordem de execução dos hábitos (sort_order já está no DB)
+   - "Feito mais tarde" como status específico
+   - Responsividade avançada para mobile (já usa Tailwind/flex-wrap)
+-->

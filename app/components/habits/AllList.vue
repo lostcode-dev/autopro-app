@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Habit } from '~/types/habits'
-import { HabitDifficulty, HabitFrequency } from '~/types/habits'
+import { DIFFICULTY_META, FREQUENCY_META, HABIT_TYPE_META } from '~/types/habits'
 
 const _props = defineProps<{
   habits: Habit[]
@@ -17,23 +17,7 @@ const emit = defineEmits<{
   'archive': [habit: Habit]
 }>()
 
-const difficultyLabel: Record<string, string> = {
-  [HabitDifficulty.Tiny]: 'Pequeno',
-  [HabitDifficulty.Normal]: 'Normal',
-  [HabitDifficulty.Hard]: 'Difícil'
-}
-
-const difficultyColor: Record<string, 'success' | 'warning' | 'error'> = {
-  [HabitDifficulty.Tiny]: 'success',
-  [HabitDifficulty.Normal]: 'warning',
-  [HabitDifficulty.Hard]: 'error'
-}
-
-const frequencyLabel: Record<string, string> = {
-  [HabitFrequency.Daily]: 'Diário',
-  [HabitFrequency.Weekly]: 'Semanal',
-  [HabitFrequency.Custom]: 'Personalizado'
-}
+const dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 
 function getRowItems(habit: Habit) {
   return [
@@ -80,27 +64,53 @@ function getRowItems(habit: Habit) {
         @click="emit('select', habit.id)"
       >
         <div class="flex items-center gap-3">
+          <!-- Positive/Negative indicator -->
+          <UIcon
+            :name="HABIT_TYPE_META[habit.habitType ?? 'positive'].icon"
+            class="size-4 shrink-0"
+            :class="habit.habitType === 'negative' ? 'text-error' : 'text-success'"
+          />
+
           <div class="flex-1 min-w-0">
             <p class="font-medium text-highlighted truncate">
               {{ habit.name }}
             </p>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span v-if="habit.identity" class="text-xs text-muted">
-                {{ habit.identity.name }}
-              </span>
-              <span class="text-xs text-muted">
-                {{ frequencyLabel[habit.frequency] }}
+            <!-- Tags row: identity + frequency + custom days -->
+            <div class="flex flex-wrap items-center gap-1.5 mt-1">
+              <UBadge
+                v-if="habit.identity"
+                :label="habit.identity.name"
+                variant="subtle"
+                color="primary"
+                size="xs"
+              />
+              <UBadge variant="subtle" color="neutral" size="xs">
+                <template #leading>
+                  <UIcon :name="FREQUENCY_META[habit.frequency].icon" class="size-3" />
+                </template>
+                {{ FREQUENCY_META[habit.frequency].label }}
+              </UBadge>
+              <!-- Show custom days when frequency is custom -->
+              <span
+                v-if="habit.frequency === 'custom' && habit.customDays?.length"
+                class="text-xs text-muted"
+              >
+                ({{ habit.customDays.map((d: number) => dayLabels[d]).join(', ') }})
               </span>
             </div>
           </div>
 
           <div class="flex items-center gap-2 shrink-0">
             <UBadge
-              :label="difficultyLabel[habit.difficulty]"
-              :color="difficultyColor[habit.difficulty]"
+              :color="DIFFICULTY_META[habit.difficulty].color"
               variant="subtle"
               size="xs"
-            />
+            >
+              <template #leading>
+                <UIcon :name="DIFFICULTY_META[habit.difficulty].icon" class="size-3" />
+              </template>
+              {{ DIFFICULTY_META[habit.difficulty].label }}
+            </UBadge>
 
             <div
               v-if="habit.streak && habit.streak.currentStreak > 0"

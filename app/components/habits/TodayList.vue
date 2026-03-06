@@ -1,41 +1,93 @@
 <script setup lang="ts">
 import type { TodayHabit } from '~/types/habits'
-import { HabitDifficulty } from '~/types/habits'
+import { DIFFICULTY_META, HABIT_TYPE_META } from '~/types/habits'
 
 const props = defineProps<{
   habits: TodayHabit[]
   completedCount: number
   totalCount: number
   loading: boolean
+  currentDate: string
 }>()
 
 const emit = defineEmits<{
   toggle: [habitId: string, completed: boolean]
   select: [habitId: string]
+  'log-with-note': [habitId: string, completed: boolean, note: string]
+  'navigate-date': [direction: 'prev' | 'next']
 }>()
 
-const difficultyLabel: Record<string, string> = {
-  [HabitDifficulty.Tiny]: 'Pequeno',
-  [HabitDifficulty.Normal]: 'Normal',
-  [HabitDifficulty.Hard]: 'Difícil'
+// ─── Note modal ───────────────────────────────────────────────────────────────
+const noteModalOpen = ref(false)
+const noteHabitId = ref<string | null>(null)
+const noteCompleted = ref(true)
+const noteText = ref('')
+
+function openNoteModal(habitId: string, completed: boolean) {
+  noteHabitId.value = habitId
+  noteCompleted.value = completed
+  noteText.value = ''
+  noteModalOpen.value = true
 }
 
-const difficultyColor: Record<string, 'success' | 'warning' | 'error'> = {
-  [HabitDifficulty.Tiny]: 'success',
-  [HabitDifficulty.Normal]: 'warning',
-  [HabitDifficulty.Hard]: 'error'
+function submitNote() {
+  if (!noteHabitId.value) return
+  emit('log-with-note', noteHabitId.value, noteCompleted.value, noteText.value)
+  noteModalOpen.value = false
+  noteHabitId.value = null
+  noteText.value = ''
 }
 
 const allDone = computed(() => props.totalCount > 0 && props.completedCount === props.totalCount)
+
+const formattedDate = computed(() => {
+  const d = new Date(props.currentDate + 'T12:00:00')
+  return d.toLocaleDateString('pt-BR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long'
+  })
+})
+
+const isToday = computed(() => {
+  const today = new Date().toISOString().split('T')[0]
+  return props.currentDate === today
+})
 </script>
 
 <template>
   <div class="space-y-4">
+    <!-- Date navigation -->
+    <div class="flex items-center justify-between">
+      <UButton
+        icon="i-lucide-chevron-left"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        aria-label="Dia anterior"
+        @click="emit('navigate-date', 'prev')"
+      />
+      <div class="text-center">
+        <p class="text-sm font-medium text-highlighted capitalize">
+          {{ formattedDate }}
+        </p>
+        <UBadge v-if="isToday" label="Hoje" variant="subtle" color="primary" size="xs" />
+      </div>
+      <UButton
+        icon="i-lucide-chevron-right"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        aria-label="Próximo dia"
+        @click="emit('navigate-date', 'next')"
+      />
+    </div>
+
     <!-- Progress bar -->
     <div v-if="totalCount > 0" class="space-y-1">
       <div class="flex items-center justify-between text-sm">
         <span class="text-muted">Progresso do dia</span>
-          <span class="font-medium text-highlighted">{{ completedCount }}/{{ totalCount }}</span>
+        <span class="font-medium text-highlighted">{{ completedCount }}/{{ totalCount }}</span>
       </div>
       <UProgress
         :model-value="Number(completedCount)"
@@ -86,6 +138,13 @@ const allDone = computed(() => props.totalCount > 0 && props.completedCount === 
             @update:model-value="emit('toggle', habit.id, $event as boolean)"
           />
 
+          <!-- Positive/Negative indicator -->
+          <UIcon
+            :name="HABIT_TYPE_META[habit.habitType ?? 'positive'].icon"
+            class="size-4 shrink-0"
+            :class="habit.habitType === 'negative' ? 'text-error' : 'text-success'"
+          />
+
           <div class="flex-1 min-w-0">
             <p
               class="font-medium truncate"
@@ -93,20 +152,31 @@ const allDone = computed(() => props.totalCount > 0 && props.completedCount === 
             >
               {{ habit.name }}
             </p>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span v-if="habit.identity" class="text-xs text-muted truncate">
-                {{ habit.identity.name }}
+            <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
+              <UBadge
+                v-if="habit.identity"
+                :label="habit.identity.name"
+                variant="subtle"
+                color="primary"
+                size="xs"
+              />
+              <span v-if="habit.log?.note" class="text-xs text-muted italic truncate max-w-40">
+                "{{ habit.log.note }}"
               </span>
             </div>
           </div>
 
-          <div class="flex items-center gap-2 shrink-0">
+          <div class="flex items-center gap-1.5 shrink-0">
             <UBadge
-              :label="difficultyLabel[habit.difficulty]"
-              :color="difficultyColor[habit.difficulty]"
+              :color="DIFFICULTY_META[habit.difficulty].color"
               variant="subtle"
               size="xs"
-            />
+            >
+              <template #leading>
+                <UIcon :name="DIFFICULTY_META[habit.difficulty].icon" class="size-3" />
+              </template>
+              {{ DIFFICULTY_META[habit.difficulty].label }}
+            </UBadge>
             <div
               v-if="habit.streak && habit.streak.currentStreak > 0"
               class="flex items-center gap-1 text-xs text-muted"
@@ -114,6 +184,16 @@ const allDone = computed(() => props.totalCount > 0 && props.completedCount === 
               <UIcon name="i-lucide-flame" class="size-3.5 text-orange-500" />
               <span>{{ habit.streak.currentStreak }}</span>
             </div>
+
+            <!-- Note action -->
+            <UButton
+              :icon="habit.log?.completed ? 'i-lucide-message-square' : 'i-lucide-message-square-plus'"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              :aria-label="habit.log?.completed ? 'Adicionar nota (feito)' : 'Marcar como não feito com nota'"
+              @click.stop="openNoteModal(habit.id, !(habit.log?.completed ?? false))"
+            />
           </div>
         </div>
       </UCard>
@@ -124,12 +204,48 @@ const allDone = computed(() => props.totalCount > 0 && props.completedCount === 
       <UIcon name="i-lucide-sun" class="size-12 text-dimmed" />
       <div class="text-center">
         <p class="font-medium text-highlighted">
-          Nenhum hábito para hoje
+          Nenhum hábito para {{ isToday ? 'hoje' : 'este dia' }}
         </p>
         <p class="text-sm text-muted">
           Crie seu primeiro hábito para começar a trilhar o caminho.
         </p>
       </div>
     </div>
+
+    <!-- Note modal -->
+    <UModal
+      :open="noteModalOpen"
+      title="Adicionar observação"
+      @update:open="noteModalOpen = $event"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <p class="text-sm text-muted">
+            {{ noteCompleted ? 'Marcar como feito com observação:' : 'Marcar como não feito com observação:' }}
+          </p>
+          <UTextarea
+            v-model="noteText"
+            placeholder="O que aconteceu? O que funcionou ou não?"
+            class="w-full"
+            :rows="3"
+          />
+          <div class="flex justify-end gap-2">
+            <UButton
+              icon="i-lucide-x"
+              label="Cancelar"
+              color="neutral"
+              variant="subtle"
+              @click="noteModalOpen = false"
+            />
+            <UButton
+              icon="i-lucide-check"
+              label="Salvar"
+              :loading="false"
+              @click="submitNote"
+            />
+          </div>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>

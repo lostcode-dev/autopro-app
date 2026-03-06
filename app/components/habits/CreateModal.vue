@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
-import { HabitFrequency, HabitDifficulty } from "~/types/habits";
+import { HabitFrequency, HabitDifficulty, HabitType } from "~/types/habits";
 
 const props = defineProps<{
   open: boolean;
@@ -16,6 +16,7 @@ const {
   createHabit,
   frequencyOptions,
   difficultyOptions,
+  habitTypeOptions,
   dayOptions,
   identities,
 } = useHabits();
@@ -26,6 +27,7 @@ const schema = z
     description: z.string().max(1000).optional(),
     frequency: z.nativeEnum(HabitFrequency).default(HabitFrequency.Daily),
     difficulty: z.nativeEnum(HabitDifficulty).default(HabitDifficulty.Normal),
+    habitType: z.nativeEnum(HabitType).default(HabitType.Positive),
     identityId: z.string().uuid().optional(),
     customDays: z.array(z.number().int().min(0).max(6)).optional(),
   })
@@ -43,6 +45,7 @@ const state = reactive<Partial<Schema>>({
   description: "",
   frequency: HabitFrequency.Daily,
   difficulty: HabitDifficulty.Normal,
+  habitType: HabitType.Positive,
   identityId: undefined,
   customDays: [],
 });
@@ -77,6 +80,7 @@ function resetForm() {
   state.description = "";
   state.frequency = HabitFrequency.Daily;
   state.difficulty = HabitDifficulty.Normal;
+  state.habitType = HabitType.Positive;
   state.identityId = undefined;
   state.customDays = [];
 }
@@ -179,6 +183,21 @@ const identityItems = computed(() => {
           </div>
         </UFormField>
 
+        <UFormField label="Tipo" name="habitType">
+          <div class="flex gap-2">
+            <UButton
+              v-for="opt in habitTypeOptions"
+              :key="opt.value"
+              :label="opt.label"
+              :icon="opt.value === HabitType.Positive ? 'i-lucide-thumbs-up' : 'i-lucide-thumbs-down'"
+              size="sm"
+              :color="state.habitType === opt.value ? (opt.value === HabitType.Positive ? 'success' : 'error') : 'neutral'"
+              :variant="state.habitType === opt.value ? 'solid' : 'outline'"
+              @click="state.habitType = opt.value"
+            />
+          </div>
+        </UFormField>
+
         <div class="flex items-end gap-2">
           <UFormField label="Identidade" name="identityId">
             <USelect
@@ -202,13 +221,15 @@ const identityItems = computed(() => {
 
         <div class="flex justify-end gap-2 pt-2">
           <UButton
+            icon="i-lucide-x"
             label="Cancelar"
             color="neutral"
             variant="subtle"
             @click="onClose"
           />
           <UButton
-            label="Criar hábito"
+            icon="i-lucide-check"
+            label="Salvar"
             type="submit"
             :loading="loading"
             :disabled="loading"
