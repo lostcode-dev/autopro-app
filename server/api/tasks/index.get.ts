@@ -10,7 +10,16 @@ const querySchema = z.object({
   listId: z.string().uuid().optional(),
   search: z.string().max(200).optional(),
   dueBefore: z.string().optional(),
-  overdue: z.coerce.boolean().optional()
+  overdue: z.preprocess((value) => {
+    if (value === undefined) return undefined
+    if (typeof value === 'boolean') return value
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase()
+      if (['true', '1', 'yes', 'on'].includes(normalized)) return true
+      if (['false', '0', 'no', 'off'].includes(normalized)) return false
+    }
+    return value
+  }, z.boolean()).optional()
 })
 
 export default eventHandler(async (event) => {

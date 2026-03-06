@@ -9,7 +9,18 @@ const querySchema = z.object({
   difficulty: z.enum(['tiny', 'normal', 'hard']).optional(),
   identityId: z.string().uuid().optional(),
   search: z.string().max(200).optional(),
-  archived: z.coerce.boolean().default(false)
+  archived: z
+    .preprocess((value) => {
+      if (value === undefined) return undefined
+      if (typeof value === 'boolean') return value
+      if (typeof value === 'string') {
+        const normalized = value.trim().toLowerCase()
+        if (['true', '1', 'yes', 'on'].includes(normalized)) return true
+        if (['false', '0', 'no', 'off'].includes(normalized)) return false
+      }
+      return value
+    }, z.boolean())
+    .default(false)
 })
 
 export default eventHandler(async (event) => {
