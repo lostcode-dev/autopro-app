@@ -31,6 +31,7 @@ const {
   difficultyOptions,
   fetchHabit,
   getCurrentWeekKey,
+  saveReflection,
 } = useHabits();
 
 // ─── Active tab ───────────────────────────────────────────────────────────────
@@ -45,7 +46,9 @@ const tabs = [
 // Load insights when tab is selected
 watch(activeTab, (tab) => {
   if (tab === "review") {
-    loadReflection();
+    reviewWeekKey.value = reviewWeekKey.value || currentWeekKey.value;
+    loadReflection(reviewWeekKey.value);
+    loadReflectionsList(true);
   }
 });
 
@@ -108,10 +111,76 @@ function onHabitArchived() {
 const currentReflection = ref<HabitReflection | null>(null);
 const reflectionLoading = ref(false);
 
-async function loadReflection() {
+const currentWeekKey = computed(() => getCurrentWeekKey());
+const reviewWeekKey = ref(currentWeekKey.value);
+
+const reflectionsList = ref<HabitReflection[]>([]);
+const reflectionsListLoading = ref(false);
+const reflectionsPage = ref(1);
+const reflectionsPageSize = 12;
+const reflectionsHasMore = ref(true);
+
+const reviewWeekOptions = computed(() => {
+  const items: { label: string; value: string }[] = [
+    { label: `Semana atual (${currentWeekKey.value})`, value: currentWeekKey.value },
+  ];
+
+  const seen = new Set<string>([currentWeekKey.value]);
+  for (const r of reflectionsList.value) {
+    if (!r?.weekKey) continue;
+    if (seen.has(r.weekKey)) continue;
+    seen.add(r.weekKey);
+    items.push({ label: `Semana ${r.weekKey}`, value: r.weekKey });
+  }
+
+  return items;
+});
+
+const reviewEditable = computed(() => reviewWeekKey.value === currentWeekKey.value);
+
+async function loadReflectionsList(reset = false) {
+  if (reflectionsListLoading.value) return;
+  reflectionsListLoading.value = true;
+  try {
+    if (reset) {
+      reflectionsPage.value = 1;
+      reflectionsHasMore.value = true;
+      reflectionsList.value = [];
+    }
+
+    const data = await $fetch<HabitReflection[]>("/api/habits/reflections", {
+      query: {
+        page: reflectionsPage.value,
+        pageSize: reflectionsPageSize,
+      },
+    });
+
+    const incoming = data ?? [];
+    const byWeek = new Map(reflectionsList.value.map((r) => [r.weekKey, r] as const));
+    for (const r of incoming) {
+      if (r?.weekKey) byWeek.set(r.weekKey, r);
+    }
+    reflectionsList.value = Array.from(byWeek.values()).sort((a, b) => (a.weekKey < b.weekKey ? 1 : -1));
+
+    if (incoming.length < reflectionsPageSize) {
+      reflectionsHasMore.value = false;
+    }
+  } catch {
+    reflectionsHasMore.value = false;
+  } finally {
+    reflectionsListLoading.value = false;
+  }
+}
+
+async function onLoadMoreReflections() {
+  if (!reflectionsHasMore.value) return;
+  reflectionsPage.value += 1;
+  await loadReflectionsList(false);
+}
+
+async function loadReflection(weekKey: string) {
   reflectionLoading.value = true;
   try {
-    const weekKey = getCurrentWeekKey();
     const data = await $fetch<HabitReflection | null>(
       "/api/habits/reflections",
       {
@@ -125,6 +194,25 @@ async function loadReflection() {
     reflectionLoading.value = false;
   }
 }
+
+async function onSaveWeeklyReview(payload: {
+  weekKey: string;
+  wins?: string;
+  improvements?: string;
+}) {
+  const result = await saveReflection(payload);
+  if (result) {
+    currentReflection.value = result;
+    await loadReflectionsList(true);
+    return true;
+  }
+  return false;
+}
+
+watch(reviewWeekKey, async (wk) => {
+  if (activeTab.value !== "review") return;
+  await loadReflection(wk);
+});
 
 // ─── Filter options ───────────────────────────────────────────────────────────
 const frequencyFilterOptions = computed(() => [
@@ -247,7 +335,34 @@ const todayFormatted = computed(() => {
               <USkeleton class="h-32 w-full" />
             </div>
           </template>
-          <HabitsWeeklyReview v-else :existing-reflection="currentReflection" />
+
+          <template v-else>
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+              <USelect
+                v-model="reviewWeekKey"
+                :items="reviewWeekOptions"
+                value-key="value"
+                class="min-w-56"
+              />
+              <UButton
+                v-if="reflectionsHasMore"
+                label="Carregar mais"
+                color="neutral"
+                variant="subtle"
+                size="sm"
+                :loading="reflectionsListLoading"
+                :disabled="reflectionsListLoading"
+                @click="onLoadMoreReflections"
+              />
+            </div>
+
+            <HabitsWeeklyReview
+              :week-key="reviewWeekKey"
+              :existing-reflection="currentReflection"
+              :editable="reviewEditable"
+              :on-save="reviewEditable ? onSaveWeeklyReview : undefined"
+            />
+          </template>
         </div>
       </div>
     </template>

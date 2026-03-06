@@ -8,6 +8,19 @@ const bodySchema = z.object({
   improvements: z.string().max(2000).optional()
 })
 
+function mapReflection(row: any) {
+  if (!row) return row
+  return {
+    id: row.id,
+    userId: row.userId ?? row.user_id,
+    weekKey: row.weekKey ?? row.week_key,
+    wins: row.wins ?? null,
+    improvements: row.improvements ?? null,
+    createdAt: row.createdAt ?? row.created_at,
+    updatedAt: row.updatedAt ?? row.updated_at
+  }
+}
+
 export default eventHandler(async (event) => {
   const user = await requireAuthUser(event)
   const body = await readBody(event)
@@ -34,5 +47,5 @@ export default eventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Falha ao salvar reflexão', data: error.message })
   }
 
-  return data
+  return mapReflection(data)
 })
