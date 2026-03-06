@@ -208,23 +208,6 @@ const todayFormatted = computed(() => {
               placeholder="Dificuldade"
               class="min-w-32"
             />
-            <div class="flex items-center gap-2">
-              <USelect
-                v-model="listIdentityId"
-                :items="identityFilterOptions"
-                value-key="value"
-                placeholder="Identidade"
-                class="min-w-36"
-              />
-              <UButton
-                icon="i-lucide-user-plus"
-                color="neutral"
-                variant="subtle"
-                size="sm"
-                aria-label="Gerenciar identidades"
-                @click="identityModalOpen = true"
-              />
-            </div>
           </div>
 
           <HabitsAllList

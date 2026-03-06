@@ -176,6 +176,7 @@ const identityItems = computed(() => {
               :items="identityItems"
               value-key="value"
               placeholder="Quem você quer se tornar?"
+              class="w-full"
             />
           </UFormField>
 

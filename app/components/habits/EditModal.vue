@@ -169,7 +169,6 @@ const identityItems = computed(() => {
           </div>
         </UFormField>
 
-        <
         <div class="flex items-center gap-2">
           <UFormField label="Identidade" name="identityId">
             <USelect
@@ -177,6 +176,7 @@ const identityItems = computed(() => {
               :items="identityItems"
               value-key="value"
               placeholder="Quem você quer se tornar?"
+              class="w-full"
             />
           </UFormField>
 
