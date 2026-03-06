@@ -49,6 +49,15 @@ const state = reactive<Partial<Schema>>({
 
 const loading = ref(false);
 
+const NONE_IDENTITY_VALUE = "__none__";
+
+const identityIdModel = computed<string | undefined>({
+  get: () => state.identityId,
+  set: (value) => {
+    state.identityId = value === NONE_IDENTITY_VALUE ? undefined : value;
+  },
+});
+
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   if (loading.value) return;
   loading.value = true;
@@ -88,7 +97,7 @@ function toggleDay(day: number) {
 
 const identityItems = computed(() => {
   return [
-    { label: "Nenhuma", value: "" },
+    { label: "Nenhuma", value: NONE_IDENTITY_VALUE },
     ...(identities.value ?? []).map((i) => ({ label: i.name, value: i.id })),
   ];
 });
@@ -173,7 +182,7 @@ const identityItems = computed(() => {
         <div class="flex items-end gap-2">
           <UFormField label="Identidade" name="identityId">
             <USelect
-              v-model="state.identityId"
+              v-model="identityIdModel"
               :items="identityItems"
               value-key="value"
               placeholder="Quem você quer se tornar?"
@@ -181,14 +190,14 @@ const identityItems = computed(() => {
             />
           </UFormField>
 
-           <UButton
-              icon="i-lucide-user-plus"
-              color="neutral"
-              variant="subtle"
-              size="md"
-              aria-label="Gerenciar identidades"
-              @click="emit('identityModalOpen', true)"
-            />
+          <UButton
+            icon="i-lucide-user-plus"
+            color="neutral"
+            variant="subtle"
+            size="md"
+            aria-label="Gerenciar identidades"
+            @click="emit('identityModalOpen', true)"
+          />
         </div>
 
         <div class="flex justify-end gap-2 pt-2">

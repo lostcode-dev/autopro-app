@@ -57,6 +57,22 @@ const detailSlideoverOpen = ref(false);
 const identityModalOpen = ref(false);
 const selectedHabit = ref<Habit | null>(null);
 
+const ALL_FILTER_VALUE = "__all__";
+
+const listFrequencyModel = computed({
+  get: () => listFrequency.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listFrequency.value = value === ALL_FILTER_VALUE ? "" : value;
+  },
+});
+
+const listDifficultyModel = computed({
+  get: () => listDifficulty.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listDifficulty.value = value === ALL_FILTER_VALUE ? "" : value;
+  },
+});
+
 // ─── Today actions ────────────────────────────────────────────────────────────
 async function onToggleHabit(habitId: string, completed: boolean) {
   const today = todayDate.value ?? new Date().toISOString().split("T")[0]!;
@@ -112,17 +128,17 @@ async function loadReflection() {
 
 // ─── Filter options ───────────────────────────────────────────────────────────
 const frequencyFilterOptions = computed(() => [
-  { label: "Todas", value: "" },
+  { label: "Todas", value: ALL_FILTER_VALUE },
   ...frequencyOptions,
 ]);
 
 const difficultyFilterOptions = computed(() => [
-  { label: "Todas", value: "" },
+  { label: "Todas", value: ALL_FILTER_VALUE },
   ...difficultyOptions,
 ]);
 
 const identityFilterOptions = computed(() => [
-  { label: "Todas", value: "" },
+  { label: "Todas", value: ALL_FILTER_VALUE },
   ...(identities.value ?? []).map((i) => ({ label: i.name, value: i.id })),
 ]);
 
@@ -195,14 +211,14 @@ const todayFormatted = computed(() => {
               class="max-w-xs"
             />
             <USelect
-              v-model="listFrequency"
+              v-model="listFrequencyModel"
               :items="frequencyFilterOptions"
               value-key="value"
               placeholder="Frequência"
               class="min-w-32"
             />
             <USelect
-              v-model="listDifficulty"
+              v-model="listDifficultyModel"
               :items="difficultyFilterOptions"
               value-key="value"
               placeholder="Dificuldade"
@@ -241,6 +257,7 @@ const todayFormatted = computed(() => {
   <HabitsCreateModal
     :open="createModalOpen"
     @update:open="createModalOpen = $event"
+    @identityModalOpen="identityModalOpen = true"
   />
 
   <HabitsEditModal
@@ -249,6 +266,7 @@ const todayFormatted = computed(() => {
     :habit="selectedHabit"
     @update:open="editModalOpen = $event"
     @updated="refreshToday()"
+    @identityModalOpen="identityModalOpen = true"
   />
 
   <HabitsArchiveModal

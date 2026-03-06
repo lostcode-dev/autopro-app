@@ -43,6 +43,15 @@ watch(() => props.task, (task) => {
   }
 }, { immediate: true })
 
+const NONE_LIST_VALUE = '__none__'
+
+const listIdModel = computed({
+  get: () => state.listId || NONE_LIST_VALUE,
+  set: (value: string) => {
+    state.listId = value === NONE_LIST_VALUE ? undefined : value
+  }
+})
+
 const loading = ref(false)
 
 async function onSubmit(event: FormSubmitEvent<Schema>) {
@@ -64,7 +73,7 @@ function onClose() {
 }
 
 const listItems = computed(() => [
-  { label: 'Nenhuma', value: '' },
+  { label: 'Nenhuma', value: NONE_LIST_VALUE },
   ...(taskLists.value ?? []).map(l => ({ label: l.name, value: l.id }))
 ])
 </script>
@@ -111,7 +120,7 @@ const listItems = computed(() => [
 
         <UFormField label="Lista" name="listId">
           <USelect
-            v-model="state.listId"
+            v-model="listIdModel"
             :items="listItems"
             value-key="value"
             class="w-full"

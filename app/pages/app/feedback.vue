@@ -51,13 +51,50 @@ const detailSlideoverOpen = ref(false)
 const adminSlideoverOpen = ref(false)
 const selectedFeedback = ref<Feedback | null>(null)
 
+const ALL_FILTER_VALUE = '__all__'
+
+const listTypeModel = computed({
+  get: () => listType.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listType.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const listStatusModel = computed({
+  get: () => listStatus.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listStatus.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const adminTypeModel = computed({
+  get: () => adminType.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    adminType.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const adminStatusModel = computed({
+  get: () => adminStatus.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    adminStatus.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const adminPriorityModel = computed({
+  get: () => adminPriority.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    adminPriority.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
 const userFeedbacks = computed(() => listData.value?.data ?? [])
 const userTotal = computed(() => listData.value?.total ?? 0)
 const adminFeedbacks = computed(() => adminListData.value?.data ?? [])
 const adminTotal = computed(() => adminListData.value?.total ?? 0)
 
 const typeFilterOptions = [
-  { label: 'Todos os tipos', value: '' },
+  { label: 'Todos os tipos', value: ALL_FILTER_VALUE },
   ...Object.values(FeedbackType).map(t => ({
     label: feedbackTypeLabels[t],
     value: t
@@ -65,7 +102,7 @@ const typeFilterOptions = [
 ]
 
 const statusFilterOptions = [
-  { label: 'Todos os status', value: '' },
+  { label: 'Todos os status', value: ALL_FILTER_VALUE },
   ...Object.values(FeedbackStatus).map(s => ({
     label: feedbackStatusLabels[s],
     value: s
@@ -73,7 +110,7 @@ const statusFilterOptions = [
 ]
 
 const priorityFilterOptions = [
-  { label: 'Todas prioridades', value: '' },
+  { label: 'Todas prioridades', value: ALL_FILTER_VALUE },
   ...Object.values(FeedbackPriority).map(p => ({
     label: feedbackPriorityLabels[p],
     value: p
@@ -166,18 +203,16 @@ function onAdminPageUpdate(page: number) {
               class="w-full sm:w-64"
             />
             <USelect
-              :model-value="listType"
+              v-model="listTypeModel"
               :items="typeFilterOptions"
               value-key="value"
               class="w-40"
-              @update:model-value="listType = $event"
             />
             <USelect
-              :model-value="listStatus"
+              v-model="listStatusModel"
               :items="statusFilterOptions"
               value-key="value"
               class="w-40"
-              @update:model-value="listStatus = $event"
             />
           </div>
 
@@ -203,25 +238,22 @@ function onAdminPageUpdate(page: number) {
               class="w-full sm:w-64"
             />
             <USelect
-              :model-value="adminType"
+              v-model="adminTypeModel"
               :items="typeFilterOptions"
               value-key="value"
               class="w-40"
-              @update:model-value="adminType = $event"
             />
             <USelect
-              :model-value="adminStatus"
+              v-model="adminStatusModel"
               :items="statusFilterOptions"
               value-key="value"
               class="w-40"
-              @update:model-value="adminStatus = $event"
             />
             <USelect
-              :model-value="adminPriority"
+              v-model="adminPriorityModel"
               :items="priorityFilterOptions"
               value-key="value"
               class="w-40"
-              @update:model-value="adminPriority = $event"
             />
           </div>
 

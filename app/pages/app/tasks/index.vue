@@ -62,6 +62,29 @@ const listCreateModalOpen = ref(false)
 const detailSlideoverOpen = ref(false)
 const selectedTask = ref<Task | null>(null)
 
+const ALL_FILTER_VALUE = '__all__'
+
+const listPriorityModel = computed({
+  get: () => listPriority.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listPriority.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const listStatusModel = computed({
+  get: () => listStatus.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listStatus.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const listListIdModel = computed({
+  get: () => listListId.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listListId.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
 // ─── Actions ──────────────────────────────────────────────────────────────────
 async function onSelectTask(taskId: string) {
   const task = await fetchTask(taskId)
@@ -96,17 +119,17 @@ function onTaskUpdated() {
 
 // ─── Filter options ───────────────────────────────────────────────────────────
 const priorityFilterOptions = computed(() => [
-  { label: 'Todas', value: '' },
+  { label: 'Todas', value: ALL_FILTER_VALUE },
   ...priorityOptions
 ])
 
 const statusFilterOptions = computed(() => [
-  { label: 'Todos', value: '' },
+  { label: 'Todos', value: ALL_FILTER_VALUE },
   ...statusOptions
 ])
 
 const listFilterOptions = computed(() => [
-  { label: 'Todas', value: '' },
+  { label: 'Todas', value: ALL_FILTER_VALUE },
   ...(taskLists.value ?? []).map(l => ({ label: l.name, value: l.id }))
 ])
 </script>
@@ -172,21 +195,21 @@ const listFilterOptions = computed(() => [
               class="max-w-xs"
             />
             <USelect
-              v-model="listPriority"
+              v-model="listPriorityModel"
               :items="priorityFilterOptions"
               value-key="value"
               placeholder="Prioridade"
               class="min-w-32"
             />
             <USelect
-              v-model="listStatus"
+              v-model="listStatusModel"
               :items="statusFilterOptions"
               value-key="value"
               placeholder="Status"
               class="min-w-32"
             />
             <USelect
-              v-model="listListId"
+              v-model="listListIdModel"
               :items="listFilterOptions"
               value-key="value"
               placeholder="Lista"

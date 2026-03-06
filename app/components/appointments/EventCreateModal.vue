@@ -13,7 +13,7 @@ const emit = defineEmits<{
   'created': []
 }>()
 
-const { createEvent, recurrenceOptions } = useAppointments()
+const { createEvent, recurrenceOptions, NONE_RECURRENCE_VALUE } = useAppointments()
 
 const schema = z.object({
   calendarId: z.string().uuid('Selecione um calendário'),
@@ -49,6 +49,13 @@ const state = reactive<FormState>({
   allDay: false,
   rrule: '',
   reminderMinutes: 10
+})
+
+const rruleModel = computed({
+  get: () => state.rrule || NONE_RECURRENCE_VALUE,
+  set: (value: string) => {
+    state.rrule = value === NONE_RECURRENCE_VALUE ? '' : value
+  }
 })
 
 const loading = ref(false)
@@ -230,7 +237,7 @@ const reminderOptions = [
           name="rrule"
         >
           <USelect
-            v-model="state.rrule"
+            v-model="rruleModel"
             :items="recurrenceOptions"
             value-key="value"
             class="w-full"

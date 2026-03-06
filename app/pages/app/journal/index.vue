@@ -78,8 +78,17 @@ function onInsightsRangeChange(range: '7d' | '30d' | '90d') {
 }
 
 // ─── Tag filter options ───────────────────────────────────────────────────────
+const ALL_FILTER_VALUE = '__all__'
+
+const listTagModel = computed({
+  get: () => listTag.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listTag.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
 const tagFilterOptions = computed(() => [
-  { label: 'Todas', value: '' },
+  { label: 'Todas', value: ALL_FILTER_VALUE },
   ...(tags.value ?? []).map(t => ({ label: t.name, value: t.name }))
 ])
 </script>
@@ -161,7 +170,7 @@ const tagFilterOptions = computed(() => [
               class="max-w-40"
             />
             <USelect
-              v-model="listTag"
+              v-model="listTagModel"
               :items="tagFilterOptions"
               value-key="value"
               placeholder="Tag"

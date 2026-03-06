@@ -26,8 +26,17 @@ const state = reactive<Partial<Schema>>({
 
 const loading = ref(false)
 
+const DEFAULT_COLOR_VALUE = '__default__'
+
+const colorModel = computed({
+  get: () => state.color || DEFAULT_COLOR_VALUE,
+  set: (value: string) => {
+    state.color = value === DEFAULT_COLOR_VALUE ? undefined : value
+  }
+})
+
 const colorOptions = [
-  { label: 'Padrão', value: '' },
+  { label: 'Padrão', value: DEFAULT_COLOR_VALUE },
   { label: 'Vermelho', value: 'red' },
   { label: 'Laranja', value: 'orange' },
   { label: 'Amarelo', value: 'yellow' },
@@ -81,7 +90,7 @@ function onClose() {
 
         <UFormField label="Cor" name="color">
           <USelect
-            v-model="state.color"
+            v-model="colorModel"
             :items="colorOptions"
             value-key="value"
             class="w-full"

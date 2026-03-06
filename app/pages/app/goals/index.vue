@@ -59,6 +59,29 @@ const archiveModalOpen = ref(false)
 const detailSlideoverOpen = ref(false)
 const selectedGoal = ref<Goal | null>(null)
 
+const ALL_FILTER_VALUE = '__all__'
+
+const listTimeCategoryModel = computed({
+  get: () => listTimeCategory.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listTimeCategory.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const listLifeCategoryModel = computed({
+  get: () => listLifeCategory.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listLifeCategory.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
+const listStatusModel = computed({
+  get: () => listStatus.value || ALL_FILTER_VALUE,
+  set: (value: string) => {
+    listStatus.value = value === ALL_FILTER_VALUE ? '' : value
+  }
+})
+
 // ─── Actions ──────────────────────────────────────────────────────────────────
 async function onSelectGoal(goalId: string) {
   const goal = await fetchGoal(goalId)
@@ -97,35 +120,35 @@ function onGoalUpdated() {
 
 // ─── Filter options ───────────────────────────────────────────────────────────
 const timeCategoryFilterOptions = computed(() => [
-  { label: 'Todos', value: '' },
+  { label: 'Todos', value: ALL_FILTER_VALUE },
   ...timeCategoryOptions
 ])
 
 const lifeCategoryFilterOptions = computed(() => [
-  { label: 'Todas', value: '' },
+  { label: 'Todas', value: ALL_FILTER_VALUE },
   ...lifeCategoryOptions
 ])
 
 const statusFilterOptions = computed(() => [
-  { label: 'Todas', value: '' },
+  { label: 'Todas', value: ALL_FILTER_VALUE },
   ...statusOptions
 ])
 </script>
-
+              v-model="listTimeCategoryModel"
 <template>
   <UDashboardPanel id="goals">
     <template #header>
       <UDashboardNavbar title="Metas">
         <template #leading>
           <UDashboardSidebarCollapse />
-        </template>
+              v-model="listLifeCategoryModel"
 
         <template #right>
           <NotificationsButton />
           <UButton
             label="Nova meta"
             icon="i-lucide-plus"
-            @click="createModalOpen = true"
+              v-model="listStatusModel"
           />
         </template>
       </UDashboardNavbar>

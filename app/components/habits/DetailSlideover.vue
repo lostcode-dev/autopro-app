@@ -36,6 +36,12 @@ const tabs = [
   { label: 'Visão geral', value: 'overview' },
   { label: 'Calendário', value: 'calendar' }
 ]
+
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('pt-BR')
+}
 </script>
 
 <template>
@@ -119,14 +125,13 @@ const tabs = [
           <div class="text-sm">
             <span class="text-muted">Criado em: </span>
             <span class="text-highlighted">
-              {{ habit.createdAt }}
-              {{ new Date(habit.createdAt).toLocaleDateString('pt-BR') }}
+              {{ formatDate(habit.createdAt) }}
             </span>
           </div>
           <div v-if="habit.streak?.lastCompletedDate" class="text-sm">
             <span class="text-muted">Última conclusão: </span>
             <span class="text-highlighted">
-              {{ new Date(habit.streak.lastCompletedDate).toLocaleDateString('pt-BR') }}
+              {{ formatDate(habit.streak.lastCompletedDate) }}
             </span>
           </div>
           <div v-if="habit.customDays?.length" class="text-sm">

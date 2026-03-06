@@ -243,8 +243,10 @@ export function useAppointments() {
     return 'Recorrente'
   }
 
+  const NONE_RECURRENCE_VALUE = '__none__'
+
   const recurrenceOptions = [
-    { label: 'Não se repete', value: '' },
+    { label: 'Não se repete', value: NONE_RECURRENCE_VALUE },
     { label: 'Diariamente', value: 'FREQ=DAILY' },
     { label: 'Semanalmente', value: 'FREQ=WEEKLY' },
     { label: 'Seg a Sex', value: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR' },
@@ -283,6 +285,7 @@ export function useAppointments() {
 
     // Recurrence
     getRecurrenceLabel,
-    recurrenceOptions
+    recurrenceOptions,
+    NONE_RECURRENCE_VALUE
   }
 }
