@@ -36,10 +36,9 @@ export default eventHandler(async (event) => {
 
   let qb = supabase
     .from('habits')
-    .select('*, identity:identities(*), streak:habit_streaks(*)', { count: 'exact' })
+    .select('*, identity:identities(*), streak:habit_streaks(*)')
     .eq('user_id', user.id)
     .order('name', { ascending: true })
-    .range(from, to)
 
   if (params.archived) {
     qb = qb.not('archived_at', 'is', null)
@@ -63,15 +62,103 @@ export default eventHandler(async (event) => {
     qb = qb.ilike('name', `%${params.search}%`)
   }
 
-  const { data, error, count } = await qb
+  const [{ data, error }, { data: stacksData, error: stacksError }] = await Promise.all([
+    qb,
+    supabase
+      .from('habit_stacks')
+      .select('trigger_habit_id, new_habit_id')
+      .eq('user_id', user.id)
+      .is('archived_at', null)
+  ])
 
   if (error) {
     throw createError({ statusCode: 500, statusMessage: 'Failed to fetch habits', data: error.message })
   }
 
+  if (stacksError) {
+    throw createError({ statusCode: 500, statusMessage: 'Failed to fetch habit stacks', data: stacksError.message })
+  }
+
+  const habits = mapHabitList((data ?? []) as Record<string, unknown>[])
+  const visibleHabitIds = new Set(habits.map((habit) => String(habit.id)))
+  const habitsById = new Map(habits.map((habit) => [String(habit.id), habit] as const))
+  const childrenByParent = new Map<string, string[]>()
+  const parentsByChild = new Map<string, string[]>()
+
+  for (const stack of (stacksData ?? []) as Array<Record<string, unknown>>) {
+    const parentId = String(stack.trigger_habit_id ?? '')
+    const childId = String(stack.new_habit_id ?? '')
+
+    if (!visibleHabitIds.has(parentId) || !visibleHabitIds.has(childId)) {
+      continue
+    }
+
+    const parentChildren = childrenByParent.get(parentId) ?? []
+    if (!parentChildren.includes(childId)) {
+      parentChildren.push(childId)
+      parentChildren.sort((left, right) => {
+        const leftHabit = habitsById.get(left)
+        const rightHabit = habitsById.get(right)
+        return String(leftHabit?.name ?? '').localeCompare(String(rightHabit?.name ?? ''), 'pt-BR')
+      })
+      childrenByParent.set(parentId, parentChildren)
+    }
+
+    const childParents = parentsByChild.get(childId) ?? []
+    if (!childParents.includes(parentId)) {
+      childParents.push(parentId)
+      parentsByChild.set(childId, childParents)
+    }
+  }
+
+  const rootIds: string[] = []
+  const registeredRoots = new Set<string>()
+
+  for (const habit of habits) {
+    const habitId = String(habit.id)
+    const visibleParents = parentsByChild.get(habitId) ?? []
+
+    if (visibleParents.length === 0 && !registeredRoots.has(habitId)) {
+      registeredRoots.add(habitId)
+      rootIds.push(habitId)
+    }
+  }
+
+  for (const habit of habits) {
+    const habitId = String(habit.id)
+    if (!registeredRoots.has(habitId)) {
+      registeredRoots.add(habitId)
+      rootIds.push(habitId)
+    }
+  }
+
+  const pagedRootIds = rootIds.slice(from, to + 1)
+  const pageIds: string[] = []
+  const visited = new Set<string>()
+
+  function appendBranch(habitId: string) {
+    if (visited.has(habitId)) return
+
+    const habit = habitsById.get(habitId)
+    if (!habit) return
+
+    visited.add(habitId)
+    pageIds.push(habitId)
+
+    for (const childId of childrenByParent.get(habitId) ?? []) {
+      appendBranch(childId)
+    }
+  }
+
+  for (const rootId of pagedRootIds) {
+    appendBranch(rootId)
+  }
+
   return {
-    data: mapHabitList((data ?? []) as Record<string, unknown>[]),
-    total: count ?? 0,
+    data: pageIds
+      .map((habitId) => habitsById.get(habitId))
+      .filter((habit): habit is NonNullable<(typeof habits)[number]> => Boolean(habit)),
+    total: rootIds.length,
     page: params.page,
     pageSize: params.pageSize
   }

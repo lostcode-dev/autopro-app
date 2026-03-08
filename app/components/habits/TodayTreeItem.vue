@@ -168,32 +168,6 @@ function getOutgoingStackLabel(): string {
                 "{{ node.habit.log.note }}"
               </span>
             </div>
-
-            <div v-if="isStackedHabit()" class="mt-1.5 flex flex-wrap items-center gap-1.5">
-              <UBadge
-                v-if="getIncomingStacks().length"
-                color="neutral"
-                variant="subtle"
-                size="xs"
-              >
-                <template #leading>
-                  <UIcon name="i-lucide-arrow-down-left" class="size-3" />
-                </template>
-                {{ getIncomingStackLabel() }}
-              </UBadge>
-
-              <UBadge
-                v-if="getOutgoingStacks().length"
-                color="primary"
-                variant="subtle"
-                size="xs"
-              >
-                <template #leading>
-                  <UIcon name="i-lucide-arrow-up-right" class="size-3" />
-                </template>
-                {{ getOutgoingStackLabel() }}
-              </UBadge>
-            </div>
           </div>
 
           <div class="flex items-center gap-1.5 shrink-0">
