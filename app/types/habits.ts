@@ -237,6 +237,11 @@ export interface TodayHabit extends Habit {
   log?: HabitLog | null
 }
 
+export interface TodayHabitTreeNode {
+  habit: TodayHabit
+  children: TodayHabitTreeNode[]
+}
+
 export interface TodayHabitsResponse {
   habits: TodayHabit[]
   completedCount: number

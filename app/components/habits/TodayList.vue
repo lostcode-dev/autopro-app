@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import type { HabitStack, TodayHabit } from '~/types/habits'
-import { DIFFICULTY_META, HABIT_TYPE_META } from '~/types/habits'
+import type { HabitStack, TodayHabit, TodayHabitTreeNode } from '~/types/habits'
 
 const props = defineProps<{
   habits: TodayHabit[]
@@ -54,47 +53,7 @@ const isToday = computed(() => {
   const today = new Date().toISOString().split('T')[0]
   return props.currentDate === today
 })
-
-type TodayHabitRow = {
-  habit: TodayHabit
-  depth: number
-}
-
-function getIncomingStacks(habit: TodayHabit): HabitStack[] {
-  return (props.stacks ?? []).filter((stack) => stack.newHabitId === habit.id)
-}
-
-function getOutgoingStacks(habit: TodayHabit): HabitStack[] {
-  return (props.stacks ?? []).filter((stack) => stack.triggerHabitId === habit.id)
-}
-
-function isStackedHabit(habit: TodayHabit): boolean {
-  return getIncomingStacks(habit).length > 0 || getOutgoingStacks(habit).length > 0
-}
-
-function getIncomingStackLabel(habit: TodayHabit): string {
-  const incomingStacks = getIncomingStacks(habit)
-
-  if (incomingStacks.length === 0) return ''
-  if (incomingStacks.length === 1) {
-    return `Depois de ${incomingStacks[0]?.triggerHabit?.name ?? 'outro hábito'}`
-  }
-
-  return `Depois de ${incomingStacks.length} hábitos`
-}
-
-function getOutgoingStackLabel(habit: TodayHabit): string {
-  const outgoingStacks = getOutgoingStacks(habit)
-
-  if (outgoingStacks.length === 0) return ''
-  if (outgoingStacks.length === 1) {
-    return `Continua com ${outgoingStacks[0]?.newHabit?.name ?? 'o próximo hábito'}`
-  }
-
-  return `Continua com ${outgoingStacks.length} hábitos`
-}
-
-const displayRows = computed<TodayHabitRow[]>(() => {
+const habitTrees = computed<TodayHabitTreeNode[]>(() => {
   const visibleHabits = props.habits ?? []
 
   if (visibleHabits.length === 0) return []
@@ -122,36 +81,39 @@ const displayRows = computed<TodayHabitRow[]>(() => {
   }
 
   const habitById = new Map(visibleHabits.map((habit) => [habit.id, habit] as const))
-  const rows: TodayHabitRow[] = []
+  const roots: TodayHabitTreeNode[] = []
   const visited = new Set<string>()
 
-  function appendHabit(habitId: string, depth: number) {
-    if (visited.has(habitId)) return
+  function buildNode(habitId: string): TodayHabitTreeNode | null {
+    if (visited.has(habitId)) return null
 
     const habit = habitById.get(habitId)
-    if (!habit) return
+    if (!habit) return null
 
     visited.add(habitId)
-    rows.push({ habit, depth })
 
     const childIds = childrenByParent.get(habitId) ?? []
-    for (const childId of childIds) {
-      appendHabit(childId, depth + 1)
-    }
+    const children = childIds
+      .map((childId) => buildNode(childId))
+      .filter((child): child is TodayHabitTreeNode => child !== null)
+
+    return { habit, children }
   }
 
   for (const habit of visibleHabits) {
     const visibleParents = parentsByChild.get(habit.id) ?? []
     if (visibleParents.length === 0) {
-      appendHabit(habit.id, 0)
+      const root = buildNode(habit.id)
+      if (root) roots.push(root)
     }
   }
 
   for (const habit of visibleHabits) {
-    appendHabit(habit.id, 0)
+    const root = buildNode(habit.id)
+    if (root) roots.push(root)
   }
 
-  return rows
+  return roots
 })
 </script>
 
@@ -225,121 +187,16 @@ const displayRows = computed<TodayHabitRow[]>(() => {
 
     <!-- Habits list -->
     <template v-else-if="habits.length > 0 && !allDone">
-      <div
-        v-for="row in displayRows"
-        :key="row.habit.id"
-        class="space-y-2"
-        :style="{ marginLeft: `${row.depth * 1.25}rem` }"
-      >
-        <div
-          v-if="row.depth > 0"
-          class="flex items-center gap-2 pl-2 text-xs font-medium text-primary"
-        >
-          <span class="h-px w-4 bg-primary/30" />
-          <UIcon name="i-lucide-corner-down-right" class="size-3.5" />
-          <span>Hábito empilhado</span>
-        </div>
-
-        <UCard
-          :class="[
-            'cursor-pointer transition-colors hover:bg-elevated/50',
-            isStackedHabit(row.habit) ? 'ring-1 ring-primary/30 bg-primary/5' : '',
-            row.depth > 0 ? 'border-l-2 border-primary/30' : '',
-          ]"
-          @click="emit('select', row.habit.id)"
-        >
-          <div class="flex items-center gap-3">
-            <UCheckbox
-              :model-value="row.habit.log?.completed ?? false"
-              @click.stop
-              @update:model-value="emit('toggle', row.habit.id, $event as boolean)"
-            />
-
-            <!-- Positive/Negative indicator -->
-            <UIcon
-              :name="HABIT_TYPE_META[row.habit.habitType ?? 'positive'].icon"
-              class="size-4 shrink-0"
-              :class="row.habit.habitType === 'negative' ? 'text-error' : 'text-success'"
-            />
-
-            <div class="flex-1 min-w-0">
-              <p
-                class="font-medium truncate"
-                :class="row.habit.log?.completed ? 'line-through text-muted' : 'text-highlighted'"
-              >
-                {{ row.habit.name }}
-              </p>
-              <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
-                <UBadge
-                  v-if="row.habit.identity"
-                  :label="row.habit.identity.name"
-                  variant="subtle"
-                  color="primary"
-                  size="xs"
-                />
-                <span v-if="row.habit.log?.note" class="text-xs text-muted italic truncate max-w-40">
-                  "{{ row.habit.log.note }}"
-                </span>
-              </div>
-
-              <div v-if="isStackedHabit(row.habit)" class="mt-1.5 flex flex-wrap items-center gap-1.5">
-                <UBadge
-                  v-if="getIncomingStacks(row.habit).length"
-                  color="neutral"
-                  variant="subtle"
-                  size="xs"
-                >
-                  <template #leading>
-                    <UIcon name="i-lucide-arrow-down-left" class="size-3" />
-                  </template>
-                  {{ getIncomingStackLabel(row.habit) }}
-                </UBadge>
-
-                <UBadge
-                  v-if="getOutgoingStacks(row.habit).length"
-                  color="primary"
-                  variant="subtle"
-                  size="xs"
-                >
-                  <template #leading>
-                    <UIcon name="i-lucide-arrow-up-right" class="size-3" />
-                  </template>
-                  {{ getOutgoingStackLabel(row.habit) }}
-                </UBadge>
-              </div>
-            </div>
-
-            <div class="flex items-center gap-1.5 shrink-0">
-              <UBadge
-                :color="DIFFICULTY_META[row.habit.difficulty].color"
-                variant="subtle"
-                size="xs"
-              >
-                <template #leading>
-                  <UIcon :name="DIFFICULTY_META[row.habit.difficulty].icon" class="size-3" />
-                </template>
-                {{ DIFFICULTY_META[row.habit.difficulty].label }}
-              </UBadge>
-              <div
-                v-if="row.habit.streak && row.habit.streak.currentStreak > 0"
-                class="flex items-center gap-1 text-xs text-muted"
-              >
-                <UIcon name="i-lucide-flame" class="size-3.5 text-orange-500" />
-                <span>{{ row.habit.streak.currentStreak }}</span>
-              </div>
-
-              <!-- Note action -->
-              <UButton
-                :icon="row.habit.log?.completed ? 'i-lucide-message-square' : 'i-lucide-message-square-plus'"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                :aria-label="row.habit.log?.completed ? 'Adicionar nota (feito)' : 'Marcar como não feito com nota'"
-                @click.stop="openNoteModal(row.habit.id, !(row.habit.log?.completed ?? false))"
-              />
-            </div>
-          </div>
-        </UCard>
+      <div class="space-y-4">
+        <HabitsTodayTreeItem
+          v-for="tree in habitTrees"
+          :key="tree.habit.id"
+          :node="tree"
+          :stacks="stacks"
+          @toggle="emit('toggle', $event[0], $event[1])"
+          @select="emit('select', $event)"
+          @open-note="openNoteModal($event[0], $event[1])"
+        />
       </div>
     </template>
 
