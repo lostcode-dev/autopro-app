@@ -316,6 +316,7 @@ const _identityFilterOptions = computed(() => [
         <div v-if="activeTab === 'today'">
           <HabitsTodayList
             :habits="todayData?.habits ?? []"
+            :stacks="stacks ?? []"
             :completed-count="todayData?.completedCount ?? 0"
             :total-count="todayData?.totalCount ?? 0"
             :loading="todayStatus === 'pending'"
@@ -452,7 +453,7 @@ const _identityFilterOptions = computed(() => [
     :habits="listData?.data ?? []"
     :initial-trigger-habit-id="stackSourceHabit?.id"
     :initial-trigger-habit-name="stackSourceHabit?.name"
-    @update:open="(value) => { stackCreateModalOpen = value; if (!value) stackSourceHabit = null; }"
+    @update:open="(value: boolean) => { stackCreateModalOpen = value; if (!value) stackSourceHabit = null; }"
     @created="() => {}"
   />
 </template>

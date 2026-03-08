@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { TodayHabit } from '~/types/habits'
+import type { HabitStack, TodayHabit } from '~/types/habits'
 import { DIFFICULTY_META, HABIT_TYPE_META } from '~/types/habits'
 
 const props = defineProps<{
   habits: TodayHabit[]
+  stacks?: HabitStack[]
   completedCount: number
   totalCount: number
   loading: boolean
@@ -53,6 +54,40 @@ const isToday = computed(() => {
   const today = new Date().toISOString().split('T')[0]
   return props.currentDate === today
 })
+
+function getIncomingStacks(habit: TodayHabit): HabitStack[] {
+  return (props.stacks ?? []).filter((stack) => stack.newHabitId === habit.id)
+}
+
+function getOutgoingStacks(habit: TodayHabit): HabitStack[] {
+  return (props.stacks ?? []).filter((stack) => stack.triggerHabitId === habit.id)
+}
+
+function isStackedHabit(habit: TodayHabit): boolean {
+  return getIncomingStacks(habit).length > 0 || getOutgoingStacks(habit).length > 0
+}
+
+function getIncomingStackLabel(habit: TodayHabit): string {
+  const incomingStacks = getIncomingStacks(habit)
+
+  if (incomingStacks.length === 0) return ''
+  if (incomingStacks.length === 1) {
+    return `Depois de ${incomingStacks[0]?.triggerHabit?.name ?? 'outro hábito'}`
+  }
+
+  return `Depois de ${incomingStacks.length} hábitos`
+}
+
+function getOutgoingStackLabel(habit: TodayHabit): string {
+  const outgoingStacks = getOutgoingStacks(habit)
+
+  if (outgoingStacks.length === 0) return ''
+  if (outgoingStacks.length === 1) {
+    return `Continua com ${outgoingStacks[0]?.newHabit?.name ?? 'o próximo hábito'}`
+  }
+
+  return `Continua com ${outgoingStacks.length} hábitos`
+}
 </script>
 
 <template>
@@ -128,7 +163,10 @@ const isToday = computed(() => {
       <UCard
         v-for="habit in habits"
         :key="habit.id"
-        class="cursor-pointer transition-colors hover:bg-elevated/50"
+        :class="[
+          'cursor-pointer transition-colors hover:bg-elevated/50',
+          isStackedHabit(habit) ? 'ring-1 ring-primary/30 bg-primary/5' : '',
+        ]"
         @click="emit('select', habit.id)"
       >
         <div class="flex items-center gap-3">
@@ -163,6 +201,32 @@ const isToday = computed(() => {
               <span v-if="habit.log?.note" class="text-xs text-muted italic truncate max-w-40">
                 "{{ habit.log.note }}"
               </span>
+            </div>
+
+            <div v-if="isStackedHabit(habit)" class="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <UBadge
+                v-if="getIncomingStacks(habit).length"
+                color="neutral"
+                variant="subtle"
+                size="xs"
+              >
+                <template #leading>
+                  <UIcon name="i-lucide-arrow-down-left" class="size-3" />
+                </template>
+                {{ getIncomingStackLabel(habit) }}
+              </UBadge>
+
+              <UBadge
+                v-if="getOutgoingStacks(habit).length"
+                color="primary"
+                variant="subtle"
+                size="xs"
+              >
+                <template #leading>
+                  <UIcon name="i-lucide-arrow-up-right" class="size-3" />
+                </template>
+                {{ getOutgoingStackLabel(habit) }}
+              </UBadge>
             </div>
           </div>
 
