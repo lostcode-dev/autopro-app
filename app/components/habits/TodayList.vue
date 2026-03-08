@@ -189,10 +189,12 @@ const habitTrees = computed<TodayHabitTreeNode[]>(() => {
     <template v-else-if="habits.length > 0 && !allDone">
       <div class="space-y-4">
         <HabitsTodayTreeItem
-          v-for="tree in habitTrees"
+          v-for="(tree, index) in habitTrees"
           :key="tree.habit.id"
           :node="tree"
           :stacks="stacks"
+          :is-last="index === habitTrees.length - 1"
+          :ancestor-has-next="[]"
           @toggle="emit('toggle', $event[0], $event[1])"
           @select="emit('select', $event)"
           @open-note="openNoteModal($event[0], $event[1])"
