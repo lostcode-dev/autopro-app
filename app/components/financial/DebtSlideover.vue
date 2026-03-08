@@ -175,6 +175,7 @@ function getProgress(): number {
                 <UCheckbox
                   :model-value="inst.paid"
                   @update:model-value="onTogglePaid(inst)"
+                  size="sm"
                 />
                 <div>
                   <p class="text-sm font-medium" :class="{ 'line-through': inst.paid }">

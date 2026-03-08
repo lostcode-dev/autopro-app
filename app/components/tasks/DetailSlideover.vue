@@ -212,6 +212,7 @@ function formatDueDate(dateStr: string): string {
               <UCheckbox
                 :model-value="subtask.completed"
                 @update:model-value="onToggleSubtask(subtask)"
+                size="sm"
               />
               <span
                 class="flex-1 text-sm"

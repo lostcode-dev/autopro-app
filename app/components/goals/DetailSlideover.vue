@@ -208,6 +208,7 @@ async function onUnlinkHabit(linkId: string) {
               <UCheckbox
                 :model-value="task.completed"
                 @update:model-value="onToggleTask(task)"
+                  size="sm"
               />
               <span
                 class="flex-1 text-sm"

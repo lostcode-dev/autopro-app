@@ -178,6 +178,7 @@ const reminderOptions = [
           <UCheckbox
             :model-value="state.allDay"
             label="Dia inteiro"
+            size="sm"
             @update:model-value="state.allDay = Boolean($event)"
           />
         </div>

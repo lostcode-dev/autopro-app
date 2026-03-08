@@ -121,6 +121,7 @@ function onClose() {
           v-model="state.includeTechContext"
           label="Incluir contexto técnico automaticamente"
           description="Envia rota atual, resolução e user agent para ajudar na análise."
+          size="sm"
         />
 
         <div class="flex justify-end gap-2 pt-2">
