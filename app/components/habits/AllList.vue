@@ -29,6 +29,7 @@ const emit = defineEmits<{
   'select': [habitId: string]
   'edit': [habit: Habit]
   'stack': [habit: Habit]
+  'share': [habit: Habit]
   'remove-stacks': [habit: Habit]
   'archive': [habit: Habit]
   'sync-tree': [nodes: HabitTreeSyncNode[]]
@@ -184,6 +185,10 @@ function onStackHabit(habit: Habit) {
   emit('stack', habit)
 }
 
+function onShareHabit(habit: Habit) {
+  emit('share', habit)
+}
+
 function onRemoveStacks(habit: Habit) {
   emit('remove-stacks', habit)
 }
@@ -238,6 +243,7 @@ function onArchiveHabit(habit: Habit) {
                 @select="onSelectHabit"
                 @edit="onEditHabit"
                 @stack="onStackHabit"
+                @share="onShareHabit"
                 @remove-stacks="onRemoveStacks"
                 @archive="onArchiveHabit"
               />
