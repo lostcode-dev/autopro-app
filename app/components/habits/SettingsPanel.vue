@@ -64,6 +64,8 @@ async function copyShareLink() {
     toast.add({ title: 'Erro', description: 'Não foi possível copiar o link.', color: 'error' })
   }
 }
+
+const shareImageModalOpen = ref(false)
 </script>
 
 <template>
@@ -162,8 +164,23 @@ async function copyShareLink() {
               @click="copyShareLink"
             />
           </div>
+          <div v-if="settings.shareEnabled" class="pl-7 pt-1">
+            <UButton
+              icon="i-lucide-image"
+              label="Gerar imagem para redes sociais"
+              color="primary"
+              variant="subtle"
+              size="sm"
+              @click="shareImageModalOpen = true"
+            />
+          </div>
         </div>
       </div>
     </template>
   </UCard>
+
+  <HabitsShareImageModal
+    :open="shareImageModalOpen"
+    @update:open="shareImageModalOpen = $event"
+  />
 </template>

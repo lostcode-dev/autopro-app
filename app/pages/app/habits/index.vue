@@ -519,24 +519,3 @@ const _identityFilterOptions = computed(() => [
   />
 </template>
 
-<!--
-  DONE:
-   ✅ Adicionar icons para dificuldade e frequência, mapeado em enum (DIFFICULTY_META, FREQUENCY_META, HABIT_TYPE_META)
-   ✅ Sem tabs em Detalhes: visão geral + calendário juntos, icons em streak
-   ✅ Revisão com setas para navegar entre semanas + dropdown + loading skeleton
-   ✅ Padrão nos botões: icon + "Salvar", "Cancelar" com icon
-   ✅ Em "todos", exibir dias personalizados quando frequência é custom
-   ✅ Rastrear mudanças de dificuldade/frequência/identidade (habit_change_history table + API)
-   ✅ Hábitos positivos/negativos com indicador visual (cores/ícones)
-   ✅ Navegar entre dias na tab de Hoje
-   ✅ Adicionar observação ao marcar como feito/não feito
-   ✅ Futuro no calendário não mostra status de feito/não feito
-   ✅ Escolher dia da semana para revisão (configurável por usuário)
-   ✅ Notificações/lembretes para revisão
-   ✅ Compartilhar hábitos e progresso
-   ✅ Possível adicionar um horário para cada hábito
-   ✅ Feito / Feito mais tarde / Não feito no modal de observação
-
-  TODO (futuras iterações):
-   - (nenhum item pendente no momento)
--->
