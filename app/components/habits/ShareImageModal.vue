@@ -20,6 +20,25 @@ const generating = ref(false)
 const progress = ref<SharedHabitCardData | null>(null)
 
 const userName = computed(() => user.value?.user_metadata?.name as string | undefined)
+const userHandle = computed(() => {
+  const metadata = user.value?.user_metadata as Record<string, unknown> | undefined
+  const rawHandle = metadata?.user_name || metadata?.username || metadata?.preferred_username
+  const fallbackEmail = typeof user.value?.email === 'string' ? user.value.email.split('@')[0] : undefined
+  const base = (typeof rawHandle === 'string' && rawHandle.trim()) || fallbackEmail || userName.value || 'secondbrain'
+
+  return `@${base
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '')
+    .toLowerCase()}`
+})
+const userInitials = computed(() => {
+  const base = userName.value?.trim() || userHandle.value.replace(/^@/, '')
+  const parts = base.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase()
+  return `${parts[0]?.[0] ?? ''}${parts[1]?.[0] ?? ''}`.toUpperCase()
+})
 
 const todayISO = computed(() => new Date().toISOString().split('T')[0]!)
 
@@ -152,6 +171,8 @@ async function shareNative() {
                 <div>
                   <HabitsShareImageCard
                     :user-name="userName"
+                    :user-handle="userHandle"
+                    :user-initials="userInitials"
                     :data="progress"
                     :date="todayISO"
                   />
@@ -171,6 +192,8 @@ async function shareNative() {
             <HabitsShareImageCard
               v-if="progress"
               :user-name="userName"
+              :user-handle="userHandle"
+              :user-initials="userInitials"
               :data="progress"
               :date="todayISO"
             />

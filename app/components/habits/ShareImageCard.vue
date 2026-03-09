@@ -7,6 +7,8 @@ export type ShareFormat = 'square'
 const props = defineProps<{
   format?: ShareFormat
   userName?: string
+  userHandle?: string
+  userInitials?: string
   data: SharedHabitCardData
   date: string
 }>()
@@ -66,38 +68,47 @@ const shareDateLabel = computed(() => {
 
 const completionTone = computed(() => {
   const rate = props.data.completionRate30d
-  if (rate >= 80) return '#34d399'
-  if (rate >= 50) return '#fbbf24'
-  return '#fb7185'
+  if (rate >= 80) return '#e7f76a'
+  if (rate >= 50) return '#f6c95d'
+  return '#ff8d8d'
 })
+
+const displayHandle = computed(() => props.userHandle || '@secondbrain')
+const displayInitials = computed(() => props.userInitials || 'SB')
 </script>
 
 <template>
   <div class="share-card">
     <div class="share-card__pattern" />
-    <div class="share-card__glow share-card__glow--top" />
-    <div class="share-card__glow share-card__glow--bottom" />
+    <div class="share-card__beam share-card__beam--left" />
+    <div class="share-card__beam share-card__beam--right" />
 
     <div class="share-card__content">
       <header class="share-card__header">
-        <div>
-          <p class="share-card__eyebrow">Second Brain Presents</p>
-          <p class="share-card__date">{{ shareDateLabel }}</p>
+        <div class="share-card__profile">
+          <div class="share-card__avatar">{{ displayInitials }}</div>
+          <div class="share-card__profile-copy">
+            <p class="share-card__eyebrow">Second Brain Wrapped</p>
+            <strong class="share-card__profile-name">{{ userName || 'Meu ciclo atual' }}</strong>
+            <p class="share-card__handle">{{ displayHandle }}</p>
+          </div>
         </div>
-        <div class="share-card__user-block">
-          <span class="share-card__user-label">Hábito em destaque</span>
-          <strong class="share-card__user-name">{{ userName || 'Meu ciclo atual' }}</strong>
+
+        <div class="share-card__header-meta">
+          <p class="share-card__eyebrow">edição hábito</p>
+          <p class="share-card__date">{{ shareDateLabel }}</p>
         </div>
       </header>
 
       <section class="share-card__hero">
         <div class="share-card__hero-copy">
-          <p class="share-card__hero-label">Spotify Wrapped de hábitos</p>
+          <p class="share-card__hero-label">o hábito que está movendo sua fase</p>
           <h1 class="share-card__habit-name">{{ habit.name }}</h1>
           <p class="share-card__description">{{ description }}</p>
         </div>
 
         <div class="share-card__meter">
+          <span class="share-card__meter-kicker">ritmo premium</span>
           <div class="share-card__meter-ring">
             <span class="share-card__meter-value" :style="{ color: completionTone }">{{ data.completionRate30d }}%</span>
           </div>
@@ -131,10 +142,21 @@ const completionTone = computed(() => {
         <span v-if="habit.scheduledTime" class="share-card__tag">{{ habit.scheduledTime }}</span>
       </section>
 
+      <section class="share-card__cta">
+        <div>
+          <p class="share-card__cta-title">Qual hábito está definindo sua próxima fase?</p>
+          <p class="share-card__cta-copy">Mostre seu progresso e marque seu ritual visual de consistência.</p>
+        </div>
+        <div class="share-card__cta-pill">
+          <span class="share-card__cta-dot" />
+          <span>compartilhe o seu</span>
+        </div>
+      </section>
+
       <footer class="share-card__footer">
         <div class="share-card__footer-line">
           <span class="share-card__footer-copy">Começou em {{ createdAtLabel || 'um novo ciclo' }}</span>
-          <span class="share-card__footer-copy">Sistemas &gt; motivação</span>
+          <span class="share-card__footer-copy">Second Brain · {{ displayHandle }}</span>
         </div>
       </footer>
     </div>
@@ -147,11 +169,11 @@ const completionTone = computed(() => {
   width: 1080px;
   height: 1080px;
   overflow: hidden;
-  color: #f8fafc;
+  color: #fbfbf8;
   background:
-    radial-gradient(circle at top left, #2dd4bf 0%, rgba(45, 212, 191, 0) 28%),
-    radial-gradient(circle at bottom right, #7c3aed 0%, rgba(124, 58, 237, 0) 32%),
-    linear-gradient(140deg, #07111f 0%, #0b1d34 45%, #140b2f 100%);
+    radial-gradient(circle at top left, rgba(231, 247, 106, 0.1) 0%, rgba(231, 247, 106, 0) 26%),
+    radial-gradient(circle at bottom right, rgba(103, 175, 255, 0.12) 0%, rgba(103, 175, 255, 0) 28%),
+    linear-gradient(135deg, #06080c 0%, #0f1218 52%, #191d24 100%);
   font-family: 'Space Grotesk', 'Inter', 'Segoe UI', sans-serif;
 }
 
@@ -159,34 +181,34 @@ const completionTone = computed(() => {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 1px, transparent 1px),
-    radial-gradient(circle at center, rgba(255, 255, 255, 0.12) 0, rgba(255, 255, 255, 0) 56%);
-  background-size: 48px 48px, 48px 48px, 100% 100%;
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.08) 0, rgba(255, 255, 255, 0) 54%);
+  background-size: 44px 44px, 44px 44px, 100% 100%;
   background-position: center;
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.15));
-  opacity: 0.35;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.22));
+  opacity: 0.42;
 }
 
-.share-card__glow {
+.share-card__beam {
   position: absolute;
-  width: 520px;
-  height: 520px;
-  border-radius: 999px;
-  filter: blur(90px);
-  opacity: 0.45;
+  width: 420px;
+  height: 1200px;
+  transform: rotate(22deg);
+  filter: blur(40px);
+  opacity: 0.16;
 }
 
-.share-card__glow--top {
-  top: -140px;
-  right: -80px;
-  background: rgba(45, 212, 191, 0.35);
+.share-card__beam--left {
+  top: -120px;
+  left: -120px;
+  background: linear-gradient(180deg, rgba(231, 247, 106, 0.6), rgba(231, 247, 106, 0));
 }
 
-.share-card__glow--bottom {
-  bottom: -160px;
-  left: -80px;
-  background: rgba(168, 85, 247, 0.35);
+.share-card__beam--right {
+  top: -160px;
+  right: -120px;
+  background: linear-gradient(180deg, rgba(103, 175, 255, 0.45), rgba(103, 175, 255, 0));
 }
 
 .share-card__content {
@@ -207,31 +229,65 @@ const completionTone = computed(() => {
   gap: 24px;
 }
 
+.share-card__profile {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.share-card__avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88px;
+  height: 88px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #edf26b, #9cd4ff);
+  color: #0b0f16;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.32);
+}
+
+.share-card__profile-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .share-card__eyebrow,
-.share-card__user-label,
 .share-card__hero-label,
+.share-card__meter-kicker,
 .share-card__metric-kicker,
 .share-card__footer-copy,
 .share-card__date {
   margin: 0;
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.2;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: rgba(226, 232, 240, 0.68);
+  color: rgba(244, 244, 238, 0.62);
 }
 
-.share-card__user-block {
+.share-card__profile-name {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.share-card__handle {
+  margin: 0;
+  font-size: 24px;
+  color: rgba(244, 244, 238, 0.76);
+  letter-spacing: -0.03em;
+}
+
+.share-card__header-meta {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 6px;
-}
-
-.share-card__user-name {
-  font-size: 28px;
-  line-height: 1;
-  letter-spacing: -0.04em;
 }
 
 .share-card__hero {
@@ -243,19 +299,20 @@ const completionTone = computed(() => {
 }
 
 .share-card__habit-name {
-  margin: 10px 0 18px;
-  font-size: 92px;
-  line-height: 0.93;
-  letter-spacing: -0.07em;
-  max-width: 6.5ch;
+  margin: 12px 0 20px;
+  font-size: 118px;
+  line-height: 0.88;
+  letter-spacing: -0.09em;
+  max-width: 6ch;
+  text-wrap: balance;
 }
 
 .share-card__description {
   margin: 0;
-  max-width: 620px;
-  font-size: 31px;
-  line-height: 1.25;
-  color: rgba(241, 245, 249, 0.86);
+  max-width: 580px;
+  font-size: 28px;
+  line-height: 1.24;
+  color: rgba(251, 251, 248, 0.84);
 }
 
 .share-card__meter {
@@ -269,55 +326,55 @@ const completionTone = computed(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 236px;
-  height: 236px;
+  width: 254px;
+  height: 254px;
   border-radius: 999px;
-  border: 18px solid rgba(255, 255, 255, 0.14);
-  box-shadow: inset 0 0 0 14px rgba(13, 23, 38, 0.75);
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
+  border: 14px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 0 0 20px rgba(6, 8, 12, 0.9);
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0));
 }
 
 .share-card__meter-value {
-  font-size: 66px;
+  font-size: 78px;
   line-height: 1;
   font-weight: 800;
   letter-spacing: -0.06em;
 }
 
 .share-card__meter-label {
-  font-size: 19px;
+  font-size: 18px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: rgba(226, 232, 240, 0.7);
+  letter-spacing: 0.14em;
+  color: rgba(244, 244, 238, 0.7);
 }
 
 .share-card__metrics {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 54px;
+  gap: 18px;
+  margin-top: 62px;
 }
 
 .share-card__metric {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 30px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03));
-  backdrop-filter: blur(8px);
+  gap: 12px;
+  min-height: 202px;
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 34px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
 }
 
 .share-card__metric-value {
-  font-size: 52px;
-  line-height: 0.95;
+  font-size: 60px;
+  line-height: 0.9;
   letter-spacing: -0.05em;
 }
 
 .share-card__metric-caption {
-  font-size: 22px;
-  color: rgba(226, 232, 240, 0.85);
+  font-size: 21px;
+  color: rgba(251, 251, 248, 0.86);
 }
 
 .share-card__tags {
@@ -333,10 +390,58 @@ const completionTone = computed(() => {
   min-height: 56px;
   padding: 0 22px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(9, 18, 32, 0.48);
-  font-size: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 24px;
   letter-spacing: -0.02em;
+}
+
+.share-card__cta {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 28px;
+  padding: 28px 30px;
+  border-radius: 34px;
+  background: linear-gradient(135deg, rgba(231, 247, 106, 0.11), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(231, 247, 106, 0.18);
+}
+
+.share-card__cta-title {
+  margin: 0;
+  font-size: 33px;
+  line-height: 1.02;
+  letter-spacing: -0.05em;
+}
+
+.share-card__cta-copy {
+  margin: 10px 0 0;
+  max-width: 510px;
+  font-size: 22px;
+  color: rgba(251, 251, 248, 0.78);
+}
+
+.share-card__cta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 62px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: #edf26b;
+  color: #0b0f16;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+.share-card__cta-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: #0b0f16;
 }
 
 .share-card__footer {
