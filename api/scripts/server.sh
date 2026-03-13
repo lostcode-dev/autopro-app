@@ -171,13 +171,38 @@ install_deps() {
   require_command pnpm
   echo "Instalando dependências..."
 
+  local pnpm_args=(
+    --reporter=append-only
+    --fetch-retries 5
+    --fetch-retry-factor 2
+    --fetch-retry-mintimeout 1000
+    --fetch-retry-maxtimeout 60000
+    --fetch-timeout 120000
+  )
+
   if [[ -f "$ROOT_DIR/pnpm-lock.yaml" ]]; then
-    pnpm install --frozen-lockfile
-    return
+    pnpm_args+=(--frozen-lockfile)
+  else
+    echo "Aviso: pnpm-lock.yaml não encontrado. Executando install sem frozen-lockfile."
+    pnpm_args+=(--no-frozen-lockfile)
   fi
 
-  echo "Aviso: pnpm-lock.yaml não encontrado. Executando install sem frozen-lockfile."
-  pnpm install --no-frozen-lockfile
+  local attempt
+  for attempt in 1 2 3; do
+    echo "Tentativa de install ${attempt}/3..."
+    if pnpm install "${pnpm_args[@]}"; then
+      echo "Dependências instaladas com sucesso."
+      return
+    fi
+
+    if [[ "$attempt" -lt 3 ]]; then
+      echo "Falha ao instalar dependências. Aguardando 5s para nova tentativa..."
+      sleep 5
+    fi
+  done
+
+  echo "Erro: não foi possível instalar dependências após 3 tentativas."
+  exit 1
 }
 
 build_app() {

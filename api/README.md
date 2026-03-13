@@ -188,6 +188,8 @@ Esse comando:
 - exclui do envio `node_modules`, `dist`, `logs`, `.env`, `.deploy.env` e `scripts/keys`
 - executa `./scripts/server.sh bootstrap` no servidor
 
+Observação: em Droplets pequenos ou com rede mais lenta, o `pnpm install` pode demorar alguns minutos. O script agora usa timeout maior e até 3 tentativas automáticas para reduzir falhas transitórias do registry.
+
 Se quiser provisionar o runtime antes, isoladamente:
 
 ```bash
