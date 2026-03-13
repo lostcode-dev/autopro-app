@@ -71,6 +71,21 @@ Roda diariamente às 23:55 (configurável via `CRON_CLOSE_DAY_SCHEDULE`) no time
 
 ## Endpoints HTTP
 
+### Página de teste no navegador
+
+```
+GET /
+```
+
+Abre uma página HTML simples confirmando que a API está online.
+
+Exemplos:
+
+```bash
+http://localhost:4000/
+http://104.248.94.247/
+```
+
 ### Health
 
 ```
@@ -96,6 +111,7 @@ Endpoint de exemplo para receber payloads externos.
 | `pnpm server:deploy` | Deploy de manutenção com restart |
 | `pnpm server:remote-bootstrap` | Envia arquivos e faz bootstrap remoto via SSH |
 | `pnpm server:remote-deploy` | Envia arquivos e faz deploy remoto via SSH |
+| `pnpm server:remote-provision` | Provisiona Node.js, pnpm e PM2 no servidor remoto |
 | `pnpm server:remote-nginx-setup` | Instala e configura Nginx remoto para expor a API |
 | `pnpm server:remote-nginx-test` | Testa a configuração remota do Nginx |
 | `pnpm server:remote-status` | Consulta o status remoto via SSH |
@@ -132,6 +148,9 @@ DEPLOY_SSH_KEY_PATH=/home/seu-usuario/.ssh/id_ed25519
 # Nginx
 NGINX_SERVER_NAME=104.248.94.247
 NGINX_PROXY_PORT=4000
+
+# Runtime remoto
+REMOTE_NODE_MAJOR=20
 ```
 
 Esse arquivo fica fora do Git.
@@ -162,10 +181,17 @@ pnpm server:remote-bootstrap
 
 Esse comando:
 
+- provisiona Node.js, pnpm e PM2 no Droplet se ainda não existirem
 - cria o diretório remoto se necessário
 - envia os arquivos com `rsync`
 - exclui do envio `node_modules`, `dist`, `logs`, `.env`, `.deploy.env` e `scripts/keys`
 - executa `./scripts/server.sh bootstrap` no servidor
+
+Se quiser provisionar o runtime antes, isoladamente:
+
+```bash
+pnpm server:remote-provision
+```
 
 ### Manutenção futura
 
@@ -195,6 +221,7 @@ Comandos remotos adicionais:
 pnpm server:remote-status
 pnpm server:remote-logs
 pnpm server:remote-logs -- 2026-03-13
+pnpm server:remote-provision
 pnpm server:remote-nginx-setup
 pnpm server:remote-nginx-test
 ```
@@ -213,6 +240,7 @@ Depois valide:
 
 ```bash
 pnpm server:remote-nginx-test
+curl http://104.248.94.247/
 curl http://104.248.94.247/api/health
 ```
 

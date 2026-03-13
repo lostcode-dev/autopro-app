@@ -40,6 +40,10 @@ nginx_proxy_port() {
   printf '%s' "${NGINX_PROXY_PORT:-4000}"
 }
 
+remote_node_major() {
+  printf '%s' "${REMOTE_NODE_MAJOR:-20}"
+}
+
 ssh_key_args() {
   if [[ -n "${DEPLOY_SSH_KEY_PATH:-}" ]]; then
     printf '%s' "-i $DEPLOY_SSH_KEY_PATH"
@@ -101,6 +105,47 @@ sync_remote_files() {
 remote_prepare_dir() {
   require_remote_config
   remote_exec "mkdir -p '$DEPLOY_PATH'"
+}
+
+remote_provision_runtime() {
+  require_remote_config
+
+  local node_major
+  node_major="$(remote_node_major)"
+
+  echo "Provisionando runtime remoto (Node.js ${node_major}, pnpm, PM2)..."
+
+  remote_exec "export REMOTE_NODE_MAJOR='$node_major'; bash -se" <<'EOF'
+set -euo pipefail
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update
+apt-get install -y curl ca-certificates gnupg build-essential
+
+if ! command -v node >/dev/null 2>&1; then
+  mkdir -p /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${REMOTE_NODE_MAJOR}.x nodistro main" \
+    > /etc/apt/sources.list.d/nodesource.list
+  apt-get update
+  apt-get install -y nodejs
+fi
+
+if command -v corepack >/dev/null 2>&1; then
+  corepack enable
+  corepack prepare pnpm@latest --activate
+fi
+
+if ! command -v pnpm >/dev/null 2>&1; then
+  npm install -g pnpm
+fi
+
+if ! command -v pm2 >/dev/null 2>&1; then
+  npm install -g pm2
+fi
+EOF
 }
 
 ensure_pm2() {
@@ -221,6 +266,7 @@ deploy() {
 
 remote_bootstrap() {
   require_remote_config
+  remote_provision_runtime
   remote_prepare_dir
   sync_remote_files
   remote_exec "cd '$DEPLOY_PATH' && chmod +x ./scripts/server.sh && ./scripts/server.sh bootstrap"
@@ -229,6 +275,7 @@ remote_bootstrap() {
 
 remote_deploy() {
   require_remote_config
+  remote_provision_runtime
   remote_prepare_dir
   sync_remote_files
   remote_exec "cd '$DEPLOY_PATH' && chmod +x ./scripts/server.sh && ./scripts/server.sh deploy"
@@ -310,6 +357,7 @@ Comandos:
   deploy      Atualiza dependências, gera novo build e reinicia no PM2
   remote-bootstrap  Envia arquivos por SSH/rsync e executa bootstrap no servidor
   remote-deploy     Envia arquivos por SSH/rsync e executa deploy no servidor
+  remote-provision  Instala Node.js, pnpm e PM2 no servidor remoto
   remote-status     Consulta status da app no servidor remoto
   remote-logs       Acompanha log diário remoto (ou outro dia: remote-logs YYYY-MM-DD)
   remote-nginx-setup Instala/configura Nginx remoto para expor a API
@@ -334,6 +382,7 @@ case "$COMMAND" in
   deploy) deploy ;;
   remote-bootstrap) remote_bootstrap ;;
   remote-deploy) remote_deploy ;;
+  remote-provision) remote_provision_runtime ;;
   remote-status) remote_status ;;
   remote-logs) remote_logs "$@" ;;
   remote-nginx-setup) remote_nginx_setup ;;

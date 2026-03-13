@@ -11,6 +11,7 @@
     "server:deploy": "bash ./scripts/server.sh deploy",
     "server:remote-bootstrap": "bash ./scripts/server.sh remote-bootstrap",
     "server:remote-deploy": "bash ./scripts/server.sh remote-deploy",
+    "server:remote-provision": "bash ./scripts/server.sh remote-provision",
     "server:remote-nginx-setup": "bash ./scripts/server.sh remote-nginx-setup",
     "server:remote-nginx-test": "bash ./scripts/server.sh remote-nginx-test",
     "server:remote-status": "bash ./scripts/server.sh remote-status",
