@@ -27,7 +27,6 @@ const items = computed(() => [{
       >
         <AppLogo />
       </NuxtLink>
-      <TemplateMenu />
     </template>
 
     <UNavigationMenu
