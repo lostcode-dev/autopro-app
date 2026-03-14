@@ -594,11 +594,11 @@ const difficultyFilterOptions = computed(() => [
   🔢 Lógica / Regras de Negócio
   ========================
 
-  - Corrigir cálculo do Streak.
+  - [IN TEST] Corrigir cálculo do Streak.
     Atualmente, quando um hábito não é marcado no dia, ele não está sendo contabilizado corretamente.
     É necessário garantir que hábitos não concluídos interrompam ou atualizem o streak de forma correta.
 
-  - Criar rotina automática de fechamento do dia.
+  - [IN TEST] Criar rotina automática de fechamento do dia.
     No final do dia, todos os hábitos que não foram marcados como concluídos devem ser automaticamente registrados como "skipped".
 
   - Implementar histórico de empilhamento (habit stacking history).
@@ -651,4 +651,11 @@ const difficultyFilterOptions = computed(() => [
     Isso permitirá melhor organização, categorização e filtragem.
 
   - Deve ser possível selecionat um emoji como se fosse uma avatar para o hábito.
+
+  - Só deve exibir o Streak na listagem, se o hábito estiver em sequência, por exemplo, se eu não fiz um dia,
+    então o streak deve ser zerado. Pensar em uma forma para conseguir congelar o streak e conseguir recuperar para não se tornar uma frustração.
+
+  - Agora que tenho a API com Cron, também posso ter as notificações para alertar o usuário.
+  - Além da notificação pelo sistema web, tem outras formas de notificação. Verificar as possibilidades de
+  notificação. 
 -->

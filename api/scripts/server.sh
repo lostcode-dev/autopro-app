@@ -121,10 +121,9 @@ sync_remote_artifact() {
   echo "Sincronizando artefato de runtime para ${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}..."
   rsync -az --delete \
     --include 'dist/' \
-    --include 'dist/***' \
+    --include 'dist/server.cjs' \
     --include 'scripts/' \
     --include 'scripts/server.sh' \
-    --include '.env.example' \
     --exclude '*' \
     -e "$rsync_command" \
     "$ROOT_DIR/" "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
@@ -154,6 +153,13 @@ sync_remote_env() {
 remote_prepare_dir() {
   require_remote_config
   remote_exec "mkdir -p '$DEPLOY_PATH'"
+}
+
+remote_cleanup_artifact() {
+  require_remote_config
+
+  echo "Removendo arquivos antigos do deploy por artefato em ${DEPLOY_PATH}..."
+  remote_exec "mkdir -p '$DEPLOY_PATH' && find '$DEPLOY_PATH' -mindepth 1 -maxdepth 1 ! -name '.env' ! -name 'logs' -exec rm -rf {} +"
 }
 
 remote_provision_runtime() {
@@ -263,6 +269,7 @@ build_app() {
 build_artifact() {
   require_command pnpm
   echo "Gerando artefato local de runtime..."
+  rm -rf "$ROOT_DIR/dist"
   pnpm build
 }
 
@@ -381,6 +388,7 @@ remote_artifact_bootstrap() {
   build_artifact
   remote_provision_runtime
   remote_prepare_dir
+  remote_cleanup_artifact
   sync_remote_artifact
   sync_remote_env
   remote_exec "cd '$DEPLOY_PATH' && chmod +x ./scripts/server.sh && ./scripts/server.sh bootstrap-artifact"
@@ -392,6 +400,7 @@ remote_artifact_deploy() {
   build_artifact
   remote_provision_runtime
   remote_prepare_dir
+  remote_cleanup_artifact
   sync_remote_artifact
   sync_remote_env
   remote_exec "cd '$DEPLOY_PATH' && chmod +x ./scripts/server.sh && ./scripts/server.sh deploy-artifact"
