@@ -274,6 +274,11 @@ export interface CreateIdentityPayload {
   description?: string
 }
 
+export interface UpdateIdentityPayload {
+  name?: string
+  description?: string | null
+}
+
 export interface CreateReflectionPayload {
   weekKey: string
   wins?: string

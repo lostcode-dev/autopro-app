@@ -113,21 +113,13 @@ const createModalOpen = ref(false);
 const editModalOpen = ref(false);
 const archiveModalOpen = ref(false);
 const detailSlideoverOpen = ref(false);
-const identityModalOpen = ref(false);
-const identityModalSource = ref<"create" | "edit" | null>(null);
-const pendingIdentityId = ref<string | null>(null);
+const identityManagerOpen = ref(false);
 const stackCreateModalOpen = ref(false);
 const stackSourceHabit = ref<Habit | null>(null);
 const selectedHabit = ref<Habit | null>(null);
 const settingsModalOpen = ref(false);
 const shareImageModalOpen = ref(false);
 const shareImageHabit = ref<Habit | null>(null);
-const createModalRef = ref<{
-  applyIdentitySelection: (identityId: string | null | undefined) => void;
-} | null>(null);
-const editModalRef = ref<{
-  applyIdentitySelection: (identityId: string | null | undefined) => void;
-} | null>(null);
 
 watch(createModalOpen, (open) => {
   if (open) {
@@ -136,13 +128,10 @@ watch(createModalOpen, (open) => {
   }
 });
 
-watch(identityModalOpen, (open) => {
+watch(identityManagerOpen, (open) => {
   if (open) {
     ensureLoaded(identitiesStatus, refreshIdentities);
-    return;
   }
-
-  identityModalSource.value = null;
 });
 
 watch(stackCreateModalOpen, (open) => {
@@ -228,21 +217,6 @@ function onArchiveHabit(habit: Habit) {
 function onHabitArchived() {
   detailSlideoverOpen.value = false;
   selectedHabit.value = null;
-}
-
-function openIdentityModal(source: "create" | "edit") {
-  identityModalSource.value = source;
-  identityModalOpen.value = true;
-}
-
-function onIdentityCreated(identity: { id: string }) {
-  pendingIdentityId.value = identity.id;
-
-  if (identityModalSource.value === "edit") {
-    editModalRef.value?.applyIdentitySelection(identity.id);
-  } else {
-    createModalRef.value?.applyIdentitySelection(identity.id);
-  }
 }
 
 // ─── Stacking actions ─────────────────────────────────────────────────────────
@@ -429,6 +403,14 @@ const difficultyFilterOptions = computed(() => [
         <template #right>
           <NotificationsButton />
           <UButton
+            icon="i-lucide-users"
+            label="Identidades"
+            color="neutral"
+            variant="subtle"
+            class="hidden sm:inline-flex"
+            @click="identityManagerOpen = true"
+          />
+          <UButton
             icon="i-lucide-plus"
             square
             class="flex sm:hidden items-center justify-center"
@@ -588,11 +570,8 @@ const difficultyFilterOptions = computed(() => [
 
   <!-- Modals -->
   <HabitsCreateModal
-    ref="createModalRef"
     :open="createModalOpen"
-    :selected-identity-id="pendingIdentityId"
     @update:open="createModalOpen = $event"
-    @identityModalOpen="openIdentityModal('create')"
   />
 
   <HabitsShareImageModal
@@ -603,13 +582,10 @@ const difficultyFilterOptions = computed(() => [
 
   <HabitsEditModal
     v-if="selectedHabit"
-    ref="editModalRef"
     :open="editModalOpen"
     :habit="selectedHabit"
-    :selected-identity-id="pendingIdentityId"
     @update:open="editModalOpen = $event"
     @updated="refreshToday()"
-    @identityModalOpen="openIdentityModal('edit')"
   />
 
   <HabitsArchiveModal
@@ -621,10 +597,9 @@ const difficultyFilterOptions = computed(() => [
     @archived="onHabitArchived"
   />
 
-  <HabitsIdentityCreateModal
-    :open="identityModalOpen"
-    @update:open="identityModalOpen = $event"
-    @created="onIdentityCreated"
+  <HabitsIdentityManagerModal
+    :open="identityManagerOpen"
+    @update:open="identityManagerOpen = $event"
   />
 
   <HabitsStackCreateModal
@@ -657,6 +632,12 @@ const difficultyFilterOptions = computed(() => [
   - Revisar fluxo de "Identificadores".
     O fluxo apresenta diversos bugs, tanto relacionados a dados quanto ao layout.
 
+  - É bom deixar somente no no forms a possibilidade de selecionar uma identidade, e fica na 
+  aba das 4 leis. Deve tirar do forms o btn de  gereciar identidade, e deve ficar no lado esquerdo de novo hábito.
+  Deve exibir uma view completamente diferente, como se fosse uma página separada, com um layout mais limpo e organizado.
+  Com a lista de identidades, e a possibilidade de criar, editar e excluir as identidades. 
+  E quando clicar em criar ou editar, abre um modal para preencher os dados da identidade.
+
   ========================
   🎨 Interface / UX
   ========================
@@ -678,9 +659,6 @@ const difficultyFilterOptions = computed(() => [
 
   - Corrigir o HourPicker dentro do modal.
     Atualmente ele está abrindo atrás do modal.
-
-  - Aumentar a largura do modal de hábitos.
-    Existe muito espaço vazio que poderia ser melhor aproveitado.
 
   ========================
   🔐 Autenticação / Sessão

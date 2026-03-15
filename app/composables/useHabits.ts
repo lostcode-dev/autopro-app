@@ -19,6 +19,7 @@ import type {
   SharedHabitsProgress,
   TodayHabitsResponse,
   UpdateHabitPayload,
+  UpdateIdentityPayload,
   UpdateHabitUserSettingsPayload,
   Habit
 } from '~/types/habits'
@@ -218,6 +219,21 @@ export function useHabits() {
     } catch {
       toast.add({ title: 'Erro', description: 'Não foi possível arquivar a identidade.', color: 'error' })
       return false
+    }
+  }
+
+  async function updateIdentity(id: string, payload: UpdateIdentityPayload): Promise<Identity | null> {
+    try {
+      const identity = await $fetch<Identity>(`/api/habits/identities/${id}`, {
+        method: 'PUT',
+        body: payload
+      })
+      toast.add({ title: 'Identidade atualizada', description: `"${identity.name}" salva com sucesso.`, color: 'success' })
+      await Promise.all([refreshIdentities(), refreshList()])
+      return identity
+    } catch {
+      toast.add({ title: 'Erro', description: 'Não foi possível atualizar a identidade.', color: 'error' })
+      return null
     }
   }
 
@@ -529,6 +545,7 @@ export function useHabits() {
     restoreHabit,
     logHabit,
     createIdentity,
+    updateIdentity,
     archiveIdentity,
     saveReflection,
     fetchCalendar,
