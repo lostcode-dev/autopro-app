@@ -35,10 +35,13 @@ export function useHabits() {
     status: todayStatus,
     refresh: refreshToday
   } = useFetch<TodayHabitsResponse>('/api/habits/today', {
-    query: { date: todayDate },
+    query: computed(() => ({
+      date: todayDate.value
+    })),
     lazy: true,
     immediate: false,
-    key: 'habits-today'
+    key: 'habits-today',
+    watch: [todayDate]
   })
 
   // ─── Habits list (paginated) ────────────────────────────────────────────────
