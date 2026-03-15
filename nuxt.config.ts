@@ -10,11 +10,6 @@ export default defineNuxtConfig({
     '@vite-pwa/nuxt'
   ],
 
-  sourcemap: {
-    server: false,
-    client: true
-  },
-
   devtools: {
     enabled: true
   },
@@ -33,9 +28,16 @@ export default defineNuxtConfig({
 
   routeRules: {
     '/docs': { redirect: '/docs/getting-started', prerender: false },
+    '/app': { prerender: false },
+    '/app/**': { prerender: false },
     '/api/**': {
       cors: true
     }
+  },
+
+  sourcemap: {
+    server: false,
+    client: true
   },
 
   compatibilityDate: '2024-07-11',
@@ -46,6 +48,15 @@ export default defineNuxtConfig({
         '/'
       ],
       crawlLinks: true
+    }
+  },
+
+  eslint: {
+    config: {
+      stylistic: {
+        commaDangle: 'never',
+        braceStyle: '1tbs'
+      }
     }
   },
 
@@ -121,8 +132,11 @@ export default defineNuxtConfig({
       ]
     },
     workbox: {
+      cleanupOutdatedCaches: true,
+      clientsClaim: true,
       navigateFallback: undefined,
-      globPatterns: ['**/*.{js,css,html,png,svg,ico,woff2}'],
+      skipWaiting: true,
+      globPatterns: ['**/*.{js,css,png,svg,ico,woff2}'],
       runtimeCaching: [
         {
           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -159,15 +173,6 @@ export default defineNuxtConfig({
     },
     devOptions: {
       enabled: false
-    }
-  },
-
-  eslint: {
-    config: {
-      stylistic: {
-        commaDangle: 'never',
-        braceStyle: '1tbs'
-      }
     }
   }
 })
