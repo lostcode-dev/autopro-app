@@ -9,6 +9,11 @@ export default eventHandler(async (event) => {
   const refreshToken = getRefreshTokenFromCookies(event)
   let accessTokenError: { status?: unknown } | null = null
 
+  console.log('[auth/me] start', {
+    hasAccessToken: Boolean(accessToken),
+    hasRefreshToken: Boolean(refreshToken)
+  })
+
   if (accessToken) {
     const { data, error } = await supabase.auth.getUser(accessToken)
     if (!error && data.user) {
@@ -24,6 +29,11 @@ export default eventHandler(async (event) => {
         syncedAt: Date.now()
       })
 
+      console.log('[auth/me] access-token-valid', {
+        userId: data.user.id,
+        expiresAt
+      })
+
       return {
         user: toAuthUser(data.user),
         session: { expiresAt }
@@ -31,16 +41,23 @@ export default eventHandler(async (event) => {
     }
 
     accessTokenError = error
+    console.log('[auth/me] access-token-invalid', {
+      status: typeof error?.status === 'number' ? error.status : null
+    })
   }
 
   if (!refreshToken) {
     if (accessToken && accessTokenError && !isInvalidAuthError(accessTokenError)) {
+      console.log('[auth/me] auth-service-unavailable-without-refresh', {
+        status: typeof accessTokenError.status === 'number' ? accessTokenError.status : null
+      })
       throw createError({
         statusCode: 503,
         statusMessage: 'Auth service unavailable'
       })
     }
 
+    console.log('[auth/me] no-refresh-token-clearing-session')
     clearAuthSession(event)
     return { user: null, session: null }
   }
@@ -50,6 +67,9 @@ export default eventHandler(async (event) => {
   })
 
   if (refreshError && !isInvalidAuthError(refreshError)) {
+    console.log('[auth/me] refresh-error-non-auth', {
+      status: typeof refreshError.status === 'number' ? refreshError.status : null
+    })
     throw createError({
       statusCode: 503,
       statusMessage: 'Auth service unavailable'
@@ -57,6 +77,9 @@ export default eventHandler(async (event) => {
   }
 
   if (refreshError || !refreshed.session) {
+    console.log('[auth/me] refresh-failed-clearing-session', {
+      status: typeof refreshError?.status === 'number' ? refreshError.status : null
+    })
     clearAuthSession(event)
     return { user: null, session: null }
   }
@@ -70,6 +93,9 @@ export default eventHandler(async (event) => {
   const { data: userData, error: userError } = await supabase.auth.getUser(refreshed.session.access_token)
 
   if (userError && !isInvalidAuthError(userError)) {
+    console.log('[auth/me] refreshed-user-fetch-non-auth-error', {
+      status: typeof userError.status === 'number' ? userError.status : null
+    })
     throw createError({
       statusCode: 503,
       statusMessage: 'Auth service unavailable'
@@ -77,6 +103,9 @@ export default eventHandler(async (event) => {
   }
 
   if (userError) {
+    console.log('[auth/me] refreshed-user-fetch-auth-error-clearing-session', {
+      status: typeof userError.status === 'number' ? userError.status : null
+    })
     clearAuthSession(event)
     return { user: null, session: null }
   }
@@ -88,12 +117,18 @@ export default eventHandler(async (event) => {
       syncedAt: Date.now()
     })
 
+    console.log('[auth/me] refresh-success', {
+      userId: userData.user.id,
+      expiresAt
+    })
+
     return {
       user: toAuthUser(userData.user),
       session: { expiresAt }
     }
   }
 
+  console.log('[auth/me] refresh-returned-no-user-clearing-session')
   clearAuthSession(event)
   return { user: null, session: null }
 })

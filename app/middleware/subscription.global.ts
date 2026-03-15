@@ -5,11 +5,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!to.path.startsWith('/app'))
     return
 
-  //if (to.path === '/app/subscribe')
-  //  return
-
   const auth = useAuth()
-  await auth.ensureReady()
 
   if (!auth.isAuthenticated.value)
     return
@@ -29,13 +25,14 @@ export default defineNuxtRouteMiddleware(async (to) => {
         await new Promise(resolve => setTimeout(resolve, 1200))
       }
     }
-  } catch (error: any) {
-    const statusCode = error?.statusCode || error?.status
+  } catch (error: unknown) {
+    const err = error as { statusCode?: number, status?: number }
+    const statusCode = err?.statusCode || err?.status
     if (statusCode === 401)
       return navigateTo('/login')
-    //return navigateTo('/app/subscribe')
+    // return navigateTo('/app/subscribe')
   }
 
-  //if (!billing.hasAccess.value)
-  //  return navigateTo('/app/subscribe')
+  // if (!billing.hasAccess.value)
+  //   return navigateTo('/app/subscribe')
 })

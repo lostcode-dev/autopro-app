@@ -11,6 +11,11 @@ export async function requireAuthUser(event: H3Event) {
   const existingUserCookie = getAuthUserCookie(event)
   let accessTokenError: { status?: unknown } | null = null
 
+  console.log('[auth/require] start', {
+    hasAccessToken: Boolean(accessToken),
+    hasRefreshToken: Boolean(refreshToken)
+  })
+
   if (accessToken) {
     const { data, error } = await supabase.auth.getUser(accessToken)
     if (!error && data.user) {
@@ -24,10 +29,17 @@ export async function requireAuthUser(event: H3Event) {
         expiresAt,
         syncedAt: Date.now()
       })
+      console.log('[auth/require] access-token-valid', {
+        userId: data.user.id,
+        expiresAt
+      })
       return toAuthUser(data.user)
     }
 
     accessTokenError = error
+    console.log('[auth/require] access-token-invalid', {
+      status: typeof error?.status === 'number' ? error.status : null
+    })
   }
 
   if (refreshToken) {
@@ -36,6 +48,9 @@ export async function requireAuthUser(event: H3Event) {
     })
 
     if (refreshError && !isInvalidAuthError(refreshError)) {
+      console.log('[auth/require] refresh-non-auth-error', {
+        status: typeof refreshError.status === 'number' ? refreshError.status : null
+      })
       throw createError({
         statusCode: 503,
         statusMessage: 'Auth service unavailable'
@@ -51,6 +66,9 @@ export async function requireAuthUser(event: H3Event) {
 
       const { data: userData, error: userError } = await supabase.auth.getUser(refreshed.session.access_token)
       if (userError && !isInvalidAuthError(userError)) {
+        console.log('[auth/require] refreshed-user-fetch-non-auth-error', {
+          status: typeof userError.status === 'number' ? userError.status : null
+        })
         throw createError({
           statusCode: 503,
           statusMessage: 'Auth service unavailable'
@@ -63,18 +81,31 @@ export async function requireAuthUser(event: H3Event) {
           expiresAt,
           syncedAt: Date.now()
         })
+        console.log('[auth/require] refresh-success', {
+          userId: userData.user.id,
+          expiresAt
+        })
         return toAuthUser(userData.user)
       }
+
+      console.log('[auth/require] refresh-returned-no-user', {
+        hasUser: Boolean(userData.user),
+        userErrorStatus: typeof userError?.status === 'number' ? userError.status : null
+      })
     }
   }
 
   if (accessToken && accessTokenError && !isInvalidAuthError(accessTokenError)) {
+    console.log('[auth/require] access-token-non-auth-error', {
+      status: typeof accessTokenError.status === 'number' ? accessTokenError.status : null
+    })
     throw createError({
       statusCode: 503,
       statusMessage: 'Auth service unavailable'
     })
   }
 
+  console.log('[auth/require] unauthorized-clearing-session')
   clearAuthSession(event)
 
   throw createError({

@@ -13,7 +13,13 @@ export default eventHandler(async (event) => {
   const body = await readBody(event)
   const parsed = schema.safeParse(body)
 
+  console.log('[auth/login] start', {
+    email: typeof body?.email === 'string' ? body.email : null,
+    remember: typeof body?.remember === 'boolean' ? body.remember : true
+  })
+
   if (!parsed.success) {
+    console.log('[auth/login] invalid-payload')
     throw createError({
       statusCode: 400,
       statusMessage: 'Invalid payload',
@@ -29,6 +35,10 @@ export default eventHandler(async (event) => {
   })
 
   if (error || !data.session || !data.user) {
+    console.log('[auth/login] failed', {
+      status: typeof error?.status === 'number' ? error.status : null,
+      message: error?.message ?? null
+    })
     throw createError({
       statusCode: 401,
       statusMessage: error?.message || 'Invalid credentials'
@@ -42,6 +52,12 @@ export default eventHandler(async (event) => {
     expiresAt: data.session.expires_at ?? null,
     syncedAt: Date.now()
   }, { persistent: parsed.data.remember })
+
+  console.log('[auth/login] success', {
+    userId: data.user.id,
+    remember: parsed.data.remember,
+    expiresAt: data.session.expires_at ?? null
+  })
 
   return {
     user: toAuthUser(data.user),
