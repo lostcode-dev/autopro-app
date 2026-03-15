@@ -1,7 +1,7 @@
 import { getSupabaseAnonClient } from './supabase-anon'
 import { getAccessTokenFromCookies, getRefreshTokenFromCookies, setAuthCookies } from './auth-cookies'
 import { getAuthUserCookie, setAuthUserCookie, toAuthUser } from './auth-user'
-import { clearAuthSession, isInvalidAuthError, resolveSessionExpiresAt } from './auth-session'
+import { isInvalidAuthError, resolveSessionExpiresAt } from './auth-session'
 import type { H3Event } from 'h3'
 
 export async function requireAuthUser(event: H3Event) {
@@ -105,8 +105,7 @@ export async function requireAuthUser(event: H3Event) {
     })
   }
 
-  console.log('[auth/require] unauthorized-clearing-session')
-  clearAuthSession(event)
+  console.log('[auth/require] unauthorized')
 
   throw createError({
     statusCode: 401,

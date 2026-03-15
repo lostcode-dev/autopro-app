@@ -28,8 +28,12 @@ export default defineNuxtRouteMiddleware(async (to) => {
   } catch (error: unknown) {
     const err = error as { statusCode?: number, status?: number }
     const statusCode = err?.statusCode || err?.status
-    if (statusCode === 401)
-      return navigateTo('/login')
+    if (statusCode === 401) {
+      const user = await auth.fetchUser()
+      if (!user)
+        return navigateTo('/login')
+      return
+    }
     // return navigateTo('/app/subscribe')
   }
 

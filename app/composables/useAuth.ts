@@ -28,6 +28,7 @@ export function useAuth() {
   const requestFetch = useRequestFetch()
   const nuxtApp = useNuxtApp()
   const userCookie = useCookie<string | null>('sb-user', { default: () => null })
+  const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
   const state = useState<AuthState>('auth', () => {
     const parsed = parseUserCookie()
@@ -99,11 +100,15 @@ export function useAuth() {
     const request = (async () => {
       log('fetchUser:start', {
         hasStateUser: Boolean(state.value.user),
-        hasCookie: Boolean(userCookie.value)
+        hasCookie: Boolean(userCookie.value),
+        hasRequestCookieHeader: Boolean(requestHeaders?.cookie)
       })
 
       try {
-        const response = await requestFetch<{ user: AuthUser | null, session: AuthSession | null }>('/api/auth/me', { credentials: 'include' })
+        const response = await requestFetch<{ user: AuthUser | null, session: AuthSession | null }>('/api/auth/me', {
+          credentials: 'include',
+          headers: requestHeaders
+        })
 
         if (response.user)
           setUserCookie(response.user, response.session)

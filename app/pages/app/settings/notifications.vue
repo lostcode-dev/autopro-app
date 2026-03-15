@@ -9,6 +9,7 @@ useSeoMeta({
 
 const toast = useToast()
 const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 type NotificationPreferences = {
   channel_email: boolean
@@ -20,7 +21,7 @@ type NotificationPreferences = {
 
 const { data, status } = await useAsyncData(
   'notification-preferences',
-  () => requestFetch<NotificationPreferences>('/api/settings/notifications')
+  () => requestFetch<NotificationPreferences>('/api/settings/notifications', { headers: requestHeaders })
 )
 
 const state = reactive<NotificationPreferences>({

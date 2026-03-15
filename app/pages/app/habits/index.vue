@@ -715,4 +715,5 @@ const difficultyFilterOptions = computed(() => [
   - Não consigo ver o fundo de qualquer página.
   - ⁠Mudar  o comportamento quando é mobile em hábitos, checkbox pequeno e fica sem espaço para ficar empilhado
    
+  - Remover a identidade da listagem, é um conteúdo grande para ficar exibindo, pode ser usado em notificações, e para entender melhor sobre o hábito.
  -->

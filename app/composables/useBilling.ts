@@ -11,6 +11,7 @@ type BillingState = {
 
 export function useBilling() {
   const requestFetch = useRequestFetch()
+  const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
   const state = useState<BillingState>('billing', () => ({
     hasAccess: null,
     subscription: null,
@@ -21,7 +22,9 @@ export function useBilling() {
   const subscription = computed(() => state.value.subscription)
 
   async function fetchStatus() {
-    const response = await requestFetch<{ hasAccess: boolean, subscription: BillingState['subscription'] }>('/api/billing/status')
+    const response = await requestFetch<{ hasAccess: boolean, subscription: BillingState['subscription'] }>('/api/billing/status', {
+      headers: requestHeaders
+    })
     state.value.hasAccess = response.hasAccess
     state.value.subscription = response.subscription
     state.value.checkedAt = Date.now()

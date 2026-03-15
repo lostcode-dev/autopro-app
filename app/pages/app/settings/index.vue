@@ -13,6 +13,7 @@ useSeoMeta({
 const toast = useToast()
 const { fetchUser } = useAuth()
 const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 type ProfileResponse = {
   id: string
@@ -31,7 +32,7 @@ type ProfileSchema = z.output<typeof profileSchema>
 
 const { data: profileData, status } = await useAsyncData(
   'user-profile',
-  () => requestFetch<ProfileResponse>('/api/auth/profile')
+  () => requestFetch<ProfileResponse>('/api/auth/profile', { headers: requestHeaders })
 )
 
 const profile = reactive<Partial<ProfileSchema>>({

@@ -11,6 +11,7 @@ useSeoMeta({
 
 const toast = useToast()
 const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 // ─── Subscription ────────────────────────────────────────
 type Subscription = {
@@ -43,7 +44,7 @@ type BillingStatusResponse = {
 
 const { data, status, refresh } = await useAsyncData(
   'billing-subscription',
-  () => requestFetch<BillingStatusResponse>('/api/billing/status')
+  () => requestFetch<BillingStatusResponse>('/api/billing/status', { headers: requestHeaders })
 )
 
 const isCancelling = ref(false)
@@ -161,7 +162,10 @@ const showInvoices = ref(false)
 
 const { data: invoicesData, status: invoicesStatus, refresh: refreshInvoices } = await useAsyncData(
   () => `billing-invoices-${invoicePage.value}`,
-  () => requestFetch<InvoicesResponse>('/api/billing/invoices', { query: { page: invoicePage.value, pageSize: invoicePageSize } }),
+  () => requestFetch<InvoicesResponse>('/api/billing/invoices', {
+    headers: requestHeaders,
+    query: { page: invoicePage.value, pageSize: invoicePageSize }
+  }),
   { watch: [invoicePage], lazy: true, immediate: false }
 )
 

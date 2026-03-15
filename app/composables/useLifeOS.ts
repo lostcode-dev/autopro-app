@@ -3,6 +3,7 @@ import type { DailyDashboardResponse, LifeInsights, LifeArea, EntityLink, Create
 export function useLifeOS() {
   const toast = useToast()
   const requestFetch = useRequestFetch()
+  const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
   // ─── Daily Dashboard ────────────────────────────────────────────────────
   const {
@@ -11,7 +12,8 @@ export function useLifeOS() {
     refresh: refreshDashboard
   } = useFetch<DailyDashboardResponse>('/api/life/dashboard', {
     lazy: true,
-    $fetch: requestFetch
+    $fetch: requestFetch,
+    headers: requestHeaders
   })
 
   // ─── Insights ───────────────────────────────────────────────────────────
@@ -21,7 +23,8 @@ export function useLifeOS() {
     refresh: refreshInsights
   } = useFetch<LifeInsights>('/api/life/insights', {
     lazy: true,
-    $fetch: requestFetch
+    $fetch: requestFetch,
+    headers: requestHeaders
   })
 
   // ─── Life Areas ─────────────────────────────────────────────────────────
@@ -31,7 +34,8 @@ export function useLifeOS() {
     refresh: refreshAreas
   } = useFetch<{ data: LifeArea[], total: number }>('/api/life/areas', {
     lazy: true,
-    $fetch: requestFetch
+    $fetch: requestFetch,
+    headers: requestHeaders
   })
 
   const areas = computed(() => areasResponse.value?.data ?? [])
