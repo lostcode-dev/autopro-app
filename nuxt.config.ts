@@ -23,7 +23,13 @@ export default defineNuxtConfig({
 
     stripeSecretKey: process.env.STRIPE_SECRET_KEY,
     stripeAllowedPriceIds: process.env.STRIPE_ALLOWED_PRICE_IDS,
-    stripeBillingPortalConfigurationId: process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID
+    stripeBillingPortalConfigurationId: process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
+
+    public: {
+      posthogEnabled: process.env.NODE_ENV === 'production' && process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
+      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+      posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY ?? ''
+    }
   },
 
   routeRules: {

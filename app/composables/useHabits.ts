@@ -24,9 +24,57 @@ import type {
   Habit
 } from '~/types/habits'
 import { HabitDifficulty, HabitFrequency, HabitType } from '~/types/habits'
+import { PostHogEvent } from '~/types/analytics'
 
 export function useHabits() {
   const toast = useToast()
+  const { capture } = usePostHog()
+
+  function trackHabitsEvent(event: PostHogEvent, properties?: Record<string, boolean | number | string | undefined>) {
+    capture(event, {
+      product_area: 'habits',
+      ...properties
+    })
+  }
+
+  function getHabitTrackingProperties(
+    habit: Pick<Habit, 'customDays' | 'difficulty' | 'frequency' | 'habitType' | 'identityId' | 'scheduledEndTime' | 'scheduledTime' | 'tags'>
+  ) {
+    return {
+      custom_days_count: habit.customDays?.length ?? 0,
+      difficulty: habit.difficulty,
+      frequency: habit.frequency,
+      habit_type: habit.habitType,
+      has_identity: Boolean(habit.identityId),
+      has_scheduled_end_time: Boolean(habit.scheduledEndTime),
+      has_scheduled_time: Boolean(habit.scheduledTime),
+      tag_count: habit.tags?.length ?? 0
+    }
+  }
+
+  function getHabitPayloadTrackingProperties(payload: CreateHabitPayload | UpdateHabitPayload) {
+    return {
+      custom_days_count: payload.customDays?.length ?? 0,
+      difficulty: payload.difficulty,
+      frequency: payload.frequency,
+      habit_type: payload.habitType,
+      has_description: Boolean(payload.description?.trim()),
+      has_identity: Boolean(payload.identityId),
+      has_scheduled_end_time: Boolean(payload.scheduledEndTime),
+      has_scheduled_time: Boolean(payload.scheduledTime),
+      tag_count: payload.tagIds?.length ?? 0
+    }
+  }
+
+  function getTreeDepth(nodes: HabitTreeSyncNode[], depth = 1): number {
+    if (!nodes.length)
+      return depth - 1
+
+    return Math.max(
+      depth,
+      ...nodes.map(node => getTreeDepth(node.children ?? [], depth + 1))
+    )
+  }
 
   // ─── Today habits ────────────────────────────────────────────────────────────
   const todayDate = ref(new Date().toISOString().split('T')[0])
@@ -124,6 +172,11 @@ export function useHabits() {
         method: 'POST',
         body: payload
       })
+      trackHabitsEvent(PostHogEvent.HabitCreated, {
+        habit_id: habit.id,
+        ...getHabitPayloadTrackingProperties(payload),
+        ...getHabitTrackingProperties(habit)
+      })
       toast.add({ title: 'Hábito criado', description: `"${habit.name}" adicionado com sucesso.`, color: 'success' })
       await Promise.all([refreshToday(), refreshList()])
       return habit
@@ -139,6 +192,11 @@ export function useHabits() {
         method: 'PUT',
         body: payload
       })
+      trackHabitsEvent(PostHogEvent.HabitUpdated, {
+        habit_id: habit.id,
+        ...getHabitPayloadTrackingProperties(payload),
+        ...getHabitTrackingProperties(habit)
+      })
       toast.add({ title: 'Hábito atualizado', description: `"${habit.name}" salvo com sucesso.`, color: 'success' })
       await Promise.all([refreshToday(), refreshList()])
       return habit
@@ -151,6 +209,9 @@ export function useHabits() {
   async function archiveHabit(id: string, name: string): Promise<boolean> {
     try {
       await $fetch(`/api/habits/${id}`, { method: 'DELETE' })
+      trackHabitsEvent(PostHogEvent.HabitArchived, {
+        habit_id: id
+      })
       toast.add({ title: 'Hábito arquivado', description: `"${name}" foi arquivado.`, color: 'success' })
       await Promise.all([refreshToday(), refreshList()])
       return true
@@ -163,6 +224,9 @@ export function useHabits() {
   async function restoreHabit(id: string): Promise<boolean> {
     try {
       await $fetch(`/api/habits/${id}/restore`, { method: 'POST' })
+      trackHabitsEvent(PostHogEvent.HabitRestored, {
+        habit_id: id
+      })
       toast.add({ title: 'Hábito restaurado', description: 'O hábito foi restaurado com sucesso.', color: 'success' })
       await Promise.all([refreshToday(), refreshList()])
       return true
@@ -179,6 +243,12 @@ export function useHabits() {
         body: payload
       })
       const isCompleted = payload.status ? payload.status !== 'skipped' : payload.completed
+      trackHabitsEvent(PostHogEvent.HabitLogged, {
+        completed: isCompleted,
+        habit_id: payload.habitId,
+        has_note: Boolean(payload.note?.trim()),
+        status: payload.status ?? (payload.completed ? 'done' : 'skipped')
+      })
       if (isCompleted) {
         toast.add({ title: 'Muito bem!', description: 'Você está construindo consistência.', color: 'success' })
       }
@@ -196,6 +266,10 @@ export function useHabits() {
         method: 'POST',
         body: payload
       })
+      trackHabitsEvent(PostHogEvent.HabitIdentityCreated, {
+        has_description: Boolean(identity.description?.trim()),
+        identity_id: identity.id
+      })
       toast.add({ title: 'Identidade criada', description: `"${identity.name}" criada com sucesso.`, color: 'success' })
       await refreshIdentities()
       return identity
@@ -208,6 +282,9 @@ export function useHabits() {
   async function archiveIdentity(id: string, name: string): Promise<boolean> {
     try {
       await $fetch(`/api/habits/identities/${id}`, { method: 'DELETE' })
+      trackHabitsEvent(PostHogEvent.HabitIdentityArchived, {
+        identity_id: id
+      })
       toast.add({ title: 'Identidade arquivada', description: `"${name}" foi arquivada.`, color: 'success' })
 
       if (listIdentityId.value === id) {
@@ -228,6 +305,10 @@ export function useHabits() {
         method: 'PUT',
         body: payload
       })
+      trackHabitsEvent(PostHogEvent.HabitIdentityUpdated, {
+        has_description: Boolean(identity.description?.trim()),
+        identity_id: identity.id
+      })
       toast.add({ title: 'Identidade atualizada', description: `"${identity.name}" salva com sucesso.`, color: 'success' })
       await Promise.all([refreshIdentities(), refreshList()])
       return identity
@@ -243,6 +324,9 @@ export function useHabits() {
         method: 'POST',
         body: payload
       })
+      trackHabitsEvent(PostHogEvent.HabitTagCreated, {
+        tag_id: tag.id
+      })
       toast.add({ title: 'Tag criada', description: `"${tag.name}" criada com sucesso.`, color: 'success' })
       await refreshTags()
       return tag
@@ -255,6 +339,9 @@ export function useHabits() {
   async function deleteTag(id: string, name: string): Promise<boolean> {
     try {
       await $fetch(`/api/habits/tags/${id}`, { method: 'DELETE' })
+      trackHabitsEvent(PostHogEvent.HabitTagDeleted, {
+        tag_id: id
+      })
       toast.add({ title: 'Tag excluída', description: `"${name}" foi excluída.`, color: 'success' })
       await Promise.all([refreshTags(), refreshList()])
       return true
@@ -269,6 +356,10 @@ export function useHabits() {
       const reflection = await $fetch<HabitReflection>('/api/habits/reflections', {
         method: 'POST',
         body: payload
+      })
+      trackHabitsEvent(PostHogEvent.HabitReflectionSaved, {
+        has_improvements: Boolean(payload.improvements?.trim()),
+        has_wins: Boolean(payload.wins?.trim())
       })
       toast.add({ title: 'Reflexão salva', description: 'Sua revisão semanal foi salva.', color: 'success' })
       return reflection
@@ -366,6 +457,11 @@ export function useHabits() {
         method: 'POST',
         body: payload
       })
+      trackHabitsEvent(PostHogEvent.HabitStackCreated, {
+        new_habit_id: stack.newHabitId,
+        stack_id: stack.id,
+        trigger_habit_id: stack.triggerHabitId
+      })
       toast.add({ title: 'Empilhamento criado', description: 'Gatilho de hábito adicionado com sucesso.', color: 'success' })
       await silentRefreshAfterStackChange()
       return stack
@@ -378,6 +474,9 @@ export function useHabits() {
   async function removeStack(id: string): Promise<boolean> {
     try {
       await $fetch(`/api/habits/stacks/${id}`, { method: 'DELETE' })
+      trackHabitsEvent(PostHogEvent.HabitStackRemoved, {
+        stack_id: id
+      })
       toast.add({ title: 'Empilhamento removido', description: 'Gatilho removido com sucesso.', color: 'success' })
       await silentRefreshAfterStackChange()
       return true
@@ -389,8 +488,12 @@ export function useHabits() {
 
   async function removeStacksByTrigger(triggerHabitId: string, habitName: string): Promise<boolean> {
     try {
-      const result = await $fetch<{ success: boolean; removedCount: number }>(`/api/habits/stacks/trigger/${triggerHabitId}`, {
+      const result = await $fetch<{ success: boolean, removedCount: number }>(`/api/habits/stacks/trigger/${triggerHabitId}`, {
         method: 'DELETE'
+      })
+      trackHabitsEvent(PostHogEvent.HabitTriggerStacksRemoved, {
+        removed_count: result.removedCount,
+        trigger_habit_id: triggerHabitId
       })
 
       toast.add({
@@ -414,6 +517,10 @@ export function useHabits() {
       await $fetch('/api/habits/tree', {
         method: 'PUT',
         body: { nodes }
+      })
+      trackHabitsEvent(PostHogEvent.HabitTreeSynced, {
+        max_depth: getTreeDepth(nodes),
+        node_count: nodes.length
       })
 
       toast.add({
@@ -450,6 +557,11 @@ export function useHabits() {
       const result = await $fetch<HabitUserSettings>('/api/habits/settings', {
         method: 'PUT',
         body: payload
+      })
+      trackHabitsEvent(PostHogEvent.HabitSettingsUpdated, {
+        review_day: payload.reviewDay,
+        review_reminder_enabled: payload.reviewReminderEnabled,
+        share_enabled: payload.shareEnabled
       })
       toast.add({ title: 'Configurações salvas', description: 'Preferências de hábitos atualizadas.', color: 'success' })
       return result

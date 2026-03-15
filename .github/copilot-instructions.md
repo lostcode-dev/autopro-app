@@ -1,144 +1,178 @@
 # Copilot Instructions — Kortex (Nuxt 4 + Nuxt UI + Supabase)
 
-Estas instruções definem o padrão do projeto para que contribuições geradas com GitHub Copilot mantenham consistência, performance e qualidade.
+These instructions define the project standard so that contributions generated with GitHub Copilot maintain consistency, performance, and quality.
 
-## Contexto do produto
+## Product context
 
-**Kortex** é um sistema pessoal de conhecimento para **capturar, organizar e transformar ideias em ação**. Construído com **Nuxt** e **Supabase**, funciona como uma extensão da mente — ideias não se perdem, elas evoluem.
+**Kortex** is a personal knowledge system built to **capture, organize, and turn ideas into action**. It is built with **Nuxt** and **Supabase**, and should feel like an extension of the user's mind: ideas should not get lost, they should evolve.
 
-O app deve ser rápido, confiável e escalável (muitos itens/dados), com UX clara para criar/editar/buscar conteúdo como **notas, hábitos, coleções e tags**.
+The app must be fast, reliable, and scalable for large datasets, with a clear UX for creating, editing, and finding content such as **notes, habits, collections, and tags**.
 
-## Stack e convenções existentes (não quebrar)
+## Existing stack and conventions (do not break)
 
-- Framework: **Nuxt 4**, Vue 3, TypeScript, `script setup`.
-- UI/Design system: **@nuxt/ui**.
-- Styling: **Tailwind CSS v4** + tokens/tema em `app/assets/css/main.css`.
-- Validação: **zod** (já usado com `UForm`).
-- Notificações: `useToast()` (Nuxt UI) já está em uso.
-- APIs: rotas internas em `server/api/*.ts` (Nitro `eventHandler`).
-- Banco/serviços: **Supabase** (sempre acessado via server-side).
-- CI: `pnpm lint` e `pnpm typecheck` devem passar.
+- Framework: **Nuxt 4**, Vue 3, TypeScript, `script setup`
+- UI / design system: **@nuxt/ui**
+- Styling: **Tailwind CSS v4** + theme tokens in `app/assets/css/main.css`
+- Validation: **zod** (already used with `UForm`)
+- Notifications: `useToast()` from Nuxt UI is already in use
+- APIs: internal routes in `server/api/*.ts` (Nitro `eventHandler`)
+- Database / services: **Supabase** (always accessed server-side)
+- CI: `pnpm lint` and `pnpm typecheck` must pass
 
-> Observação: apesar de o repositório ter vindo de um template, **o produto é o Kortex**. Para estilos, o projeto usa Tailwind/Nuxt UI; evite adicionar SCSS/SASS sem necessidade.
+> Note: even though the repository started from a template, **the product is Kortex**. For styling, the project uses Tailwind + Nuxt UI. Avoid introducing SCSS/SASS unless there is a real need.
 
-## Padrões para SASS/SCSS (quando realmente necessário)
+## SASS / SCSS rules (only when truly necessary)
 
-O projeto **prioriza Tailwind + Nuxt UI**. Se for inevitável usar SASS/SCSS (ex.: integração com lib legada, styles muito complexos para utilitárias), siga:
+The project **prioritizes Tailwind + Nuxt UI**. If using SASS / SCSS is unavoidable, for example for legacy library integration or styling too complex for utility classes, follow these rules:
 
-- Prefira **escopo local** (ex.: `<style scoped lang="scss">`) e mantenha o bloco pequeno.
-- Use **`@use` / `@forward`** (evite `@import`).
-- Não crie **cores/sombras/fontes hard-coded** em SCSS; use tokens/classes existentes e variáveis do tema.
-- Organize em módulos pequenos e reaproveitáveis; evite “arquivo gigante” de estilos.
-- Evite estilos globais que vazem para outras telas.
+- Prefer **local scope** (for example `<style scoped lang="scss">`) and keep the block small
+- Use **`@use` / `@forward`** and avoid `@import`
+- Do not create hard-coded **colors, shadows, or fonts** in SCSS; use existing tokens, classes, and theme variables
+- Organize styles into small reusable modules and avoid giant files
+- Avoid global styles that leak into other screens
 
-## Padrão para UI e estilos (Tailwind/Nuxt UI)
+## UI and styling standard (Tailwind / Nuxt UI)
 
-1. **Use componentes do Nuxt UI primeiro** (ex.: `UForm`, `UInput`, `UTable`, `UModal`, `USlideover`, `USkeleton`, `UButton`).
-2. **Não introduza cores/fontes/sombras hard-coded**. Use tokens/classes existentes (Tailwind) e as variáveis/tokens do tema.
-3. **Evite CSS local** em componentes. Quando inevitável:
-   - prefira classes utilitárias;
-   - mantenha estilos pequenos e sem inventar tokens.
-4. **Acessibilidade**: labels, `aria-*`, foco visível, elementos clicáveis com hit-area apropriada.
+1. **Use Nuxt UI components first** (for example `UForm`, `UInput`, `UTable`, `UModal`, `USlideover`, `USkeleton`, `UButton`)
+2. **Do not introduce hard-coded colors, fonts, or shadows**. Use existing tokens and theme variables
+3. **Avoid local CSS** in components. When it is unavoidable:
+   - prefer utility classes
+   - keep styles small and avoid inventing new tokens
+4. **Accessibility** is required: labels, `aria-*`, visible focus states, and appropriate click / tap targets
 
-## Loading (carregamento total e parcial) com Skeleton
+## Loading states with skeletons
 
-Sempre que houver carregamento assíncrono:
+Whenever there is asynchronous loading:
 
-### 1) Loading total de página
-- Use `useAsyncData`/`useFetch` no nível da página.
-- Enquanto `status === 'pending'` ou `pending === true`, renderize um **layout de skeleton** que preserve a estrutura final (evita layout shift).
-- Prefira criar um componente dedicado `*Skeleton.vue` quando a UI for reutilizável.
+### 1. Full-page loading
 
-### 2) Loading parcial (componentes / áreas)
-- Para cards, listas, tabelas e painéis: renderize skeleton local (ex.: `USkeleton`) **apenas naquela área**.
-- Botões de ação devem ter `loading`/`loading-auto` quando aplicável.
+- Use `useAsyncData` or `useFetch` at the page level
+- While `status === 'pending'` or `pending === true`, render a **skeleton layout** that preserves the final structure and avoids layout shift
+- Prefer a dedicated `*Skeleton.vue` component when the UI is reusable
 
-Regras:
-- Skeleton deve refletir tamanho/forma aproximada do conteúdo final.
-- Não bloqueie a página inteira se apenas uma seção está carregando.
+### 2. Partial loading (components / sections)
 
-## Notificações (toasts) após ações de API
+- For cards, lists, tables, and panels, render a local skeleton such as `USkeleton` only in that area
+- Action buttons should use `loading` or `loading-auto` when applicable
 
-Toda ação que cria/atualiza/exclui dados ou chama API deve:
+Rules:
 
-- Mostrar toast de **sucesso** ao completar.
-- Mostrar toast de **erro** ao falhar (mensagem útil, sem expor segredos).
-- Usar `try/catch` e, quando fizer sentido, feedback de `loading`.
+- Skeletons should roughly match the size and shape of the final content
+- Do not block the whole page if only one section is loading
 
-Padrão:
+## Notifications (toasts) after API actions
+
+Every action that creates, updates, deletes data, or calls an API must:
+
+- Show a **success** toast when it completes
+- Show an **error** toast when it fails, with a useful message and without exposing secrets
+- Use `try/catch` and provide loading feedback when appropriate
+
+Standard:
+
 - `const toast = useToast()`
-- Sucesso: `toast.add({ title, description, color: 'success' })`
-- Erro: `toast.add({ title: 'Erro', description, color: 'error' })`
+- Success: `toast.add({ title, description, color: 'success' })`
+- Error: `toast.add({ title: 'Error', description, color: 'error' })`
 
-Exemplos típicos no domínio:
-- Criar nota/hábito/tag → toast de sucesso + fechar modal.
-- Falha ao salvar no Supabase → toast de erro com mensagem curta e útil.
+Typical examples in this domain:
 
-## Performance e otimização (considerando muitos dados)
+- Creating a note / habit / tag should show a success toast and close the modal
+- Failing to save to Supabase should show a short, useful error toast
 
-1. **Nunca** buscar “tudo” sem paginação quando o volume pode crescer.
-2. Listas/tabelas:
-   - suportar paginação (`page`, `pageSize`) e ordenação/filters;
-   - preferir filtros server-side para grandes datasets.
-3. Use `useFetch`/`useAsyncData` com:
-   - `lazy: true` quando a UI não precisa travar SSR;
-   - `key` estável quando depender de params;
-   - `watch` apenas nas dependências necessárias.
-4. Evite watchers caros e recomputações desnecessárias.
-5. Em inputs de busca/filtro, use debounce (ex.: `@vueuse/core`) para não disparar requisições a cada tecla.
+## PostHog analytics (required for screens and flows)
 
-## Formulários: validação obrigatória e erro abaixo do input
+Every new screen, core product area, or relevant flow must ship with **PostHog** instrumentation.
 
-Regras obrigatórias para qualquer form:
+Rules:
 
-1. Sempre usar `UForm` com schema **Zod**.
-2. Cada campo deve estar em `UFormField` com `name`.
-3. Mensagens de erro devem aparecer **abaixo do input** (o `UFormField` faz isso quando integrado ao `UForm` + `schema`).
-4. Em submit:
-   - desabilitar/mostrar loading durante request;
-   - tratar erro com toast;
-   - fechar modal/limpar state apenas no sucesso.
+- Always use the `usePostHog()` composable; do not import `posthog-js` directly inside pages or components
+- Every screen must have pageview tracking. The global plugin already covers navigation and visited screens, so new flows must preserve that pattern
+- Every primary domain action must have its own semantic event
+- Do not send free text, rich content, long descriptions, or high-cardinality properties such as full entity names
+- Prefer stable, aggregatable properties such as:
+  - `id`
+  - `type`
+  - `status`
+  - `count`
+  - boolean flags like `has_identity`, `has_note`, `has_schedule`
+- User identification must use the central auth flow; do not call `identify` or `reset` manually outside the global pattern
+- Feature flags must be consumed through `usePostHog()` using `isFeatureEnabled`, `getFeatureFlag`, `getFeatureFlagPayload`, and `onFeatureFlags`
+- Tracking must run only in production. Never enable PostHog in local development or preview environments unless there is an explicit decision to do so
 
-## Modularização e organização
+Minimum checklist per screen:
 
-- Componentes reutilizáveis devem ir para `app/components/**` (ex.: `Habits*`, `Notes*`, `Tags*`, `Collections*`, `Skeletons/*`).
-- Lógica de estado compartilhado deve ir para `app/composables/**`.
-- Não criar componentes “gigantes”. Regra prática: se um arquivo cresce demais ou mistura responsabilidades, **quebre em componentes menores**.
+- pageview exists
+- primary actions have semantic events
+- event properties do not contain unnecessary PII or free text
+- event naming is semantic and consistent with the domain
 
-## Padrão de API: sempre server-side
+## Performance and optimization (large data volumes)
 
-Qualquer integração com banco/serviços externos (ex.: **Supabase**) deve acontecer **no servidor**.
+1. **Never** fetch everything without pagination when data can grow
+2. Lists and tables should:
+   - support pagination (`page`, `pageSize`) and sorting / filtering
+   - prefer server-side filters for large datasets
+3. Use `useFetch` / `useAsyncData` with:
+   - `lazy: true` when the UI does not need to block SSR
+   - a stable `key` when data depends on params
+   - `watch` only on the required dependencies
+4. Avoid expensive watchers and unnecessary recomputation
+5. Use debounce for search and filter inputs, for example with `@vueuse/core`, to avoid firing requests on every keystroke
 
-Regras:
-1. Criar/usar rotas em `server/api/**` (Nitro) para:
-   - CRUD de entidades;
-   - consultas/paginação/filtros;
-   - chamadas a Supabase/serviços externos.
-2. No client, chamar apenas endpoints internos com `$fetch`/`useFetch`.
-3. Validar input no servidor com Zod:
-   - `readBody(event)` para POST/PUT/PATCH;
-   - `getQuery(event)` para GET;
-   - em caso de erro, usar `throw createError({ statusCode, statusMessage, data })`.
-4. Nunca expor secrets no client. Secrets devem estar em `runtimeConfig` e usados apenas server-side.
+## Forms: required validation and error message placement
 
-Padrão recomendado:
-- **Não** chamar Supabase diretamente do client.
-- Preferir `server/api/<dominio>/*.ts` por entidade (ex.: `notes`, `habits`, `tags`).
-- Respostas pequenas e previsíveis (com paginação) para suportar escala.
+Required rules for any form:
 
-## Padrões de código (TypeScript/Vue)
+1. Always use `UForm` with a **Zod** schema
+2. Every field must be wrapped in `UFormField` with a `name`
+3. Validation errors must appear **below the input**. `UFormField` already handles this when wired to `UForm` + `schema`
+4. On submit:
+   - disable the form or show loading during the request
+   - handle errors with a toast
+   - only close the modal or clear state on success
 
-- Preferir `type`/`interface` explícitos para payloads e respostas.
-- Manter nomes claros e consistentes (domínio: `habits`, `notes`, `collections`, `tags`, `inbox`, `schedules`, `reports`).
-- Evitar `any`.
-- Preferir funções pequenas e puras quando possível.
+## Modularization and organization
 
-### Imports with Aliases
+- Reusable components belong in `app/components/**` (for example `Habits*`, `Notes*`, `Tags*`, `Collections*`, `Skeletons/*`)
+- Shared state logic belongs in `app/composables/**`
+- Do not create giant components. If a file grows too much or mixes responsibilities, split it into smaller pieces
 
-Whenever possible, prefer using **project aliases** instead of long relative paths.
+## API standard: always server-side
 
-- `~/` for imports starting from the Nuxt source root (e.g. `~/server`, `~/app`, etc.)
-- `@/` as an equivalent root alias (when appropriate)
+Any integration with the database or external services such as **Supabase** must happen **on the server**.
+
+Rules:
+
+1. Create or use routes in `server/api/**` (Nitro) for:
+   - entity CRUD
+   - queries, pagination, and filters
+   - Supabase and external service calls
+2. On the client, call only internal endpoints through `$fetch` or `useFetch`
+3. Validate input on the server with Zod:
+   - `readBody(event)` for POST / PUT / PATCH
+   - `getQuery(event)` for GET
+   - on error, use `throw createError({ statusCode, statusMessage, data })`
+4. Never expose secrets to the client. Secrets must stay in `runtimeConfig` and be used only server-side
+
+Recommended pattern:
+
+- **Do not** call Supabase directly from the client
+- Prefer `server/api/<domain>/*.ts` per entity, for example `notes`, `habits`, `tags`
+- Keep responses small and predictable, with pagination where appropriate
+
+## Code standards (TypeScript / Vue)
+
+- Prefer explicit `type` / `interface` definitions for payloads and responses
+- Keep naming clear and consistent with the domain: `habits`, `notes`, `collections`, `tags`, `inbox`, `schedules`, `reports`
+- Avoid `any`
+- Prefer small and mostly pure functions when possible
+
+### Imports with aliases
+
+Whenever possible, prefer **project aliases** instead of long relative paths.
+
+- `~/` for imports from the Nuxt source root
+- `@/` as an equivalent root alias when appropriate
 
 #### Examples
 
@@ -147,48 +181,47 @@ Whenever possible, prefer using **project aliases** instead of long relative pat
 
 #### Goal
 
-Improve code readability, avoid `../../..` paths, and make refactors and structural changes easier and safer.
+Improve readability, avoid `../../..` imports, and make refactors safer and easier.
 
-### Enums and Type Safety (TypeScript Rule)
+### Enums and type safety (TypeScript rule)
 
 Always use **TypeScript enums** for fixed sets of values and ensure that **all code is fully typed with TypeScript**.
 
 #### Rules
 
 - Always use `enum` for:
-  - Statuses
-  - Types
-  - Categories
-  - Modes
-  - Any finite and predefined set of values
-- Never use raw strings or numbers to represent types or statuses
+  - statuses
+  - types
+  - categories
+  - modes
+  - any finite and predefined set of values
+- Never use raw strings or numbers to represent statuses or types
 - Do not rely on implicit `any`
 - Always explicitly type:
-  - Function parameters
-  - Function return types
-  - Object properties
+  - function parameters
+  - function return types
+  - object properties
   - API request and response payloads
 
-#### Examples
+#### Example
 
-**Enum definition**
 ```ts
 enum UserRole {
   Admin = 'admin',
   User = 'user',
-  Guest = 'guest',
-}``
+  Guest = 'guest'
+}
+```
 
-## Goal
+#### Goal
 
-Guarantee type safety, consistency, and maintainability across the codebase, reduce runtime errors, and make refactoring safer and more predictable.
+Guarantee type safety, consistency, and maintainability across the codebase, reduce runtime errors, and make refactors safer and more predictable.
 
+## Checklist before finishing
 
-## Checklist antes de finalizar
-
-- UI usa componentes Nuxt UI e tokens existentes.
-- Loading total/parcial com skeleton implementado.
-- Toast de sucesso/erro após ações.
-- Form com Zod + erro abaixo do input.
-- Para muito dado: paginação/filtros server-side.
-- Integrações externas só em `server/api/**`.
+- UI uses Nuxt UI components and existing tokens
+- Full and partial loading states use skeletons
+- Success and error toasts exist after actions
+- Forms use Zod and show validation errors below inputs
+- Large datasets use server-side pagination and filtering
+- External integrations live only in `server/api/**`

@@ -631,16 +631,6 @@ const difficultyFilterOptions = computed(() => [
     Atualmente ele está abrindo atrás do modal.
 
   ========================
-  🔐 Autenticação / Sessão
-  ========================
-
-  - Investigar problema de logout inesperado.
-    O usuário está sendo deslogado ocasionalmente sem motivo aparente.
-
-  - Corrigir persistência de sessão.
-    O sistema está exigindo login com muita frequência, indicando que a sessão não está sendo armazenada corretamente.
-
-  ========================
    🏷️ Organização / Estrutura
   ========================
 
@@ -685,6 +675,13 @@ const difficultyFilterOptions = computed(() => [
       - telas visitadas
       - fluxo de navegação
       - ações realizadas nos hábitos
+
+  - Adiciona na documentação para toda tela ter métricas do PostHog no copilot-instructions.md
+  - Cria o composable para uso do Posthog;
+  - Identifica o user quando faz login ou quando inicia a sessão;
+  - Remove a idenficação do usuário quando faz logout;
+  - Aplique os melhores padrões do PostHog para garantir a qualidade dos dados coletados.
+  - Também vou usar o Posthog para feature flag;
 
     O tracking deve rodar apenas em produção para evitar poluição de dados com eventos de desenvolvimento.
  -->
