@@ -36,12 +36,7 @@ const sortedIdentities = computed(() => {
   return [...(identities.value ?? [])].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 })
 
-const headerDescription = computed(() => {
-  const count = sortedIdentities.value.length
-  if (count === 0) return 'Crie identidades para conectar hábitos à pessoa que você quer se tornar.'
-  if (count === 1) return '1 identidade cadastrada.'
-  return `${count} identidades cadastradas.`
-})
+const headerDescription = computed(() => 'Crie identidades para conectar hábitos à pessoa que você quer se tornar.')
 
 function openCreateForm() {
   editingIdentity.value = null

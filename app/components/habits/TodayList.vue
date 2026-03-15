@@ -355,8 +355,8 @@ function onSelectHabit(habitId: string) {
 
 <style scoped>
 :deep(.today-tree-shell .he-tree) {
-  max-height: 70vh;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 :deep(.today-tree-shell .tree-line) {

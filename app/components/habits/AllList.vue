@@ -286,8 +286,8 @@ function onArchiveHabit(habit: Habit) {
 
 <style scoped>
 :deep(.habit-tree-shell .he-tree) {
-  max-height: 70vh;
-  overflow: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 :deep(.habit-tree-shell .tree-line) {
