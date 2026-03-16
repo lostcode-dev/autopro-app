@@ -875,14 +875,12 @@ onBeforeUnmount(() => {
     - Incluir mais informações relevantes para o usuário.
     - Tornar a seção totalmente responsiva.
 
-  - Permitir seleção de múltiplas frequências no formulário de hábitos.
-    Atualmente só é possível selecionar uma frequência, mas muitos hábitos ocorrem em múltiplos dias da semana.
-
   - Melhorar o campo de horário do hábito.
     O objetivo é permitir que o usuário utilize o horário como referência na agenda diária.
 
-  - Corrigir o HourPicker dentro do modal.
-    Atualmente ele está abrindo atrás do modal.
+  - Alterar o layout do TimePicker e como foi construído, deve ser um componente generico.
+
+  - Dentro do Forms, no lugar de ser por tabs, poderia ser por accordion, para facilitar a navegação entre as seções do formulário.
 
   ========================
    🏷️ Organização / Estrutura
