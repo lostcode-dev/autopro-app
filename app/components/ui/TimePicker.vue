@@ -14,7 +14,6 @@ const emit = defineEmits<{
 }>()
 
 const popoverOpen = ref(false)
-const triggerRef = ref<HTMLElement | null>(null)
 
 const selectedHour = computed(() => {
   if (!props.modelValue) return null
@@ -28,13 +27,6 @@ const selectedMinute = computed(() => {
 
 const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
 const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
-const quickTimes = [
-  { label: '06:00', value: '06:00' },
-  { label: '08:00', value: '08:00' },
-  { label: '12:00', value: '12:00' },
-  { label: '18:00', value: '18:00' },
-  { label: '21:00', value: '21:00' }
-]
 
 function selectHour(hour: string) {
   const min = selectedMinute.value ?? '00'
@@ -131,27 +123,7 @@ function scrollToSelected() {
               <p class="text-sm font-semibold text-highlighted">
                 Selecionar horário
               </p>
-              <p class="mt-1 text-sm text-muted">
-                Use esse horário como referência na agenda diária.
-              </p>
             </div>
-
-            <UBadge color="neutral" variant="subtle" size="lg">
-              {{ displayValue || 'Sem horário' }}
-            </UBadge>
-          </div>
-
-          <div class="mt-4 flex flex-wrap gap-2">
-            <UButton
-              v-for="time in quickTimes"
-              :key="time.value"
-              type="button"
-              :label="time.label"
-              size="xs"
-              color="neutral"
-              :variant="displayValue === time.value ? 'solid' : 'subtle'"
-              @click="selectTime(time.value)"
-            />
           </div>
         </div>
 
@@ -179,7 +151,7 @@ function scrollToSelected() {
 
           <div class="min-w-0">
             <p class="border-b border-default px-3 py-2 text-center text-xs font-medium uppercase tracking-[0.12em] text-muted">
-              Min
+              Minuto
             </p>
             <div ref="minuteListRef" class="h-56 overflow-y-auto p-2">
               <div class="grid grid-cols-2 gap-2">
@@ -200,10 +172,6 @@ function scrollToSelected() {
         </div>
 
         <div class="flex items-center justify-between border-t border-default px-3 py-3">
-          <p class="text-xs text-muted">
-            Intervalos de 5 minutos.
-          </p>
-
           <div class="flex items-center gap-2">
             <UButton
               label="Fechar"
