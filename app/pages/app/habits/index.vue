@@ -898,15 +898,8 @@ onBeforeUnmount(() => {
   🚀 Onboarding
   ========================
 
-  - Criar um fluxo de onboarding para novos usuários.
-    O objetivo é guiar o usuário nas primeiras ações dentro da aplicação,
-    como criação do primeiro hábito e entendimento da lógica de funcionamento.
-
-  - Em Hábitos, quando muda de Tab, deveria ficar focado na Tab a dica.
-  - Deve passar pela aba de Revisão explicando.
-  - Cria também o tour para quando vai criar o primeiro hábito, para mostrar a funcionalidade de criação, e depois quando clica para criar o hábito, tem um tour específico para mostrar as funcionalidades dentro do formulário de criação do hábito.
-
-  -agora preciso entender do onboarding para novos usuários, basicmaente,  ele preencher as informações que precisa, tipo entender o público, também explicar um pouco osbre
+  - Validar e pesquisar para exibir da melhor forma o Onboarding
+  - Agora preciso entender do onboarding para novos usuários, basicmaente,  ele preencher as informações que precisa, tipo entender o público, também explicar um pouco osbre
     1 Welcome
     2 Entender perfil do usuário
     3 Configuração mínima
