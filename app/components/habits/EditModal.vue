@@ -82,7 +82,7 @@ const state = reactive<Partial<Schema>>({
 })
 
 const loading = ref(false)
-const activeFormTab = ref('schedule')
+const activeFormTab = ref<string | undefined>(undefined)
 const selectedTagIds = ref<string[]>([])
 const avatarPopoverOpen = ref(false)
 
@@ -127,7 +127,7 @@ watch(
       }
     }
 
-    if (!open) activeFormTab.value = 'schedule'
+    if (!open) activeFormTab.value = undefined
   }
 )
 
@@ -196,7 +196,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
 }
 
 function onClose() {
-  activeFormTab.value = 'schedule'
+  activeFormTab.value = undefined
   avatarPopoverOpen.value = false
   emit('update:open', false)
 }

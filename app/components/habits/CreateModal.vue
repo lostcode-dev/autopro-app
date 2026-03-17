@@ -96,7 +96,7 @@ const state = reactive<Partial<Schema>>({
 });
 
 const loading = ref(false);
-const activeFormTab = ref("schedule");
+const activeFormTab = ref<string | undefined>(undefined);
 const selectedTagIds = ref<string[]>([]);
 const avatarPopoverOpen = ref(false);
 let createHabitTour: Driver | null = null;
@@ -122,7 +122,7 @@ watch(
           key: GuidedTourKey.HabitsFirstHabitCreate,
           onDestroyed: () => {
             createHabitTour = null;
-            activeFormTab.value = "schedule";
+            activeFormTab.value = undefined;
           },
           steps: buildCreateHabitTourSteps(),
         });
@@ -132,7 +132,7 @@ watch(
     if (!open) {
       createHabitTour?.destroy();
       createHabitTour = null;
-      activeFormTab.value = "schedule";
+      activeFormTab.value = undefined;
     }
   },
 );
@@ -220,14 +220,14 @@ function resetForm() {
   state.scheduledTime = undefined;
   state.scheduledEndTime = undefined;
   selectedTagIds.value = [];
-  activeFormTab.value = "schedule";
+  activeFormTab.value = undefined;
   avatarPopoverOpen.value = false;
 }
 
 function onClose() {
   createHabitTour?.destroy();
   createHabitTour = null;
-  activeFormTab.value = "schedule";
+  activeFormTab.value = undefined;
   emit("update:open", false);
 }
 
