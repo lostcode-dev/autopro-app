@@ -45,7 +45,7 @@ async function handleRefresh() {
     <template #header>
       <UDashboardNavbar title="Visão geral" :ui="{ right: 'gap-3' }">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

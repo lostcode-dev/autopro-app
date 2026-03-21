@@ -143,7 +143,7 @@ const statusFilterOptions = computed(() => [
     <template #header>
       <UDashboardNavbar title="Metas">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

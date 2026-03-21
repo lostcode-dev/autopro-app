@@ -222,7 +222,7 @@ const addButtonConfig = computed(() => {
     <template #header>
       <UDashboardNavbar title="Finanças">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

@@ -628,7 +628,7 @@ onBeforeUnmount(() => {
     <template #header>
       <UDashboardNavbar title="Hábitos">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

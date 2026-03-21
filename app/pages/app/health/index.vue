@@ -13,7 +13,7 @@ useSeoMeta({
     <template #header>
       <UDashboardNavbar title="Health">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

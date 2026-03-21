@@ -286,7 +286,7 @@ onMounted(() => {
     <template #header>
       <UDashboardNavbar title="Agenda">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #default>

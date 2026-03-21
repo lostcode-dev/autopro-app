@@ -41,7 +41,7 @@ const links = [
     <template #header>
       <UDashboardNavbar title="Configurações">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

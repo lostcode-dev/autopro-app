@@ -116,7 +116,7 @@ async function onArchive(identity: Identity) {
     <template #header>
       <UDashboardNavbar title="Identidades">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

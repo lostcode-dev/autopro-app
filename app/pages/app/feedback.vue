@@ -176,7 +176,7 @@ function onAdminPageUpdate(page: number) {
     <template #header>
       <UDashboardNavbar title="Feedback">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
         <template #right>
           <NotificationsButton />

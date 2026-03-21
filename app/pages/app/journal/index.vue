@@ -98,7 +98,7 @@ const tagFilterOptions = computed(() => [
     <template #header>
       <UDashboardNavbar title="Diário">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

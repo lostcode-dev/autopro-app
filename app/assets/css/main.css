@@ -110,6 +110,7 @@ body.keyboard-open .mobile-bottom-nav {
 
 /* ─── Mobile bottom navigation ──────────────────────────────────── */
 .mobile-bottom-nav {
+  --mobile-bottom-nav-height: 4.75rem;
   position: fixed;
   bottom: 0;
   left: 0;
@@ -131,7 +132,7 @@ body.keyboard-open .mobile-bottom-nav {
 /* Offset main content so it's not hidden behind bottom nav */
 @media (max-width: 1023px) {
   .app-content-with-bottom-nav {
-    padding-bottom: calc(4rem + var(--safe-area-bottom));
+    padding-bottom: calc(var(--mobile-bottom-nav-height, 4.75rem) + var(--safe-area-bottom));
   }
 }
 

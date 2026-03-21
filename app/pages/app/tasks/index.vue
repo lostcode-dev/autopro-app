@@ -139,7 +139,7 @@ const listFilterOptions = computed(() => [
     <template #header>
       <UDashboardNavbar title="Tarefas">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>

@@ -207,7 +207,7 @@ function switchToGraph(): void {
       <!-- Top navbar -->
       <UDashboardNavbar>
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
           <span class="ml-2 text-sm font-medium text-highlighted">
             {{ activeView === 'graph' ? 'Grafo de Conhecimento' : 'Editor' }}
           </span>

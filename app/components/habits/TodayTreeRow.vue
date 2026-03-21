@@ -93,6 +93,9 @@ const lawHints = computed<HabitLawHint[]>(() => {
   ].filter((hint): hint is HabitLawHint => Boolean(hint.html && hint.plainText))
 })
 
+const isMobile = useMediaQuery('(max-width: 767px)')
+const checkboxSize = computed(() => (isMobile.value ? 'md' : 'sm'))
+
 const logStatusMeta = computed(() => {
   const status = props.node.habit.log?.status as HabitLogStatus | undefined
   if (!status) return null
@@ -126,7 +129,7 @@ const scheduledTimeLabel = computed(() => {
 
 <template>
   <div
-    class="today-tree-row mb-2 rounded-xl border border-default/60 px-3 py-2.5 shadow-sm transition-colors hover:bg-elevated/50"
+    class="today-tree-row mb-2.5 rounded-xl border border-default/60 px-2.5 py-2.5 shadow-sm transition-colors hover:bg-elevated/50 sm:mb-2 sm:px-3"
     :class="{
       'bg-success/5 border-success/20': node.habit.log?.status === HabitLogStatus.Done,
       'bg-error/5 border-error/20': node.habit.log?.status === HabitLogStatus.Skipped,
@@ -134,9 +137,9 @@ const scheduledTimeLabel = computed(() => {
     }"
     @click="emit('select', node.habit.id)"
   >
-    <div class="flex items-center gap-2.5">
+    <div class="flex items-start gap-2 sm:items-center sm:gap-2.5">
       <!-- Expand/collapse + Checkbox -->
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1 pt-0.5 sm:pt-0">
         <button
           v-if="node.children.length"
           type="button"
@@ -151,7 +154,7 @@ const scheduledTimeLabel = computed(() => {
 
         <UCheckbox
           :model-value="node.habit.log?.completed ?? false"
-          size="sm"
+          :size="checkboxSize"
           @click.stop
           @update:model-value="emit('toggle', node.habit.id, $event as boolean)"
         />
@@ -160,7 +163,7 @@ const scheduledTimeLabel = computed(() => {
       <!-- Content -->
       <div class="min-w-0 flex-1">
         <!-- Row 1: Name + right-side actions -->
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-start gap-x-2 gap-y-1 sm:flex-nowrap sm:items-center">
           <span
             v-if="node.habit.avatarEmoji"
             class="inline-flex size-5 shrink-0 items-center justify-center text-base"
@@ -175,7 +178,7 @@ const scheduledTimeLabel = computed(() => {
           />
 
           <p
-            class="min-w-0 flex-1 truncate text-sm font-medium leading-5"
+            class="min-w-0 flex-1 text-sm font-medium leading-5 sm:truncate"
             :class="node.habit.log?.completed ? 'line-through text-muted' : 'text-highlighted'"
           >
             {{ node.habit.name }}
@@ -184,7 +187,7 @@ const scheduledTimeLabel = computed(() => {
           <!-- Streak -->
           <div
             v-if="node.habit.streak && node.habit.streak.currentStreak > 0"
-            class="flex shrink-0 items-center gap-0.5 text-xs text-muted"
+            class="flex shrink-0 items-center gap-0.5 text-xs text-muted ml-auto sm:ml-0"
           >
             <UIcon name="i-lucide-flame" class="size-3.5 text-orange-500" />
             <span>{{ node.habit.streak.currentStreak }}</span>
@@ -203,7 +206,7 @@ const scheduledTimeLabel = computed(() => {
         </div>
 
         <!-- Row 2: Metadata badges -->
-        <div class="mt-1.5 flex flex-wrap items-center gap-1.5 pl-6">
+        <div class="mt-1.5 flex flex-wrap items-center gap-1.5 pl-0 sm:pl-6">
           <UBadge
             v-if="scheduledTimeLabel"
             :label="scheduledTimeLabel"
@@ -265,7 +268,7 @@ const scheduledTimeLabel = computed(() => {
         </div>
 
         <!-- Note display -->
-        <div v-if="node.habit.log?.note" class="mt-1.5 rounded-lg border border-default/60 bg-default/40 px-2.5 py-1.5 text-xs italic text-muted ml-6">
+        <div v-if="node.habit.log?.note" class="mt-1.5 rounded-lg border border-default/60 bg-default/40 px-2.5 py-1.5 text-xs italic text-muted ml-0 sm:ml-6">
           "{{ node.habit.log.note }}"
         </div>
       </div>
@@ -321,4 +324,12 @@ const scheduledTimeLabel = computed(() => {
   padding-left: 0.75rem;
   color: var(--ui-text-muted);
 }
+
+@media (max-width: 767px) {
+  .today-tree-row :deep(button[role="checkbox"]) {
+    min-width: 1.25rem;
+    min-height: 1.25rem;
+  }
+}
+
 </style>

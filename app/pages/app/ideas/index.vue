@@ -136,7 +136,7 @@ function onSearchInput(val: string): void {
       <!-- Navbar -->
       <UDashboardNavbar>
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #center>

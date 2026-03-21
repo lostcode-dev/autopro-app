@@ -78,6 +78,10 @@ const treeData = ref<TodayTreeNode[]>([])
 const collapsedIds = ref<string[]>([])
 const virtualizationEnabled = computed(() => props.habits.length > 12)
 
+const isMobile = useMediaQuery('(max-width: 767px)')
+const treeIndent = computed(() => (isMobile.value ? 16 : 24))
+const treeLineOffset = computed(() => (isMobile.value ? 8 : 10))
+
 function nodeKeyFn(stat: any) {
   return stat.data.id
 }
@@ -253,15 +257,15 @@ function onSelectHabit(habitId: string) {
     </template>
 
     <template v-else-if="habits.length > 0 && !allDone">
-      <div class="today-tree-shell rounded-2xl border border-default/60 bg-default/50 p-3">
+      <div class="today-tree-shell rounded-2xl border border-default/60 bg-default/50 p-2.5 sm:p-3">
         <BaseTree
           ref="treeRef"
           v-model="treeData"
           children-key="children"
           :node-key="nodeKeyFn"
-          :indent="24"
+          :indent="treeIndent"
           :tree-line="true"
-          :tree-line-offset="10"
+          :tree-line-offset="treeLineOffset"
           :default-open="true"
           :virtualization="virtualizationEnabled"
           :virtualization-prerender-count="20"

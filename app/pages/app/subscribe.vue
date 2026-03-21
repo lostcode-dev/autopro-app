@@ -22,7 +22,7 @@ const { data: page, status } = await useAsyncData(
     <template #header>
       <UDashboardNavbar title="Assinatura">
         <template #leading>
-          <UDashboardSidebarCollapse />
+          <AppSidebarCollapse />
         </template>
 
         <template #right>
