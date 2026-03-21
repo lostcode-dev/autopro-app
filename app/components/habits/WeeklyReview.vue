@@ -56,13 +56,13 @@ watch(() => props.existingReflection, (reflection) => {
 const reviewPeriod = computed(() => {
   const match = props.weekKey.match(/^(\d{4})-W(\d{2})$/)
   if (!match) {
-    return { dateRangeLabel: '', dayCountLabel: '' }
+    return { dateRangeLabel: '' }
   }
 
   const year = Number.parseInt(match[1]!, 10)
   const week = Number.parseInt(match[2]!, 10)
   if (!Number.isFinite(year) || !Number.isFinite(week) || week < 1) {
-    return { dateRangeLabel: '', dayCountLabel: '' }
+    return { dateRangeLabel: '' }
   }
 
   const firstDayOfYear = new Date(year, 0, 1)
@@ -88,12 +88,8 @@ const reviewPeriod = computed(() => {
         month: '2-digit'
       })
 
-  const diffMs = endDate.getTime() - startDate.getTime()
-  const inclusiveDayCount = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
-
   return {
     dateRangeLabel: `${formatter.format(startDate)} — ${formatter.format(endDate)}`,
-    dayCountLabel: `${inclusiveDayCount} dias`
   }
 })
 
@@ -139,7 +135,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
             Semana {{ props.weekKey }}
           </p>
           <p class="text-xs text-muted">
-            {{ reviewPeriod.dayCountLabel }} · {{ reviewPeriod.dateRangeLabel }}
+            {{ reviewPeriod.dateRangeLabel }}
           </p>
         </div>
         <UButton

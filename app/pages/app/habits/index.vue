@@ -895,10 +895,6 @@ onBeforeUnmount(() => {
 
 ## 📅 Revisão
 
-- Exibir claramente **o período da revisão** (dias e intervalo de datas).
-  - Atualmente apenas a semana é exibida.
-  - Isso pode confundir o usuário sobre **qual período ele está avaliando**.
-
 - Implementar **notificação para lembrar o usuário de realizar a revisão**.
 
 ---
