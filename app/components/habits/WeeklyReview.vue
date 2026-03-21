@@ -46,13 +46,48 @@ watch(() => props.existingReflection, (reflection) => {
     state.wins = reflection.wins ?? ''
     state.improvements = reflection.improvements ?? ''
     isEditing.value = false
-  }
-  else {
+  } else {
     state.wins = ''
     state.improvements = ''
     isEditing.value = canEdit.value
   }
 }, { immediate: true })
+
+const reviewPeriod = computed(() => {
+  const match = props.weekKey.match(/^(\d{4})-W(\d{2})$/)
+  if (!match) {
+    return { dateRangeLabel: '', dayCountLabel: '' }
+  }
+
+  const year = Number.parseInt(match[1]!, 10)
+  const week = Number.parseInt(match[2]!, 10)
+  if (!Number.isFinite(year) || !Number.isFinite(week) || week < 1) {
+    return { dateRangeLabel: '', dayCountLabel: '' }
+  }
+
+  const firstDayOfYear = new Date(year, 0, 1)
+  const firstDayWeekday = firstDayOfYear.getDay()
+
+  // Same week model used in getCurrentWeekKey(): weeks start on Sunday and are keyed as YYYY-Www.
+  const startOffset = (week - 1) * 7 - firstDayWeekday
+  const startDate = new Date(year, 0, 1 + startOffset)
+  const endDate = new Date(startDate)
+  endDate.setDate(startDate.getDate() + 6)
+
+  const formatter = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+
+  const diffMs = endDate.getTime() - startDate.getTime()
+  const inclusiveDayCount = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1
+
+  return {
+    dateRangeLabel: `${formatter.format(startDate)} — ${formatter.format(endDate)}`,
+    dayCountLabel: `${inclusiveDayCount} dias`
+  }
+})
 
 const submitting = ref(false)
 
@@ -94,6 +129,9 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
           </h3>
           <p class="text-sm text-muted">
             Semana {{ props.weekKey }}
+          </p>
+          <p class="text-xs text-muted">
+            {{ reviewPeriod.dayCountLabel }} · {{ reviewPeriod.dateRangeLabel }}
           </p>
         </div>
         <UButton
