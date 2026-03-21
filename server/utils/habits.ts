@@ -18,6 +18,7 @@ function mapStreak(row: Record<string, unknown> | null | undefined): Record<stri
   return {
     habitId: row.habitId ?? row.habit_id,
     userId: row.userId ?? row.user_id,
+    status: row.status ?? null,
     currentStreak: row.currentStreak ?? row.current_streak,
     longestStreak: row.longestStreak ?? row.longest_streak,
     lastCompletedDate: row.lastCompletedDate ?? row.last_completed_date ?? null,

@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import type { TodayHabit } from '~/types/habits'
-import { DIFFICULTY_META, HABIT_TYPE_META, HabitLogStatus, LOG_STATUS_META } from '~/types/habits'
+import {
+  DIFFICULTY_META,
+  HABIT_STREAK_STATUS_META,
+  HABIT_TYPE_META,
+  HabitLogStatus,
+  HabitStreakStatus,
+  LOG_STATUS_META
+} from '~/types/habits'
 
 interface TodayTreeNode {
   id: string
@@ -125,6 +132,17 @@ const scheduledTimeLabel = computed(() => {
 
   return `${start} - ${end}`
 })
+
+const streakMeta = computed(() => {
+  const streak = props.node.habit.streak
+  if (!streak || streak.currentStreak <= 0) return null
+
+  const status = streak.status === HabitStreakStatus.Frozen
+    ? HabitStreakStatus.Frozen
+    : HabitStreakStatus.Active
+
+  return HABIT_STREAK_STATUS_META[status]
+})
 </script>
 
 <template>
@@ -186,10 +204,10 @@ const scheduledTimeLabel = computed(() => {
 
           <!-- Streak -->
           <div
-            v-if="node.habit.streak && node.habit.streak.currentStreak > 0"
+            v-if="node.habit.streak && node.habit.streak.currentStreak > 0 && streakMeta"
             class="flex shrink-0 items-center gap-0.5 text-xs text-muted ml-auto sm:ml-0"
           >
-            <UIcon name="i-lucide-flame" class="size-3.5 text-orange-500" />
+            <UIcon :name="streakMeta.icon" class="size-3.5" :class="streakMeta.color === 'primary' ? 'text-primary' : 'text-orange-500'" />
             <span>{{ node.habit.streak.currentStreak }}</span>
           </div>
 
@@ -239,6 +257,18 @@ const scheduledTimeLabel = computed(() => {
           >
             <template #leading>
               <UIcon :name="logStatusMeta.icon" class="size-3.5" />
+            </template>
+          </UBadge>
+
+          <UBadge
+            v-if="node.habit.streak && node.habit.streak.currentStreak > 0 && streakMeta && node.habit.streak.status === HabitStreakStatus.Frozen"
+            :label="streakMeta.label"
+            variant="subtle"
+            :color="streakMeta.color"
+            size="sm"
+          >
+            <template #leading>
+              <UIcon :name="streakMeta.icon" class="size-3.5" />
             </template>
           </UBadge>
 
@@ -331,5 +361,4 @@ const scheduledTimeLabel = computed(() => {
     min-height: 1.25rem;
   }
 }
-
 </style>

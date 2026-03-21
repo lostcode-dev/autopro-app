@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Habit, HabitStack } from '~/types/habits'
-import { DIFFICULTY_META, FREQUENCY_META, HABIT_TYPE_META } from '~/types/habits'
+import { DIFFICULTY_META, FREQUENCY_META, HABIT_STREAK_STATUS_META, HABIT_TYPE_META, HabitStreakStatus } from '~/types/habits'
 
 interface HabitSortableTreeNode {
   id: string
@@ -63,6 +63,16 @@ function getRowItems(habit: Habit) {
       onSelect: () => emit('archive', habit)
     }
   ]
+}
+
+function getStreakMeta(habit: Habit) {
+  if (!habit.streak || habit.streak.currentStreak <= 0) return null
+
+  const status = habit.streak.status === HabitStreakStatus.Frozen
+    ? HabitStreakStatus.Frozen
+    : HabitStreakStatus.Active
+
+  return HABIT_STREAK_STATUS_META[status]
 }
 </script>
 
@@ -162,7 +172,11 @@ function getRowItems(habit: Habit) {
             v-if="node.habit.streak && node.habit.streak.currentStreak > 0"
             class="flex items-center gap-1 text-xs text-muted sm:hidden"
           >
-            <UIcon name="i-lucide-flame" class="size-3.5 text-orange-500" />
+            <UIcon
+              :name="getStreakMeta(node.habit)?.icon ?? 'i-lucide-flame'"
+              class="size-3.5"
+              :class="node.habit.streak?.status === HabitStreakStatus.Frozen ? 'text-primary' : 'text-orange-500'"
+            />
             <span>{{ node.habit.streak.currentStreak }}d</span>
           </div>
         </div>
@@ -180,7 +194,11 @@ function getRowItems(habit: Habit) {
           v-if="node.habit.streak && node.habit.streak.currentStreak > 0"
           class="flex items-center gap-1 text-xs text-muted"
         >
-          <UIcon name="i-lucide-flame" class="size-3.5 text-orange-500" />
+          <UIcon
+            :name="getStreakMeta(node.habit)?.icon ?? 'i-lucide-flame'"
+            class="size-3.5"
+            :class="node.habit.streak?.status === HabitStreakStatus.Frozen ? 'text-primary' : 'text-orange-500'"
+          />
           <span>{{ node.habit.streak.currentStreak }}d</span>
         </div>
 

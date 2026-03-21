@@ -211,10 +211,23 @@ export interface HabitVersion {
 export interface HabitStreak {
   habitId: string
   userId: string
+  status?: HabitStreakStatus
   currentStreak: number
   longestStreak: number
   lastCompletedDate: string | null
   updatedAt: string
+}
+
+export enum HabitStreakStatus {
+  Active = 'active',
+  Frozen = 'frozen',
+  Broken = 'broken'
+}
+
+export const HABIT_STREAK_STATUS_META: Record<HabitStreakStatus, { label: string, icon: string, color: 'primary' | 'neutral' | 'warning' | 'error' }> = {
+  [HabitStreakStatus.Active]: { label: 'Em dia', icon: 'i-lucide-flame', color: 'warning' },
+  [HabitStreakStatus.Frozen]: { label: 'Congelado', icon: 'i-lucide-snowflake', color: 'primary' },
+  [HabitStreakStatus.Broken]: { label: 'Quebrado', icon: 'i-lucide-circle-off', color: 'neutral' }
 }
 
 export interface HabitReflection {
