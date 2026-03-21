@@ -1,3 +1,7 @@
+<script setup lang="ts">
+const auth = useAuth()
+</script>
+
 <template>
   <div class="relative min-h-screen overflow-hidden px-4 py-8" style="padding-top: max(2rem, var(--safe-area-top)); padding-bottom: max(2rem, var(--safe-area-bottom));">
     <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(18,227,154,0.16),_transparent_36%),linear-gradient(180deg,rgba(2,6,24,0),rgba(2,6,24,0.6))]" />
@@ -42,6 +46,20 @@
             <slot />
           </UPageCard>
         </div>
+      </div>
+    </div>
+
+    <div
+      v-if="auth.loading"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-default/85 backdrop-blur-sm"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <div class="flex flex-col items-center gap-3 text-center">
+        <UIcon name="i-lucide-loader-2" class="size-8 animate-spin text-primary" />
+        <p class="text-sm text-toned">
+          Verificando sessão...
+        </p>
       </div>
     </div>
   </div>

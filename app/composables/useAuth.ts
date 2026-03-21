@@ -17,6 +17,7 @@ type AuthSession = {
 type AuthState = {
   user: AuthUser | null
   ready: boolean
+  loadingCount: number
 }
 
 const AUTH_REFRESH_BUFFER_MS = 60_000
@@ -86,14 +87,23 @@ export function useAuth() {
   const state = useState<AuthState>('auth', () => {
     const parsed = parseUserCookie()
     if (!parsed)
-      return { user: null, ready: false }
+      return { user: null, ready: false, loadingCount: 0 }
 
-    return { user: parsed.user, ready: true }
+    return { user: parsed.user, ready: true, loadingCount: 0 }
   })
 
   const user = computed(() => state.value.user)
   const ready = computed(() => state.value.ready)
+  const loading = computed(() => state.value.loadingCount > 0)
   const isAuthenticated = computed(() => Boolean(state.value.user))
+
+  function beginLoading() {
+    state.value.loadingCount += 1
+  }
+
+  function endLoading() {
+    state.value.loadingCount = Math.max(0, state.value.loadingCount - 1)
+  }
 
   function parseUserCookie(): AuthUserCookiePayload | null {
     const raw = userCookie.value
@@ -128,6 +138,7 @@ export function useAuth() {
       return pendingFetch
 
     const request = (async () => {
+      beginLoading()
       try {
         const response = await requestFetch<{ user: AuthUser | null, session: AuthSession | null }>('/api/auth/me', {
           credentials: 'include',
@@ -150,6 +161,7 @@ export function useAuth() {
 
         return state.value.user
       } finally {
+        endLoading()
         pendingFetchMap.delete(nuxtApp)
       }
     })()
@@ -178,31 +190,36 @@ export function useAuth() {
     }
 
     const request = (async () => {
-      if (state.value.ready) {
-        if (!state.value.user && userCookie.value) {
-          await fetchUser()
+      beginLoading()
+      try {
+        if (state.value.ready) {
+          if (!state.value.user && userCookie.value) {
+            await fetchUser()
+            return
+          }
+
+          // Even when ready, proactively refresh if token is near expiry
+          if (state.value.user && isTokenExpired()) {
+            await fetchUser()
+          }
           return
         }
 
-        // Even when ready, proactively refresh if token is near expiry
-        if (state.value.user && isTokenExpired()) {
-          await fetchUser()
+        const parsed = parseUserCookie()
+        if (parsed) {
+          state.value.user = parsed.user
+          state.value.ready = true
+
+          if (isTokenExpired())
+            await fetchUser()
+
+          return
         }
-        return
+
+        await fetchUser()
+      } finally {
+        endLoading()
       }
-
-      const parsed = parseUserCookie()
-      if (parsed) {
-        state.value.user = parsed.user
-        state.value.ready = true
-
-        if (isTokenExpired())
-          await fetchUser()
-
-        return
-      }
-
-      await fetchUser()
     })().finally(() => {
       pendingEnsureMap.delete(nuxtApp)
     })
@@ -252,6 +269,7 @@ export function useAuth() {
   return {
     user,
     ready,
+    loading,
     isAuthenticated,
     fetchUser,
     ensureReady,
