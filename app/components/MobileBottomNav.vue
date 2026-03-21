@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const route = useRoute()
+const router = useRouter()
 
 const items = [
   { label: 'Início', icon: 'i-lucide-house', to: '/app' },
@@ -37,7 +38,6 @@ function handleMoreClick() {
 function navigateTo(to: string) {
   showMoreMenu.value = false
   if (to) {
-    const router = useRouter()
     router.push(to)
   }
 }
