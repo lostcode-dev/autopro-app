@@ -23,6 +23,12 @@ export default defineAppConfig({
       slots: {
         content: 'z-[320]'
       }
+    },
+    modal: {
+      slots: {
+        content: 'max-h-[90vh] flex flex-col',
+        body: 'overflow-y-auto'
+      }
     }
   }
 })
