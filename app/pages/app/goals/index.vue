@@ -181,7 +181,7 @@ const statusFilterOptions = computed(() => [
 
         <!-- ACTIVE TAB -->
         <div v-if="activeTab === 'active'" class="space-y-4">
-          <GoalsGoalsList
+          <GoalsList
             :goals="listData?.data ?? []"
             :total="listData?.total ?? 0"
             :page="listPage"
@@ -229,7 +229,7 @@ const statusFilterOptions = computed(() => [
             />
           </div>
 
-          <GoalsGoalsList
+          <GoalsList
             :goals="listData?.data ?? []"
             :total="listData?.total ?? 0"
             :page="listPage"

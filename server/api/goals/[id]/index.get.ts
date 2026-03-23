@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
+import { mapGoal } from '../../../utils/goals'
 
 const paramsSchema = z.object({
   id: z.string().uuid()
@@ -37,12 +38,12 @@ export default eventHandler(async (event) => {
     .select('*, habit:habits(name)')
     .eq('goal_id', id)
 
-  return {
+  return mapGoal({
     ...goal,
     tasks: tasks ?? [],
     habitLinks: (habitLinks ?? []).map((link: Record<string, unknown>) => ({
       ...link,
       habitName: (link.habit as Record<string, unknown> | null)?.name ?? null
     }))
-  }
+  } as Record<string, unknown>)
 })

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { mapGoal } from '../../utils/goals'
 
 const bodySchema = z.object({
   title: z.string().min(1, 'Título é obrigatório').max(200),
@@ -34,5 +35,5 @@ export default eventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Falha ao criar meta', data: error.message })
   }
 
-  return data
+  return mapGoal(data as Record<string, unknown>)
 })

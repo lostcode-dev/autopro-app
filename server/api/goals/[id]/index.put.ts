@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
+import { mapGoal } from '../../../utils/goals'
 
 const paramsSchema = z.object({
   id: z.string().uuid()
@@ -49,5 +50,5 @@ export default eventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Falha ao atualizar meta', data: error?.message })
   }
 
-  return data
+  return mapGoal(data as Record<string, unknown>)
 })

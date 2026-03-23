@@ -14,24 +14,27 @@ export function useGoals() {
   const listTimeCategory = ref<string>('')
   const listLifeCategory = ref<string>('')
 
-  const {
-    data: listData,
-    status: listFetchStatus,
-    refresh: refreshList
-  } = useFetch<GoalListResponse>('/api/goals', {
-    query: computed(() => ({
-      page: listPage.value,
-      pageSize: listPageSize.value,
-      search: listSearch.value || undefined,
-      status: listStatus.value || undefined,
-      timeCategory: listTimeCategory.value || undefined,
-      lifeCategory: listLifeCategory.value || undefined
-    })),
-    lazy: true,
-    immediate: false,
-    key: 'goals-list',
-    watch: [listPage, listPageSize, listStatus, listTimeCategory, listLifeCategory]
-  })
+  const listData = ref<GoalListResponse | null>(null)
+  const listFetchStatus = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
+
+  async function refreshList() {
+    listFetchStatus.value = 'pending'
+    try {
+      listData.value = await $fetch<GoalListResponse>('/api/goals', {
+        query: {
+          page: listPage.value,
+          pageSize: listPageSize.value,
+          search: listSearch.value || undefined,
+          status: listStatus.value || undefined,
+          timeCategory: listTimeCategory.value || undefined,
+          lifeCategory: listLifeCategory.value || undefined
+        }
+      })
+      listFetchStatus.value = 'success'
+    } catch {
+      listFetchStatus.value = 'error'
+    }
+  }
 
   const debouncedRefreshList = useDebounceFn(() => {
     refreshList()
@@ -43,15 +46,18 @@ export function useGoals() {
   })
 
   // ─── Insights ───────────────────────────────────────────────────────────────
-  const {
-    data: insights,
-    status: insightsStatus,
-    refresh: refreshInsights
-  } = useFetch<GoalInsights>('/api/goals/insights', {
-    lazy: true,
-    immediate: false,
-    key: 'goals-insights'
-  })
+  const insights = ref<GoalInsights | null>(null)
+  const insightsStatus = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
+
+  async function refreshInsights() {
+    insightsStatus.value = 'pending'
+    try {
+      insights.value = await $fetch<GoalInsights>('/api/goals/insights')
+      insightsStatus.value = 'success'
+    } catch {
+      insightsStatus.value = 'error'
+    }
+  }
 
   const actions = useGoalActions()
 

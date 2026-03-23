@@ -922,5 +922,12 @@ https://documentation.onesignal.com/reference/rest-api-overview
 - A formatação de datas deve considerar:
   - timezone definido pelo usuário nas preferências
   - ou idioma/configuração do navegador.
+  
+
+- Quando é mobile, se estiver em uma rota publica, deve ir para a rota de login, e se estiver logado, deve ir para a rota de hábitos.
+- Notificações de hábitos na api e notificação de revisão semanal.
+- Na api deve marcar como "freeze" os hábitos do dia anterior, quando no dia antecessor tiver marcação.
 
   -->
+
+
