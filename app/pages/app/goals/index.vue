@@ -40,16 +40,27 @@ const tabs = [
   { label: "Insights", value: "insights", icon: "i-lucide-bar-chart-3" },
 ];
 
+function ensureLoaded(
+  status: Ref<"idle" | "pending" | "success" | "error">,
+  refresh: () => Promise<unknown>,
+) {
+  if (status.value === "idle") {
+    void refresh();
+  }
+}
+
 watch(
   activeTab,
   (tab) => {
     if (tab === "active") {
       listStatus.value = GoalStatus.Active;
+      ensureLoaded(listFetchStatus, refreshList);
     } else if (tab === "all") {
       listStatus.value = "";
+      ensureLoaded(listFetchStatus, refreshList);
     }
     if (tab === "insights") {
-      refreshInsights();
+      ensureLoaded(insightsStatus, refreshInsights);
     }
     listPage.value = 1;
   },

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const auth = useAuth()
+const { loading: authLoading } = useAuth()
 </script>
 
 <template>
@@ -50,7 +50,7 @@ const auth = useAuth()
     </div>
 
     <div
-      v-if="auth.loading"
+      v-if="authLoading"
       class="fixed inset-0 z-50 flex items-center justify-center bg-default/85 backdrop-blur-sm"
       aria-live="polite"
       aria-busy="true"

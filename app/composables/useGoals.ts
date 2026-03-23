@@ -40,6 +40,7 @@ export function useGoals() {
       lifeCategory: listLifeCategory.value || undefined
     })),
     lazy: true,
+    immediate: false,
     key: 'goals-list',
     watch: [listPage, listPageSize, listStatus, listTimeCategory, listLifeCategory]
   })
@@ -60,6 +61,7 @@ export function useGoals() {
     refresh: refreshInsights
   } = useFetch<GoalInsights>('/api/goals/insights', {
     lazy: true,
+    immediate: false,
     key: 'goals-insights'
   })
 
