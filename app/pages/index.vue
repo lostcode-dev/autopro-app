@@ -3,16 +3,61 @@ import { PostHogEvent } from '~/types/analytics'
 
 const { data: page } = await useAsyncData('index', () => queryCollection('index').first())
 const { capture } = usePostHog()
+const runtimeConfig = useRuntimeConfig()
+const route = useRoute()
 
 const title = page.value?.seo?.title || page.value?.title
 const description = page.value?.seo?.description || page.value?.description
+const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://kortex.app'
+const canonicalUrl = `${siteUrl}${route.path}`
+const ogImage = `${siteUrl}/icons/icon-512x512.png`
+
+const jsonLd = computed(() => ({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  'name': 'Kortex',
+  'applicationCategory': 'ProductivityApplication',
+  'operatingSystem': 'Web',
+  'inLanguage': 'pt-BR',
+  'description': description,
+  'url': canonicalUrl,
+  'offers': {
+    '@type': 'Offer',
+    'price': '0',
+    'priceCurrency': 'BRL'
+  }
+}))
 
 useSeoMeta({
   titleTemplate: '',
   title,
   ogTitle: title,
   description,
-  ogDescription: description
+  ogDescription: description,
+  keywords: 'sistema pessoal, produtividade pessoal, segunda cérebro, gestão de tarefas, hábitos, metas, notas conectadas',
+  robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
+  ogType: 'website',
+  ogUrl: canonicalUrl,
+  ogLocale: 'pt_BR',
+  ogImage,
+  twitterTitle: title,
+  twitterDescription: description,
+  twitterImage: ogImage
+})
+
+useHead({
+  link: [
+    {
+      rel: 'canonical',
+      href: canonicalUrl
+    }
+  ],
+  script: [
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify(jsonLd.value)
+    }
+  ]
 })
 
 const heroLinks = computed(() => (page.value?.hero?.links ?? []).map((link: Record<string, unknown>, index: number) => ({

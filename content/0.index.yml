@@ -1,8 +1,8 @@
-title: Seu [Kortex]{class="text-primary"} para transformar ideias em ação
-description: Capture, organize e conecte notas, hábitos, projetos e referências em um sistema inteligente. Construído com Nuxt e Supabase — para suas ideias evoluírem com você.
+title: O [Kortex]{class="text-primary"} para organizar sua vida, trabalho e conhecimento
+description: Centralize notas, tarefas, hábitos, metas, finanças e agenda em um único sistema pessoal. Do registro rápido à execução diária, com clareza e consistência.
 seo:
-  title: Kortex
-  description: Um sistema pessoal de conhecimento para capturar, organizar e transformar ideias em ação. Notas, hábitos e contexto em um só lugar.
+  title: Kortex | Sistema pessoal de organização e produtividade
+  description: Kortex é um sistema pessoal para capturar ideias, organizar tarefas, acompanhar hábitos e transformar conhecimento em ação com foco e consistência.
 navigation: false
 hero:
   links:
@@ -18,60 +18,69 @@ hero:
       variant: subtle
       to: /docs/getting-started
 sections:
-  - title: Capture e organize sem fricção
-    description: Registre ideias rapidamente e mantenha tudo estruturado com notas, tags e coleções. Menos atrito, mais clareza.
+  - title: Capture ideias e organize tudo sem fricção
+    description: Registre pensamentos em segundos e transforme informação solta em um sistema claro com notas, tags, coleções e conexões.
     id: features
     orientation: horizontal
     features:
       - name: Captura rápida
-        description: Uma caixa de entrada para anotar sem pensar — e organizar depois.
+        description: Use uma caixa de entrada para anotar no momento e processar quando for conveniente.
         icon: i-lucide-inbox
       - name: Organização estruturada
-        description: Coleções e tags para encontrar e evoluir suas notas com contexto.
+        description: Organize por coleções e tags para encontrar contexto e evoluir suas ideias com facilidade.
         icon: i-lucide-folders
       - name: Conexões que fazem sentido
-        description: Relacione ideias, projetos e referências para virar insight acionável.
+        description: Conecte ideias, projetos e referências para gerar insights que viram próximos passos.
         icon: i-lucide-share-2
-  - title: Hábitos que viram progresso
-    description: Hábitos não são checklists. No Kortex, eles são sinais do que você está construindo — conectados a reflexões e resultados.
+  - title: Hábitos, tarefas e metas em ritmo sustentável
+    description: Planeje melhor a semana, acompanhe consistência e mantenha foco no progresso real com revisão contínua do que funciona.
     orientation: horizontal
     reverse: true
     features:
       - name: Rastreamento flexível
-        description: Hábitos diários/semanais com regras realistas (sem punição por descanso).
+        description: Acompanhe hábitos diários e semanais com regras realistas, sem culpa por pausas estratégicas.
         icon: i-lucide-calendar-check
       - name: Check-in diário
-        description: Um ritual rápido para registrar foco, obstáculos e um insight do dia.
+        description: Registre foco, obstáculos e aprendizados em poucos minutos para melhorar a execução diária.
         icon: i-lucide-check-square
       - name: Métricas simples
-        description: Tendências semanais/mensais e heatmap para enxergar consistência.
+        description: Visualize tendências e heatmaps para enxergar padrões e ajustar o sistema com dados.
         icon: i-lucide-line-chart
 features:
-  title: Tudo para evoluir seu conhecimento
-  description: Um sistema único para capturar, organizar, conectar e transformar informação solta em ação consistente.
+  title: Um sistema completo para produtividade pessoal
+  description: Tudo o que você precisa para capturar, organizar, priorizar e executar sem depender de dezenas de aplicativos separados.
   items:
     - title: Notas com contexto
-      description: Escreva, edite e organize notas com tags e coleções — sem perder o fio.
+      description: Escreva, edite e conecte notas com contexto para construir um segundo cérebro útil no dia a dia.
       icon: i-lucide-notebook-pen
     - title: Hábitos com propósito
-      description: Acompanhe consistência com regras flexíveis e foco em tendência, não perfeição.
+      description: Mantenha consistência com regras flexíveis e foco em evolução contínua, não em perfeição.
       icon: i-lucide-flame
+    - title: Tarefas e projetos
+      description: Organize prioridades, avance em projetos e acompanhe entregas importantes em um só lugar.
+      icon: i-lucide-check-check
+    - title: Metas conectadas
+      description: Conecte tarefas e hábitos às suas metas para transformar intenção em resultado.
+      icon: i-lucide-target
     - title: Revisões e reflexão
-      description: Check-ins diários e revisões semanais para aprender com o próprio processo.
+      description: Faça check-ins diários e revisões semanais para aprender com o próprio processo.
       icon: i-lucide-clipboard-check
+    - title: Finanças e agenda
+      description: Acompanhe compromissos, receitas e despesas para tomar decisões com visão completa da rotina.
+      icon: i-lucide-wallet
     - title: Busca rápida
-      description: Encontre informação em segundos — mesmo com muitos dados.
+      description: Encontre qualquer informação em segundos, mesmo com grande volume de conteúdo.
       icon: i-lucide-search
     - title: Seguro e escalável
-      description: Arquitetura moderna com Nuxt + Supabase, pronta para crescer com você.
+      description: Arquitetura moderna com Nuxt e Supabase para desempenho, segurança e crescimento.
       icon: i-lucide-shield
     - title: Personalizável
-      description: Ajuste o sistema ao seu jeito de pensar, mantendo simplicidade e clareza.
+      description: Adapte o sistema ao seu estilo de organização sem abrir mão de simplicidade.
       icon: i-lucide-sliders
 testimonials:
   headline: Feito para a vida real
-  title: Um sistema que acompanha seu pensamento
-  description: Menos ansiedade com informação solta. Mais clareza, consistência e evolução ao longo do tempo.
+  title: Clareza para decidir, consistência para evoluir
+  description: Menos sobrecarga mental, mais foco no que importa todos os dias.
   items:
     - quote: O check-in diário virou meu “fechamento” do dia. Em minutos eu registro o que importa e sigo leve.
       user:
@@ -134,8 +143,8 @@ testimonials:
         avatar:
           src: https://i.pravatar.cc/120?img=14
 cta:
-  title: Pronto para começar com o Kortex?
-  description: Comece pequeno, mantenha consistência e deixe suas ideias evoluírem com contexto.
+  title: Pronto para organizar tudo em um só lugar?
+  description: Comece hoje no Kortex e transforme informação dispersa em progresso consistente.
   links:
     - label: Criar conta
       to: /signup

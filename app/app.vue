@@ -4,9 +4,12 @@ import { pt_br } from '@nuxt/ui/locale'
 const route = useRoute()
 const colorMode = useColorMode()
 const { state: preferencesState, applyBrandTheme, applyPublicTheme, applyStoredTheme } = useUserPreferences()
+const runtimeConfig = useRuntimeConfig()
 
 const color = computed(() => colorMode.value === 'dark' ? '#020618' : 'white')
 const isAppRoute = computed(() => route.path.startsWith('/app'))
+const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://kortex.app'
+const defaultOgImage = `${siteUrl}/icons/icon-512x512.png`
 
 watch(
   () => [
@@ -57,9 +60,14 @@ useHead({
 
 useSeoMeta({
   titleTemplate: '%s - Kortex',
-  ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/saas-light.png',
-  twitterImage: 'https://ui.nuxt.com/assets/templates/nuxt/saas-light.png',
-  twitterCard: 'summary_large_image'
+  applicationName: 'Kortex',
+  appleMobileWebAppTitle: 'Kortex',
+  author: 'Kortex',
+  ogSiteName: 'Kortex',
+  ogImage: defaultOgImage,
+  twitterImage: defaultOgImage,
+  twitterCard: 'summary_large_image',
+  twitterSite: '@kortexapp'
 })
 
 const { data: navigation } = await useAsyncData('navigation', () => queryCollectionNavigation('docs'), {
