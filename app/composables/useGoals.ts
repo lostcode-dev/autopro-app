@@ -13,6 +13,8 @@ import type {
 } from '~/types/goals'
 import { GoalLifeCategory, GoalStatus, GoalTimeCategory } from '~/types/goals'
 
+type BadgeColor = 'success' | 'error' | 'primary' | 'secondary' | 'info' | 'warning' | 'neutral'
+
 export function useGoals() {
   const toast = useToast()
 
@@ -95,7 +97,8 @@ export function useGoals() {
 
   async function archiveGoal(id: string, title: string): Promise<boolean> {
     try {
-      await $fetch(`/api/goals/${id}`, { method: 'DELETE' })
+      const endpoint: string = `/api/goals/${id}`
+      await $fetch(endpoint, { method: 'DELETE' })
       toast.add({ title: 'Meta arquivada', description: `"${title}" foi arquivada.`, color: 'success' })
       await refreshList()
       return true
@@ -119,7 +122,8 @@ export function useGoals() {
 
   async function completeGoal(id: string, title: string): Promise<boolean> {
     try {
-      await $fetch(`/api/goals/${id}`, {
+      const endpoint: string = `/api/goals/${id}`
+      await $fetch(endpoint, {
         method: 'PUT',
         body: { status: GoalStatus.Completed }
       })
@@ -172,7 +176,8 @@ export function useGoals() {
 
   async function deleteTask(taskId: string): Promise<boolean> {
     try {
-      await $fetch(`/api/goals/tasks/${taskId}`, { method: 'DELETE' })
+      const endpoint: string = `/api/goals/tasks/${taskId}`
+      await $fetch(endpoint, { method: 'DELETE' })
       toast.add({ title: 'Tarefa removida', description: 'A tarefa foi excluída.', color: 'success' })
       return true
     } catch {
@@ -199,7 +204,8 @@ export function useGoals() {
 
   async function unlinkHabit(linkId: string): Promise<boolean> {
     try {
-      await $fetch(`/api/goals/habits/${linkId}`, { method: 'DELETE' })
+      const endpoint: string = `/api/goals/habits/${linkId}`
+      await $fetch(endpoint, { method: 'DELETE' })
       toast.add({ title: 'Vínculo removido', description: 'O hábito foi desvinculado da meta.', color: 'success' })
       return true
     } catch {
@@ -244,7 +250,7 @@ export function useGoals() {
     return timeCategoryOptions.find(o => o.value === value)?.label ?? value
   }
 
-  function getStatusColor(status: string): string {
+  function getStatusColor(status: string): BadgeColor {
     switch (status) {
       case GoalStatus.Active: return 'primary'
       case GoalStatus.Completed: return 'success'

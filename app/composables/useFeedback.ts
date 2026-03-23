@@ -75,7 +75,8 @@ export function useFeedback() {
   // ─── User: Delete feedback ────────────────────────────
   async function deleteFeedback(id: string) {
     try {
-      await $fetch(`/api/feedback/${id}`, { method: 'DELETE' })
+      const endpoint: string = `/api/feedback/${id}`
+      await $fetch(endpoint, { method: 'DELETE' })
       toast.add({ title: 'Feedback excluído', description: 'Feedback removido com sucesso.', color: 'success' })
       await refreshList()
     } catch (err: unknown) {
@@ -165,7 +166,8 @@ export function useFeedback() {
   // ─── Admin: Unlink entity ────────────────────────────
   async function adminUnlinkEntity(feedbackId: string, linkId: string) {
     try {
-      await $fetch(`/api/feedback/admin/${feedbackId}/link`, { method: 'DELETE', params: { linkId } })
+      const endpoint: string = `/api/feedback/admin/${feedbackId}/link`
+      await $fetch(endpoint, { method: 'DELETE', params: { linkId } })
       toast.add({ title: 'Vínculo removido', description: 'Entidade desvinculada.', color: 'success' })
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erro desconhecido'

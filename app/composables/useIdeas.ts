@@ -153,7 +153,8 @@ export function useIdeas() {
 
   async function createSubtask(ideaId: string, payload: CreateSubtaskPayload): Promise<boolean> {
     try {
-      await $fetch(`/api/ideas/${ideaId}/subtasks`, { method: 'POST', body: payload })
+      const endpoint: string = `/api/ideas/${ideaId}/subtasks`
+      await $fetch(endpoint, { method: 'POST', body: payload })
       return true
     }
     catch {

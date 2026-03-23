@@ -37,15 +37,15 @@ export default eventHandler(async (event) => {
     lifestyle: 'Estilo de vida'
   }
 
-  const byLifeCategory = Object.entries(
-    nonArchived.reduce((acc: Record<string, { count: number, totalProgress: number }>, g: Record<string, unknown>) => {
+  const lifeCategoryStats = nonArchived.reduce<Record<string, { count: number, totalProgress: number }>>((acc, g: Record<string, unknown>) => {
       const cat = g.life_category as string
       if (!acc[cat]) acc[cat] = { count: 0, totalProgress: 0 }
       acc[cat].count++
       acc[cat].totalProgress += g.progress as number
       return acc
     }, {})
-  ).map(([category, stats]) => ({
+
+  const byLifeCategory = Object.entries(lifeCategoryStats).map(([category, stats]) => ({
     category,
     label: lifeCategoryLabels[category] ?? category,
     count: stats.count,
@@ -62,15 +62,15 @@ export default eventHandler(async (event) => {
     long_term: 'Longo prazo'
   }
 
-  const byTimeCategory = Object.entries(
-    nonArchived.reduce((acc: Record<string, { count: number, totalProgress: number }>, g: Record<string, unknown>) => {
+  const timeCategoryStats = nonArchived.reduce<Record<string, { count: number, totalProgress: number }>>((acc, g: Record<string, unknown>) => {
       const cat = g.time_category as string
       if (!acc[cat]) acc[cat] = { count: 0, totalProgress: 0 }
       acc[cat].count++
       acc[cat].totalProgress += g.progress as number
       return acc
     }, {})
-  ).map(([category, stats]) => ({
+
+  const byTimeCategory = Object.entries(timeCategoryStats).map(([category, stats]) => ({
     category,
     label: timeCategoryLabels[category] ?? category,
     count: stats.count,

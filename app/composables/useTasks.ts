@@ -15,6 +15,8 @@ import type {
 } from '~/types/tasks'
 import { TaskPriority, TaskStatus } from '~/types/tasks'
 
+type BadgeColor = 'success' | 'error' | 'primary' | 'secondary' | 'info' | 'warning' | 'neutral'
+
 export function useTasks() {
   const toast = useToast()
 
@@ -117,7 +119,8 @@ export function useTasks() {
 
   async function archiveTask(id: string, title: string): Promise<boolean> {
     try {
-      await $fetch(`/api/tasks/${id}`, { method: 'DELETE' })
+      const endpoint: string = `/api/tasks/${id}`
+      await $fetch(endpoint, { method: 'DELETE' })
       toast.add({ title: 'Tarefa arquivada', description: `"${title}" foi arquivada.`, color: 'success' })
       await refreshList()
       return true
@@ -129,7 +132,8 @@ export function useTasks() {
 
   async function completeTask(id: string, title: string): Promise<boolean> {
     try {
-      await $fetch(`/api/tasks/${id}`, {
+      const endpoint: string = `/api/tasks/${id}`
+      await $fetch(endpoint, {
         method: 'PUT',
         body: { status: TaskStatus.Completed }
       })
@@ -181,7 +185,8 @@ export function useTasks() {
 
   async function deleteSubtask(subtaskId: string): Promise<boolean> {
     try {
-      await $fetch(`/api/tasks/subtasks/${subtaskId}`, { method: 'DELETE' })
+      const endpoint: string = `/api/tasks/subtasks/${subtaskId}`
+      await $fetch(endpoint, { method: 'DELETE' })
       toast.add({ title: 'Subtarefa removida', description: 'A subtarefa foi excluída.', color: 'success' })
       return true
     } catch {
@@ -244,7 +249,7 @@ export function useTasks() {
     return priorityOptions.find(o => o.value === value)?.label ?? value
   }
 
-  function getPriorityColor(priority: string): string {
+  function getPriorityColor(priority: string): BadgeColor {
     switch (priority) {
       case TaskPriority.Low: return 'neutral'
       case TaskPriority.Medium: return 'info'
@@ -258,7 +263,7 @@ export function useTasks() {
     return statusOptions.find(o => o.value === value)?.label ?? value
   }
 
-  function getStatusColor(status: string): string {
+  function getStatusColor(status: string): BadgeColor {
     switch (status) {
       case TaskStatus.Pending: return 'neutral'
       case TaskStatus.InProgress: return 'info'
@@ -270,7 +275,7 @@ export function useTasks() {
 
   function isOverdue(task: Task): boolean {
     if (!task.dueDate || task.status === TaskStatus.Completed) return false
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split('T')[0] || ''
     return task.dueDate < today
   }
 

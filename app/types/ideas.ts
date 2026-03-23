@@ -21,7 +21,9 @@ export enum IdeaPriority {
 
 // ─── Meta mappings ────────────────────────────────────────────────────────────
 
-export const IDEA_STATUS_META: Record<IdeaStatus, { label: string, icon: string, color: string }> = {
+type UiColor = 'success' | 'error' | 'primary' | 'secondary' | 'info' | 'warning' | 'neutral'
+
+export const IDEA_STATUS_META: Record<IdeaStatus, { label: string, icon: string, color: UiColor }> = {
   [IdeaStatus.Backlog]: { label: 'Backlog', icon: 'i-lucide-inbox', color: 'neutral' },
   [IdeaStatus.Todo]: { label: 'A fazer', icon: 'i-lucide-circle', color: 'info' },
   [IdeaStatus.InProgress]: { label: 'Em progresso', icon: 'i-lucide-loader-2', color: 'warning' },
@@ -29,7 +31,7 @@ export const IDEA_STATUS_META: Record<IdeaStatus, { label: string, icon: string,
   [IdeaStatus.Archived]: { label: 'Arquivada', icon: 'i-lucide-archive', color: 'neutral' }
 }
 
-export const IDEA_PRIORITY_META: Record<IdeaPriority, { label: string, icon: string, color: string }> = {
+export const IDEA_PRIORITY_META: Record<IdeaPriority, { label: string, icon: string, color: UiColor }> = {
   [IdeaPriority.Low]: { label: 'Baixa', icon: 'i-lucide-arrow-down', color: 'neutral' },
   [IdeaPriority.Medium]: { label: 'Média', icon: 'i-lucide-minus', color: 'info' },
   [IdeaPriority.High]: { label: 'Alta', icon: 'i-lucide-arrow-up', color: 'warning' },

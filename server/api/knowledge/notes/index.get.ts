@@ -81,7 +81,9 @@ export default eventHandler(async (event) => {
       const tagMap = new Map<string, Array<{ id: string; name: string; color: string | null }>>()
       for (const link of tagLinks) {
         const noteId = link.note_id as string
-        const tag = link.tag as Record<string, unknown>
+        const tagRelation = link.tag as unknown
+        const tag = (Array.isArray(tagRelation) ? tagRelation[0] : tagRelation) as Record<string, unknown> | undefined
+        if (!tag) continue
         if (!tagMap.has(noteId)) tagMap.set(noteId, [])
         tagMap.get(noteId)!.push({
           id: tag.id as string,

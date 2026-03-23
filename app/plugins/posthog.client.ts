@@ -15,10 +15,12 @@ function clearToolbarHashParams() {
     return
 
   const hashParams = new URLSearchParams(hash.slice(1))
-  const removedPostHog = hashParams.delete('__posthog')
-  const removedState = hashParams.delete('state')
+  const hadPostHog = hashParams.has('__posthog')
+  const hadState = hashParams.has('state')
+  hashParams.delete('__posthog')
+  hashParams.delete('state')
 
-  if (!removedPostHog && !removedState)
+  if (!hadPostHog && !hadState)
     return
 
   const nextHash = hashParams.toString()

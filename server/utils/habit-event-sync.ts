@@ -333,18 +333,18 @@ async function getLinkedHabitEvents(supabase: SupabaseClient, userId: string, ha
     ])
   )
 
-  return (links ?? [])
-    .map((link) => {
-      const event = eventMap.get(String(link.target_id ?? ''))
-      if (!event) return null
+  const resolvedLinks: Array<LinkedHabitEvent | null> = (links ?? []).map((link) => {
+    const event = eventMap.get(String(link.target_id ?? ''))
+    if (!event) return null
 
-      return {
-        linkId: String(link.id ?? ''),
-        eventId: event.eventId,
-        archivedAt: event.archivedAt
-      }
-    })
-    .filter((item): item is LinkedHabitEvent => Boolean(item))
+    return {
+      linkId: link.id ? String(link.id) : null,
+      eventId: event.eventId,
+      archivedAt: event.archivedAt
+    }
+  })
+
+  return resolvedLinks.filter((item): item is LinkedHabitEvent => item !== null)
 }
 
 async function createEventHistorySnapshot(

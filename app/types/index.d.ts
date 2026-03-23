@@ -73,3 +73,5 @@ export interface Range {
   start: Date
   end: Date
 }
+
+declare module 'sanitize-html'

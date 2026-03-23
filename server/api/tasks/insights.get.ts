@@ -38,15 +38,15 @@ export default eventHandler(async (event) => {
     critical: 'Crítica'
   }
 
-  const byPriority = Object.entries(
-    all.reduce((acc: Record<string, { count: number, completedCount: number }>, t: Record<string, unknown>) => {
+  const priorityStats = all.reduce<Record<string, { count: number, completedCount: number }>>((acc, t: Record<string, unknown>) => {
       const p = t.priority as string
       if (!acc[p]) acc[p] = { count: 0, completedCount: 0 }
       acc[p].count++
       if (t.status === 'completed') acc[p].completedCount++
       return acc
     }, {})
-  ).map(([priority, stats]) => ({
+
+  const byPriority = Object.entries(priorityStats).map(([priority, stats]) => ({
     priority,
     label: priorityLabels[priority] ?? priority,
     count: stats.count,
@@ -54,8 +54,7 @@ export default eventHandler(async (event) => {
   }))
 
   // Group by list
-  const byList = Object.entries(
-    all.reduce((acc: Record<string, { listName: string, count: number, completedCount: number }>, t: Record<string, unknown>) => {
+  const listStats = all.reduce<Record<string, { listName: string, count: number, completedCount: number }>>((acc, t: Record<string, unknown>) => {
       const list = t.list as Record<string, unknown> | null
       const listId = list?.id as string ?? '_none'
       const listName = list?.name as string ?? 'Sem lista'
@@ -64,7 +63,8 @@ export default eventHandler(async (event) => {
       if (t.status === 'completed') acc[listId].completedCount++
       return acc
     }, {})
-  ).map(([listId, stats]) => ({
+
+  const byList = Object.entries(listStats).map(([listId, stats]) => ({
     listId: listId === '_none' ? null : listId,
     listName: stats.listName,
     count: stats.count,

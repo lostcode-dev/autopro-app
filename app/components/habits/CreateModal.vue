@@ -302,7 +302,7 @@ function getHabitTypeIcon(habitType: HabitType) {
   }
 }
 
-function getVisibleElement(selectors: string | string[]): HTMLElement | null {
+function getVisibleElement(selectors: string | string[]): HTMLElement {
   const selectorList = Array.isArray(selectors) ? selectors : [selectors]
 
   for (const selector of selectorList) {
@@ -316,15 +316,15 @@ function getVisibleElement(selectors: string | string[]): HTMLElement | null {
     }
   }
 
-  return null
+  return document.body
 }
 
-function getCreateFormSectionElement(value: string): HTMLElement | null {
+function getCreateFormSectionElement(value: string): HTMLElement {
   const sectionsRoot = document.querySelector(
     '[data-tour="habit-create-sections"]'
   )
   if (!sectionsRoot) {
-    return null
+    return document.body
   }
 
   const sectionLabels: Record<string, string> = {
@@ -340,7 +340,7 @@ function getCreateFormSectionElement(value: string): HTMLElement | null {
       const triggerText = trigger.textContent?.trim()
 
       return triggerValue === value || triggerText === sectionLabels[value]
-    }) ?? null
+    }) ?? document.body
   )
 }
 

@@ -5,12 +5,24 @@ export default eventHandler(async (event) => {
   const user = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
 
-  const { error, count } = await supabase
+  const { count: unreadCount, error: unreadCountError } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .is('read_at', null)
+
+  if (unreadCountError) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Failed to count notifications'
+    })
+  }
+
+  const { error } = await supabase
     .from('notifications')
     .update({ read_at: new Date().toISOString() })
     .eq('user_id', user.id)
     .is('read_at', null)
-    .select('id', { count: 'exact', head: true })
 
   if (error) {
     throw createError({
@@ -19,5 +31,5 @@ export default eventHandler(async (event) => {
     })
   }
 
-  return { ok: true, updated: count ?? 0 }
+  return { ok: true, updated: unreadCount ?? 0 }
 })

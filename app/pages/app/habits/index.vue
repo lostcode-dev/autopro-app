@@ -393,7 +393,7 @@ let habitsTour: Driver | null = null;
 let firstHabitEntryTour: Driver | null = null;
 let isStartingTour = false;
 
-function getVisibleElement(selectors: string | string[]): HTMLElement | null {
+function getVisibleElement(selectors: string | string[]): HTMLElement {
   const selectorList = Array.isArray(selectors) ? selectors : [selectors];
 
   for (const selector of selectorList) {
@@ -407,13 +407,13 @@ function getVisibleElement(selectors: string | string[]): HTMLElement | null {
     }
   }
 
-  return null;
+  return document.body;
 }
 
-function getHabitsTabElement(value: string): HTMLElement | null {
+function getHabitsTabElement(value: string): HTMLElement {
   const tabsRoot = document.querySelector('[data-tour="habits-tabs"]');
   if (!tabsRoot) {
-    return null;
+    return document.body;
   }
 
   const tabLabels: Record<string, string> = {
@@ -431,7 +431,7 @@ function getHabitsTabElement(value: string): HTMLElement | null {
 
         return tabValue === value || tabText === tabLabels[value];
       },
-    ) ?? null
+    ) ?? document.body
   );
 }
 

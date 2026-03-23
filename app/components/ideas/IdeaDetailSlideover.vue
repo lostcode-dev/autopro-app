@@ -93,7 +93,7 @@ async function save(): Promise<void> {
   try {
     await updateIdea(detail.value.id, {
       title: editTitle.value,
-      description: editDescription.value || null,
+      description: editDescription.value || undefined,
       status: editStatus.value,
       priority: editPriority.value ? editPriority.value as IdeaPriority : null,
       listId: editListId.value || null,

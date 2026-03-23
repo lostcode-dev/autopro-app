@@ -22,7 +22,7 @@ export default eventHandler(async (event) => {
     .single()
 
   if (error || !data) {
-    throw createError({ statusCode: 500, statusMessage: 'Falha ao restaurar hábito', data: error.message })
+    throw createError({ statusCode: 500, statusMessage: 'Falha ao restaurar hábito', data: error?.message })
   }
 
   await syncHabitLinkedEvent(supabase, user.id, data as Record<string, unknown>)

@@ -2,8 +2,6 @@ import type { DailyDashboardResponse, LifeInsights, LifeArea, EntityLink, Create
 
 export function useLifeOS() {
   const toast = useToast()
-  const requestFetch = useRequestFetch()
-  const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
   // ─── Daily Dashboard ────────────────────────────────────────────────────
   const {
@@ -12,8 +10,19 @@ export function useLifeOS() {
     refresh: refreshDashboard
   } = useFetch<DailyDashboardResponse>('/api/life/dashboard', {
     lazy: true,
-    $fetch: requestFetch,
-    headers: requestHeaders
+    default: () => ({
+      date: '',
+      habits: { items: [], completedCount: 0, totalCount: 0 },
+      tasks: { items: [], pendingCount: 0, overdueCount: 0 },
+      events: { items: [], totalCount: 0 },
+      journal: {
+        id: null,
+        entryDate: '',
+        title: null,
+        contentPreview: null,
+        exists: false
+      }
+    })
   })
 
   // ─── Insights ───────────────────────────────────────────────────────────
@@ -23,8 +32,13 @@ export function useLifeOS() {
     refresh: refreshInsights
   } = useFetch<LifeInsights>('/api/life/insights', {
     lazy: true,
-    $fetch: requestFetch,
-    headers: requestHeaders
+    default: () => ({
+      period: '30d',
+      habits: { completionRate7d: 0, completionRate30d: 0, averageStreak: 0, totalActive: 0 },
+      tasks: { completedLast7d: 0, completedLast30d: 0, pendingCount: 0, overdueCount: 0 },
+      goals: { totalActive: 0, averageProgress: 0, completedCount: 0 },
+      journal: { entriesLast7d: 0, entriesLast30d: 0, currentStreak: 0 }
+    })
   })
 
   // ─── Life Areas ─────────────────────────────────────────────────────────
@@ -34,8 +48,7 @@ export function useLifeOS() {
     refresh: refreshAreas
   } = useFetch<{ data: LifeArea[], total: number }>('/api/life/areas', {
     lazy: true,
-    $fetch: requestFetch,
-    headers: requestHeaders
+    default: () => ({ data: [], total: 0 })
   })
 
   const areas = computed(() => areasResponse.value?.data ?? [])

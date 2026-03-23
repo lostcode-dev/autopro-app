@@ -163,7 +163,7 @@ watch(isYearly, (value, previousValue) => {
           v-for="(plan, index) in plansWithActions"
           :key="index"
           v-bind="plan"
-          :price="isYearly === '1' ? plan.price.year : plan.price.month"
+          :price="isYearly === '1' ? plan.price?.year : plan.price?.month"
           :billing-cycle="isYearly === '1' ? '/ano' : '/mês'"
         />
       </UPricingPlans>
@@ -174,7 +174,7 @@ watch(isYearly, (value, previousValue) => {
         v-for="(plan, index) in plansWithActions"
         :key="index"
         v-bind="plan"
-        :price="isYearly === '1' ? plan.price.year : plan.price.month"
+        :price="isYearly === '1' ? plan.price?.year : plan.price?.month"
         :billing-cycle="isYearly === '1' ? '/ano' : '/mês'"
       />
     </UPricingPlans>
