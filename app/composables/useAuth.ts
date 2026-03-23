@@ -286,6 +286,12 @@ export function useAuth() {
     userCookie.value = null
   }
 
+  function setGuestReady() {
+    state.value.user = null
+    state.value.ready = true
+    userCookie.value = null
+  }
+
   return {
     user,
     ready,
@@ -295,6 +301,7 @@ export function useAuth() {
     ensureReady,
     login,
     signup,
-    logout
+    logout,
+    setGuestReady
   }
 }
