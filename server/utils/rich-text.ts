@@ -1,4 +1,4 @@
-const sanitizeHtml = require('sanitize-html') as (dirty: string, options?: Record<string, unknown>) => string
+import sanitizeHtml from 'sanitize-html'
 
 const ALLOWED_TAGS = [
   'p',
