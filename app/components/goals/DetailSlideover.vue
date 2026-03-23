@@ -78,7 +78,7 @@ const progressValue = computed(() => {
 })
 const progressDescription = computed(() => {
   if (tasks.value.length === 0) {
-    return 'Adicione tarefas para acompanhar a evolução da meta com clareza.'
+    return ''
   }
 
   const taskWord = tasks.value.length === 1 ? 'tarefa' : 'tarefas'
@@ -218,7 +218,7 @@ function getStatusIcon(status: GoalStatus): string {
                   {{ currentGoal.description }}
                 </p>
                 <p v-else class="text-sm text-muted">
-                  Sem descrição. Use tarefas e hábitos vinculados para deixar a execução mais clara.
+                  -
                 </p>
               </div>
             </div>
@@ -406,13 +406,6 @@ function getStatusIcon(status: GoalStatus): string {
             </div>
           </div>
 
-          <div
-            v-else
-            class="rounded-xl border border-dashed border-default px-4 py-5 text-sm text-muted"
-          >
-            Nenhuma tarefa adicionada ainda. Quebre a meta em passos pequenos para acompanhar o progresso.
-          </div>
-
           <div class="flex items-center gap-2">
             <UInput
               v-model="newTaskTitle"
@@ -468,9 +461,6 @@ function getStatusIcon(status: GoalStatus): string {
                 <div class="min-w-0">
                   <p class="truncate text-sm font-medium text-highlighted">
                     {{ link.habitName ?? 'Hábito sem nome' }}
-                  </p>
-                  <p class="text-xs text-muted">
-                    Vinculado para sustentar a meta no dia a dia
                   </p>
                 </div>
               </div>
