@@ -22,6 +22,7 @@ type AuthState = {
 
 const AUTH_REFRESH_BUFFER_MS = 60_000
 const AUTH_COOKIE_REVALIDATE_MS = 5 * 60_000
+const AUTH_SERVER_COOKIE_NAMES = ['sb-access-token=', 'sb-refresh-token=']
 const pendingFetchMap = new WeakMap<object, Promise<AuthUser | null>>()
 const pendingEnsureMap = new WeakMap<object, Promise<void>>()
 
@@ -115,6 +116,17 @@ export function useAuth() {
       return parsed
 
     return null
+  }
+
+  function hasServerSessionCookies(): boolean {
+    if (!import.meta.server)
+      return false
+
+    const cookieHeader = requestHeaders?.cookie
+    if (!cookieHeader)
+      return false
+
+    return AUTH_SERVER_COOKIE_NAMES.some(cookieName => cookieHeader.includes(cookieName))
   }
 
   function setUserCookie(user: AuthUser, session: AuthSession | null = null) {
@@ -213,6 +225,14 @@ export function useAuth() {
           if (isTokenExpired())
             await fetchUser()
 
+          return
+        }
+
+        // Avoid unnecessary /api/auth/me calls when there is clearly no session.
+        if (!hasServerSessionCookies()) {
+          state.value.user = null
+          state.value.ready = true
+          userCookie.value = null
           return
         }
 

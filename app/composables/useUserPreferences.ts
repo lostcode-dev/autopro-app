@@ -26,8 +26,9 @@ type PreferencesState = {
 type ThemePreset = UserPreferences
 
 const PUBLIC_THEME: ThemePreset = {
-  primary_color: 'green',
-  neutral_color: 'zinc',
+  // Public experience should also reflect the Kortex brand identity on first load.
+  primary_color: 'emerald',
+  neutral_color: 'slate',
   color_mode: ColorModePreference.Dark,
   timezone: 'UTC'
 }
