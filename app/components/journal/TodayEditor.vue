@@ -6,14 +6,28 @@ const props = defineProps<{
   todayMetrics: MetricValueWithDefinition[]
   metricDefinitions: MetricDefinition[]
   loading: boolean
+  onUpsertEntry: (payload: {
+    entryDate: string
+    title?: string | null
+    content: string
+    tags?: string[]
+  }) => Promise<JournalEntry | null>
+  onUpsertMetricValues: (payload: {
+    entryDate: string
+    values: Array<{
+      metricKey: string
+      numberValue: number | null
+      booleanValue: boolean | null
+      textValue: string | null
+      selectValue: string | null
+    }>
+  }) => Promise<boolean>
 }>()
 
 const emit = defineEmits<{
   saved: []
   metricsSaved: []
 }>()
-
-const { upsertEntry } = useJournal()
 
 const today = new Date().toISOString().split('T')[0] ?? ''
 
@@ -53,7 +67,7 @@ async function onSave() {
   if (saving.value) return
   saving.value = true
   try {
-    const result = await upsertEntry({
+    const result = await props.onUpsertEntry({
       entryDate: today,
       title: title.value || null,
       content: content.value,
@@ -168,6 +182,7 @@ function formatToday(): string {
         :definitions="metricDefinitions"
         :existing-values="todayMetrics"
         :entry-date="today"
+        :on-upsert-metric-values="props.onUpsertMetricValues"
         @saved="emit('metricsSaved')"
       />
     </template>

@@ -5,13 +5,23 @@ import { MetricType } from '~/types/journal'
 
 const props = defineProps<{
   open: boolean
+  metricTypeOptions: Array<{ label: string, value: MetricType }>
+  onCreateMetricDefinition: (payload: {
+    key: string
+    name: string
+    description: string | null
+    type: MetricType
+    unit: string | null
+    minValue: number | null
+    maxValue: number | null
+    step: number | null
+    options: string[] | null
+  }) => Promise<unknown>
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
-
-const { createMetricDefinition, metricTypeOptions } = useJournal()
 
 const schema = z.object({
   key: z.string().min(1, 'Informe a chave').max(50).regex(/^[a-z0-9_]+$/, 'Apenas letras minúsculas, números e _'),
@@ -49,7 +59,7 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
       ? event.data.options.split(',').map(o => o.trim()).filter(Boolean)
       : null
 
-    const result = await createMetricDefinition({
+    const result = await props.onCreateMetricDefinition({
       key: event.data.key,
       name: event.data.name,
       description: event.data.description || null,
@@ -140,7 +150,7 @@ const _props = props
         >
           <USelect
             v-model="state.type"
-            :items="metricTypeOptions"
+            :items="_props.metricTypeOptions"
             value-key="value"
           />
         </UFormField>

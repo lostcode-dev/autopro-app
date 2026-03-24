@@ -7,13 +7,21 @@ const props = defineProps<{
   existingValues: MetricValueWithDefinition[]
   entryDate: string
   loading?: boolean
+  onUpsertMetricValues: (payload: {
+    entryDate: string
+    values: Array<{
+      metricKey: string
+      numberValue: number | null
+      booleanValue: boolean | null
+      textValue: string | null
+      selectValue: string | null
+    }>
+  }) => Promise<boolean>
 }>()
 
 const emit = defineEmits<{
   saved: []
 }>()
-
-const { upsertMetricValues } = useJournal()
 
 // Build local state from existing values
 const localValues = ref<Record<string, { numberValue: number | null, booleanValue: boolean | null, textValue: string | null, selectValue: string | null }>>({})
@@ -46,7 +54,7 @@ async function onSave() {
       ...localValues.value[def.key]
     }))
 
-    const ok = await upsertMetricValues({
+    const ok = await props.onUpsertMetricValues({
       entryDate: props.entryDate,
       values
     })
@@ -172,8 +180,8 @@ function setSelectValue(key: string, val: string) {
           v-else-if="def.type === MetricType.Boolean"
           :model-value="getBooleanValue(def.key)"
           label="Sim"
-          @update:model-value="setBooleanValue(def.key, Boolean($event))"
           size="sm"
+          @update:model-value="setBooleanValue(def.key, Boolean($event))"
         />
 
         <!-- Select -->
