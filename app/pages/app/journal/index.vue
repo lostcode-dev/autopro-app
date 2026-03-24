@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Diário'
+  title: 'Diário de Bordo'
 })
 
 const {
@@ -22,6 +22,7 @@ const {
   tags,
   metricDefinitions,
   metricDefinitionsStatus,
+  metricTypeOptions,
   insights,
   insightsStatus,
   insightsRange,
@@ -30,7 +31,10 @@ const {
   calendarStatus,
   calendarFrom,
   calendarTo,
-  refreshCalendar
+  refreshCalendar,
+  upsertEntry,
+  createMetricDefinition,
+  upsertMetricValues
 } = useJournal()
 
 // ─── Active tab ───────────────────────────────────────────────────────────────
@@ -96,7 +100,7 @@ const tagFilterOptions = computed(() => [
 <template>
   <UDashboardPanel id="journal">
     <template #header>
-      <UDashboardNavbar title="Diário">
+      <UDashboardNavbar title="Diário de Bordo">
         <template #leading>
           <AppSidebarCollapse />
         </template>
@@ -104,7 +108,7 @@ const tagFilterOptions = computed(() => [
         <template #right>
           <NotificationsButton />
           <UButton
-            label="Nova métrica"
+            label="Novo indicador"
             icon="i-lucide-gauge"
             variant="outline"
             @click="metricCreateModalOpen = true"
@@ -129,6 +133,8 @@ const tagFilterOptions = computed(() => [
             :today-metrics="todayData?.metrics ?? []"
             :metric-definitions="metricDefinitions ?? []"
             :loading="todayStatus === 'pending' || metricDefinitionsStatus === 'pending'"
+            :on-upsert-entry="upsertEntry"
+            :on-upsert-metric-values="upsertMetricValues"
             @saved="refreshToday()"
             @metrics-saved="refreshToday()"
           />
@@ -204,6 +210,8 @@ const tagFilterOptions = computed(() => [
   <!-- Modals -->
   <JournalMetricCreateModal
     :open="metricCreateModalOpen"
+    :metric-type-options="metricTypeOptions"
+    :on-create-metric-definition="createMetricDefinition"
     @update:open="metricCreateModalOpen = $event"
   />
 

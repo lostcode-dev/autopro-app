@@ -13,7 +13,7 @@ defineProps<{
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-book-open" class="size-5 text-primary" />
           <h3 class="text-sm font-semibold">
-            Diário
+            Diário de Bordo
           </h3>
         </div>
         <UBadge
@@ -42,7 +42,7 @@ defineProps<{
           Ainda não escreveu hoje
         </p>
         <p class="text-xs text-muted">
-          Reserve um momento para refletir sobre o seu dia
+          Reserve um momento para registrar como foi o seu dia
         </p>
       </div>
       <NuxtLink to="/app/journal">
@@ -57,7 +57,7 @@ defineProps<{
         to="/app/journal"
         class="text-xs text-primary hover:underline"
       >
-        Abrir diário →
+        Abrir diário de bordo →
       </NuxtLink>
     </template>
   </UCard>
