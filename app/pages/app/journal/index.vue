@@ -4,7 +4,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Diário'
+  title: 'Diário de Bordo'
 })
 
 const {
@@ -96,7 +96,7 @@ const tagFilterOptions = computed(() => [
 <template>
   <UDashboardPanel id="journal">
     <template #header>
-      <UDashboardNavbar title="Diário">
+      <UDashboardNavbar title="Diário de Bordo">
         <template #leading>
           <AppSidebarCollapse />
         </template>
@@ -104,7 +104,7 @@ const tagFilterOptions = computed(() => [
         <template #right>
           <NotificationsButton />
           <UButton
-            label="Nova métrica"
+            label="Novo indicador"
             icon="i-lucide-gauge"
             variant="outline"
             @click="metricCreateModalOpen = true"

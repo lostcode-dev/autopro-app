@@ -95,7 +95,7 @@ function formatToday(): string {
             {{ formatToday() }}
           </h3>
           <p class="text-sm text-muted">
-            Como foi o seu dia?
+            Seu diário de bordo de hoje.
           </p>
         </div>
         <UButton
@@ -111,13 +111,13 @@ function formatToday(): string {
       <div class="space-y-3">
         <UInput
           v-model="title"
-          placeholder="Título (opcional)"
+          placeholder="Título da entrada (opcional)"
           size="lg"
         />
 
         <UTextarea
           v-model="content"
-          placeholder="O que aconteceu hoje? O que você aprendeu? O que sentiu?"
+          placeholder="Escreva livremente sobre o seu dia: o que aconteceu, como você se sentiu e o que aprendeu."
           :rows="8"
           autoresize
         />
