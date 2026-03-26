@@ -950,6 +950,6 @@ https://documentation.onesignal.com/reference/rest-api-overview
 - Posso ter metas com data de inicio e data de fim.
 - Posso ter uma meta sem data de conclusão, por exemplo, "Priorizar minha saúde física"
 - Progresso deve ser revisto, em Meta, para considerar mais fatores, como data, hábitos, e outras coisas.
-
+- Ta com Bug na paginação em Todos, no Hábitos, provavelmente porque o endpoint traz separado os dados.
 
 -->
