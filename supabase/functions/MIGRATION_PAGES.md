@@ -281,7 +281,7 @@ Pages/modules:
 Also include:
 - route/redirect handling from old paths
 - checkout success/cancel path update in billing usage
-
+ 
 Why this phase comes first:
 - it uses the backend that already exists
 - it finishes the access/subscription flow before operational modules

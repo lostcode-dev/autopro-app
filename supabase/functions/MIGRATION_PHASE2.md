@@ -43,14 +43,14 @@
 
 | Original Function | New Route | Method |
 |---|---|---|
-| getCommissionsReportData | `server/api/reports/commissions.post.ts` | POST |
-| getCostsProfitReportData | `server/api/reports/costs-profit.post.ts` | POST |
-| getCustomersReportData | `server/api/reports/customers.post.ts` | POST |
-| getDebtorsReportData | `server/api/reports/debtors.post.ts` | POST |
-| getPurchasesReportData | `server/api/reports/purchases.post.ts` | POST |
-| getReportsOverviewData | `server/api/reports/overview.post.ts` | POST |
-| getSalesItemsReportData | `server/api/reports/sales-items.post.ts` | POST |
-| getSuppliersReportData | `server/api/reports/suppliers.post.ts` | POST |
+| getCommissionsReportData | `server/api/reports/commissions.post.ts` | POST (complex filter) |
+| getCostsProfitReportData | `server/api/reports/costs-profit.post.ts` | POST (complex filter) |
+| getCustomersReportData | `server/api/reports/customers.post.ts` | POST (complex filter) |
+| getDebtorsReportData | `server/api/reports/debtors.post.ts` | POST (complex filter) |
+| getPurchasesReportData | `server/api/reports/purchases.post.ts` | POST (complex filter) |
+| getReportsOverviewData | `server/api/reports/overview.post.ts` | POST (complex filter) |
+| getSalesItemsReportData | `server/api/reports/sales-items.post.ts` | POST (complex filter) |
+| getSuppliersReportData | `server/api/reports/suppliers.post.ts` | POST (complex filter) |
 
 ### Financial (1)
 
@@ -82,74 +82,74 @@
 | seedServiceOrderItemCommissions | `server/api/service-orders/seed-commissions.post.ts` | POST |
 | listServiceOrdersItemCommissionSeedStatus | `server/api/service-orders/commission-seed-status.post.ts` | POST |
 
-### NuvemFiscal — Empresa (8)
+### Fiscal — Company (8)
 
 | Original Function | New Route | Method |
 |---|---|---|
-| createNuvemFiscalEmpresa | `server/api/nuvem-fiscal/empresa/create.post.ts` | POST |
-| getNuvemFiscalEmpresa | `server/api/nuvem-fiscal/empresa/get.post.ts` | POST |
-| updateNuvemFiscalEmpresa | `server/api/nuvem-fiscal/empresa/update.post.ts` | POST |
-| deleteNuvemFiscalEmpresa | `server/api/nuvem-fiscal/empresa/delete.post.ts` | POST |
-| listNuvemFiscalEmpresas | `server/api/nuvem-fiscal/empresa/list.post.ts` | POST |
-| getNuvemFiscalCertificadoEmpresa | `server/api/nuvem-fiscal/empresa/certificado-get.post.ts` | POST |
-| upsertNuvemFiscalCertificadoEmpresa | `server/api/nuvem-fiscal/empresa/certificado-upsert.post.ts` | POST |
-| deleteNuvemFiscalCertificadoEmpresa | `server/api/nuvem-fiscal/empresa/certificado-delete.post.ts` | POST |
+| createNuvemFiscalEmpresa | `server/api/fiscal/company/index.post.ts` | POST |
+| getNuvemFiscalEmpresa | `server/api/fiscal/company/index.get.ts` | GET |
+| updateNuvemFiscalEmpresa | `server/api/fiscal/company/index.put.ts` | PUT |
+| deleteNuvemFiscalEmpresa | `server/api/fiscal/company/index.delete.ts` | DELETE |
+| listNuvemFiscalEmpresas | `server/api/fiscal/company/list.get.ts` | GET |
+| getNuvemFiscalCertificadoEmpresa | `server/api/fiscal/company/certificate.get.ts` | GET |
+| upsertNuvemFiscalCertificadoEmpresa | `server/api/fiscal/company/certificate.put.ts` | PUT |
+| deleteNuvemFiscalCertificadoEmpresa | `server/api/fiscal/company/certificate.delete.ts` | DELETE |
 
-### NuvemFiscal — NF-e (19)
-
-| Original Function | New Route | Method |
-|---|---|---|
-| createNuvemFiscalNfe | `server/api/nuvem-fiscal/nfe/create.post.ts` | POST |
-| getNuvemFiscalNfe | `server/api/nuvem-fiscal/nfe/get.post.ts` | POST |
-| listNuvemFiscalNfe | `server/api/nuvem-fiscal/nfe/list.post.ts` | POST |
-| syncNuvemFiscalNfe | `server/api/nuvem-fiscal/nfe/sync.post.ts` | POST |
-| cancelNuvemFiscalNfe | `server/api/nuvem-fiscal/nfe/cancel.post.ts` | POST |
-| getNuvemFiscalNfeCancelamento | `server/api/nuvem-fiscal/nfe/cancelamento-get.post.ts` | POST |
-| downloadNuvemFiscalNfeCancelamentoPdf | `server/api/nuvem-fiscal/nfe/cancelamento-download-pdf.post.ts` | POST |
-| createNuvemFiscalNfeCartaCorrecao | `server/api/nuvem-fiscal/nfe/carta-correcao-create.post.ts` | POST |
-| getNuvemFiscalNfeCartaCorrecao | `server/api/nuvem-fiscal/nfe/carta-correcao-get.post.ts` | POST |
-| downloadNuvemFiscalNfeCartaCorrecaoPdf | `server/api/nuvem-fiscal/nfe/carta-correcao-download-pdf.post.ts` | POST |
-| createNuvemFiscalNfeInutilizacao | `server/api/nuvem-fiscal/nfe/inutilizacao-create.post.ts` | POST |
-| getNuvemFiscalNfeInutilizacao | `server/api/nuvem-fiscal/nfe/inutilizacao-get.post.ts` | POST |
-| downloadNuvemFiscalNfeInutilizacaoPdf | `server/api/nuvem-fiscal/nfe/inutilizacao-download-pdf.post.ts` | POST |
-| listNuvemFiscalNfeEventos | `server/api/nuvem-fiscal/nfe/eventos-list.post.ts` | POST |
-| getNuvemFiscalNfeEvento | `server/api/nuvem-fiscal/nfe/evento-get.post.ts` | POST |
-| downloadNuvemFiscalNfeEventoPdf | `server/api/nuvem-fiscal/nfe/evento-download-pdf.post.ts` | POST |
-| downloadNuvemFiscalNfeDanfePdf | `server/api/nuvem-fiscal/nfe/danfe-download-pdf.post.ts` | POST |
-| sendNuvemFiscalNfeEmail | `server/api/nuvem-fiscal/nfe/send-email.post.ts` | POST |
-| getNuvemFiscalNfeContribuinte | `server/api/nuvem-fiscal/nfe/contribuinte-get.post.ts` | POST |
-
-### NuvemFiscal — NFS-e (11)
+### Fiscal — Invoice / NF-e (19)
 
 | Original Function | New Route | Method |
 |---|---|---|
-| createNuvemFiscalNfse | `server/api/nuvem-fiscal/nfse/create.post.ts` | POST |
-| getNuvemFiscalNfse | `server/api/nuvem-fiscal/nfse/get.post.ts` | POST |
-| listNuvemFiscalNfse | `server/api/nuvem-fiscal/nfse/list.post.ts` | POST |
-| updateNuvemFiscalNfse | `server/api/nuvem-fiscal/nfse/update.post.ts` | POST |
-| deleteNuvemFiscalNfse | `server/api/nuvem-fiscal/nfse/delete.post.ts` | POST |
-| syncNuvemFiscalNfse | `server/api/nuvem-fiscal/nfse/sync.post.ts` | POST |
-| cancelNuvemFiscalNfse | `server/api/nuvem-fiscal/nfse/cancel.post.ts` | POST |
-| getNuvemFiscalNfseCancelamento | `server/api/nuvem-fiscal/nfse/cancelamento-get.post.ts` | POST |
-| downloadNuvemFiscalNfsePdf | `server/api/nuvem-fiscal/nfse/download-pdf.post.ts` | POST |
-| listNuvemFiscalNfseCidades | `server/api/nuvem-fiscal/nfse/cidades-list.post.ts` | POST |
-| getNuvemFiscalNfseCidadeMetadados | `server/api/nuvem-fiscal/nfse/cidade-metadados-get.post.ts` | POST |
+| createNuvemFiscalNfe | `server/api/fiscal/invoice/index.post.ts` | POST |
+| getNuvemFiscalNfe | `server/api/fiscal/invoice/index.get.ts` | GET |
+| listNuvemFiscalNfe | `server/api/fiscal/invoice/list.get.ts` | GET |
+| syncNuvemFiscalNfe | `server/api/fiscal/invoice/sync.post.ts` | POST (action) |
+| cancelNuvemFiscalNfe | `server/api/fiscal/invoice/cancel.post.ts` | POST (action) |
+| getNuvemFiscalNfeCancelamento | `server/api/fiscal/invoice/cancellation.get.ts` | GET |
+| downloadNuvemFiscalNfeCancelamentoPdf | `server/api/fiscal/invoice/cancellation-pdf.post.ts` | POST (binary) |
+| createNuvemFiscalNfeCartaCorrecao | `server/api/fiscal/invoice/correction-letter.post.ts` | POST |
+| getNuvemFiscalNfeCartaCorrecao | `server/api/fiscal/invoice/correction-letter.get.ts` | GET |
+| downloadNuvemFiscalNfeCartaCorrecaoPdf | `server/api/fiscal/invoice/correction-letter-pdf.post.ts` | POST (binary) |
+| createNuvemFiscalNfeInutilizacao | `server/api/fiscal/invoice/invalidation.post.ts` | POST |
+| getNuvemFiscalNfeInutilizacao | `server/api/fiscal/invoice/invalidation.get.ts` | GET |
+| downloadNuvemFiscalNfeInutilizacaoPdf | `server/api/fiscal/invoice/invalidation-pdf.post.ts` | POST (binary) |
+| listNuvemFiscalNfeEventos | `server/api/fiscal/invoice/events.get.ts` | GET |
+| getNuvemFiscalNfeEvento | `server/api/fiscal/invoice/event.get.ts` | GET |
+| downloadNuvemFiscalNfeEventoPdf | `server/api/fiscal/invoice/event-pdf.post.ts` | POST (binary) |
+| downloadNuvemFiscalNfeDanfePdf | `server/api/fiscal/invoice/pdf.post.ts` | POST (binary) |
+| sendNuvemFiscalNfeEmail | `server/api/fiscal/invoice/email.post.ts` | POST (action) |
+| getNuvemFiscalNfeContribuinte | `server/api/fiscal/invoice/taxpayer.get.ts` | GET |
 
-### NuvemFiscal — Cotas (1)
+### Fiscal — Service Invoice / NFS-e (11)
 
 | Original Function | New Route | Method |
 |---|---|---|
-| listNuvemFiscalCotas | `server/api/nuvem-fiscal/cotas/list.post.ts` | POST |
+| createNuvemFiscalNfse | `server/api/fiscal/service-invoice/index.post.ts` | POST |
+| getNuvemFiscalNfse | `server/api/fiscal/service-invoice/index.get.ts` | GET |
+| listNuvemFiscalNfse | `server/api/fiscal/service-invoice/list.get.ts` | GET |
+| updateNuvemFiscalNfse | `server/api/fiscal/service-invoice/index.put.ts` | PUT |
+| deleteNuvemFiscalNfse | `server/api/fiscal/service-invoice/index.delete.ts` | DELETE |
+| syncNuvemFiscalNfse | `server/api/fiscal/service-invoice/sync.post.ts` | POST (action) |
+| cancelNuvemFiscalNfse | `server/api/fiscal/service-invoice/cancel.post.ts` | POST (action) |
+| getNuvemFiscalNfseCancelamento | `server/api/fiscal/service-invoice/cancellation.get.ts` | GET |
+| downloadNuvemFiscalNfsePdf | `server/api/fiscal/service-invoice/pdf.post.ts` | POST (binary) |
+| listNuvemFiscalNfseCidades | `server/api/fiscal/service-invoice/cities.get.ts` | GET |
+| getNuvemFiscalNfseCidadeMetadados | `server/api/fiscal/service-invoice/city-metadata.get.ts` | GET |
 
-### NuvemFiscal — Special (3)
+### Fiscal — Quotas (1)
 
 | Original Function | New Route | Method |
 |---|---|---|
-| listNuvemFiscalIntegrationLogs | `server/api/nuvem-fiscal/integration-logs.post.ts` | POST |
-| syncNuvemFiscalIntegrationEndpoints | `server/api/nuvem-fiscal/sync-integration-endpoints.post.ts` | POST |
-| syncConfiguracaoNuvemFiscal | `server/api/nuvem-fiscal/sync-configuracao.post.ts` | POST |
+| listNuvemFiscalCotas | `server/api/fiscal/quotas/index.get.ts` | GET |
 
-### NuvemFiscal — Utility (merged into `server/utils/nuvem-fiscal.ts`)
+### Fiscal — Special (3)
+
+| Original Function | New Route | Method |
+|---|---|---|
+| listNuvemFiscalIntegrationLogs | `server/api/fiscal/integration-logs.get.ts` | GET |
+| syncNuvemFiscalIntegrationEndpoints | `server/api/fiscal/sync-integration-endpoints.post.ts` | POST (action) |
+| syncConfiguracaoNuvemFiscal | `server/api/fiscal/sync-config.post.ts` | POST (action) |
+
+### Fiscal — Utility (merged into `server/utils/nuvem-fiscal.ts`)
 
 | Original Function | Destination |
 |---|---|

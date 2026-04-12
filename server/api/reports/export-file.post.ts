@@ -1,27 +1,21 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import { buildTablePdfBase64, csvEscape, textToBase64, toLocalDateOnly } from '../../utils/report-export'
 
-/**
- * POST /api/reports/export-file
- * Generic report file export (PDF or CSV) from pre-built columns & rows.
- * Migrated from: supabase/functions/exportReportFile
- */
-
 export default defineEventHandler(async (event) => {
-  const payload = (await readBody(event)) || {}
-  const format = payload?.format === 'pdf' ? 'pdf' : 'csv'
-  const title = String(payload?.title || 'Relatório').trim() || 'Relatório'
-  const subtitle = String(payload?.subtitle || '').trim()
-  const fileNameBase = String(payload?.fileNameBase || 'relatorio').trim() || 'relatorio'
-  const columns = Array.isArray(payload?.columns) ? payload.columns : []
-  const rows = Array.isArray(payload?.rows) ? payload.rows : []
+  const body = (await readBody(event)) || {}
+  const format = body?.format === 'pdf' ? 'pdf' : 'csv'
+  const title = String(body?.title || 'Report').trim() || 'Report'
+  const subtitle = String(body?.subtitle || '').trim()
+  const fileNameBase = String(body?.fileNameBase || 'report').trim() || 'report'
+  const columns = Array.isArray(body?.columns) ? body.columns : []
+  const rows = Array.isArray(body?.rows) ? body.rows : []
 
   if (columns.length === 0) {
-    throw createError({ statusCode: 400, statusMessage: 'As colunas do relatório são obrigatórias.' })
+    throw createError({ statusCode: 400, statusMessage: 'Report columns are required.' })
   }
 
   if (rows.length === 0) {
-    throw createError({ statusCode: 400, statusMessage: 'Não há dados para exportar.' })
+    throw createError({ statusCode: 400, statusMessage: 'No data to export.' })
   }
 
   const normalizedColumns = columns.map((column: any) => ({
