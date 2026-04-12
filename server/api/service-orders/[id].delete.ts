@@ -1,29 +1,27 @@
-import { readBody } from 'h3'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/cancel-payment
- * Deletes all payment-related records for a service order and reverts bank balances.
- * Migrated from: supabase/functions/cancelServiceOrderPayment
+ * DELETE /api/service-orders/:id
+ * Deletes a service order and all related records (cascade soft-delete).
  */
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  const body = await readBody(event)
-  const orderId = body?.orderId
+  const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
-    throw createError({ statusCode: 400, statusMessage: 'orderId é obrigatório' })
+    throw createError({ statusCode: 400, statusMessage: 'orderId is required' })
   }
 
   const warnings: string[] = []
 
-  // Verify order exists
-  const { data: order } = await supabase
+  // Fetch order and verify access
+  const { data: order, error: orderError } = await supabase
     .from('service_orders')
     .select('*')
     .eq('id', orderId)
@@ -31,8 +29,8 @@ export default eventHandler(async (event) => {
     .is('deleted_at', null)
     .maybeSingle()
 
-  if (!order) {
-    throw createError({ statusCode: 404, statusMessage: 'Ordem de serviço não encontrada' })
+  if (orderError || !order) {
+    throw createError({ statusCode: 404, statusMessage: 'Service order not found or access denied' })
   }
 
   let deletedStatements = 0
@@ -60,12 +58,12 @@ export default eventHandler(async (event) => {
         await supabase.from('bank_account_statements').delete().eq('id', stmt.id)
         deletedStatements++
       } catch (err: any) {
-        warnings.push(`Falha ao excluir extrato ${stmt.id}: ${err.message}`)
+        warnings.push(`Failed to delete statement ${stmt.id}: ${err.message}`)
       }
     }
   }
 
-  // 1. Delete commissions
+  // 1. Delete commissions and linked financial entries
   const { data: commissions } = await supabase
     .from('employee_financial_records')
     .select('*')
@@ -76,14 +74,17 @@ export default eventHandler(async (event) => {
   for (const commission of commissions || []) {
     if (commission.financial_transaction_id) {
       await deleteStatementsAndRevert(commission.financial_transaction_id)
-      await supabase.from('financial_transactions').delete().eq('id', commission.financial_transaction_id)
-      deletedTransactions++
+      const { error } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .eq('id', commission.financial_transaction_id)
+      if (!error) deletedTransactions++
     }
     await supabase.from('employee_financial_records').delete().eq('id', commission.id)
     deletedCommissions++
   }
 
-  // 2. Delete installments
+  // 2. Delete installments and linked financial entries
   const { data: installments } = await supabase
     .from('service_order_installments')
     .select('*')
@@ -93,14 +94,17 @@ export default eventHandler(async (event) => {
   for (const installment of installments || []) {
     if (installment.financial_transaction_id) {
       await deleteStatementsAndRevert(installment.financial_transaction_id)
-      await supabase.from('financial_transactions').delete().eq('id', installment.financial_transaction_id)
-      deletedTransactions++
+      const { error } = await supabase
+        .from('financial_transactions')
+        .delete()
+        .eq('id', installment.financial_transaction_id)
+      if (!error) deletedTransactions++
     }
     await supabase.from('service_order_installments').delete().eq('id', installment.id)
     deletedInstallments++
   }
 
-  // 3. Delete direct financial entries for this OS
+  // 3. Delete financial entries directly linked to the order
   const { data: directTransactions } = await supabase
     .from('financial_transactions')
     .select('id')
@@ -109,29 +113,25 @@ export default eventHandler(async (event) => {
 
   for (const tx of directTransactions || []) {
     await deleteStatementsAndRevert(tx.id)
-    await supabase.from('financial_transactions').delete().eq('id', tx.id)
-    deletedTransactions++
+    const { error } = await supabase
+      .from('financial_transactions')
+      .delete()
+      .eq('id', tx.id)
+    if (!error) deletedTransactions++
   }
 
-  // 4. Reset order payment status
-  await supabase
+  // 4. Soft-delete the order
+  const { error: deleteError } = await supabase
     .from('service_orders')
     .update({
-      payment_status: 'pending',
-      payment_method: null,
-      is_installment: false,
-      installment_count: 0,
-      commission_amount: 0,
-      terminal_fee_amount: 0,
-      updated_by: authUser.email
+      deleted_at: new Date().toISOString(),
+      deleted_by: authUser.email
     })
     .eq('id', orderId)
 
-  const { data: updatedOrder } = await supabase
-    .from('service_orders')
-    .select('*')
-    .eq('id', orderId)
-    .single()
+  if (deleteError) {
+    throw createError({ statusCode: 500, statusMessage: `Failed to delete service order: ${deleteError.message}` })
+  }
 
   return {
     data: {
@@ -143,7 +143,6 @@ export default eventHandler(async (event) => {
         commissions: deletedCommissions,
         installments: deletedInstallments
       },
-      updatedOrder,
       warnings
     }
   }

@@ -1,11 +1,11 @@
+import { defineEventHandler } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/next-number
- * Calculates the next service order number.
- * Migrated from: supabase/functions/getNextOSNumber
+ * GET /api/service-orders/next-number
+ * Calculates the next available service order number.
  */
 
 const DEFAULT_START_NUMBER = 4000
@@ -23,7 +23,7 @@ function extractOsNumericPart(value: unknown) {
   return Number.isFinite(numeric) ? numeric : null
 }
 
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)

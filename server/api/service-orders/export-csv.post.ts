@@ -1,4 +1,4 @@
-import { readBody } from 'h3'
+import { defineEventHandler, readBody } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
@@ -6,7 +6,6 @@ import { resolveOrganizationId } from '../../utils/organization'
 /**
  * POST /api/service-orders/export-csv
  * Exports service orders to CSV format.
- * Migrated from: supabase/functions/exportServiceOrdersCsv
  */
 
 function escapeCsv(value: unknown): string {
@@ -45,7 +44,7 @@ const PAYMENT_STATUS_LABELS: Record<string, string> = {
   partial: 'Parcial'
 }
 
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)

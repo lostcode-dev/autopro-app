@@ -1,23 +1,21 @@
-import { readBody } from 'h3'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/cancel
+ * POST /api/service-orders/:id/cancel
  * Cancels a service order: deletes commissions/financial entries, sets status to cancelled.
- * Migrated from: supabase/functions/cancelServiceOrder
  */
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  const body = await readBody(event)
-  const orderId = body?.orderId
+  const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
-    throw createError({ statusCode: 400, statusMessage: 'orderId é obrigatório' })
+    throw createError({ statusCode: 400, statusMessage: 'orderId is required' })
   }
 
   const warnings: string[] = []
@@ -32,7 +30,7 @@ export default eventHandler(async (event) => {
     .maybeSingle()
 
   if (orderError || !order) {
-    throw createError({ statusCode: 404, statusMessage: 'Ordem de serviço não encontrada ou acesso negado' })
+    throw createError({ statusCode: 404, statusMessage: 'Service order not found or access denied' })
   }
 
   // Idempotent: if already cancelled, return success
@@ -52,7 +50,7 @@ export default eventHandler(async (event) => {
   if (order.payment_status !== 'pending') {
     throw createError({
       statusCode: 409,
-      statusMessage: 'Não é possível cancelar uma OS com pagamento registrado. Cancele o pagamento primeiro.'
+      statusMessage: 'Cannot cancel a service order with registered payment. Cancel the payment first.'
     })
   }
 
@@ -67,7 +65,7 @@ export default eventHandler(async (event) => {
   if (installments && installments.length > 0) {
     throw createError({
       statusCode: 409,
-      statusMessage: 'Não é possível cancelar uma OS com pagamento registrado. Cancele o pagamento primeiro.'
+      statusMessage: 'Cannot cancel a service order with registered payment. Cancel the payment first.'
     })
   }
 
@@ -84,7 +82,7 @@ export default eventHandler(async (event) => {
     if (cashEntries && cashEntries.length > 0) {
       throw createError({
         statusCode: 409,
-        statusMessage: 'Não é possível cancelar uma OS com pagamento registrado. Cancele o pagamento primeiro.'
+        statusMessage: 'Cannot cancel a service order with registered payment. Cancel the payment first.'
       })
     }
   }
@@ -113,7 +111,7 @@ export default eventHandler(async (event) => {
         await supabase.from('bank_account_statements').delete().eq('id', stmt.id)
         deletedStatements++
       } catch (err: any) {
-        warnings.push(`Falha ao excluir extrato ${stmt.id}: ${err.message}`)
+        warnings.push(`Failed to delete statement ${stmt.id}: ${err.message}`)
       }
     }
   }

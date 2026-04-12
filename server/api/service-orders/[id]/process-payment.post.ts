@@ -1,31 +1,31 @@
-import { readBody } from 'h3'
+import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/process-payment
+ * POST /api/service-orders/:id/process-payment
  * Creates payment entries, installments and commissions for a service order.
- * Migrated from: supabase/functions/processServiceOrderPayment
  */
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
+  const orderId = getRouterParam(event, 'id')
+
+  if (!orderId) {
+    throw createError({ statusCode: 400, statusMessage: 'orderId is required' })
+  }
+
   const body = await readBody(event)
   const {
-    orderId,
     paymentMethod,
     bankAccountId,
     paymentTerminalId,
     installments: installmentsData,
     paymentDate
   } = body || {}
-
-  if (!orderId) {
-    throw createError({ statusCode: 400, statusMessage: 'orderId é obrigatório' })
-  }
 
   const warnings: string[] = []
 
@@ -39,11 +39,11 @@ export default eventHandler(async (event) => {
     .maybeSingle()
 
   if (orderError || !order) {
-    throw createError({ statusCode: 404, statusMessage: 'Ordem de serviço não encontrada' })
+    throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
   }
 
   if (order.payment_status === 'paid') {
-    throw createError({ statusCode: 409, statusMessage: 'OS já possui pagamento registrado' })
+    throw createError({ statusCode: 409, statusMessage: 'Service order already has registered payment' })
   }
 
   const totalAmount = Number(order.total_amount || 0)
@@ -60,7 +60,7 @@ export default eventHandler(async (event) => {
         .from('financial_transactions')
         .insert({
           organization_id: organizationId,
-          description: `Parcela ${installmentNumber}/${installmentsData.length} - OS #${order.number}`,
+          description: `Installment ${installmentNumber}/${installmentsData.length} - OS #${order.number}`,
           type: 'income',
           amount: Number(inst.amount || 0),
           date: inst.due_date || effectiveDate,
@@ -121,12 +121,12 @@ export default eventHandler(async (event) => {
                 previous_balance: previousBalance,
                 current_balance: newBalance,
                 date: inst.due_date || effectiveDate,
-                description: `Parcela ${installmentNumber}/${installmentsData.length} - OS #${order.number}`,
+                description: `Installment ${installmentNumber}/${installmentsData.length} - OS #${order.number}`,
                 created_by: authUser.email
               })
           }
         } catch (err: any) {
-          warnings.push(`Falha ao atualizar saldo bancário para parcela ${installmentNumber}: ${err.message}`)
+          warnings.push(`Failed to update bank balance for installment ${installmentNumber}: ${err.message}`)
         }
       }
     }
@@ -151,7 +151,7 @@ export default eventHandler(async (event) => {
       .from('financial_transactions')
       .insert({
         organization_id: organizationId,
-        description: `Recebimento OS #${order.number}`,
+        description: `Payment OS #${order.number}`,
         type: 'income',
         amount: totalAmount,
         date: effectiveDate,
@@ -194,12 +194,12 @@ export default eventHandler(async (event) => {
               previous_balance: previousBalance,
               current_balance: newBalance,
               date: effectiveDate,
-              description: `Recebimento OS #${order.number}`,
+              description: `Payment OS #${order.number}`,
               created_by: authUser.email
             })
         }
       } catch (err: any) {
-        warnings.push(`Falha ao atualizar saldo bancário: ${err.message}`)
+        warnings.push(`Failed to update bank balance: ${err.message}`)
       }
     }
 

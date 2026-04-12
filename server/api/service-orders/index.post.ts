@@ -1,12 +1,11 @@
-import { readBody } from 'h3'
+import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/save
+ * POST /api/service-orders
  * Creates or updates a service order with items and related data.
- * Migrated from: supabase/functions/saveServiceOrder
  */
 
 const DEFAULT_START_OS_NUMBER = 4000
@@ -34,7 +33,7 @@ function computeNextOsNumber(orders: { number: string }[]) {
   return `OS${next}`
 }
 
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
@@ -45,7 +44,7 @@ export default eventHandler(async (event) => {
   const appointmentData = body?.appointmentData || null
 
   if (!orderData) {
-    throw createError({ statusCode: 400, statusMessage: 'orderData é obrigatório' })
+    throw createError({ statusCode: 400, statusMessage: 'orderData is required' })
   }
 
   const warnings: string[] = []
@@ -143,7 +142,7 @@ export default eventHandler(async (event) => {
       .single()
 
     if (error) {
-      throw createError({ statusCode: 500, statusMessage: `Erro ao atualizar OS: ${error.message}` })
+      throw createError({ statusCode: 500, statusMessage: `Failed to update service order: ${error.message}` })
     }
     savedOrder = data
   } else {
@@ -157,7 +156,7 @@ export default eventHandler(async (event) => {
       .single()
 
     if (error) {
-      throw createError({ statusCode: 500, statusMessage: `Erro ao criar OS: ${error.message}` })
+      throw createError({ statusCode: 500, statusMessage: `Failed to create service order: ${error.message}` })
     }
     savedOrder = data
   }
@@ -171,7 +170,7 @@ export default eventHandler(async (event) => {
         vehicle_id: savedOrder.vehicle_id,
         appointment_date: appointmentData.appointment_date || savedOrder.entry_date,
         time: appointmentData.time || '08:00',
-        service_type: appointmentData.service_type || savedOrder.reported_defect || 'Serviço',
+        service_type: appointmentData.service_type || savedOrder.reported_defect || 'Service',
         priority: appointmentData.priority || 'medium',
         status: 'scheduled',
         service_order_id: savedOrder.id,
@@ -195,7 +194,7 @@ export default eventHandler(async (event) => {
         savedOrder.appointment_id = appointment.id
       }
     } catch (err: any) {
-      warnings.push(`Falha ao criar agendamento: ${err.message}`)
+      warnings.push(`Failed to create appointment: ${err.message}`)
     }
   }
 

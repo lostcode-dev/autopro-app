@@ -1,23 +1,21 @@
-import { readBody } from 'h3'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/generate-commissions
+ * POST /api/service-orders/:id/generate-commissions
  * Generates/updates commission records from service order items.
- * Migrated from: supabase/functions/generateServiceOrderCommissions
  */
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  const body = await readBody(event)
-  const orderId = body?.orderId
+  const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
-    throw createError({ statusCode: 400, statusMessage: 'orderId é obrigatório' })
+    throw createError({ statusCode: 400, statusMessage: 'orderId is required' })
   }
 
   const warnings: string[] = []
@@ -32,7 +30,7 @@ export default eventHandler(async (event) => {
     .maybeSingle()
 
   if (!order) {
-    throw createError({ statusCode: 404, statusMessage: 'Ordem de serviço não encontrada' })
+    throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
   }
 
   // Fetch employees
@@ -82,7 +80,7 @@ export default eventHandler(async (event) => {
         orderId,
         commissions: [],
         totalCommission: 0,
-        warnings: ['Nenhum funcionário responsável na OS']
+        warnings: ['No responsible employees on this service order']
       }
     }
   }
@@ -99,7 +97,7 @@ export default eventHandler(async (event) => {
         orderId,
         commissions: [],
         totalCommission: 0,
-        warnings: ['OS sem itens para calcular comissão']
+        warnings: ['Service order has no items to calculate commission']
       }
     }
   }
@@ -164,7 +162,7 @@ export default eventHandler(async (event) => {
           record_type: 'commission',
           amount: commissionAmount,
           status: 'pending',
-          description: `Comissão - OS #${order.number} - ${item.name || item.description || 'Item'}`,
+          description: `Commission - OS #${order.number} - ${item.name || item.description || 'Item'}`,
           date: order.entry_date || new Date().toISOString().split('T')[0],
           commission_type: commissionType,
           commission_percentage: commissionType === 'percentage' ? commissionValue : null,

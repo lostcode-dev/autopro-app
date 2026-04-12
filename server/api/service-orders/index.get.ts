@@ -1,29 +1,12 @@
-import { readBody } from 'h3'
+import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/list
+ * GET /api/service-orders
  * Lists service orders with filters, pagination and search.
- * Migrated from: supabase/functions/listServiceOrders
  */
-
-interface ListRequest {
-  cursor?: number
-  limit?: number
-  searchTerm?: string
-  numeroExact?: string
-  filters?: {
-    status?: string
-    client_id?: string
-    vehicle_id?: string
-    responsible_id?: string
-    number?: string
-  }
-  dateRange?: { from?: string | null; to?: string | null }
-  useDateFilter?: boolean
-}
 
 function normalizeString(value: unknown) {
   return String(value ?? '').trim().toLowerCase()
@@ -36,15 +19,15 @@ function safeParseDate(value: unknown) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  const body = (await readBody(event)) as ListRequest
+  const query = getQuery(event)
 
-  const cursor = Number.isFinite(body.cursor) ? Number(body.cursor) : 0
-  const limitRaw = Number.isFinite(body.limit) ? Number(body.limit) : 20
+  const cursor = Number.isFinite(Number(query.cursor)) ? Number(query.cursor) : 0
+  const limitRaw = Number.isFinite(Number(query.limit)) ? Number(query.limit) : 20
   const limit = Math.min(Math.max(limitRaw, 5), 50)
 
   // Fetch base data in parallel
@@ -75,35 +58,33 @@ export default eventHandler(async (event) => {
 
   const installmentsByOrderId = new Map<string, { paid: number; total: number }>()
   for (const inst of installments) {
-    const orderId = inst.service_order_id
-    if (!orderId) continue
-    const current = installmentsByOrderId.get(orderId) || { paid: 0, total: 0 }
+    const instOrderId = inst.service_order_id
+    if (!instOrderId) continue
+    const current = installmentsByOrderId.get(instOrderId) || { paid: 0, total: 0 }
     current.total += 1
     if (String(inst.status).toLowerCase() === 'paid') {
       current.paid += 1
     }
-    installmentsByOrderId.set(orderId, current)
+    installmentsByOrderId.set(instOrderId, current)
   }
 
   const totalAll = orders.length
 
   // Apply filters
-  const searchTerm = normalizeString(body.searchTerm)
-  const numeroExact = body.numeroExact ? String(body.numeroExact).trim() : ''
-  const filters = body.filters || {}
-  const statusFilter = filters.status || 'all'
-  const clientIdFilter = filters.client_id || 'all'
-  const vehicleIdFilter = filters.vehicle_id || 'all'
-  const responsibleIdFilter = filters.responsible_id || 'all'
-  const numberFilter = normalizeString(filters.number)
-
-  const useDateFilter = !!body.useDateFilter
-  const dateFrom = safeParseDate(body.dateRange?.from)
-  const dateTo = safeParseDate(body.dateRange?.to)
+  const searchTerm = normalizeString(query.searchTerm)
+  const exactNumber = query.exactNumber ? String(query.exactNumber).trim() : ''
+  const statusFilter = String(query.status || 'all')
+  const clientIdFilter = String(query.clientId || 'all')
+  const vehicleIdFilter = String(query.vehicleId || 'all')
+  const responsibleIdFilter = String(query.responsibleId || 'all')
+  const numberFilter = normalizeString(query.number)
+  const useDateFilter = query.useDateFilter === 'true'
+  const dateFrom = safeParseDate(query.dateFrom)
+  const dateTo = safeParseDate(query.dateTo)
 
   const filtered = orders.filter((order: any) => {
-    if (numeroExact) {
-      return normalizeString(order.number) === numeroExact.toLowerCase()
+    if (exactNumber) {
+      return normalizeString(order.number) === exactNumber.toLowerCase()
     }
 
     const number = normalizeString(order.number)

@@ -1,23 +1,21 @@
-import { readBody } from 'h3'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 
 /**
- * POST /api/service-orders/details
+ * GET /api/service-orders/:id
  * Fetches full service order details with related data.
- * Migrated from: supabase/functions/getServiceOrderDetailsData
  */
-export default eventHandler(async (event) => {
+export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  const body = await readBody(event)
-  const orderId = body?.orderId
+  const orderId = getRouterParam(event, 'id')
 
   if (!orderId) {
-    throw createError({ statusCode: 400, statusMessage: 'orderId é obrigatório' })
+    throw createError({ statusCode: 400, statusMessage: 'orderId is required' })
   }
 
   // Fetch order and verify organization
@@ -30,7 +28,7 @@ export default eventHandler(async (event) => {
     .maybeSingle()
 
   if (orderError || !order) {
-    throw createError({ statusCode: 404, statusMessage: 'Ordem de serviço não encontrada' })
+    throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
   }
 
   // Fetch related data in parallel
