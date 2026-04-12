@@ -8,15 +8,15 @@ const route = useRoute()
 
 const title = page.value?.seo?.title || page.value?.title
 const description = page.value?.seo?.description || page.value?.description
-const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://kortex.app'
+const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://autopro.app'
 const canonicalUrl = `${siteUrl}${route.path}`
 const ogImage = `${siteUrl}/icons/icon-512x512.png`
 
 const jsonLd = computed(() => ({
   '@context': 'https://schema.org',
   '@type': 'SoftwareApplication',
-  'name': 'Kortex',
-  'applicationCategory': 'ProductivityApplication',
+  'name': 'AutoPro',
+  'applicationCategory': 'BusinessApplication',
   'operatingSystem': 'Web',
   'inLanguage': 'pt-BR',
   'description': description,
@@ -34,7 +34,7 @@ useSeoMeta({
   ogTitle: title,
   description,
   ogDescription: description,
-  keywords: 'sistema pessoal, produtividade pessoal, segunda cérebro, gestão de tarefas, hábitos, metas, notas conectadas',
+  keywords: 'software para oficina, gestao de oficina, ordens de servico, clientes, veiculos, financeiro, administracao',
   robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
   ogType: 'website',
   ogUrl: canonicalUrl,

@@ -71,7 +71,7 @@ export default defineNuxtPlugin(() => {
     person_profiles: 'identified_only',
     loaded: (client) => {
       client.register({
-        app_name: 'kortex',
+        app_name: 'autopro',
         app_runtime: 'nuxt-web',
         auth_state: getAuthState(auth.user.value?.id ?? null)
       })

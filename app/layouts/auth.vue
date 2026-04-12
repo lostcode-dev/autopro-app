@@ -22,13 +22,13 @@ const { loading: authLoading } = useAuth()
             <AppLogo />
             <div class="space-y-3">
               <p class="text-sm font-semibold uppercase tracking-[0.28em] text-primary/75">
-                Seu sistema pessoal de clareza
+                Operação moderna para oficinas
               </p>
               <h1 class="text-4xl font-semibold tracking-tight text-highlighted">
-                Capture ideias, organize contexto e transforme intenção em ação.
+                Organize a oficina, acompanhe a equipe e centralize a operação em um só lugar.
               </h1>
               <p class="text-base leading-7 text-toned">
-                O Kortex reúne notas, hábitos e conhecimento em um fluxo sóbrio, rápido e pensado para uso diário.
+                O AutoPro conecta atendimento, ordens de serviço, cadastros, compras e relatórios em um fluxo pensado para o dia a dia da oficina.
               </p>
             </div>
           </div>

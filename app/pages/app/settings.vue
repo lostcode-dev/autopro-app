@@ -6,40 +6,66 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Configurações'
+  title: 'Configuracoes'
 })
 
-const links = [
-  [
-    {
-      label: 'Geral',
-      icon: 'i-lucide-user',
-      to: '/app/settings',
-      exact: true
-    },
-    {
-      label: 'Assinatura',
-      icon: 'i-lucide-credit-card',
-      to: '/app/settings/subscription'
-    },
-    {
-      label: 'Notificações',
-      icon: 'i-lucide-bell',
-      to: '/app/settings/notifications'
-    },
-    {
-      label: 'Segurança',
-      icon: 'i-lucide-shield',
-      to: '/app/settings/security'
-    }
-  ]
-] satisfies NavigationMenuItem[][]
+const workshop = useWorkshopPermissions()
+
+const links = computed<NavigationMenuItem[][]>(() => [[
+  {
+    label: 'Conta',
+    icon: 'i-lucide-settings',
+    to: '/app/settings',
+    exact: true
+  },
+  {
+    label: 'Perfil',
+    icon: 'i-lucide-user',
+    to: '/app/settings/profile'
+  },
+  workshop.can('settings.view')
+    ? {
+        label: 'Empresa',
+        icon: 'i-lucide-building-2',
+        to: '/app/settings/company'
+      }
+    : null,
+  workshop.can('employees.read')
+    ? {
+        label: 'Funcionarios',
+        icon: 'i-lucide-users-round',
+        to: '/app/settings/employees'
+      }
+    : null,
+  workshop.can('roles.view')
+    ? {
+        label: 'Permissoes',
+        icon: 'i-lucide-shield-check',
+        to: '/app/settings/roles'
+      }
+    : null,
+  {
+    label: 'Assinatura',
+    icon: 'i-lucide-credit-card',
+    to: '/app/settings/subscription'
+  },
+  {
+    label: 'Notificacoes',
+    icon: 'i-lucide-bell',
+    to: '/app/settings/notifications'
+  },
+  {
+    label: 'Seguranca',
+    icon: 'i-lucide-shield',
+    to: '/app/settings/security'
+  }
+].filter(Boolean) as NavigationMenuItem[]])
 </script>
 
 <template>
   <UDashboardPanel id="settings" :ui="{ body: 'lg:py-12' }">
     <template #header>
-      <UDashboardNavbar title="Configurações">
+      <UDashboardNavbar title="Configuracoes">
         <template #leading>
           <AppSidebarCollapse />
         </template>
@@ -50,7 +76,6 @@ const links = [
       </UDashboardNavbar>
 
       <UDashboardToolbar>
-        <!-- NOTE: The `-mx-1` class is used to align with the `DashboardSidebarCollapse` button here. -->
         <UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
       </UDashboardToolbar>
     </template>

@@ -1,0 +1,115 @@
+<script setup lang="ts">
+import type { NavigationMenuItem } from '@nuxt/ui'
+
+const open = ref(false)
+const sidebarCollapsed = ref(true)
+const isMobile = useMediaQuery('(max-width: 1023px)')
+
+function closeSidebar() {
+  open.value = false
+}
+
+function item(label: string, icon: string, to: string): NavigationMenuItem {
+  return {
+    label,
+    icon,
+    to,
+    onSelect: closeSidebar
+  }
+}
+
+const links = computed<NavigationMenuItem[][]>(() => [[
+  item('Dashboard', 'i-lucide-layout-dashboard', '/admin/dashboard'),
+  item('Organizacoes', 'i-lucide-buildings', '/admin/organizations'),
+  item('Sistema', 'i-lucide-wrench', '/admin/system'),
+  item('Fiscal empresas', 'i-lucide-file-stack', '/admin/fiscal/companies'),
+  item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
+], [
+  {
+    label: 'Voltar ao app',
+    icon: 'i-lucide-arrow-left-right',
+    to: '/app/dashboard'
+  },
+  {
+    label: 'Ajuda',
+    icon: 'i-lucide-info',
+    to: '/docs'
+  }
+]])
+
+const groups = computed(() => [
+  {
+    id: 'admin-links',
+    label: 'Administracao',
+    items: links.value.flat()
+  }
+])
+
+watch(
+  isMobile,
+  (mobile) => {
+    if (mobile)
+      sidebarCollapsed.value = false
+  },
+  { immediate: true }
+)
+</script>
+
+<template>
+  <UDashboardGroup unit="rem">
+    <UDashboardSidebar
+      id="admin"
+      v-model:open="open"
+      v-model:collapsed="sidebarCollapsed"
+      :collapsible="!isMobile"
+      :resizable="!isMobile"
+      class="bg-elevated/25"
+      :ui="{ footer: 'lg:border-t lg:border-default' }"
+    >
+      <template #header="{ collapsed }">
+        <NuxtLink
+          to="/admin/dashboard"
+          class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
+        >
+          <AppLogo :show-label="false" size="sm" />
+          <span
+            v-if="!collapsed"
+            class="text-sm font-semibold text-highlighted truncate"
+          >
+            AutoPro Admin
+          </span>
+        </NuxtLink>
+      </template>
+
+      <template #default="{ collapsed }">
+        <UDashboardSearchButton
+          :collapsed="collapsed"
+          class="bg-transparent ring-default"
+        />
+
+        <UNavigationMenu
+          v-for="(group, index) in links"
+          :key="index"
+          :collapsed="collapsed"
+          :items="group"
+          orientation="vertical"
+          tooltip
+          popover
+          :class="index === links.length - 1 ? 'mt-auto' : ''"
+        />
+      </template>
+
+      <template #footer="{ collapsed }">
+        <UserMenu :collapsed="collapsed" />
+      </template>
+    </UDashboardSidebar>
+
+    <UDashboardSearch :groups="groups" />
+
+    <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <slot />
+    </div>
+
+    <NotificationsSlideover />
+  </UDashboardGroup>
+</template>

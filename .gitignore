@@ -25,4 +25,4 @@ logs
 
 # VSC
 .history
-.old_project
+/old_project

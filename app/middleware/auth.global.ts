@@ -3,6 +3,8 @@ import { useAuth } from '~/composables/useAuth'
 export default defineNuxtRouteMiddleware(async (to) => {
   const auth = useAuth()
   const isAppRoute = to.path.startsWith('/app')
+  const isAdminRoute = to.path.startsWith('/admin')
+  const isProtectedRoute = isAppRoute || isAdminRoute
   const isAuthRoute = to.path === '/login' || to.path === '/signup'
   const userCookie = useCookie<string | null>('sb-user')
 
@@ -23,7 +25,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!hasSessionHints) {
     auth.setGuestReady()
 
-    if (isAppRoute)
+    if (isProtectedRoute)
       return navigateTo('/login')
 
     return
@@ -31,7 +33,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   await auth.ensureReady()
 
-  if (isAppRoute && !auth.isAuthenticated.value)
+  if (isProtectedRoute && !auth.isAuthenticated.value)
     return navigateTo('/login')
 
   if (isAuthRoute && auth.isAuthenticated.value)

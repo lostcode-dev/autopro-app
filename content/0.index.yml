@@ -1,150 +1,114 @@
-title: O [Kortex]{class="text-primary"} para organizar sua vida, trabalho e conhecimento
-description: Centralize notas, tarefas, hábitos, metas, finanças e agenda em um único sistema pessoal. Do registro rápido à execução diária, com clareza e consistência.
+title: O [AutoPro]{class="text-primary"} para organizar atendimento, oficina e gestão em um só lugar
+description: Controle ordens de serviço, clientes, veículos, compras, financeiro e operação da oficina com um fluxo claro para o time e um fluxo separado para administração.
 seo:
-  title: Kortex | Sistema pessoal de organização e produtividade
-  description: Kortex é um sistema pessoal para capturar ideias, organizar tarefas, acompanhar hábitos e transformar conhecimento em ação com foco e consistência.
+  title: AutoPro | Sistema para gestão de oficinas mecânicas
+  description: AutoPro é um sistema para oficinas mecânicas com ordens de serviço, clientes, veículos, compras, estoque, financeiro e base para operações fiscais e administrativas.
 navigation: false
 hero:
   links:
-    - label: Começar agora
+    - label: Criar conta
       icon: i-lucide-arrow-right
       trailing: true
       to: /signup
       size: xl
-    - label: Ver como funciona
+    - label: Ver documentação
       icon: i-lucide-book-open
       size: xl
       color: neutral
       variant: subtle
       to: /docs/getting-started
 sections:
-  - title: Capture ideias e organize tudo sem fricção
-    description: Registre pensamentos em segundos e transforme informação solta em um sistema claro com notas, tags, coleções e conexões.
+  - title: Organize a operação da oficina do orçamento à entrega
+    description: Reúna ordens de serviço, clientes, veículos e agendamentos em um fluxo operacional único, pensado para o dia a dia da oficina.
     id: features
     orientation: horizontal
     features:
-      - name: Captura rápida
-        description: Use uma caixa de entrada para anotar no momento e processar quando for conveniente.
-        icon: i-lucide-inbox
-      - name: Organização estruturada
-        description: Organize por coleções e tags para encontrar contexto e evoluir suas ideias com facilidade.
-        icon: i-lucide-folders
-      - name: Conexões que fazem sentido
-        description: Conecte ideias, projetos e referências para gerar insights que viram próximos passos.
-        icon: i-lucide-share-2
-  - title: Hábitos, tarefas e metas em ritmo sustentável
-    description: Planeje melhor a semana, acompanhe consistência e mantenha foco no progresso real com revisão contínua do que funciona.
+      - name: Ordens de serviço centralizadas
+        description: Controle abertura, andamento, pagamento, histórico e acompanhamento operacional em um único módulo.
+        icon: i-lucide-clipboard-list
+      - name: Clientes e veículos conectados
+        description: Consulte o histórico do cliente junto com os veículos e os serviços executados.
+        icon: i-lucide-car-front
+      - name: Agenda e atendimento
+        description: Organize entrada de veículos, agendamentos e próximos serviços sem depender de planilhas soltas.
+        icon: i-lucide-calendar-days
+  - title: Gestão financeira e compras com menos retrabalho
+    description: Tenha visão mais clara sobre contas, compras, devoluções, fornecedores, impostos e fluxo financeiro da oficina.
     orientation: horizontal
     reverse: true
     features:
-      - name: Rastreamento flexível
-        description: Acompanhe hábitos diários e semanais com regras realistas, sem culpa por pausas estratégicas.
-        icon: i-lucide-calendar-check
-      - name: Check-in diário
-        description: Registre foco, obstáculos e aprendizados em poucos minutos para melhorar a execução diária.
-        icon: i-lucide-check-square
-      - name: Métricas simples
-        description: Visualize tendências e heatmaps para enxergar padrões e ajustar o sistema com dados.
-        icon: i-lucide-line-chart
+      - name: Compras e fornecedores
+        description: Acompanhe solicitações, compras, devoluções e relacionamento com fornecedores.
+        icon: i-lucide-shopping-cart
+      - name: Financeiro operacional
+        description: Controle contas, lançamentos, maquininhas, impostos e estrutura financeira com visão por organização.
+        icon: i-lucide-wallet
+      - name: Base para relatórios
+        description: Estruture os dados da oficina para análises de faturamento, lucro, custos, clientes e desempenho.
+        icon: i-lucide-bar-chart-3
 features:
-  title: Um sistema completo para produtividade pessoal
-  description: Tudo o que você precisa para capturar, organizar, priorizar e executar sem depender de dezenas de aplicativos separados.
+  title: Um sistema pensado para a rotina real da oficina
+  description: AutoPro une operação, gestão e base administrativa em uma arquitetura moderna, preparada para crescer por fases.
   items:
-    - title: Notas com contexto
-      description: Escreva, edite e conecte notas com contexto para construir um segundo cérebro útil no dia a dia.
-      icon: i-lucide-notebook-pen
-    - title: Hábitos com propósito
-      description: Mantenha consistência com regras flexíveis e foco em evolução contínua, não em perfeição.
-      icon: i-lucide-flame
-    - title: Tarefas e projetos
-      description: Organize prioridades, avance em projetos e acompanhe entregas importantes em um só lugar.
-      icon: i-lucide-check-check
-    - title: Metas conectadas
-      description: Conecte tarefas e hábitos às suas metas para transformar intenção em resultado.
-      icon: i-lucide-target
-    - title: Revisões e reflexão
-      description: Faça check-ins diários e revisões semanais para aprender com o próprio processo.
-      icon: i-lucide-clipboard-check
-    - title: Finanças e agenda
-      description: Acompanhe compromissos, receitas e despesas para tomar decisões com visão completa da rotina.
-      icon: i-lucide-wallet
-    - title: Busca rápida
-      description: Encontre qualquer informação em segundos, mesmo com grande volume de conteúdo.
-      icon: i-lucide-search
-    - title: Seguro e escalável
-      description: Arquitetura moderna com Nuxt e Supabase para desempenho, segurança e crescimento.
-      icon: i-lucide-shield
-    - title: Personalizável
-      description: Adapte o sistema ao seu estilo de organização sem abrir mão de simplicidade.
-      icon: i-lucide-sliders
+    - title: Atendimento com contexto
+      description: Veja cliente, veículo e histórico de ordens no mesmo fluxo.
+      icon: i-lucide-users
+    - title: Ordem de serviço como centro da operação
+      description: Estruture diagnóstico, itens, pagamento, comissão e acompanhamento em torno da OS.
+      icon: i-lucide-wrench
+    - title: Financeiro integrado
+      description: Relacione compras, pagamentos, contas bancárias e lançamentos com a operação diária.
+      icon: i-lucide-banknote
+    - title: Permissões por papel
+      description: Separe acesso do time operacional e da administração com regras de permissão e contextos distintos.
+      icon: i-lucide-shield-check
+    - title: Fluxo do usuário e fluxo admin separados
+      description: O `/app` atende a operação da oficina e o `/admin` concentra gestão global e suporte administrativo.
+      icon: i-lucide-split-square-vertical
+    - title: Base moderna para evolução contínua
+      description: Nuxt no frontend, Supabase no backend e migração orientada por fases para reduzir risco.
+      icon: i-lucide-layers-3
+    - title: Preparado para relatórios e fiscal
+      description: Estrutura pronta para crescer com relatórios gerenciais e módulos fiscais conforme as próximas fases.
+      icon: i-lucide-file-stack
+    - title: Organização por empresa
+      description: Dados, permissões e operação respeitam o contexto da organização do usuário.
+      icon: i-lucide-building-2
+    - title: Menos dispersão, mais controle
+      description: Substitua processos espalhados entre mensagens, cadernos e planilhas por um fluxo único.
+      icon: i-lucide-layout-dashboard
 testimonials:
-  headline: Feito para a vida real
-  title: Clareza para decidir, consistência para evoluir
-  description: Menos sobrecarga mental, mais foco no que importa todos os dias.
+  headline: Construído para oficina de verdade
+  title: Menos improviso, mais clareza operacional
+  description: Um sistema melhor quando o time precisa atender, organizar e decidir rápido.
   items:
-    - quote: O check-in diário virou meu “fechamento” do dia. Em minutos eu registro o que importa e sigo leve.
+    - quote: Quando a OS vira o centro do fluxo, o time para de caçar informação em lugares diferentes.
       user:
-        name: Sarah Chen
-        description: Usuária do Kortex
+        name: Rafael Souza
+        description: Gestor de oficina
         avatar:
-          src: https://i.pravatar.cc/120?img=1
-    - quote: Conectar hábitos às notas mudou tudo. Eu vejo por que falhei e o que ajustar — sem culpa.
+          src: https://i.pravatar.cc/120?img=15
+    - quote: Separar o acesso do time da oficina e do admin resolve muita confusão de processo e permissão.
       user:
-        name: Marcus Rodriguez
-        description: Usuário do Kortex
+        name: Camila Nogueira
+        description: Operação administrativa
         avatar:
-          src: https://i.pravatar.cc/120?img=7
-    - quote: O heatmap semanal me dá consciência do ritmo. Eu paro antes de entrar em burnout.
+          src: https://i.pravatar.cc/120?img=20
+    - quote: O valor está em ligar atendimento, compra, financeiro e histórico do veículo sem retrabalho.
       user:
-        name: David Kumar
-        description: Usuário do Kortex
+        name: Marcelo Lima
+        description: Proprietário de oficina
         avatar:
-          src: https://i.pravatar.cc/120?img=3
-    - quote: O sistema é simples, mas profundo. Quanto mais eu uso, mais sentido ele faz.
+          src: https://i.pravatar.cc/120?img=24
+    - quote: Com dados organizados por organização e permissões, fica muito mais fácil crescer sem perder controle.
       user:
-        name: Emily Zhang
-        description: Usuária do Kortex
+        name: Aline Costa
+        description: Administração
         avatar:
-          src: https://i.pravatar.cc/120?img=5
-    - quote: Finalmente um lugar único para notas, projetos e referências — e não uma pilha de apps soltos.
-      user:
-        name: James Wilson
-        description: Usuário do Kortex
-        avatar:
-          src: https://i.pravatar.cc/120?img=8
-    - quote: As revisões semanais me ajudam a ajustar o sistema com base em dados e reflexão.
-      user:
-        name: Lisa Patel
-        description: Usuária do Kortex
-        avatar:
-          src: https://i.pravatar.cc/120?img=9
-    - quote: O foco em consistência (não perfeição) fez eu voltar a cuidar do básico.
-      user:
-        name: Michael Torres
-        description: Usuário do Kortex
-        avatar:
-          src: https://i.pravatar.cc/120?img=11
-    - quote: A busca é rápida mesmo com muita coisa. Eu acho minhas notas quando preciso.
-      user:
-        name: Rachel Kim
-        description: Usuária do Kortex
-        avatar:
-          src: https://i.pravatar.cc/120?img=10
-    - quote: A caixa de entrada virou meu “capturador” padrão. Ideia veio, eu registro e sigo.
-      user:
-        name: Thomas Weber
-        description: Usuário do Kortex
-        avatar:
-          src: https://i.pravatar.cc/120?img=12
-    - quote: Eu gosto de como hábitos, notas e projetos conversam. Parece um sistema vivo.
-      user:
-        name: Sophia Martinez
-        description: Usuária do Kortex
-        avatar:
-          src: https://i.pravatar.cc/120?img=14
+          src: https://i.pravatar.cc/120?img=32
 cta:
-  title: Pronto para organizar tudo em um só lugar?
-  description: Comece hoje no Kortex e transforme informação dispersa em progresso consistente.
+  title: Quer estruturar a oficina com mais clareza?
+  description: Comece a organizar operação, atendimento e gestão com a base atual do AutoPro.
   links:
     - label: Criar conta
       to: /signup

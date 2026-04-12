@@ -26,7 +26,7 @@ type PreferencesState = {
 type ThemePreset = UserPreferences
 
 const PUBLIC_THEME: ThemePreset = {
-  // Public experience should also reflect the Kortex brand identity on first load.
+  // Public experience should also reflect the AutoPro brand identity on first load.
   primary_color: 'emerald',
   neutral_color: 'slate',
   color_mode: ColorModePreference.Dark,

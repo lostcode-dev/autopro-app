@@ -23,7 +23,7 @@ const iconClass = computed(() => props.size === 'sm' ? 'h-8 w-8 rounded-[1rem]' 
       class="min-w-0"
     >
       <div class="text-sm font-semibold tracking-tight text-highlighted">
-        Kortex
+        AutoPro
       </div>
     </div>
   </div>

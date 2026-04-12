@@ -1,147 +1,164 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from '@nuxt/ui'
+import { ActionCode } from '~/constants/action-codes'
 
 const toast = useToast()
 
 const open = ref(false)
 const sidebarCollapsed = ref(true)
 const isMobile = useMediaQuery('(max-width: 1023px)')
+const workshop = useWorkshopPermissions()
 
-const links = [
-  [
-    {
-      label: 'Visão geral',
-      icon: 'i-lucide-house',
-      to: '/app',
-      onSelect: () => {
-        open.value = false
-      }
-    },
-    {
-      label: 'Agenda',
-      icon: 'i-lucide-calendar-days',
-      to: '/app/appointments',
-      onSelect: () => {
-        open.value = false
-      }
-    },
-    {
-      label: 'Hábitos',
-      icon: 'i-lucide-calendar-check',
-      to: '/app/habits',
-      onSelect: () => {
-        open.value = false
-      }
-    },
-    {
-      label: 'Metas',
-      icon: 'i-lucide-target',
-      to: '/app/goals',
-      onSelect: () => {
-        open.value = false
-      }
-    },
-    // {
-    //  label: 'Tarefas',
-    //  icon: 'i-lucide-check-square',
-    //  to: '/app/tasks',
-    //  onSelect: () => {
-    //    open.value = false
-    //  }
-    // },
-    {
-      label: 'Diário de Bordo',
-      icon: 'i-lucide-book-open',
-      to: '/app/journal',
-      onSelect: () => {
-        open.value = false
-      }
-    },
-    // {
-    //  label: 'Finanças',
-    //  icon: 'i-lucide-wallet',
-    //  to: '/app/financial',
-    //  onSelect: () => {
-    //    open.value = false
-    //  }
-    // },
-    // {
-    //  label: 'Conhecimento',
-    //  icon: 'i-lucide-brain',
-    //  to: '/app/knowledge',
-    //  onSelect: () => {
-    //    open.value = false
-    //  }
-    // },
-    // {
-    //  label: 'Ideias',
-    //  icon: 'i-lucide-lightbulb',
-    //  to: '/app/ideas',
-    //  onSelect: () => {
-    //    open.value = false
-    //  }
-    // },
-    {
-      label: 'Configurações',
-      to: '/app/settings',
-      icon: 'i-lucide-settings',
-      defaultOpen: true,
-      type: 'trigger',
-      children: [
-        {
-          label: 'Geral',
-          to: '/app/settings',
-          exact: true,
-          onSelect: () => {
-            open.value = false
-          }
-        },
-        {
-          label: 'Assinatura',
-          to: '/app/settings/subscription',
-          onSelect: () => {
-            open.value = false
-          }
-        },
-        {
-          label: 'Notificações',
-          to: '/app/settings/notifications',
-          onSelect: () => {
-            open.value = false
-          }
-        },
-        {
-          label: 'Segurança',
-          to: '/app/settings/security',
-          onSelect: () => {
-            open.value = false
-          }
-        }
-      ]
-    }
-  ],
-  [
-    {
-      label: 'Enviar feedback',
-      icon: 'i-lucide-message-circle',
-      to: '/app/feedback',
-      onSelect: () => {
-        open.value = false
-      }
-    },
-    {
-      label: 'Ajuda',
-      icon: 'i-lucide-info',
-      to: '/docs'
-    }
+function closeSidebar() {
+  open.value = false
+}
+
+function item(label: string, icon: string, to: string): NavigationMenuItem {
+  return {
+    label,
+    icon,
+    to,
+    onSelect: closeSidebar
+  }
+}
+
+const links = computed<NavigationMenuItem[][]>(() => {
+  const operational: NavigationMenuItem[] = [
+    item('Dashboard', 'i-lucide-house', '/app/dashboard')
   ]
-] satisfies NavigationMenuItem[][]
+
+  if (workshop.can(ActionCode.ORDERS_READ))
+    operational.push(item('Ordens de servico', 'i-lucide-clipboard-list', '/app/service-orders'))
+
+  if (workshop.can(ActionCode.APPOINTMENTS_READ))
+    operational.push(item('Agendamentos', 'i-lucide-calendar-days', '/app/appointments'))
+
+  if (workshop.can(ActionCode.CUSTOMERS_READ))
+    operational.push(item('Clientes', 'i-lucide-users', '/app/customers'))
+
+  if (workshop.can(ActionCode.VEHICLES_READ))
+    operational.push(item('Veiculos', 'i-lucide-car-front', '/app/vehicles'))
+
+  const catalog: NavigationMenuItem[] = []
+
+  if (workshop.can(ActionCode.PRODUCTS_READ))
+    catalog.push(item('Produtos', 'i-lucide-package', '/app/products'))
+
+  if (workshop.can(ActionCode.INVENTORY_READ))
+    catalog.push(item('Estoque', 'i-lucide-box', '/app/inventory'))
+
+  if (workshop.can(ActionCode.SUPPLIERS_READ))
+    catalog.push(item('Fornecedores', 'i-lucide-truck', '/app/suppliers'))
+
+  if (workshop.can(ActionCode.PURCHASES_READ))
+    catalog.push(item('Compras', 'i-lucide-shopping-cart', '/app/purchases'))
+
+  if (workshop.can(ActionCode.RETURNS_READ))
+    catalog.push(item('Devolucoes', 'i-lucide-undo-2', '/app/purchase-returns'))
+
+  if (workshop.can(ActionCode.AUTHORIZATIONS_READ))
+    catalog.push(item('Autorizacoes', 'i-lucide-badge-check', '/app/purchase-requests'))
+
+  const finance: NavigationMenuItem[] = []
+
+  if (workshop.can(ActionCode.FINANCIAL_READ))
+    finance.push(item('Financeiro', 'i-lucide-wallet', '/app/financial'))
+
+  if (workshop.can(ActionCode.BANK_ACCOUNTS_READ))
+    finance.push(item('Contas', 'i-lucide-landmark', '/app/financial/accounts'))
+
+  if (workshop.can(ActionCode.PAYMENT_MACHINES_VIEW))
+    finance.push(item('Maquininhas', 'i-lucide-credit-card', '/app/financial/machines'))
+
+  if (workshop.can(ActionCode.TAXES_VIEW))
+    finance.push(item('Impostos', 'i-lucide-receipt', '/app/financial/taxes'))
+
+  const reportsChildren: NavigationMenuItem[] = [
+    item('Visao geral', 'i-lucide-layout-dashboard', '/app/reports')
+  ]
+
+  if (workshop.can(ActionCode.REPORTS_CUSTOMERS))
+    reportsChildren.push(item('Clientes', 'i-lucide-users', '/app/reports/customers'))
+
+  if (workshop.can(ActionCode.REPORTS_COMMISSIONS))
+    reportsChildren.push(item('Comissoes', 'i-lucide-hand-coins', '/app/reports/commissions'))
+
+  if (workshop.can(ActionCode.REPORTS_PURCHASES))
+    reportsChildren.push(item('Compras', 'i-lucide-shopping-cart', '/app/reports/purchases'))
+
+  if (workshop.can(ActionCode.REPORTS_COSTS))
+    reportsChildren.push(item('Custos', 'i-lucide-badge-dollar-sign', '/app/reports/costs'))
+
+  if (workshop.can(ActionCode.REPORTS_DEBTORS))
+    reportsChildren.push(item('Devedores', 'i-lucide-badge-alert', '/app/reports/debtors'))
+
+  if (workshop.can(ActionCode.REPORTS_SUPPLIERS))
+    reportsChildren.push(item('Fornecedores', 'i-lucide-truck', '/app/reports/suppliers'))
+
+  if (workshop.can(ActionCode.REPORTS_PROFIT))
+    reportsChildren.push(item('Lucro', 'i-lucide-trending-up', '/app/reports/profit'))
+
+  if (workshop.can(ActionCode.REPORTS_SALES))
+    reportsChildren.push(item('Itens vendidos', 'i-lucide-package-search', '/app/reports/sales-items'))
+
+  const reports: NavigationMenuItem[] = workshop.can(ActionCode.REPORTS_VIEW)
+    ? [{
+        label: 'Relatorios',
+        icon: 'i-lucide-bar-chart-3',
+        to: '/app/reports',
+        defaultOpen: true,
+        type: 'trigger',
+        children: reportsChildren
+      }]
+    : []
+
+  const settingsChildren: NavigationMenuItem[] = [
+    item('Perfil', 'i-lucide-user', '/app/settings/profile'),
+    item('Assinatura', 'i-lucide-credit-card', '/app/settings/subscription'),
+    item('Notificacoes', 'i-lucide-bell', '/app/settings/notifications'),
+    item('Seguranca', 'i-lucide-lock', '/app/settings/security')
+  ]
+
+  if (workshop.can(ActionCode.SETTINGS_VIEW))
+    settingsChildren.splice(1, 0, item('Empresa', 'i-lucide-building-2', '/app/settings/company'))
+
+  if (workshop.can(ActionCode.EMPLOYEES_READ))
+    settingsChildren.splice(Math.min(settingsChildren.length, 2), 0, item('Funcionarios', 'i-lucide-users-round', '/app/settings/employees'))
+
+  if (workshop.can(ActionCode.ROLES_VIEW))
+    settingsChildren.splice(Math.min(settingsChildren.length, 3), 0, item('Permissoes', 'i-lucide-shield-check', '/app/settings/roles'))
+
+  const settings: NavigationMenuItem[] = [{
+    label: 'Configuracoes',
+    to: '/app/settings',
+    icon: 'i-lucide-settings',
+    defaultOpen: true,
+    type: 'trigger',
+    children: settingsChildren
+  }]
+
+  return [
+    operational,
+    catalog,
+    finance,
+    reports,
+    settings,
+    [
+      item('Enviar feedback', 'i-lucide-message-circle', '/app/feedback'),
+      {
+        label: 'Ajuda',
+        icon: 'i-lucide-info',
+        to: '/docs'
+      }
+    ]
+  ].filter(group => group.length > 0)
+})
 
 const groups = computed(() => [
   {
     id: 'links',
     label: 'Ir para',
-    items: links.flat()
+    items: links.value.flat()
   }
 ])
 
@@ -156,7 +173,7 @@ onMounted(async () => {
   }
 
   toast.add({
-    title: 'Usamos cookies essenciais para melhorar sua experiência no Kortex.',
+    title: 'Usamos cookies essenciais para melhorar sua experiencia no AutoPro.',
     duration: 0,
     close: false,
     actions: [
@@ -210,19 +227,14 @@ watch(
         />
 
         <UNavigationMenu
+          v-for="(group, index) in links"
+          :key="index"
           :collapsed="collapsed"
-          :items="links[0]"
+          :items="group"
           orientation="vertical"
           tooltip
           popover
-        />
-
-        <UNavigationMenu
-          :collapsed="collapsed"
-          :items="links[1]"
-          orientation="vertical"
-          tooltip
-          class="mt-auto"
+          :class="index === links.length - 1 ? 'mt-auto' : ''"
         />
       </template>
 

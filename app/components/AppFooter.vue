@@ -8,20 +8,20 @@ const columns = [{
   }, {
     label: 'Documentação'
   }, {
-    label: 'Roadmap'
+    label: 'Migração'
   }, {
     label: 'Novidades'
   }]
 }, {
   label: 'Produto',
   children: [{
-    label: 'Hábitos'
+    label: 'Ordens de serviço'
   }, {
-    label: 'Notas'
+    label: 'Clientes'
   }, {
-    label: 'Coleções'
+    label: 'Veículos'
   }, {
-    label: 'Tags'
+    label: 'Financeiro'
   }]
 }, {
   label: 'Empresa',
@@ -51,7 +51,7 @@ function onSubmit() {
 
   toast.add({
     title: 'Inscrição confirmada!',
-    description: 'Você vai receber novidades do Kortex por email.'
+    description: 'Você vai receber novidades do AutoPro por email.'
   })
 }
 </script>
@@ -70,7 +70,7 @@ function onSubmit() {
             <form @submit.prevent="onSubmit">
               <UFormField
                 name="email"
-                label="Receba novidades do Kortex"
+                label="Receba novidades do AutoPro"
                 size="lg"
               >
                 <UInput
@@ -97,7 +97,7 @@ function onSubmit() {
 
     <template #left>
       <p class="text-muted text-sm">
-        Kortex • © {{ new Date().getFullYear() }}
+        AutoPro • © {{ new Date().getFullYear() }}
       </p>
     </template>
 

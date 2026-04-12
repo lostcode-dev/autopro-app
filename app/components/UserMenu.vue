@@ -8,31 +8,32 @@ defineProps<{
 
 const toast = useToast()
 const auth = useAuth()
+const workshop = useWorkshopBootstrap()
 const router = useRouter()
 const { state: prefs, setPrimaryColor, setNeutralColor, setColorMode } = useUserPreferences()
 
 const colorLabels: Record<string, string> = {
   red: 'Vermelho',
   orange: 'Laranja',
-  amber: 'Âmbar',
+  amber: 'Ambar',
   yellow: 'Amarelo',
   lime: 'Lima',
   green: 'Verde',
   emerald: 'Esmeralda',
-  teal: 'Azul-petróleo',
+  teal: 'Azul-petroleo',
   cyan: 'Ciano',
   sky: 'Celeste',
   blue: 'Azul',
-  indigo: 'Índigo',
+  indigo: 'Indigo',
   violet: 'Violeta',
   purple: 'Roxo',
-  fuchsia: 'Fúcsia',
+  fuchsia: 'Fucsia',
   pink: 'Rosa',
-  rose: 'Rosé'
+  rose: 'Rose'
 }
 
 const neutralLabels: Record<string, string> = {
-  slate: 'Ardósia',
+  slate: 'Ardosia',
   gray: 'Cinza',
   zinc: 'Zinco',
   neutral: 'Neutro',
@@ -44,7 +45,7 @@ const neutrals = Object.keys(neutralLabels)
 
 const user = computed(() => {
   const meta = auth.user.value?.user_metadata as Record<string, string> | undefined
-  const name = meta?.name || auth.user.value?.email || 'Conta'
+  const name = workshop.currentUser.value?.display_name || workshop.currentUser.value?.full_name || meta?.name || auth.user.value?.email || 'Conta'
 
   return {
     name,
@@ -62,20 +63,24 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 }], [{
   label: 'Perfil',
   icon: 'i-lucide-user',
-  to: '/app/settings'
+  to: '/app/settings/profile'
+}, {
+  label: 'Empresa',
+  icon: 'i-lucide-building-2',
+  to: '/app/settings/company'
 }, {
   label: 'Assinatura',
   icon: 'i-lucide-credit-card',
   to: '/app/settings/subscription'
 }, {
-  label: 'Configurações',
+  label: 'Configuracoes',
   icon: 'i-lucide-settings',
   to: '/app/settings'
 }], [{
   label: 'Tema',
   icon: 'i-lucide-palette',
   children: [{
-    label: 'Primária',
+    label: 'Primaria',
     slot: 'chip',
     chip: prefs.value.primary_color,
     content: {
@@ -114,7 +119,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     }))
   }]
 }, {
-  label: 'Aparência',
+  label: 'Aparencia',
   icon: 'i-lucide-sun-moon',
   children: [{
     label: 'Claro',
@@ -136,9 +141,9 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     }
   }]
 }], [{
-  label: 'Documentação',
+  label: 'Documentacao',
   icon: 'i-lucide-book-open',
-  to: '/docs/getting-started'
+  to: '/docs'
 }, {
   label: 'Sair',
   icon: 'i-lucide-log-out',
@@ -147,10 +152,11 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
 
     try {
       await auth.logout()
-      toast.add({ title: 'Sessão encerrada', color: 'success' })
+      workshop.clear()
+      toast.add({ title: 'Sessao encerrada', color: 'success' })
       await router.push('/login')
     } catch {
-      toast.add({ title: 'Erro', description: 'Não foi possível sair', color: 'error' })
+      toast.add({ title: 'Erro', description: 'Nao foi possivel sair', color: 'error' })
     }
   }
 }]]))

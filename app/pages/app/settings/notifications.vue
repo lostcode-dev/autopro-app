@@ -75,7 +75,7 @@ const channelFields: ToggleField[] = [
   {
     name: 'channel_in_app',
     label: 'Central do app',
-    description: 'Mantém avisos na central interna do Kortex.'
+    description: 'Mantém avisos na central interna do AutoPro.'
   },
   {
     name: 'channel_email',
@@ -97,13 +97,13 @@ const channelFields: ToggleField[] = [
 const topicFields: ToggleField[] = [
   {
     name: 'habit_reminders',
-    label: 'Lembretes de hábitos',
-    description: 'Alertas e lembretes operacionais sobre seus hábitos.'
+    label: 'Lembretes operacionais',
+    description: 'Alertas sobre agenda, ordens de serviço e tarefas operacionais.'
   },
   {
     name: 'weekly_digest',
     label: 'Resumo semanal',
-    description: 'Resumo periódico consolidando sua evolução.'
+    description: 'Resumo periódico da operação da oficina.'
   },
   {
     name: 'product_updates',
@@ -322,7 +322,7 @@ onMounted(() => {
   <template v-else>
     <UPageCard
       title="Canais"
-      description="Escolha por onde o Kortex pode falar com você."
+      description="Escolha por onde o AutoPro pode falar com você."
       variant="naked"
       class="mb-4"
     />

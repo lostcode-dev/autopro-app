@@ -90,7 +90,7 @@ async function onOpen(notificationId: number) {
             <template v-if="notification.type === 'system'">
               <UAvatar
                 src="/icon.png"
-                alt="Kortex"
+                alt="AutoPro"
                 size="md"
               />
             </template>
@@ -105,7 +105,7 @@ async function onOpen(notificationId: number) {
           <div class="text-sm flex-1">
             <p class="flex items-center justify-between">
               <span class="text-highlighted font-medium">
-                <template v-if="notification.type === 'system'">Kortex</template>
+                <template v-if="notification.type === 'system'">AutoPro</template>
                 <template v-else>{{ notification.sender.name }}</template>
               </span>
               <time

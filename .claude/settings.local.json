@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(head -1482 \"c:/Users/daniel.francelino/Desktop/projects_study/autopro-app/supabase/migrations/migrate_database_base44.md\")",
+      "Bash(cp /tmp/migrate_truncated.md \"c:/Users/daniel.francelino/Desktop/projects_study/autopro-app/supabase/migrations/migrate_database_base44.md\")",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")"
+    ]
+  }
+}

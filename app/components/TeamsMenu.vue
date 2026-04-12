@@ -1,4 +1,6 @@
 <script setup lang="ts">
+const workshop = useWorkshopBootstrap()
+
 defineProps<{
   collapsed?: boolean
 }>()
@@ -6,7 +8,7 @@ defineProps<{
 
 <template>
   <NuxtLink
-    to="/app"
+    to="/app/dashboard"
     class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
   >
     <AppLogo
@@ -17,7 +19,7 @@ defineProps<{
       v-if="!collapsed"
       class="text-sm font-semibold text-highlighted truncate"
     >
-      Kortex
+      {{ workshop.organization.value?.name || 'AutoPro' }}
     </span>
   </NuxtLink>
 </template>

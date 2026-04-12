@@ -37,7 +37,7 @@ const items = computed(() => [{
     <template #left>
       <NuxtLink
         to="/"
-        aria-label="Kortex"
+        aria-label="AutoPro"
         class="flex items-center"
       >
         <AppLogo />

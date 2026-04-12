@@ -272,7 +272,7 @@ function onFileClick() {
 
   <UPageCard
     title="Regional"
-    description="Defina o fuso horário usado para agenda, hábitos e notificações."
+    description="Defina o fuso horário usado para agenda, ordens de serviço e notificações."
     variant="subtle"
     class="mt-6"
   >
@@ -285,7 +285,7 @@ function onFileClick() {
       <UFormField
         name="timezone"
         label="Timezone"
-        description="Usada para organizar lembretes, agenda diária e futuras automações."
+        description="Usada para organizar agenda, lembretes operacionais e futuras automações."
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
         <div class="w-full space-y-3">

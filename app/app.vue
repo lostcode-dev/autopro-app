@@ -8,7 +8,7 @@ const runtimeConfig = useRuntimeConfig()
 
 const color = computed(() => colorMode.value === 'dark' ? '#020618' : 'white')
 const isAppRoute = computed(() => route.path.startsWith('/app'))
-const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://kortex.app'
+const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://autopro.app'
 const defaultOgImage = `${siteUrl}/icons/icon-512x512.png`
 
 watch(
@@ -42,7 +42,7 @@ useHead({
     { key: 'theme-color', name: 'theme-color', content: color },
     { name: 'apple-mobile-web-app-capable', content: 'yes' },
     { name: 'apple-mobile-web-app-status-bar-style', content: 'black-translucent' },
-    { name: 'apple-mobile-web-app-title', content: 'Kortex' },
+    { name: 'apple-mobile-web-app-title', content: 'AutoPro' },
     { name: 'mobile-web-app-capable', content: 'yes' },
     { name: 'format-detection', content: 'telephone=no' }
   ],
@@ -59,15 +59,14 @@ useHead({
 })
 
 useSeoMeta({
-  titleTemplate: '%s - Kortex',
-  applicationName: 'Kortex',
-  appleMobileWebAppTitle: 'Kortex',
-  author: 'Kortex',
-  ogSiteName: 'Kortex',
+  titleTemplate: '%s - AutoPro',
+  applicationName: 'AutoPro',
+  appleMobileWebAppTitle: 'AutoPro',
+  author: 'AutoPro',
+  ogSiteName: 'AutoPro',
   ogImage: defaultOgImage,
   twitterImage: defaultOgImage,
-  twitterCard: 'summary_large_image',
-  twitterSite: '@kortexapp'
+  twitterCard: 'summary_large_image'
 })
 
 const { data: navigation } = await useAsyncData('navigation', () => queryCollectionNavigation('docs'), {
