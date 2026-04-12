@@ -1,2 +1,0 @@
-create index if not exists idx_habit_stacks_user_created_at on habit_stacks(user_id, created_at desc);
-create index if not exists idx_habit_stacks_user_archived_at on habit_stacks(user_id, archived_at desc);
