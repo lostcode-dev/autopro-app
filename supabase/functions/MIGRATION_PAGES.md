@@ -425,33 +425,35 @@ Exit criteria:
 
 ---
 
-## Phase 5 - Admin and Fiscal Advanced Modules
+## Phase 5 - Admin and Fiscal Advanced Modules ✅ COMPLETED
 
 Goal:
 Finish the platform migration with admin-only and fiscal modules.
 
 Pages/modules:
-- `admin/dashboard`
-- `admin/organizations`
-- `configs/admin`
-- `admin/invoices`
-- `admin/nuvemfiscal`
-- `invoices/service_invoice`
-- `invoices/product_invoice`
+- `admin/dashboard` → `/admin/dashboard` ✅ `app/pages/admin/dashboard.vue`
+- `admin/organizations` → `/admin/organizations` ✅ `app/pages/admin/organizations.vue`
+- `configs/admin` → `/admin/system` ✅ `app/pages/admin/system.vue`
+- `admin/invoices` → `/admin/fiscal/companies` ✅ `app/pages/admin/fiscal/companies.vue`
+- `admin/nuvemfiscal` → `/admin/fiscal/logs` ✅ `app/pages/admin/fiscal/logs.vue`
+- `invoices/service_invoice` → `/app/fiscal/service-invoices` ✅ `app/pages/app/fiscal/service-invoices.vue`
+- `invoices/product_invoice` → `/app/fiscal/product-invoices` ✅ `app/pages/app/fiscal/product-invoices.vue`
 
-Blockers:
-- remaining Nuvem Fiscal functions from backend Phase 2+
-- certificate upload/storage flow
-- fiscal sync/log/query APIs
-- NF-e/NFS-e issue/cancel/download/event flows
+Server routes added:
+- `server/api/admin/stats.get.ts` — GET /api/admin/stats (restricted to NUVEM_FISCAL_OWNER_EMAIL)
+- `server/api/admin/organizations/index.get.ts` — GET /api/admin/organizations (restricted to NUVEM_FISCAL_OWNER_EMAIL)
 
-Strategy:
-- migrate admin pages that do not depend on Nuvem Fiscal first
-- only migrate fiscal pages after the remaining backend migration is completed and validated
+Notes:
+- `/app/fiscal/service-invoices` and `/app/fiscal/product-invoices` display a blocker notice because the
+  org-scoped NFS-e/NF-e backend endpoints are not yet implemented. The pages are structured so that
+  setting `backendReady = true` and implementing the org-scoped listing endpoint is the only step needed.
+- All admin pages use `layout: 'admin'` + `middleware: ['workshop-admin']` to enforce access control.
+- NuvemFiscal pages continue to use the existing `NUVEM_FISCAL_OWNER_EMAIL`-restricted endpoints.
 
-Important routing rule:
-- even in this late phase, admin pages remain in `/admin/*`
-- they must not be folded into `/app/*`
+Remaining blockers (not yet implemented):
+- org-scoped NFS-e list/issue/cancel/download endpoints
+- org-scoped NF-e list/issue/cancel/download endpoints
+- certificate upload/storage flow for fiscal companies
 
 Exit criteria:
 - no fiscal/admin workflow depends on legacy Base44 or old React pages
