@@ -14,12 +14,10 @@ CREATE TABLE public.service_order_edit_logs (
   id                    uuid          NOT NULL DEFAULT gen_random_uuid(),
 
   -- Multi-tenancy scope
-  -- Note: stored as varchar(100) to match the organizations.id column type
-  --       used across this schema family; FK is still enforced.
-  organization_id       varchar(100)  NOT NULL,
+  organization_id       uuid          NOT NULL,
 
   -- Parent service order
-  service_order_id      varchar(100)  NOT NULL,
+  service_order_id      uuid          NOT NULL,
 
   -- What kind of change was recorded
   operation_type        varchar(20)   NOT NULL,

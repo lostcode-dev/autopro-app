@@ -5,9 +5,9 @@
 --              orders. After table creation, the deferred FK from service_orders
 --              (active_nfe_id) is also added.
 --
--- NOTE on varchar(100) for FKs: service_order_id and organization_id use
--- varchar(100) because legacy records carry string-based IDs. New records will
--- use UUID strings, but the column must accept both formats during migration.
+-- NOTE on varchar(100) for FKs: this note is retained for historical context,
+-- but service_order_id and organization_id are now uuid to match the PKs of
+-- their referenced tables.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -18,10 +18,9 @@ CREATE TABLE public.service_order_nfe (
   id                              uuid          NOT NULL DEFAULT gen_random_uuid(),
 
   -- Relationships
-  -- varchar(100) to accommodate legacy string IDs alongside UUID strings
-  service_order_id                varchar(100)  NOT NULL
+  service_order_id                uuid          NOT NULL
     REFERENCES public.service_orders(id) ON DELETE CASCADE,
-  organization_id                 varchar(100)  NOT NULL
+  organization_id                 uuid          NOT NULL
     REFERENCES public.organizations(id) ON DELETE CASCADE,
 
   -- NF-e lifecycle status
@@ -75,7 +74,7 @@ COMMENT ON TABLE  public.service_order_nfe IS
   'One service order may have multiple NF-e rows (e.g. reissues after cancellation); '
   'the currently active one is referenced via service_orders.active_nfe_id.';
 COMMENT ON COLUMN public.service_order_nfe.service_order_id IS
-  'varchar(100) to support legacy string IDs and new UUID strings during migration.';
+  'References service_orders.id (uuid). Cascade-deletes the NF-e when the parent service order is deleted.';
 COMMENT ON COLUMN public.service_order_nfe.status IS
   'NF-e lifecycle status: draft | issued | error | canceled.';
 COMMENT ON COLUMN public.service_order_nfe.payload_json IS

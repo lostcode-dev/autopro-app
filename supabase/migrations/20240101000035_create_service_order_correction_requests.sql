@@ -16,7 +16,7 @@ CREATE TABLE public.service_order_correction_requests (
   organization_id       uuid          NOT NULL,
 
   -- Parent service order
-  service_order_id      varchar(100)  NOT NULL,
+  service_order_id      uuid          NOT NULL,
 
   -- Core correction request fields
   description           text          NOT NULL,
