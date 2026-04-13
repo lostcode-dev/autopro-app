@@ -2,11 +2,10 @@
 import { pt_br } from '@nuxt/ui/locale'
 
 const route = useRoute()
-const colorMode = useColorMode()
 const { state: preferencesState, applyBrandTheme, applyPublicTheme, applyStoredTheme } = useUserPreferences()
 const runtimeConfig = useRuntimeConfig()
 
-const color = computed(() => colorMode.value === 'dark' ? '#020618' : 'white')
+const color = '#f8fafc'
 const isAppRoute = computed(() => route.path.startsWith('/app'))
 const siteUrl = runtimeConfig.public.siteUrl?.replace(/\/$/, '') || 'https://autopro.app'
 const defaultOgImage = `${siteUrl}/icons/icon-512x512.png`
@@ -51,7 +50,7 @@ useHead({
     { rel: 'alternate icon', type: 'image/png', href: '/icons/icon-192x192.png' },
     { rel: 'shortcut icon', href: '/favicon.ico' },
     { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' },
-    { rel: 'mask-icon', href: '/icons/kortex-mono.svg', color: '#12E39A' }
+    { rel: 'mask-icon', href: '/icons/kortex-mono.svg', color: '#9333ea' }
   ],
   htmlAttrs: {
     lang: 'pt-BR'
@@ -100,7 +99,7 @@ provide('navigation', navigation)
 <template>
   <UApp :locale="pt_br">
     <NuxtLoadingIndicator
-      color="linear-gradient(90deg, #12E39A 0%, #5EF2BF 45%, #12E39A 100%)"
+      color="linear-gradient(90deg, #9333ea 0%, #a855f7 45%, #9333ea 100%)"
       error-color="#fb7185"
       :height="3"
     />

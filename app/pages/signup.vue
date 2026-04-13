@@ -37,27 +37,7 @@ const fields = [{
   placeholder: 'Crie uma senha'
 }]
 
-const providers = [{
-  label: 'Google',
-  icon: 'i-simple-icons-google',
-  onClick: () => {
-    capture(PostHogEvent.AuthProviderSelected, {
-      provider: 'google',
-      source: 'signup'
-    })
-    navigateTo('/api/auth/oauth/start?provider=google')
-  }
-}, {
-  label: 'GitHub',
-  icon: 'i-simple-icons-github',
-  onClick: () => {
-    capture(PostHogEvent.AuthProviderSelected, {
-      provider: 'github',
-      source: 'signup'
-    })
-    navigateTo('/api/auth/oauth/start?provider=github')
-  }
-}]
+const providers = []
 
 const schema = z.object({
   name: z.string().min(1, 'O nome é obrigatório'),

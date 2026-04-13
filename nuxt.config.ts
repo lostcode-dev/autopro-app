@@ -16,6 +16,17 @@ export default defineNuxtConfig({
 
   css: ['driver.js/dist/driver.css', '~/assets/css/main.css'],
 
+  colorMode: {
+    preference: 'light',
+    fallback: 'light',
+    hid: 'nuxt-color-mode-script',
+    globalName: '__NUXT_COLOR_MODE__',
+    componentName: 'ColorScheme',
+    classSuffix: '',
+    disableTransition: true,
+    storageKey: 'nuxt-color-mode'
+  },
+
   runtimeConfig: {
     supabaseUrl: process.env.SUPABASE_URL,
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY,
@@ -23,17 +34,29 @@ export default defineNuxtConfig({
 
     stripeSecretKey: process.env.STRIPE_SECRET_KEY,
     stripeAllowedPriceIds: process.env.STRIPE_ALLOWED_PRICE_IDS,
-    stripeBillingPortalConfigurationId: process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
+    stripeBillingPortalConfigurationId:
+      process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
 
     public: {
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL ?? '',
-      oneSignalEnabled: process.env.NODE_ENV === 'production' && process.env.NUXT_PUBLIC_ONESIGNAL_ENABLED === 'true',
+      oneSignalEnabled:
+        process.env.NODE_ENV === 'production'
+        && process.env.NUXT_PUBLIC_ONESIGNAL_ENABLED === 'true',
       oneSignalAppId: process.env.NUXT_PUBLIC_ONESIGNAL_APP_ID ?? '',
-      oneSignalServiceWorkerPath: process.env.NUXT_PUBLIC_ONESIGNAL_SERVICE_WORKER_PATH ?? '/push/onesignal/OneSignalSDKWorker.js',
-      oneSignalServiceWorkerUpdaterPath: process.env.NUXT_PUBLIC_ONESIGNAL_SERVICE_WORKER_UPDATER_PATH ?? '/push/onesignal/OneSignalSDKUpdaterWorker.js',
-      oneSignalServiceWorkerScope: process.env.NUXT_PUBLIC_ONESIGNAL_SERVICE_WORKER_SCOPE ?? '/push/onesignal/',
-      posthogEnabled: process.env.NODE_ENV === 'production' && process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
-      posthogHost: process.env.NUXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+      oneSignalServiceWorkerPath:
+        process.env.NUXT_PUBLIC_ONESIGNAL_SERVICE_WORKER_PATH
+        ?? '/push/onesignal/OneSignalSDKWorker.js',
+      oneSignalServiceWorkerUpdaterPath:
+        process.env.NUXT_PUBLIC_ONESIGNAL_SERVICE_WORKER_UPDATER_PATH
+        ?? '/push/onesignal/OneSignalSDKUpdaterWorker.js',
+      oneSignalServiceWorkerScope:
+        process.env.NUXT_PUBLIC_ONESIGNAL_SERVICE_WORKER_SCOPE
+        ?? '/push/onesignal/',
+      posthogEnabled:
+        process.env.NODE_ENV === 'production'
+        && process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
+      posthogHost:
+        process.env.NUXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
       posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY ?? ''
     }
   },
@@ -56,9 +79,7 @@ export default defineNuxtConfig({
 
   nitro: {
     prerender: {
-      routes: [
-        '/'
-      ],
+      routes: ['/'],
       crawlLinks: true
     }
   },
@@ -77,9 +98,10 @@ export default defineNuxtConfig({
     manifest: {
       name: 'Kortex',
       short_name: 'Kortex',
-      description: 'Sistema pessoal de conhecimento para capturar, organizar e transformar ideias em ação.',
-      theme_color: '#00DC82',
-      background_color: '#020618',
+      description:
+        'Sistema pessoal de conhecimento para capturar, organizar e transformar ideias em ação.',
+      theme_color: '#9333ea',
+      background_color: '#f8fafc',
       display: 'standalone',
       orientation: 'portrait',
       scope: '/',

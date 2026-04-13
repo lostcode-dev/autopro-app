@@ -44,27 +44,8 @@ const fields = [{
   defaultValue: true
 }]
 
-const providers = [{
-  label: 'Google',
-  icon: 'i-simple-icons-google',
-  onClick: () => {
-    capture(PostHogEvent.AuthProviderSelected, {
-      provider: 'google',
-      source: 'login'
-    })
-    navigateTo('/api/auth/oauth/start?provider=google')
-  }
-}, {
-  label: 'GitHub',
-  icon: 'i-simple-icons-github',
-  onClick: () => {
-    capture(PostHogEvent.AuthProviderSelected, {
-      provider: 'github',
-      source: 'login'
-    })
-    navigateTo('/api/auth/oauth/start?provider=github')
-  }
-}]
+const providers = [
+]
 
 const schema = z.object({
   email: z.email('Email inválido'),

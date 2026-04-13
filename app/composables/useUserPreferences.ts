@@ -26,17 +26,17 @@ type PreferencesState = {
 type ThemePreset = UserPreferences
 
 const PUBLIC_THEME: ThemePreset = {
-  // Public experience should also reflect the AutoPro brand identity on first load.
-  primary_color: 'emerald',
+  // Public experience reflects the AutoPro brand identity: purple primary, slate neutral, light mode.
+  primary_color: 'purple',
   neutral_color: 'slate',
-  color_mode: ColorModePreference.Dark,
+  color_mode: ColorModePreference.Light,
   timezone: 'UTC'
 }
 
 const BRAND_THEME: ThemePreset = {
-  primary_color: 'emerald',
+  primary_color: 'purple',
   neutral_color: 'slate',
-  color_mode: ColorModePreference.Dark,
+  color_mode: ColorModePreference.Light,
   timezone: 'UTC'
 }
 
@@ -55,7 +55,8 @@ export function useUserPreferences() {
   function applyTheme(theme: ThemePreset) {
     appConfig.ui.colors.primary = theme.primary_color
     appConfig.ui.colors.neutral = theme.neutral_color
-    colorMode.preference = theme.color_mode
+    // Color mode is locked to light — never apply color_mode from preferences.
+    colorMode.preference = 'light'
   }
 
   async function load() {
