@@ -53,12 +53,23 @@ type FetchErrorLike = {
   statusMessage?: string
 }
 
+function getSignupErrorMessage(error: FetchErrorLike) {
+  const rawMessage = error?.data?.statusMessage || error?.statusMessage || ''
+
+  if (rawMessage.toLowerCase().includes('email rate limit exceeded'))
+    return 'Aguarde uma hora e tente criar a conta novamente.'
+
+  return rawMessage || 'Não foi possível criar a conta'
+}
+
 async function onSubmit(payload: FormSubmitEvent<Schema>) {
   if (submitting.value) return
+
   submitting.value = true
   capture(PostHogEvent.AuthSignupSubmitted, {
     source: 'signup'
   })
+
   try {
     const response = await auth.signup({
       name: payload.data.name,
@@ -84,10 +95,10 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
     await router.push('/app')
   } catch (error: unknown) {
     const err = error as FetchErrorLike
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível criar a conta'
+
     toast.add({
       title: 'Erro',
-      description: message,
+      description: getSignupErrorMessage(err),
       color: 'error'
     })
   } finally {
