@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin'],
+  middleware: ['workshop-admin']
 })
 useSeoMeta({ title: 'Admin — Sistema' })
 
@@ -9,13 +9,13 @@ const toast = useToast()
 
 // ─── Commission seed ──────────────────────────────────────────────────────────
 const seedingCommissions = ref(false)
-const seedResult = ref<{ created: number; skipped: number; errors: number } | null>(null)
+const seedResult = ref<{ created: number, skipped: number, errors: number } | null>(null)
 
 async function runCommissionSeed() {
   seedingCommissions.value = true
   seedResult.value = null
   try {
-    const res = await $fetch<{ data: { created: number; skipped: number; errors: number } }>(
+    const res = await $fetch<{ data: { created: number, skipped: number, errors: number } }>(
       '/api/service-orders/seed-commissions',
       { method: 'POST', body: {} }
     )
@@ -35,8 +35,8 @@ const tools = [
     description: 'Recalcula e armazena comissões em nível de item para todas as ordens de serviço sem comissão registrada.',
     icon: 'i-lucide-percent',
     action: runCommissionSeed,
-    loadingRef: seedingCommissions,
-  },
+    loadingRef: seedingCommissions
+  }
 ]
 </script>
 

@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
     is_active: body.is_active ?? true,
     notes: body.notes ?? null,
     created_by: authUser.email,
-    updated_by: authUser.email,
+    updated_by: authUser.email
   }
 
   const { data, error } = await supabase

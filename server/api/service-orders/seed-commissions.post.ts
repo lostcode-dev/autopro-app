@@ -54,7 +54,7 @@ function getResponsiblesFromOrder(order: any) {
     const empId = normalizeId(order?.employee_responsible_id)
     if (empId) ids.push(empId)
   }
-  return Array.from(new Set(ids)).map((empId) => ({ employeeId: empId }))
+  return Array.from(new Set(ids)).map(empId => ({ employeeId: empId }))
 }
 
 function computeAndEnrichItemCommissions({ items, responsibles, employeesMap, products, orderDiscount, orderTaxes }: any) {
@@ -144,7 +144,7 @@ export default defineEventHandler(async (event) => {
   const [ordersResult, employeesResult, productsResult] = await Promise.all([
     supabase.from('service_orders').select('*').in('id', orderIds).is('deleted_at', null),
     supabase.from('employees').select('*').is('deleted_at', null),
-    supabase.from('products').select('id, name, unit_cost_price, category_id').is('deleted_at', null),
+    supabase.from('products').select('id, name, unit_cost_price, category_id').is('deleted_at', null)
   ])
 
   const orders = ordersResult.data || []
@@ -196,7 +196,7 @@ export default defineEventHandler(async (event) => {
     const enrichedItems = computeAndEnrichItemCommissions({
       items, responsibles, employeesMap, products,
       orderDiscount: normalizeNumber(order?.discount),
-      orderTaxes: normalizeNumber(order?.total_tax_amount),
+      orderTaxes: normalizeNumber(order?.total_tax_amount)
     })
 
     let seededItemsInOrder = 0
@@ -207,7 +207,7 @@ export default defineEventHandler(async (event) => {
       return {
         ...item,
         commission_total: roundMoney(enrichedItems[index]?.commission_total || 0),
-        commissions: Array.isArray(enrichedItems[index]?.commissions) ? enrichedItems[index].commissions : [],
+        commissions: Array.isArray(enrichedItems[index]?.commissions) ? enrichedItems[index].commissions : []
       }
     })
 
@@ -219,7 +219,7 @@ export default defineEventHandler(async (event) => {
     results.push({ id: String(order.id), orderNumber: String(order?.number || '-'), status: 'updated', seededItems: seededItemsInOrder })
   }
 
-  notFoundOrders = orderIds.filter((id) => !processedOrderIds.has(String(id))).length
+  notFoundOrders = orderIds.filter(id => !processedOrderIds.has(String(id))).length
 
   return {
     success: true,
@@ -227,7 +227,7 @@ export default defineEventHandler(async (event) => {
       scannedOrders, updatedOrders, seededItems, requestedOrders: orderIds.length,
       notFoundOrders, skippedOrdersNoResponsibles, skippedOrdersNoItems,
       skippedOrdersAlreadySeeded, skippedOrdersCancelled, results,
-      message: `Seeder completed. ${updatedOrders} order(s) updated and ${seededItems} item(s) seeded.`,
-    },
+      message: `Seeder completed. ${updatedOrders} order(s) updated and ${seededItems} item(s) seeded.`
+    }
   }
 })

@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     current_balance,
     is_active,
     notes,
-    change_history,
+    change_history
   } = body
 
   const { data: item, error } = await supabase
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
       ...(is_active !== undefined && { is_active }),
       ...(notes !== undefined && { notes }),
       ...(change_history !== undefined && { change_history }),
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

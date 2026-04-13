@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 
         const dataProximoLancamento = addMonths(
           new Date(ultimoLancamento.due_date + 'T00:00:00'),
-          incremento,
+          incremento
         )
 
         await supabase.from('financial_transactions').insert({
@@ -74,7 +74,7 @@ export default defineEventHandler(async (event) => {
           recurring_parent_id: lancamentoPai.id,
           bank_account_id: lancamentoPai.bank_account_id,
           organization_id: lancamentoPai.organization_id,
-          created_by: lancamentoPai.created_by,
+          created_by: lancamentoPai.created_by
         })
 
         totalCriados++
@@ -85,6 +85,6 @@ export default defineEventHandler(async (event) => {
   return {
     success: true,
     message: `Verificação concluída. ${totalCriados} lançamento(s) recorrente(s) criado(s).`,
-    totalCriados,
+    totalCriados
   }
 })

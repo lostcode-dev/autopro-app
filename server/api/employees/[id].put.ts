@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
     'has_commission', 'commission_type', 'commission_amount', 'commission_base',
     'commission_categories', 'has_minimum_guarantee', 'minimum_guarantee_amount',
     'minimum_guarantee_installments', 'pix_key_type', 'pix_key',
-    'termination_date', 'termination_reason',
+    'termination_date', 'termination_reason'
   ] as const
 
   const updates: Record<string, unknown> = { updated_by: authUser.email }

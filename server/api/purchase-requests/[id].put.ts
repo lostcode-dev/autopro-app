@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
 
   const updatableFields = [
     'supplier_id', 'items', 'total_request_amount', 'requester',
-    'service_order_id', 'justification', 'notes', 'purchase_id',
+    'service_order_id', 'justification', 'notes', 'purchase_id'
   ]
 
   for (const field of updatableFields) {

@@ -37,7 +37,7 @@ function summarizeEntry(entry: Record<string, any>) {
     id: entry?.id || null,
     amount: Number(entry?.amount || 0),
     due_date: entry?.due_date || null,
-    description: entry?.description || '',
+    description: entry?.description || ''
   }
 }
 
@@ -84,7 +84,7 @@ async function registrarExtratoContaBancaria(supabase: any, organizationId: stri
     balance_after: saldoPosterior,
     notes: `Ref. ao lançamento financeiro: ${lancamento.description}`,
     organization_id: organizationId,
-    created_by: email,
+    created_by: email
   })
 
   await supabase.from('bank_accounts').update({ current_balance: saldoPosterior }).eq('id', conta.id)
@@ -136,7 +136,7 @@ export default defineEventHandler(async (event) => {
 
   const [rootResult, childResult] = await Promise.all([
     supabase.from('financial_transactions').select('*').eq('id', rootRecurringId).eq('organization_id', organizationId),
-    supabase.from('financial_transactions').select('*').eq('recurring_parent_id', rootRecurringId).eq('organization_id', organizationId),
+    supabase.from('financial_transactions').select('*').eq('recurring_parent_id', rootRecurringId).eq('organization_id', organizationId)
   ])
 
   const allSeriesEntries = [...(rootResult.data || []), ...(childResult.data || [])]
@@ -175,7 +175,7 @@ export default defineEventHandler(async (event) => {
       installment_count: entry.installment_count,
       current_installment: entry.current_installment,
       parent_id: entry.parent_id,
-      recurring_parent_id: entry.recurring_parent_id,
+      recurring_parent_id: entry.recurring_parent_id
     }
 
     if (!hasEntryChanges(entry, updateData)) continue
@@ -195,12 +195,12 @@ export default defineEventHandler(async (event) => {
     updatedEntries.push({
       id: lancamentoAtualizado?.id || entry.id,
       before: summarizeEntry(entry),
-      after: summarizeEntry(lancamentoAtualizado),
+      after: summarizeEntry(lancamentoAtualizado)
     })
   }
 
   return {
     organization_id: organizationId,
-    data: { updatedCount, updatedEntries },
+    data: { updatedCount, updatedEntries }
   }
 })

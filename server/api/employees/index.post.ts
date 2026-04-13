@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
     termination_date: body.termination_date ?? null,
     termination_reason: body.termination_reason ?? null,
     created_by: authUser.email,
-    updated_by: authUser.email,
+    updated_by: authUser.email
   }
 
   const { data, error } = await supabase

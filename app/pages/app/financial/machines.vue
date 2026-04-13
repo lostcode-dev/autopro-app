@@ -32,7 +32,7 @@ const emptyForm = () => ({
   serial_number: '',
   fee_type: 'percentage' as string,
   fee_value: '' as string | number,
-  is_active: true,
+  is_active: true
 })
 
 const form = reactive(emptyForm())
@@ -51,7 +51,7 @@ function openEdit(t: Terminal) {
     serial_number: t.serial_number ?? '',
     fee_type: t.fee_type ?? 'percentage',
     fee_value: t.fee_value ?? '',
-    is_active: t.is_active ?? true,
+    is_active: t.is_active ?? true
   })
   isEditing.value = true
   selectedId.value = t.id
@@ -69,7 +69,7 @@ async function save() {
       serial_number: form.serial_number || null,
       fee_type: form.fee_type || null,
       fee_value: form.fee_value !== '' ? Number(form.fee_value) : null,
-      is_active: form.is_active,
+      is_active: form.is_active
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/payment-terminals/${selectedId.value}`, { method: 'PUT', body })
@@ -105,7 +105,7 @@ async function remove(t: Terminal) {
 
 const feeTypeOptions = [
   { label: 'Percentual (%)', value: 'percentage' },
-  { label: 'Fixo (R$)', value: 'fixed' },
+  { label: 'Fixo (R$)', value: 'fixed' }
 ]
 
 const columns = [
@@ -126,7 +126,7 @@ const columns = [
     header: 'Status',
     cell: ({ row }: { row: { original: Terminal } }) => row.original.is_active ? 'Ativa' : 'Inativa'
   },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -135,13 +135,21 @@ const columns = [
     <template #header>
       <UDashboardNavbar title="Maquininhas">
         <template #right>
-          <UButton v-if="canUpdate" label="Nova maquininha" icon="i-lucide-plus" color="neutral" @click="openCreate" />
+          <UButton
+            v-if="canUpdate"
+            label="Nova maquininha"
+            icon="i-lucide-plus"
+            color="neutral"
+            @click="openCreate"
+          />
         </template>
       </UDashboardNavbar>
     </template>
 
     <div v-if="!canView" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar maquininhas.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar maquininhas.
+      </p>
     </div>
 
     <template v-else>
@@ -149,11 +157,31 @@ const columns = [
         <USkeleton v-for="i in 5" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="data || []" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="data || []"
+        class="min-h-0 flex-1"
+      >
         <template #actions-cell="{ row }">
           <div class="flex items-center gap-2 justify-end">
-            <UButton v-if="canUpdate" icon="i-lucide-pencil" color="neutral" variant="ghost" size="xs" @click="openEdit(row.original)" />
-            <UButton v-if="canUpdate" icon="i-lucide-trash-2" color="error" variant="ghost" size="xs" :loading="isDeleting" @click="remove(row.original)" />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openEdit(row.original)"
+            />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :loading="isDeleting"
+              @click="remove(row.original)"
+            />
           </div>
         </template>
       </UTable>
@@ -174,10 +202,21 @@ const columns = [
             <UInput v-model="form.serial_number" class="w-full" />
           </UFormField>
           <UFormField label="Tipo de taxa">
-            <USelectMenu v-model="form.fee_type" :items="feeTypeOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.fee_type"
+              :items="feeTypeOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField :label="form.fee_type === 'percentage' ? 'Taxa (%)' : 'Taxa (R$)'">
-            <UInput v-model="form.fee_value" type="number" min="0" step="0.01" class="w-full" />
+            <UInput
+              v-model="form.fee_value"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full"
+            />
           </UFormField>
         </div>
         <UCheckbox v-model="form.is_active" label="Ativa" />
@@ -185,8 +224,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

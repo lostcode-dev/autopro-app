@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createError({
       statusCode: 500,
-      message: error.message || 'Erro ao listar logs da Nuvem Fiscal',
+      message: error.message || 'Erro ao listar logs da Nuvem Fiscal'
     })
   }
 
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
       logs: logs || [],
       page,
       pageSize,
-      hasMore,
-    },
+      hasMore
+    }
   }
 })

@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
   const [ordersResult, clientsResult, transactionsResult] = await Promise.all([
     supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('financial_transactions').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('due_date', { ascending: false }),
+    supabase.from('financial_transactions').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('due_date', { ascending: false })
   ])
 
   const orders = ordersResult.data || []
@@ -56,7 +56,7 @@ export default defineEventHandler(async (event) => {
   const activeClients = new Set(completedOrders.map((o: any) => String(o?.client_id || ''))).size
 
   // Daily chart
-  const dailyData: Record<string, { revenue: number; cost: number }> = {}
+  const dailyData: Record<string, { revenue: number, cost: number }> = {}
   const cursor = new Date(dateFrom)
   while (cursor <= dateTo) {
     dailyData[formatDateKey(cursor)] = { revenue: 0, cost: 0 }
@@ -101,8 +101,8 @@ export default defineEventHandler(async (event) => {
         totalOrders: completedOrders.length,
         newClients: newClientsCount,
         chartData,
-        topItems,
-      },
-    },
+        topItems
+      }
+    }
   }
 })

@@ -24,7 +24,7 @@ const isLoadingCep = ref(false)
 
 const { data, status, refresh } = await useAsyncData(
   () => `clients-${page.value}-${search.value}-${personTypeFilter.value}`,
-  () => requestFetch<{ items: Client[]; total: number; page: number; page_size: number }>(
+  () => requestFetch<{ items: Client[], total: number, page: number, page_size: number }>(
     '/api/clients',
     {
       headers: requestHeaders,
@@ -32,7 +32,7 @@ const { data, status, refresh } = await useAsyncData(
         search: search.value || undefined,
         person_type: personTypeFilter.value || undefined,
         page: page.value,
-        page_size: pageSize,
+        page_size: pageSize
       }
     }
   ),
@@ -61,7 +61,7 @@ const emptyForm = () => ({
   address_neighborhood: '',
   address_city: '',
   address_state: '',
-  notes: '',
+  notes: ''
 })
 
 const form = reactive(emptyForm())
@@ -89,7 +89,7 @@ function openEdit(client: Client) {
     address_neighborhood: client.address_neighborhood ?? '',
     address_city: client.address_city ?? '',
     address_state: client.address_state ?? '',
-    notes: client.notes ?? '',
+    notes: client.notes ?? ''
   })
   isEditing.value = true
   selectedId.value = client.id
@@ -119,7 +119,7 @@ async function save() {
       address_neighborhood: form.address_neighborhood || null,
       address_city: form.address_city || null,
       address_state: form.address_state || null,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/clients/${selectedId.value}`, { method: 'PUT', body })
@@ -164,19 +164,18 @@ async function lookupCep() {
     form.address_neighborhood = res.bairro || form.address_neighborhood
     form.address_city = res.localidade || form.address_city
     form.address_state = res.uf || form.address_state
-  } catch { toast.add({ title: 'Erro ao buscar CEP', color: 'error' }) }
-  finally { isLoadingCep.value = false }
+  } catch { toast.add({ title: 'Erro ao buscar CEP', color: 'error' }) } finally { isLoadingCep.value = false }
 }
 
 const personTypeOptions = [
   { label: 'Pessoa Física', value: 'PF' },
-  { label: 'Pessoa Jurídica', value: 'PJ' },
+  { label: 'Pessoa Jurídica', value: 'PJ' }
 ]
 
 const personTypeFilterOptions = [
   { label: 'Todos', value: '' },
   { label: 'Pessoa Física', value: 'PF' },
-  { label: 'Pessoa Jurídica', value: 'PJ' },
+  { label: 'Pessoa Jurídica', value: 'PJ' }
 ]
 
 const columns = [
@@ -185,7 +184,7 @@ const columns = [
   { accessorKey: 'tax_id', header: 'CPF/CNPJ' },
   { accessorKey: 'phone', header: 'Telefone' },
   { accessorKey: 'email', header: 'E-mail' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -206,7 +205,9 @@ const columns = [
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar clientes.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar clientes.
+      </p>
     </div>
 
     <template v-else>
@@ -282,7 +283,12 @@ const columns = [
             <UInput v-model="form.name" class="w-full" />
           </UFormField>
           <UFormField label="Tipo de pessoa">
-            <USelectMenu v-model="form.person_type" :items="personTypeOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.person_type"
+              :items="personTypeOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="CPF / CNPJ">
             <UInput v-model="form.tax_id" class="w-full" />
@@ -307,7 +313,14 @@ const columns = [
           <UFormField label="CEP" class="sm:col-span-2">
             <div class="flex gap-2">
               <UInput v-model="form.address_zip_code" placeholder="00000-000" class="flex-1" />
-              <UButton label="Buscar" color="neutral" variant="outline" :loading="isLoadingCep" :disabled="isLoadingCep" @click="lookupCep" />
+              <UButton
+                label="Buscar"
+                color="neutral"
+                variant="outline"
+                :loading="isLoadingCep"
+                :disabled="isLoadingCep"
+                @click="lookupCep"
+              />
             </div>
           </UFormField>
           <UFormField label="Logradouro" class="sm:col-span-2">
@@ -337,8 +350,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

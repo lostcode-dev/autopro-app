@@ -5,7 +5,7 @@ import {
   getNuvemFiscalApiToken,
   getNuvemFiscalApiBaseUrl,
   monitoredNuvemFiscalFetch,
-  sanitizeCpfCnpj,
+  sanitizeCpfCnpj
 } from '../../../utils/nuvem-fiscal'
 
 export default defineEventHandler(async (event) => {
@@ -30,17 +30,17 @@ export default defineEventHandler(async (event) => {
     init: {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    },
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
   })
 
   if (!response.ok) {
     const data = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao excluir certificado da empresa', details: data },
+      data: { error: 'Erro ao excluir certificado da empresa', details: data }
     })
   }
 

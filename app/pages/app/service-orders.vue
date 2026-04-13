@@ -25,7 +25,7 @@ const limit = 20
 
 const { data, status, refresh } = await useAsyncData(
   () => `service-orders-${cursor.value}-${searchTerm.value}-${statusFilter.value}`,
-  () => requestFetch<{ items: ServiceOrder[]; total: number; hasMore: boolean; nextCursor: number }>(
+  () => requestFetch<{ items: ServiceOrder[], total: number, hasMore: boolean, nextCursor: number }>(
     '/api/service-orders',
     {
       headers: requestHeaders,
@@ -33,7 +33,7 @@ const { data, status, refresh } = await useAsyncData(
         searchTerm: searchTerm.value || undefined,
         status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
         cursor: cursor.value,
-        limit,
+        limit
       }
     }
   ),
@@ -81,7 +81,7 @@ async function cancelOrder(order: ServiceOrder) {
       closeDetail()
     }
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível cancelar', color: 'error' })
   } finally {
     isCancelling.value = false
@@ -100,7 +100,7 @@ async function deleteOrder(order: ServiceOrder) {
     await refresh()
     if (showDetail.value && selectedOrderId.value === order.id) closeDetail()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível remover', color: 'error' })
   } finally {
     isDeleting.value = false
@@ -125,7 +125,7 @@ const statusFilterOptions = [
   { label: 'Aguard. peça', value: 'waiting_for_part' },
   { label: 'Concluída', value: 'completed' },
   { label: 'Entregue', value: 'delivered' },
-  { label: 'Cancelada', value: 'cancelled' },
+  { label: 'Cancelada', value: 'cancelled' }
 ]
 
 const statusColorMap: Record<string, string> = {
@@ -135,7 +135,7 @@ const statusColorMap: Record<string, string> = {
   waiting_for_part: 'orange',
   completed: 'success',
   delivered: 'success',
-  cancelled: 'error',
+  cancelled: 'error'
 }
 const statusLabelMap: Record<string, string> = {
   estimate: 'Orçamento',
@@ -144,17 +144,17 @@ const statusLabelMap: Record<string, string> = {
   waiting_for_part: 'Aguard. peça',
   completed: 'Concluída',
   delivered: 'Entregue',
-  cancelled: 'Cancelada',
+  cancelled: 'Cancelada'
 }
 const paymentStatusColorMap: Record<string, string> = {
   pending: 'warning',
   paid: 'success',
-  partial: 'info',
+  partial: 'info'
 }
 const paymentStatusLabelMap: Record<string, string> = {
   pending: 'Pendente',
   paid: 'Pago',
-  partial: 'Parcial',
+  partial: 'Parcial'
 }
 
 const columns = [
@@ -165,7 +165,7 @@ const columns = [
   { id: 'status', header: 'Status' },
   { id: 'payment_status', header: 'Pagamento' },
   { id: 'total_amount', header: 'Total' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -183,7 +183,9 @@ const columns = [
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar ordens de serviço.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar ordens de serviço.
+      </p>
     </div>
 
     <template v-else>
@@ -307,7 +309,12 @@ const columns = [
   </UDashboardPanel>
 
   <!-- Detail Slideover -->
-  <USlideover v-model:open="showDetail" title="Detalhes da OS" side="right" :ui="{ content: 'max-w-2xl' }">
+  <USlideover
+    v-model:open="showDetail"
+    title="Detalhes da OS"
+    side="right"
+    :ui="{ content: 'max-w-2xl' }"
+  >
     <template #body>
       <div v-if="isLoadingDetail" class="p-6 space-y-4">
         <USkeleton class="h-8 w-48" />
@@ -320,8 +327,12 @@ const columns = [
         <!-- Header -->
         <div class="flex items-start justify-between gap-4">
           <div>
-            <h2 class="text-lg font-bold">OS {{ orderDetail.order.number }}</h2>
-            <p class="text-sm text-muted">Entrada: {{ formatDate(orderDetail.order.entry_date) }}</p>
+            <h2 class="text-lg font-bold">
+              OS {{ orderDetail.order.number }}
+            </h2>
+            <p class="text-sm text-muted">
+              Entrada: {{ formatDate(orderDetail.order.entry_date) }}
+            </p>
           </div>
           <div class="flex gap-2">
             <UBadge
@@ -342,21 +353,31 @@ const columns = [
         <UPageCard title="Cliente e Veículo" variant="subtle">
           <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div>
-              <dt class="text-muted">Cliente</dt>
-              <dd class="font-medium">{{ orderDetail.client?.name ?? '—' }}</dd>
+              <dt class="text-muted">
+                Cliente
+              </dt>
+              <dd class="font-medium">
+                {{ orderDetail.client?.name ?? '—' }}
+              </dd>
             </div>
             <div>
-              <dt class="text-muted">Telefone</dt>
+              <dt class="text-muted">
+                Telefone
+              </dt>
               <dd>{{ orderDetail.client?.phone ?? '—' }}</dd>
             </div>
             <div>
-              <dt class="text-muted">Veículo</dt>
+              <dt class="text-muted">
+                Veículo
+              </dt>
               <dd class="font-medium">
                 {{ orderDetail.vehicle ? [orderDetail.vehicle.brand, orderDetail.vehicle.model].filter(Boolean).join(' ') : '—' }}
               </dd>
             </div>
             <div>
-              <dt class="text-muted">Placa</dt>
+              <dt class="text-muted">
+                Placa
+              </dt>
               <dd>{{ orderDetail.vehicle?.license_plate ?? '—' }}</dd>
             </div>
           </dl>
@@ -366,19 +387,29 @@ const columns = [
         <UPageCard title="Financeiro" variant="subtle">
           <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div>
-              <dt class="text-muted">Total</dt>
-              <dd class="font-bold text-base">{{ formatCurrency(orderDetail.order.total_amount) }}</dd>
+              <dt class="text-muted">
+                Total
+              </dt>
+              <dd class="font-bold text-base">
+                {{ formatCurrency(orderDetail.order.total_amount) }}
+              </dd>
             </div>
             <div>
-              <dt class="text-muted">Desconto</dt>
+              <dt class="text-muted">
+                Desconto
+              </dt>
               <dd>{{ formatCurrency(orderDetail.order.discount) }}</dd>
             </div>
             <div>
-              <dt class="text-muted">Forma de pagamento</dt>
+              <dt class="text-muted">
+                Forma de pagamento
+              </dt>
               <dd>{{ orderDetail.order.payment_method ?? '—' }}</dd>
             </div>
             <div>
-              <dt class="text-muted">Parcelas</dt>
+              <dt class="text-muted">
+                Parcelas
+              </dt>
               <dd>{{ orderDetail.installments?.length ?? 0 }}</dd>
             </div>
           </dl>
@@ -388,11 +419,15 @@ const columns = [
         <UPageCard v-if="orderDetail.order.reported_defect || orderDetail.order.diagnosis" title="Diagnóstico" variant="subtle">
           <div class="space-y-2 text-sm">
             <div v-if="orderDetail.order.reported_defect">
-              <p class="text-muted text-xs">Defeito relatado</p>
+              <p class="text-muted text-xs">
+                Defeito relatado
+              </p>
               <p>{{ orderDetail.order.reported_defect }}</p>
             </div>
             <div v-if="orderDetail.order.diagnosis">
-              <p class="text-muted text-xs">Diagnóstico técnico</p>
+              <p class="text-muted text-xs">
+                Diagnóstico técnico
+              </p>
               <p>{{ orderDetail.order.diagnosis }}</p>
             </div>
           </div>
@@ -417,7 +452,9 @@ const columns = [
 
         <!-- Notes -->
         <UPageCard v-if="orderDetail.order.notes" title="Observações" variant="subtle">
-          <p class="text-sm">{{ orderDetail.order.notes }}</p>
+          <p class="text-sm">
+            {{ orderDetail.order.notes }}
+          </p>
         </UPageCard>
 
         <!-- Actions -->

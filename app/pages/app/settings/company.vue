@@ -35,7 +35,7 @@ const schema = z.object({
   address_country: z.string().optional().nullable(),
   municipal_registration: z.string().optional().nullable(),
   state_registration: z.string().optional().nullable(),
-  fiscal_regime: z.string().optional().nullable(),
+  fiscal_regime: z.string().optional().nullable()
 })
 
 type Schema = z.output<typeof schema>
@@ -68,7 +68,7 @@ function fillForm(data: OrgData | null) {
     address_country: data.address_country ?? 'BR',
     municipal_registration: data.municipal_registration ?? '',
     state_registration: data.state_registration ?? '',
-    fiscal_regime: data.fiscal_regime ?? '',
+    fiscal_regime: data.fiscal_regime ?? ''
   })
 }
 
@@ -120,7 +120,7 @@ const fiscalRegimeOptions = [
   { label: 'Simples Nacional', value: 'simples_nacional' },
   { label: 'Lucro Presumido', value: 'lucro_presumido' },
   { label: 'Lucro Real', value: 'lucro_real' },
-  { label: 'MEI', value: 'mei' },
+  { label: 'MEI', value: 'mei' }
 ]
 </script>
 
@@ -165,7 +165,12 @@ const fiscalRegimeOptions = [
     <template v-else>
       <!-- Dados básicos -->
       <UPageCard title="Identificação" variant="subtle" class="mb-4">
-        <UFormField name="name" label="Razão social" required class="flex max-sm:flex-col justify-between items-start gap-4">
+        <UFormField
+          name="name"
+          label="Razão social"
+          required
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
           <UInput v-model="form.name" :disabled="!canUpdate" class="w-full" />
         </UFormField>
         <USeparator />
@@ -178,14 +183,24 @@ const fiscalRegimeOptions = [
         </UFormField>
         <USeparator />
         <UFormField name="description" label="Descrição" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UTextarea v-model="form.description" :disabled="!canUpdate" class="w-full" :rows="3" />
+          <UTextarea
+            v-model="form.description"
+            :disabled="!canUpdate"
+            class="w-full"
+            :rows="3"
+          />
         </UFormField>
       </UPageCard>
 
       <!-- Contato -->
       <UPageCard title="Contato" variant="subtle" class="mb-4">
         <UFormField name="email" label="E-mail" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput v-model="form.email" type="email" :disabled="!canUpdate" class="w-full" />
+          <UInput
+            v-model="form.email"
+            type="email"
+            :disabled="!canUpdate"
+            class="w-full"
+          />
         </UFormField>
         <USeparator />
         <UFormField name="phone" label="Telefone" class="flex max-sm:flex-col justify-between items-start gap-4">
@@ -197,7 +212,12 @@ const fiscalRegimeOptions = [
         </UFormField>
         <USeparator />
         <UFormField name="website" label="Website" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput v-model="form.website" :disabled="!canUpdate" class="w-full" placeholder="https://" />
+          <UInput
+            v-model="form.website"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="https://"
+          />
         </UFormField>
       </UPageCard>
 
@@ -205,7 +225,12 @@ const fiscalRegimeOptions = [
       <UPageCard title="Endereço" variant="subtle" class="mb-4">
         <UFormField name="address_zip_code" label="CEP" class="flex max-sm:flex-col justify-between items-start gap-4">
           <div class="flex gap-2 w-full">
-            <UInput v-model="form.address_zip_code" :disabled="!canUpdate" placeholder="00000-000" class="flex-1" />
+            <UInput
+              v-model="form.address_zip_code"
+              :disabled="!canUpdate"
+              placeholder="00000-000"
+              class="flex-1"
+            />
             <UButton
               v-if="canUpdate"
               label="Buscar"
@@ -240,7 +265,12 @@ const fiscalRegimeOptions = [
             <UInput v-model="form.address_city" :disabled="!canUpdate" class="w-full" />
           </UFormField>
           <UFormField name="address_state" label="UF">
-            <UInput v-model="form.address_state" :disabled="!canUpdate" maxlength="2" class="w-full uppercase" />
+            <UInput
+              v-model="form.address_state"
+              :disabled="!canUpdate"
+              maxlength="2"
+              class="w-full uppercase"
+            />
           </UFormField>
         </div>
       </UPageCard>

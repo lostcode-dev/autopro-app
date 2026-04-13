@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
 
   // Fetch user counts per org
   const orgIds = (data || []).map((o: any) => o.id)
-  let userCountMap: Record<string, number> = {}
+  const userCountMap: Record<string, number> = {}
 
   if (orgIds.length > 0) {
     const { data: userCounts } = await supabase
@@ -62,13 +62,13 @@ export default defineEventHandler(async (event) => {
 
   const items = (data || []).map((org: any) => ({
     ...org,
-    user_count: userCountMap[org.id] || 0,
+    user_count: userCountMap[org.id] || 0
   }))
 
   return {
     items,
     total: count ?? items.length,
     page,
-    page_size: pageSize,
+    page_size: pageSize
   }
 })

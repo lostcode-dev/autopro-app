@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('products').select('id, name, unit_cost_price, category_id').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('product_categories').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).eq('record_type', 'comissao').order('reference_date', { ascending: false }),
+    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).eq('record_type', 'comissao').order('reference_date', { ascending: false })
   ])
 
   const orders = ordersResult.data || []
@@ -123,17 +123,17 @@ export default defineEventHandler(async (event) => {
         date: o?.entry_date || '',
         categoryId,
         categoryName,
-        costSource,
+        costSource
       })
     }
   }
 
   if (searchTerm) {
     expandedItems = expandedItems.filter((i: any) =>
-      i.client.toLowerCase().includes(searchTerm) ||
-      i.orderNumber.toLowerCase().includes(searchTerm) ||
-      i.itemDescription.toLowerCase().includes(searchTerm) ||
-      i.responsible.toLowerCase().includes(searchTerm)
+      i.client.toLowerCase().includes(searchTerm)
+      || i.orderNumber.toLowerCase().includes(searchTerm)
+      || i.itemDescription.toLowerCase().includes(searchTerm)
+      || i.responsible.toLowerCase().includes(searchTerm)
     )
   }
 
@@ -173,7 +173,7 @@ export default defineEventHandler(async (event) => {
     totalCost: roundMoney(tableItems.reduce((s, i) => s + i.totalCost, 0)),
     totalCommissionCost: roundMoney(tableItems.reduce((s, i) => s + i.commissionCost, 0)),
     itemCount: expandedItems.length,
-    orderCount: filteredOrders.length,
+    orderCount: filteredOrders.length
   }
 
   const { data: paginatedItems, pagination } = paginate(tableItems, page, pageSize)
@@ -185,17 +185,17 @@ export default defineEventHandler(async (event) => {
           availableClients: clients.map((c: any) => ({ value: c.id, label: c.name || 'No name' })),
           availableOrders: filteredOrders.map((o: any) => ({ value: o.id, label: `OS ${o.number || '-'}` })),
           availableResponsibles: employees.map((e: any) => ({ id: e.id, name: e.name || '' })),
-          availableStatuses: [...new Set(orders.map((o: any) => o?.status).filter(Boolean))].map((s) => ({ value: s, label: s })),
-          availableCategories: categories.map((c: any) => ({ id: c.id, name: c.name || '' })),
+          availableStatuses: [...new Set(orders.map((o: any) => o?.status).filter(Boolean))].map(s => ({ value: s, label: s })),
+          availableCategories: categories.map((c: any) => ({ id: c.id, name: c.name || '' }))
         },
         summary,
         table: {
           items: paginatedItems,
           pagination,
           sort: { sortBy, sortOrder },
-          viewMode,
-        },
-      },
-    },
+          viewMode
+        }
+      }
+    }
   }
 })

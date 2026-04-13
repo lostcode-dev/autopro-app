@@ -41,7 +41,7 @@ const emptyForm = () => ({
   pix_key_type: '',
   pix_key: '',
   is_default: false,
-  is_active: true,
+  is_active: true
 })
 
 const form = reactive(emptyForm())
@@ -67,7 +67,7 @@ function openEdit(a: BankAccount) {
     pix_key_type: a.pix_key_type ?? '',
     pix_key: a.pix_key ?? '',
     is_default: a.is_default ?? false,
-    is_active: a.is_active ?? true,
+    is_active: a.is_active ?? true
   })
   isEditing.value = true
   selectedId.value = a.id
@@ -92,7 +92,7 @@ async function save() {
       pix_key_type: form.pix_key_type || null,
       pix_key: form.pix_key || null,
       is_default: form.is_default,
-      is_active: form.is_active,
+      is_active: form.is_active
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/bank-accounts/${selectedId.value}`, { method: 'PUT', body })
@@ -130,14 +130,14 @@ const accountTypeOptions = [
   { label: 'Conta corrente', value: 'checking' },
   { label: 'Poupança', value: 'savings' },
   { label: 'Caixa', value: 'cash' },
-  { label: 'Outro', value: 'other' },
+  { label: 'Outro', value: 'other' }
 ]
 
 const pixKeyTypeOptions = [
   { label: 'CPF/CNPJ', value: 'cpf_cnpj' },
   { label: 'E-mail', value: 'email' },
   { label: 'Telefone', value: 'phone' },
-  { label: 'Chave aleatória', value: 'random' },
+  { label: 'Chave aleatória', value: 'random' }
 ]
 
 const formatCurrency = (val: number | null) =>
@@ -164,7 +164,7 @@ const columns = [
     header: 'Status',
     cell: ({ row }: { row: { original: BankAccount } }) => row.original.is_active ? 'Ativa' : 'Inativa'
   },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -173,13 +173,21 @@ const columns = [
     <template #header>
       <UDashboardNavbar title="Contas bancárias">
         <template #right>
-          <UButton v-if="canCreate" label="Nova conta" icon="i-lucide-plus" color="neutral" @click="openCreate" />
+          <UButton
+            v-if="canCreate"
+            label="Nova conta"
+            icon="i-lucide-plus"
+            color="neutral"
+            @click="openCreate"
+          />
         </template>
       </UDashboardNavbar>
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar contas bancárias.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar contas bancárias.
+      </p>
     </div>
 
     <template v-else>
@@ -187,11 +195,31 @@ const columns = [
         <USkeleton v-for="i in 5" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="data || []" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="data || []"
+        class="min-h-0 flex-1"
+      >
         <template #actions-cell="{ row }">
           <div class="flex items-center gap-2 justify-end">
-            <UButton v-if="canUpdate" icon="i-lucide-pencil" color="neutral" variant="ghost" size="xs" @click="openEdit(row.original)" />
-            <UButton v-if="canDelete" icon="i-lucide-trash-2" color="error" variant="ghost" size="xs" :loading="isDeleting" @click="remove(row.original)" />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openEdit(row.original)"
+            />
+            <UButton
+              v-if="canDelete"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :loading="isDeleting"
+              @click="remove(row.original)"
+            />
           </div>
         </template>
       </UTable>
@@ -225,10 +253,21 @@ const columns = [
             <UInput v-model="form.account_digit" class="w-full" maxlength="1" />
           </UFormField>
           <UFormField label="Tipo de conta">
-            <USelectMenu v-model="form.account_type" :items="accountTypeOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.account_type"
+              :items="accountTypeOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Saldo inicial">
-            <UInput v-model="form.initial_balance" type="number" min="0" step="0.01" class="w-full" />
+            <UInput
+              v-model="form.initial_balance"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full"
+            />
           </UFormField>
         </div>
 
@@ -236,7 +275,13 @@ const columns = [
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Tipo de chave PIX">
-            <USelectMenu v-model="form.pix_key_type" :items="pixKeyTypeOptions" value-key="value" class="w-full" placeholder="Nenhum" />
+            <USelectMenu
+              v-model="form.pix_key_type"
+              :items="pixKeyTypeOptions"
+              value-key="value"
+              class="w-full"
+              placeholder="Nenhum"
+            />
           </UFormField>
           <UFormField v-if="form.pix_key_type" label="Chave PIX">
             <UInput v-model="form.pix_key" class="w-full" />
@@ -251,8 +296,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

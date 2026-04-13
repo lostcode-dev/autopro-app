@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     .from('bank_accounts')
     .update({
       deleted_at: new Date().toISOString(),
-      deleted_by: authUser.email,
+      deleted_by: authUser.email
     })
     .eq('id', id)
 

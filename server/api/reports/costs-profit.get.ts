@@ -5,7 +5,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import {
   parseDateStart, parseDateEnd, toNumber, qArr, formatDateKey, formatDayLabel,
   normalizeStatusFilters, matchesStatusFilters, paginate, sortFactor,
-  getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel,
+  getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel
 } from '../../utils/report-helpers'
 
 function normalizeCategoryName(category: string) {
@@ -31,7 +31,7 @@ function calculatePeriodData(orders: any[], transactions: any[], start: Date, en
 }
 
 function buildEvolutionData(periodData: any, start: Date, end: Date) {
-  const dailyData: Record<string, { revenue: number; costs: number; profit: number }> = {}
+  const dailyData: Record<string, { revenue: number, costs: number, profit: number }> = {}
   const cursor = new Date(start)
   while (cursor <= end) {
     dailyData[formatDateKey(cursor)] = { revenue: 0, costs: 0, profit: 0 }
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
 
   const [transactionsResult, ordersResult] = await Promise.all([
     supabase.from('financial_transactions').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('due_date', { ascending: false }),
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
+    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false })
   ])
 
   const transactions = transactionsResult.data || []
@@ -129,7 +129,7 @@ export default defineEventHandler(async (event) => {
     categoryKey,
     category: normalizeCategoryName(categoryKey),
     amount,
-    percentage: totalCosts > 0 ? (amount / totalCosts) * 100 : 0,
+    percentage: totalCosts > 0 ? (amount / totalCosts) * 100 : 0
   }))
 
   const factor = sortFactor(sortOrder)
@@ -158,9 +158,9 @@ export default defineEventHandler(async (event) => {
       table: {
         items: categoryPage,
         pagination,
-        sort: { sortBy, sortOrder, status: statusFilters.length > 0 ? statusFilters.join(',') : 'all' },
-      },
-    },
+        sort: { sortBy, sortOrder, status: statusFilters.length > 0 ? statusFilters.join(',') : 'all' }
+      }
+    }
   }
 
   if (includeCategoryDetails && selectedCategory) {
@@ -179,8 +179,8 @@ export default defineEventHandler(async (event) => {
         type: String(t?.type || 'expense').toLowerCase(), due_date: t?.due_date || null,
         recurrence: t?.recurrence || null, is_installment: Boolean(t?.is_installment),
         current_installment: t?.current_installment ?? null, installment_count: t?.installment_count ?? null,
-        notes: t?.notes || null,
-      })),
+        notes: t?.notes || null
+      }))
     }
   }
 
@@ -197,7 +197,7 @@ export default defineEventHandler(async (event) => {
         currentPeriodLabel: formatPeriodLabel(dateFrom, dateTo),
         previousPeriodLabel: formatPeriodLabel(previousStartDate, previousEndDate),
         currentStartDate: formatDateKey(dateFrom), currentEndDate: formatDateKey(dateTo),
-        previousStartDate: formatDateKey(previousStartDate), previousEndDate: formatDateKey(previousEndDate),
+        previousStartDate: formatDateKey(previousStartDate), previousEndDate: formatDateKey(previousEndDate)
       }
     }
     const topProfitableOrders = (currentData?.orders || []).map((o: any) => {
@@ -207,17 +207,19 @@ export default defineEventHandler(async (event) => {
       return { number: o?.number, revenue, cost, profit, margin: revenue > 0 ? (profit / revenue) * 100 : 0 }
     }).sort((a: any, b: any) => b.profit - a.profit).slice(0, 10)
 
-    const variations = currentData && previousData ? {
-      revenue: calculateVariation(currentData.revenue, previousData.revenue),
-      costs: calculateVariation(currentData.costs, previousData.costs),
-      profit: calculateVariation(currentData.profit, previousData.profit),
-      margin: calculateVariation(currentData.profitMargin, previousData.profitMargin),
-    } : null
+    const variations = currentData && previousData
+      ? {
+          revenue: calculateVariation(currentData.revenue, previousData.revenue),
+          costs: calculateVariation(currentData.costs, previousData.costs),
+          profit: calculateVariation(currentData.profit, previousData.profit),
+          margin: calculateVariation(currentData.profitMargin, previousData.profitMargin)
+        }
+      : null
 
     responseData.profitReport = {
       currentData, previousData, variations, comparisonMeta,
       evolutionData: hasPeriod && currentData ? buildEvolutionData(currentData, dateFrom, dateTo) : [],
-      topProfitableOrders,
+      topProfitableOrders
     }
   }
 

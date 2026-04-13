@@ -19,7 +19,7 @@ type ProfileData = {
 
 const schema = z.object({
   display_name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
-  profile_picture_url: z.string().optional().nullable(),
+  profile_picture_url: z.string().optional().nullable()
 })
 
 type Schema = z.output<typeof schema>
@@ -31,7 +31,7 @@ const { data: profileData, status } = await useAsyncData(
 
 const form = reactive<Partial<Schema>>({
   display_name: '',
-  profile_picture_url: '',
+  profile_picture_url: ''
 })
 
 watch(profileData, (data) => {
@@ -50,7 +50,7 @@ async function onSubmit(_event: FormSubmitEvent<Schema>) {
       method: 'PUT',
       body: {
         display_name: form.display_name,
-        profile_picture_url: form.profile_picture_url || null,
+        profile_picture_url: form.profile_picture_url || null
       }
     })
     toast.add({ title: 'Perfil atualizado', description: 'Seus dados foram salvos.', color: 'success' })

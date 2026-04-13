@@ -15,7 +15,7 @@ const canUpdate = computed(() => workshop.can(ActionCode.VEHICLES_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.VEHICLES_DELETE))
 
 type Vehicle = Record<string, any>
-type Client = { id: string; name: string }
+type Client = { id: string, name: string }
 
 const search = ref('')
 
@@ -57,7 +57,7 @@ const emptyForm = () => ({
   mileage: '' as string | number,
   chassis: '',
   fuel_type: '' as string,
-  notes: '',
+  notes: ''
 })
 
 const form = reactive(emptyForm())
@@ -80,7 +80,7 @@ function openEdit(v: Vehicle) {
     mileage: v.mileage ?? '',
     chassis: v.chassis ?? '',
     fuel_type: v.fuel_type ?? '',
-    notes: v.notes ?? '',
+    notes: v.notes ?? ''
   })
   isEditing.value = true
   selectedId.value = v.id
@@ -105,7 +105,7 @@ async function save() {
       mileage: form.mileage !== '' ? Number(form.mileage) : null,
       chassis: form.chassis || null,
       fuel_type: form.fuel_type || null,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/vehicles/${selectedId.value}`, { method: 'PUT', body })
@@ -146,7 +146,7 @@ const fuelTypeOptions = [
   { label: 'Diesel', value: 'diesel' },
   { label: 'GNV', value: 'gnv' },
   { label: 'Elétrico', value: 'electric' },
-  { label: 'Híbrido', value: 'hybrid' },
+  { label: 'Híbrido', value: 'hybrid' }
 ]
 
 const columns = [
@@ -161,7 +161,7 @@ const columns = [
     cell: ({ row }: { row: { original: Vehicle } }) =>
       row.original.clients?.name ?? row.original.client_id ?? '-'
   },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -182,7 +182,9 @@ const columns = [
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar veículos.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar veículos.
+      </p>
     </div>
 
     <template v-else>
@@ -199,11 +201,31 @@ const columns = [
         <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="data || []" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="data || []"
+        class="min-h-0 flex-1"
+      >
         <template #actions-cell="{ row }">
           <div class="flex items-center gap-2 justify-end">
-            <UButton v-if="canUpdate" icon="i-lucide-pencil" color="neutral" variant="ghost" size="xs" @click="openEdit(row.original)" />
-            <UButton v-if="canDelete" icon="i-lucide-trash-2" color="error" variant="ghost" size="xs" :loading="isDeleting" @click="remove(row.original)" />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openEdit(row.original)"
+            />
+            <UButton
+              v-if="canDelete"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :loading="isDeleting"
+              @click="remove(row.original)"
+            />
           </div>
         </template>
       </UTable>
@@ -228,7 +250,13 @@ const columns = [
           <UInput v-model="form.plate" class="w-full uppercase" />
         </UFormField>
         <UFormField label="Combustível">
-          <USelectMenu v-model="form.fuel_type" :items="fuelTypeOptions" value-key="value" class="w-full" placeholder="Selecionar..." />
+          <USelectMenu
+            v-model="form.fuel_type"
+            :items="fuelTypeOptions"
+            value-key="value"
+            class="w-full"
+            placeholder="Selecionar..."
+          />
         </UFormField>
         <UFormField label="Marca">
           <UInput v-model="form.brand" class="w-full" />
@@ -237,13 +265,24 @@ const columns = [
           <UInput v-model="form.model" class="w-full" />
         </UFormField>
         <UFormField label="Ano">
-          <UInput v-model="form.year" type="number" min="1900" max="2100" class="w-full" />
+          <UInput
+            v-model="form.year"
+            type="number"
+            min="1900"
+            max="2100"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Cor">
           <UInput v-model="form.color" class="w-full" />
         </UFormField>
         <UFormField label="Quilometragem">
-          <UInput v-model="form.mileage" type="number" min="0" class="w-full" />
+          <UInput
+            v-model="form.mileage"
+            type="number"
+            min="0"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Chassi">
           <UInput v-model="form.chassis" class="w-full uppercase" />
@@ -255,8 +294,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

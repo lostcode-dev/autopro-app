@@ -24,7 +24,7 @@ const pageSize = 30
 
 const { data, status, refresh } = await useAsyncData(
   () => `purchase-returns-${page.value}-${statusFilter.value}-${reasonFilter.value}`,
-  () => requestFetch<{ items: PurchaseReturn[]; total: number; page: number; page_size: number }>(
+  () => requestFetch<{ items: PurchaseReturn[], total: number, page: number, page_size: number }>(
     '/api/purchase-returns',
     {
       headers: requestHeaders,
@@ -32,7 +32,7 @@ const { data, status, refresh } = await useAsyncData(
         status: statusFilter.value || undefined,
         reason: reasonFilter.value || undefined,
         page: page.value,
-        page_size: pageSize,
+        page_size: pageSize
       }
     }
   ),
@@ -48,7 +48,7 @@ const purchaseOptions = computed(() =>
   (purchasesData.value?.items ?? []).map((p: any) => ({
     label: [p.suppliers?.name, p.invoice_number, p.purchase_date].filter(Boolean).join(' — '),
     value: p.id,
-    supplier_id: p.supplier_id,
+    supplier_id: p.supplier_id
   }))
 )
 
@@ -67,7 +67,7 @@ const emptyForm = () => ({
   status: 'pending' as string,
   total_returned_amount: '' as string | number,
   notes: '',
-  returned_items: [] as any[],
+  returned_items: [] as any[]
 })
 
 const form = reactive(emptyForm())
@@ -94,7 +94,7 @@ function openEdit(ret: PurchaseReturn) {
     reason: ret.reason ?? 'other',
     status: ret.status ?? 'pending',
     total_returned_amount: ret.total_returned_amount ?? '',
-    notes: ret.notes ?? '',
+    notes: ret.notes ?? ''
   })
   returnedItemsJson.value = ret.returned_items ? JSON.stringify(ret.returned_items, null, 2) : '[]'
   isEditing.value = true
@@ -121,7 +121,7 @@ async function save() {
       status: form.status,
       total_returned_amount: parseFloat(String(form.total_returned_amount)),
       returned_items: parsedItems,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/purchase-returns/${selectedId.value}`, { method: 'PUT', body })
@@ -133,7 +133,7 @@ async function save() {
     showModal.value = false
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
   } finally {
     isSaving.value = false
@@ -148,7 +148,7 @@ async function remove(ret: PurchaseReturn) {
     toast.add({ title: 'Devolução removida', color: 'success' })
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover', color: 'error' })
   } finally {
     isDeleting.value = false
@@ -162,11 +162,11 @@ function formatCurrency(value: number | string) {
 const statusFilterOptions = [
   { label: 'Todos', value: '' },
   { label: 'Pendente', value: 'pending' },
-  { label: 'Concluída', value: 'completed' },
+  { label: 'Concluída', value: 'completed' }
 ]
 const statusFormOptions = [
   { label: 'Pendente', value: 'pending' },
-  { label: 'Concluída', value: 'completed' },
+  { label: 'Concluída', value: 'completed' }
 ]
 const reasonFilterOptions = [
   { label: 'Todos os motivos', value: '' },
@@ -175,7 +175,7 @@ const reasonFilterOptions = [
   { label: 'Defeito de fabricação', value: 'manufacturing_defect' },
   { label: 'Produto danificado', value: 'damaged_product' },
   { label: 'Não compatível', value: 'incompatible' },
-  { label: 'Outros', value: 'other' },
+  { label: 'Outros', value: 'other' }
 ]
 const reasonFormOptions = reasonFilterOptions.slice(1)
 
@@ -187,7 +187,7 @@ const reasonLabelMap: Record<string, string> = {
   manufacturing_defect: 'Defeito de fabricação',
   damaged_product: 'Produto danificado',
   incompatible: 'Não compatível',
-  other: 'Outros',
+  other: 'Outros'
 }
 
 const columns = [
@@ -196,7 +196,7 @@ const columns = [
   { id: 'reason', header: 'Motivo' },
   { id: 'total_returned_amount', header: 'Valor' },
   { id: 'status', header: 'Status' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -220,7 +220,9 @@ const columns = [
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar devoluções.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar devoluções.
+      </p>
     </div>
 
     <template v-else>
@@ -323,13 +325,29 @@ const columns = [
             <UInput v-model="form.return_date" type="date" class="w-full" />
           </UFormField>
           <UFormField label="Motivo" required>
-            <USelectMenu v-model="form.reason" :items="reasonFormOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.reason"
+              :items="reasonFormOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Valor total devolvido" required>
-            <UInput v-model="form.total_returned_amount" type="number" min="0" step="0.01" class="w-full" />
+            <UInput
+              v-model="form.total_returned_amount"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Status">
-            <USelectMenu v-model="form.status" :items="statusFormOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.status"
+              :items="statusFormOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
         </div>
         <UFormField label="Observações">
@@ -339,8 +357,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

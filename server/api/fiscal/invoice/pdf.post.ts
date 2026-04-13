@@ -7,7 +7,7 @@ import {
   monitoredNuvemFiscalFetch,
   normalizeText,
   parseBoolean,
-  extractFilename,
+  extractFilename
 } from '../../../utils/nuvem-fiscal'
 
 export default defineEventHandler(async (event) => {
@@ -51,16 +51,16 @@ export default defineEventHandler(async (event) => {
     url: `${apiBaseUrl}/nfe/${encodeURIComponent(id)}/pdf?${query.toString()}`,
     init: {
       method: 'GET',
-      headers: { Authorization: `Bearer ${apiToken}` },
+      headers: { Authorization: `Bearer ${apiToken}` }
     },
-    captureResponseBody: 'never',
+    captureResponseBody: 'never'
   })
 
   if (!response.ok) {
     const errText = await response.text()
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao baixar PDF do DANFE', details: errText },
+      data: { error: 'Erro ao baixar PDF do DANFE', details: errText }
     })
   }
 

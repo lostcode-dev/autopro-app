@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
       notes: body.notes ?? null,
       items: body.items ?? null,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

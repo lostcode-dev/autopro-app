@@ -5,7 +5,7 @@ import {
   getNuvemFiscalApiToken,
   getNuvemFiscalApiBaseUrl,
   monitoredNuvemFiscalFetch,
-  normalizeText,
+  normalizeText
 } from '../../../utils/nuvem-fiscal'
 
 export default defineEventHandler(async (event) => {
@@ -34,10 +34,10 @@ export default defineEventHandler(async (event) => {
     init: {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    },
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
   })
 
   const data = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
   if (!response.ok) {
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao consultar contribuinte da NF-e', details: data },
+      data: { error: 'Erro ao consultar contribuinte da NF-e', details: data }
     })
   }
 

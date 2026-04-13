@@ -136,7 +136,7 @@ export default defineEventHandler(async (event) => {
         employee_financial_record_id: registroId,
         notes: `Pagamento de comissão - ${String(registro?.employee_id || '')}`,
         organization_id: organizationId,
-        created_by: authUser.email,
+        created_by: authUser.email
       }).select().single()
 
       lancamento = lancamentoCreated
@@ -155,7 +155,7 @@ export default defineEventHandler(async (event) => {
         balance_after: saldoPosterior,
         notes: `Pagamento de comissão - ${String(registro?.employee_id || '')}`,
         organization_id: organizationId,
-        created_by: authUser.email,
+        created_by: authUser.email
       }).select().single()
 
       extrato = extratoCreated
@@ -164,7 +164,7 @@ export default defineEventHandler(async (event) => {
         status: 'pago',
         payment_date: dataPagamento,
         financial_transaction_id: String(lancamento?.id || ''),
-        updated_by: authUser.email,
+        updated_by: authUser.email
       }).eq('id', registroId)
 
       paidCount += 1
@@ -183,6 +183,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     organization_id: organizationId,
-    data: { paidCount, skippedCount, failedCount, results },
+    data: { paidCount, skippedCount, failedCount, results }
   }
 })

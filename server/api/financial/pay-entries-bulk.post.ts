@@ -113,7 +113,7 @@ export default defineEventHandler(async (event) => {
               balance_after: saldoPosterior,
               notes: `Ref. ao lançamento financeiro: ${String(lancamento?.description || '')}`,
               organization_id: organizationId,
-              created_by: authUser.email,
+              created_by: authUser.email
             }).select().single()
 
             createdExtrato = newExtrato
@@ -130,7 +130,7 @@ export default defineEventHandler(async (event) => {
           await supabase.from('employee_financial_records').update({
             status: 'pago',
             payment_date: today,
-            updated_by: authUser.email,
+            updated_by: authUser.email
           }).eq('id', String(lancamento.employee_financial_record_id))
         } catch {
           warnings.push('Falha ao sincronizar registro do funcionário')
@@ -152,6 +152,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     organization_id: organizationId,
-    data: { paidCount, skippedCount, failedCount, extratoSkippedCount, results },
+    data: { paidCount, skippedCount, failedCount, extratoSkippedCount, results }
   }
 })

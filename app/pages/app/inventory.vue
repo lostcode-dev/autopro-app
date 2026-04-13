@@ -15,7 +15,7 @@ const canUpdate = computed(() => workshop.can(ActionCode.INVENTORY_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.INVENTORY_DELETE))
 
 type Part = Record<string, any>
-type Supplier = { id: string; name: string }
+type Supplier = { id: string, name: string }
 
 const search = ref('')
 const lowStockOnly = ref(false)
@@ -26,7 +26,7 @@ const { data, status, refresh } = await useAsyncData(
     headers: requestHeaders,
     query: {
       search: search.value || undefined,
-      low_stock: lowStockOnly.value ? 'true' : undefined,
+      low_stock: lowStockOnly.value ? 'true' : undefined
     }
   }),
   { watch: [search, lowStockOnly] }
@@ -58,7 +58,7 @@ const emptyForm = () => ({
   min_quantity: '' as string | number,
   cost_price: '' as string | number,
   sale_price: '' as string | number,
-  location: '',
+  location: ''
 })
 
 const form = reactive(emptyForm())
@@ -81,7 +81,7 @@ function openEdit(p: Part) {
     min_quantity: p.min_quantity ?? '',
     cost_price: p.cost_price ?? '',
     sale_price: p.sale_price ?? '',
-    location: p.location ?? '',
+    location: p.location ?? ''
   })
   isEditing.value = true
   selectedId.value = p.id
@@ -103,7 +103,7 @@ async function save() {
       min_quantity: form.min_quantity !== '' ? Number(form.min_quantity) : null,
       cost_price: form.cost_price !== '' ? Number(form.cost_price) : null,
       sale_price: form.sale_price !== '' ? Number(form.sale_price) : null,
-      location: form.location || null,
+      location: form.location || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/parts/${selectedId.value}`, { method: 'PUT', body })
@@ -143,7 +143,7 @@ const unitOptions = [
   { label: 'Kit', value: 'kit' },
   { label: 'Metro', value: 'm' },
   { label: 'Litro', value: 'l' },
-  { label: 'Kg', value: 'kg' },
+  { label: 'Kg', value: 'kg' }
 ]
 
 const formatCurrency = (val: number | null) =>
@@ -171,7 +171,7 @@ const columns = [
       return 'Normal'
     }
   },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -180,18 +180,31 @@ const columns = [
     <template #header>
       <UDashboardNavbar title="Estoque">
         <template #right>
-          <UButton v-if="canCreate" label="Nova peça" icon="i-lucide-plus" color="neutral" @click="openCreate" />
+          <UButton
+            v-if="canCreate"
+            label="Nova peça"
+            icon="i-lucide-plus"
+            color="neutral"
+            @click="openCreate"
+          />
         </template>
       </UDashboardNavbar>
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar estoque.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar estoque.
+      </p>
     </div>
 
     <template v-else>
       <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput v-model="search" placeholder="Buscar por nome ou SKU..." icon="i-lucide-search" class="w-72" />
+        <UInput
+          v-model="search"
+          placeholder="Buscar por nome ou SKU..."
+          icon="i-lucide-search"
+          class="w-72"
+        />
         <UCheckbox v-model="lowStockOnly" label="Somente estoque baixo" />
       </div>
 
@@ -199,7 +212,12 @@ const columns = [
         <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="data || []" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="data || []"
+        class="min-h-0 flex-1"
+      >
         <template #stock_status-cell="{ row }">
           <UBadge
             :color="(row.original.min_quantity != null && (row.original.quantity ?? 0) <= row.original.min_quantity) ? 'warning' : 'success'"
@@ -209,8 +227,23 @@ const columns = [
         </template>
         <template #actions-cell="{ row }">
           <div class="flex items-center gap-2 justify-end">
-            <UButton v-if="canUpdate" icon="i-lucide-pencil" color="neutral" variant="ghost" size="xs" @click="openEdit(row.original)" />
-            <UButton v-if="canDelete" icon="i-lucide-trash-2" color="error" variant="ghost" size="xs" :loading="isDeleting" @click="remove(row.original)" />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openEdit(row.original)"
+            />
+            <UButton
+              v-if="canDelete"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :loading="isDeleting"
+              @click="remove(row.original)"
+            />
           </div>
         </template>
       </UTable>
@@ -227,25 +260,61 @@ const columns = [
           <UInput v-model="form.sku" class="w-full" />
         </UFormField>
         <UFormField label="Unidade">
-          <USelectMenu v-model="form.unit" :items="unitOptions" value-key="value" class="w-full" />
+          <USelectMenu
+            v-model="form.unit"
+            :items="unitOptions"
+            value-key="value"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Fornecedor">
-          <USelectMenu v-model="form.supplier_id" :items="supplierOptions" value-key="value" class="w-full" placeholder="Nenhum" searchable />
+          <USelectMenu
+            v-model="form.supplier_id"
+            :items="supplierOptions"
+            value-key="value"
+            class="w-full"
+            placeholder="Nenhum"
+            searchable
+          />
         </UFormField>
         <UFormField label="Localização">
           <UInput v-model="form.location" class="w-full" placeholder="Ex: Prateleira A1" />
         </UFormField>
         <UFormField label="Quantidade em estoque">
-          <UInput v-model="form.quantity" type="number" min="0" step="1" class="w-full" />
+          <UInput
+            v-model="form.quantity"
+            type="number"
+            min="0"
+            step="1"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Estoque mínimo">
-          <UInput v-model="form.min_quantity" type="number" min="0" step="1" class="w-full" />
+          <UInput
+            v-model="form.min_quantity"
+            type="number"
+            min="0"
+            step="1"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Preço de custo">
-          <UInput v-model="form.cost_price" type="number" min="0" step="0.01" class="w-full" />
+          <UInput
+            v-model="form.cost_price"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Preço de venda">
-          <UInput v-model="form.sale_price" type="number" min="0" step="0.01" class="w-full" />
+          <UInput
+            v-model="form.sale_price"
+            type="number"
+            min="0"
+            step="0.01"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Descrição" class="sm:col-span-2">
           <UTextarea v-model="form.description" class="w-full" :rows="3" />
@@ -254,8 +323,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

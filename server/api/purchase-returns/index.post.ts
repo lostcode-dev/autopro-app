@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
       generated_financial_credit: body.generated_financial_credit ?? false,
       notes: body.notes ?? null,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

@@ -88,7 +88,7 @@ function getTotals(entries: any[]) {
     balancePending: totalIncomePending - totalExpensePending,
     totalIncome: totalIncomePaid + totalIncomePending,
     totalExpense: totalExpensePaid + totalExpensePending,
-    balance: (totalIncomePaid + totalIncomePending) - (totalExpensePaid + totalExpensePending),
+    balance: (totalIncomePaid + totalIncomePending) - (totalExpensePaid + totalExpensePending)
   }
 }
 
@@ -189,8 +189,8 @@ export default defineEventHandler(async (event) => {
         items,
         totals,
         pagination: { page: currentPage, pageSize, totalItems, totalPages },
-        categoryOptions,
-      },
-    },
+        categoryOptions
+      }
+    }
   }
 })

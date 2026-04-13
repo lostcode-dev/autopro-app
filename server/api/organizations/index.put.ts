@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     'state',
     'municipality_code',
     'initial_service_order_number',
-    'notes',
+    'notes'
   ]
 
   const updates: Record<string, unknown> = {}

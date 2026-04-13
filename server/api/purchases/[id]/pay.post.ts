@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
     .update({
       payment_status: 'paid',
       payment_date: paymentDate,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

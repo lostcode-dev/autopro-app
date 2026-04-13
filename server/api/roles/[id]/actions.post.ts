@@ -55,8 +55,7 @@ export default defineEventHandler(async (event) => {
       .single()
     item = result.data
     error = result.error
-  }
-  else {
+  } else {
     // Create new record
     const result = await supabase
       .from('role_actions')

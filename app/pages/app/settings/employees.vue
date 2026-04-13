@@ -25,7 +25,7 @@ const { data, status, refresh } = await useAsyncData(
     headers: requestHeaders,
     query: {
       search: search.value || undefined,
-      include_terminated: includeTerminated.value || undefined,
+      include_terminated: includeTerminated.value || undefined
     }
   })
 )
@@ -54,7 +54,7 @@ const emptyForm = () => ({
   commission_value: '' as string | number,
   pix_key_type: '' as string,
   pix_key: '',
-  is_active: true,
+  is_active: true
 })
 
 const form = reactive(emptyForm())
@@ -82,7 +82,7 @@ function openEdit(emp: Employee) {
     commission_value: emp.commission_value ?? '',
     pix_key_type: emp.pix_key_type ?? '',
     pix_key: emp.pix_key ?? '',
-    is_active: emp.is_active ?? true,
+    is_active: emp.is_active ?? true
   })
   isEditing.value = true
   selectedId.value = emp.id
@@ -108,7 +108,7 @@ async function save() {
       commission_value: form.commission_value !== '' ? Number(form.commission_value) : null,
       pix_key_type: form.pix_key_type || null,
       pix_key: form.pix_key || null,
-      is_active: form.is_active,
+      is_active: form.is_active
     }
 
     if (isEditing.value && selectedId.value) {
@@ -145,25 +145,25 @@ async function remove(emp: Employee) {
 
 const personTypeOptions = [
   { label: 'Pessoa Física', value: 'PF' },
-  { label: 'Pessoa Jurídica', value: 'PJ' },
+  { label: 'Pessoa Jurídica', value: 'PJ' }
 ]
 
 const salaryTypeOptions = [
   { label: 'Fixo', value: 'fixed' },
   { label: 'Por hora', value: 'hourly' },
-  { label: 'Só comissão', value: 'commission_only' },
+  { label: 'Só comissão', value: 'commission_only' }
 ]
 
 const commissionTypeOptions = [
   { label: 'Percentual', value: 'percentage' },
-  { label: 'Fixo', value: 'fixed' },
+  { label: 'Fixo', value: 'fixed' }
 ]
 
 const pixKeyTypeOptions = [
   { label: 'CPF/CNPJ', value: 'cpf_cnpj' },
   { label: 'E-mail', value: 'email' },
   { label: 'Telefone', value: 'phone' },
-  { label: 'Chave aleatória', value: 'random' },
+  { label: 'Chave aleatória', value: 'random' }
 ]
 
 const columns = [
@@ -177,13 +177,15 @@ const columns = [
     cell: ({ row }: { row: { original: Employee } }) =>
       row.original.is_active ? 'Ativo' : 'Inativo'
   },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
 <template>
   <div v-if="!canRead" class="p-6">
-    <p class="text-sm text-muted">Você não tem permissão para visualizar funcionários.</p>
+    <p class="text-sm text-muted">
+      Você não tem permissão para visualizar funcionários.
+    </p>
   </div>
 
   <template v-else>
@@ -261,7 +263,12 @@ const columns = [
             <UInput v-model="form.role" class="w-full" />
           </UFormField>
           <UFormField label="Tipo de pessoa">
-            <USelectMenu v-model="form.person_type" :items="personTypeOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.person_type"
+              :items="personTypeOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="CPF / CNPJ">
             <UInput v-model="form.tax_id" class="w-full" />
@@ -284,16 +291,39 @@ const columns = [
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Tipo de salário">
-            <USelectMenu v-model="form.salary_type" :items="salaryTypeOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.salary_type"
+              :items="salaryTypeOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField v-if="form.salary_type !== 'commission_only'" label="Valor do salário">
-            <UInput v-model="form.salary_amount" type="number" min="0" step="0.01" class="w-full" />
+            <UInput
+              v-model="form.salary_amount"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Tipo de comissão">
-            <USelectMenu v-model="form.commission_type" :items="commissionTypeOptions" value-key="value" class="w-full" placeholder="Nenhuma" />
+            <USelectMenu
+              v-model="form.commission_type"
+              :items="commissionTypeOptions"
+              value-key="value"
+              class="w-full"
+              placeholder="Nenhuma"
+            />
           </UFormField>
           <UFormField v-if="form.commission_type" label="Valor da comissão">
-            <UInput v-model="form.commission_value" type="number" min="0" step="0.01" class="w-full" />
+            <UInput
+              v-model="form.commission_value"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full"
+            />
           </UFormField>
         </div>
 
@@ -301,7 +331,13 @@ const columns = [
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <UFormField label="Tipo de chave PIX">
-            <USelectMenu v-model="form.pix_key_type" :items="pixKeyTypeOptions" value-key="value" class="w-full" placeholder="Nenhum" />
+            <USelectMenu
+              v-model="form.pix_key_type"
+              :items="pixKeyTypeOptions"
+              value-key="value"
+              class="w-full"
+              placeholder="Nenhum"
+            />
           </UFormField>
           <UFormField v-if="form.pix_key_type" label="Chave PIX">
             <UInput v-model="form.pix_key" class="w-full" />
@@ -314,8 +350,19 @@ const columns = [
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

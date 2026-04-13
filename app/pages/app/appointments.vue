@@ -23,7 +23,7 @@ const pageSize = 30
 
 const { data, status, refresh } = await useAsyncData(
   () => `appointments-${page.value}-${search.value}-${statusFilter.value}`,
-  () => requestFetch<{ items: Appointment[]; total: number; page: number; page_size: number }>(
+  () => requestFetch<{ items: Appointment[], total: number, page: number, page_size: number }>(
     '/api/appointments',
     {
       headers: requestHeaders,
@@ -31,7 +31,7 @@ const { data, status, refresh } = await useAsyncData(
         search: search.value || undefined,
         status: statusFilter.value || undefined,
         page: page.value,
-        page_size: pageSize,
+        page_size: pageSize
       }
     }
   ),
@@ -53,7 +53,7 @@ const clientOptions = computed(() =>
 const vehicleOptions = computed(() =>
   (vehiclesData.value?.items ?? []).map((v: any) => ({
     label: [v.brand, v.model, v.license_plate].filter(Boolean).join(' - '),
-    value: v.id,
+    value: v.id
   }))
 )
 
@@ -72,7 +72,7 @@ const emptyForm = () => ({
   service_type: '',
   priority: '' as string,
   status: 'scheduled' as string,
-  notes: '',
+  notes: ''
 })
 
 const form = reactive(emptyForm())
@@ -93,7 +93,7 @@ function openEdit(appt: Appointment) {
     service_type: appt.service_type ?? '',
     priority: appt.priority ?? '',
     status: appt.status ?? 'scheduled',
-    notes: appt.notes ?? '',
+    notes: appt.notes ?? ''
   })
   isEditing.value = true
   selectedId.value = appt.id
@@ -118,7 +118,7 @@ async function save() {
       service_type: form.service_type,
       priority: form.priority || null,
       status: form.status,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/appointments/${selectedId.value}`, { method: 'PUT', body })
@@ -130,7 +130,7 @@ async function save() {
     showModal.value = false
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
   } finally {
     isSaving.value = false
@@ -145,7 +145,7 @@ async function remove(appt: Appointment) {
     toast.add({ title: 'Agendamento removido', color: 'success' })
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover', color: 'error' })
   } finally {
     isDeleting.value = false
@@ -157,34 +157,34 @@ const statusOptions = [
   { label: 'Agendado', value: 'scheduled' },
   { label: 'Confirmado', value: 'confirmed' },
   { label: 'Concluído', value: 'completed' },
-  { label: 'Cancelado', value: 'cancelled' },
+  { label: 'Cancelado', value: 'cancelled' }
 ]
 
 const statusFormOptions = [
   { label: 'Agendado', value: 'scheduled' },
   { label: 'Confirmado', value: 'confirmed' },
   { label: 'Concluído', value: 'completed' },
-  { label: 'Cancelado', value: 'cancelled' },
+  { label: 'Cancelado', value: 'cancelled' }
 ]
 
 const priorityOptions = [
   { label: 'Sem prioridade', value: '' },
   { label: 'Baixa', value: 'low' },
   { label: 'Média', value: 'medium' },
-  { label: 'Alta', value: 'high' },
+  { label: 'Alta', value: 'high' }
 ]
 
 const statusColorMap: Record<string, string> = {
   scheduled: 'info',
   confirmed: 'success',
   completed: 'neutral',
-  cancelled: 'error',
+  cancelled: 'error'
 }
 const statusLabelMap: Record<string, string> = {
   scheduled: 'Agendado',
   confirmed: 'Confirmado',
   completed: 'Concluído',
-  cancelled: 'Cancelado',
+  cancelled: 'Cancelado'
 }
 const priorityColorMap: Record<string, string> = { low: 'neutral', medium: 'warning', high: 'error' }
 const priorityLabelMap: Record<string, string> = { low: 'Baixa', medium: 'Média', high: 'Alta' }
@@ -197,7 +197,7 @@ const columns = [
   { accessorKey: 'service_type', header: 'Serviço' },
   { id: 'priority', header: 'Prioridade' },
   { id: 'status', header: 'Status' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -221,7 +221,9 @@ const columns = [
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar agendamentos.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar agendamentos.
+      </p>
     </div>
 
     <template v-else>
@@ -347,10 +349,20 @@ const columns = [
             <UInput v-model="form.service_type" placeholder="Ex: Troca de óleo, Revisão..." class="w-full" />
           </UFormField>
           <UFormField label="Prioridade">
-            <USelectMenu v-model="form.priority" :items="priorityOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.priority"
+              :items="priorityOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Status">
-            <USelectMenu v-model="form.status" :items="statusFormOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.status"
+              :items="statusFormOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
         </div>
         <UFormField label="Observações">
@@ -360,8 +372,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

@@ -13,7 +13,7 @@ const { data, status } = await useAsyncData(
   () => `report-debtors-${page.value}-${search.value}`,
   () => requestFetch<{ data: any }>('/api/reports/debtors', {
     headers: requestHeaders,
-    query: { page: page.value, pageSize, searchTerm: search.value || undefined },
+    query: { page: page.value, pageSize, searchTerm: search.value || undefined }
   }),
   { watch: [page, search] }
 )
@@ -36,7 +36,7 @@ const columns = [
   { accessorKey: 'phone', header: 'Telefone' },
   { id: 'pendingAmount', header: 'Valor pendente' },
   { accessorKey: 'ordersCount', header: 'OS' },
-  { id: 'lastOrderDate', header: 'Última OS' },
+  { id: 'lastOrderDate', header: 'Última OS' }
 ]
 </script>
 
@@ -44,31 +44,52 @@ const columns = [
   <UDashboardPanel>
     <template #header>
       <UDashboardNavbar title="Inadimplentes">
-        <template #leading><AppSidebarCollapse /></template>
+        <template #leading>
+          <AppSidebarCollapse />
+        </template>
       </UDashboardNavbar>
     </template>
 
     <template #body>
       <div class="grid grid-cols-2 divide-x divide-default border-b border-default text-center text-sm py-3">
         <div>
-          <p class="text-muted text-xs">Total em aberto</p>
-          <p class="font-bold text-red-500">{{ formatCurrency(totals.totalPending ?? 0) }}</p>
+          <p class="text-muted text-xs">
+            Total em aberto
+          </p>
+          <p class="font-bold text-red-500">
+            {{ formatCurrency(totals.totalPending ?? 0) }}
+          </p>
         </div>
         <div>
-          <p class="text-muted text-xs">Clientes inadimplentes</p>
-          <p class="font-bold">{{ totals.clientCount ?? 0 }}</p>
+          <p class="text-muted text-xs">
+            Clientes inadimplentes
+          </p>
+          <p class="font-bold">
+            {{ totals.clientCount ?? 0 }}
+          </p>
         </div>
       </div>
 
       <div class="p-4 border-b border-default">
-        <UInput v-model="search" placeholder="Buscar cliente..." icon="i-lucide-search" class="w-72" @update:model-value="page = 1" />
+        <UInput
+          v-model="search"
+          placeholder="Buscar cliente..."
+          icon="i-lucide-search"
+          class="w-72"
+          @update:model-value="page = 1"
+        />
       </div>
 
       <div v-if="status === 'pending'" class="p-4 space-y-3">
         <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="items" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="items"
+        class="min-h-0 flex-1"
+      >
         <template #pendingAmount-cell="{ row }">
           <span class="font-medium text-red-500">{{ formatCurrency(row.original.pendingAmount ?? row.original.totalPending ?? 0) }}</span>
         </template>

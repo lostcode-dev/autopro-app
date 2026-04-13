@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
       type,
       rate,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

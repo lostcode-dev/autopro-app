@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
   const updatableFields = [
     'purchase_id', 'supplier_id', 'financial_transaction_id', 'bank_account_id',
     'return_date', 'reason', 'status', 'total_returned_amount', 'returned_items',
-    'generated_financial_credit', 'notes',
+    'generated_financial_credit', 'notes'
   ]
 
   for (const field of updatableFields) {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin'],
+  middleware: ['workshop-admin']
 })
 useSeoMeta({ title: 'Organizações — Admin' })
 
@@ -15,15 +15,15 @@ const pageSize = 30
 
 const { data, status, refresh } = await useAsyncData(
   'admin-organizations',
-  () => requestFetch<{ items: any[]; total: number; page: number; page_size: number }>(
+  () => requestFetch<{ items: any[], total: number, page: number, page_size: number }>(
     '/api/admin/organizations',
     {
       headers: requestHeaders,
       query: {
         search: search.value || undefined,
         page: page.value,
-        page_size: pageSize,
-      },
+        page_size: pageSize
+      }
     }
   )
 )
@@ -44,7 +44,7 @@ const columns = [
   { key: 'email', label: 'E-mail' },
   { key: 'user_count', label: 'Usuários' },
   { key: 'is_active', label: 'Status' },
-  { key: 'created_at', label: 'Criado em' },
+  { key: 'created_at', label: 'Criado em' }
 ]
 
 function formatDate(val: string | null) {

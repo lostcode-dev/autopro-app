@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const [recordsResult, ordersResult, employeesResult] = await Promise.all([
     supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).order('reference_date', { ascending: false }),
     supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const records = recordsResult.data || []
@@ -76,7 +76,7 @@ export default defineEventHandler(async (event) => {
         order_number: order?.number || 'N/A',
         order_status: order?.status || null,
         order_payment_status: order?.payment_status || null,
-        order_entry_date: order?.entry_date || null,
+        order_entry_date: order?.entry_date || null
       }
     })
 
@@ -96,7 +96,7 @@ export default defineEventHandler(async (event) => {
     { header: 'REFERÊNCIA PAGAMENTO', widthRatio: 0.12 }, { header: 'STATUS OS', widthRatio: 0.1 },
     { header: 'ENTRADA OS', widthRatio: 0.1 }, { header: 'VALOR', widthRatio: 0.1, align: 'right' as const },
     { header: 'PAGAMENTO OS', widthRatio: 0.1 }, { header: 'STATUS COMISSÃO', widthRatio: 0.12 },
-    { header: 'DATA PAGAMENTO COMISSÃO', widthRatio: 0.12 },
+    { header: 'DATA PAGAMENTO COMISSÃO', widthRatio: 0.12 }
   ]
 
   const dataRows = items.map((record: any) => [
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
     formatCurrency(record.amount),
     formatStatusLabel(record.order_payment_status),
     formatStatusLabel(record.status),
-    formatOptionalDate(record.payment_date),
+    formatOptionalDate(record.payment_date)
   ])
 
   const data = await buildReportDownloadData({
@@ -120,8 +120,8 @@ export default defineEventHandler(async (event) => {
     rows: dataRows,
     footerRows: [
       { label: 'Total de Linhas', value: String(totalRows) },
-      { label: 'Total da Comissão', value: formatCurrency(totalCommission) },
-    ],
+      { label: 'Total da Comissão', value: formatCurrency(totalCommission) }
+    ]
   })
 
   return { success: true, data }

@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
   const [recordsResult, ordersResult, employeesResult] = await Promise.all([
     supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).order('reference_date', { ascending: false }),
     supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const records = recordsResult.data || []
@@ -49,8 +49,7 @@ export default defineEventHandler(async (event) => {
 
     if (employeeIds.length > 0) {
       if (!employeeIds.includes(String(record?.employee_id || ''))) return false
-    }
-    else if (employeeId && record?.employee_id !== employeeId) {
+    } else if (employeeId && record?.employee_id !== employeeId) {
       return false
     }
 
@@ -89,11 +88,11 @@ export default defineEventHandler(async (event) => {
     total: totalCommissions,
     paid: paidCommissions,
     pending: pendingCommissions,
-    count: filteredRecords.length,
+    count: filteredRecords.length
   }
 
   // Chart: by employee
-  const byEmployee: Record<string, { name: string; total: number; paid: number; pending: number }> = {}
+  const byEmployee: Record<string, { name: string, total: number, paid: number, pending: number }> = {}
   for (const record of filteredRecords) {
     const employeeName = String(employeesMap.get(String(record?.employee_id || ''))?.name || 'Unknown')
     if (!byEmployee[employeeName]) byEmployee[employeeName] = { name: employeeName, total: 0, paid: 0, pending: 0 }
@@ -106,7 +105,7 @@ export default defineEventHandler(async (event) => {
 
   const statusDistribution = [
     { name: 'Pagas', value: paidCommissions, color: '#22c55e' },
-    { name: 'Pendentes', value: pendingCommissions, color: '#f59e0b' },
+    { name: 'Pendentes', value: pendingCommissions, color: '#f59e0b' }
   ]
 
   const enrichedRecords = filteredRecords.map((record: any) => {
@@ -120,7 +119,7 @@ export default defineEventHandler(async (event) => {
       order_client_name: order?.client_name || null,
       order_entry_date: order?.entry_date || null,
       order_completion_date: order?.completion_date || null,
-      order_total_amount: toNumber(order?.total_amount, 0),
+      order_total_amount: toNumber(order?.total_amount, 0)
     }
   })
 
@@ -143,7 +142,7 @@ export default defineEventHandler(async (event) => {
       sort: { sortBy, sortOrder },
       summary,
       charts: { byEmployee: employeeChartData, statusDistribution },
-      employees,
-    },
+      employees
+    }
   }
 })

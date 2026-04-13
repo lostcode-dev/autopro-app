@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin'],
+  middleware: ['workshop-admin']
 })
 useSeoMeta({ title: 'Fiscal — Empresas' })
 
@@ -15,15 +15,15 @@ const stop = 50
 
 const { data, status, refresh } = await useAsyncData(
   'admin-fiscal-companies',
-  () => requestFetch<{ success: boolean; data: Record<string, any> }>(
+  () => requestFetch<{ success: boolean, data: Record<string, any> }>(
     '/api/fiscal/company/list',
     {
       headers: requestHeaders,
       query: {
         stop,
         skip: skip.value,
-        nome_razao_social: search.value || undefined,
-      },
+        nome_razao_social: search.value || undefined
+      }
     }
   )
 )
@@ -50,7 +50,7 @@ const columns = [
   { key: 'nome_razao_social', label: 'Razão Social' },
   { key: 'nome_fantasia', label: 'Nome Fantasia' },
   { key: 'email', label: 'E-mail' },
-  { key: 'ambiente', label: 'Ambiente' },
+  { key: 'ambiente', label: 'Ambiente' }
 ]
 
 function nextPage() {

@@ -65,10 +65,9 @@ export function toStringArray(value: unknown): string[] {
     const n = value.trim()
     if (!n || ['todos', 'null', 'undefined'].includes(n)) return []
     if (n.startsWith('[') && n.endsWith(']')) {
-      try { return toStringArray(JSON.parse(n)) }
-      catch { return [] }
+      try { return toStringArray(JSON.parse(n)) } catch { return [] }
     }
-    if (n.includes(',')) return Array.from(new Set(n.split(',').map((i) => i.trim()).filter(Boolean)))
+    if (n.includes(',')) return Array.from(new Set(n.split(',').map(i => i.trim()).filter(Boolean)))
     return [n]
   }
   return []
@@ -100,11 +99,11 @@ export function sortFactor(order: 'asc' | 'desc'): 1 | -1 {
 export function normalizeStatusFilters(value: unknown): string[] {
   const allowed = new Set(['pago', 'pendente'])
   if (Array.isArray(value)) {
-    return Array.from(new Set(value.map((item) => String(item || '').toLowerCase()).filter((item) => allowed.has(item))))
+    return Array.from(new Set(value.map(item => String(item || '').toLowerCase()).filter(item => allowed.has(item))))
   }
   const normalized = String(value || 'todos').toLowerCase()
   if (!normalized || normalized === 'todos') return []
-  return Array.from(new Set(normalized.split(',').map((item) => item.trim()).filter((item) => allowed.has(item))))
+  return Array.from(new Set(normalized.split(',').map(item => item.trim()).filter(item => allowed.has(item))))
 }
 
 export function matchesStatusFilters(value: unknown, filters: string[]): boolean {
@@ -116,7 +115,7 @@ export function matchesStatusFilters(value: unknown, filters: string[]): boolean
 export function formatStatusLabel(value: unknown): string {
   const status = String(value || '')
   if (!status) return '-'
-  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())
+  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
 }
 
 // ─── Period comparison ────────────────────────────────────────────────────────
@@ -136,8 +135,8 @@ function getQuarterEnd(year: number, quarter: number): Date {
 export function getPreviousRangeByMode(
   startDate: Date,
   endDate: Date,
-  compareMode: string,
-): { previousStartDate: Date; previousEndDate: Date } {
+  compareMode: string
+): { previousStartDate: Date, previousEndDate: Date } {
   if (compareMode === 'same_period_last_year') {
     const ps = new Date(startDate); ps.setFullYear(ps.getFullYear() - 1)
     const pe = new Date(endDate); pe.setFullYear(pe.getFullYear() - 1)
@@ -147,7 +146,7 @@ export function getPreviousRangeByMode(
     const ref = startOfDay(startDate)
     return {
       previousStartDate: new Date(ref.getFullYear(), ref.getMonth() - 1, 1, 0, 0, 0, 0),
-      previousEndDate: new Date(ref.getFullYear(), ref.getMonth(), 0, 23, 59, 59, 999),
+      previousEndDate: new Date(ref.getFullYear(), ref.getMonth(), 0, 23, 59, 59, 999)
     }
   }
   if (compareMode === 'previous_quarter') {
@@ -171,7 +170,7 @@ export function calculateVariation(current: number, previous: number) {
   const variation = ((current - previous) / Math.abs(previous)) * 100
   return {
     variation: Math.abs(variation),
-    type: variation > 0 ? 'increase' as const : variation < 0 ? 'decrease' as const : 'equal' as const,
+    type: variation > 0 ? 'increase' as const : variation < 0 ? 'decrease' as const : 'equal' as const
   }
 }
 
@@ -202,8 +201,7 @@ export function formatOptionalDate(value: unknown): string {
     const date = new Date(String(value).includes('T') ? String(value) : `${String(value)}T00:00:00`)
     if (Number.isNaN(date.getTime())) return '-'
     return new Intl.DateTimeFormat('pt-BR').format(date)
-  }
-  catch { return '-' }
+  } catch { return '-' }
 }
 
 // ─── Purchase payment status ──────────────────────────────────────────────────

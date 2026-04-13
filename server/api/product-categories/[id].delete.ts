@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
     .from('product_categories')
     .update({
       deleted_at: new Date().toISOString(),
-      deleted_by: authUser.email,
+      deleted_by: authUser.email
     })
     .eq('id', id)
 

@@ -19,7 +19,7 @@ const { data, status } = await useAsyncData(
   () => `report-commissions-${dateFrom.value}-${dateTo.value}-${page.value}`,
   () => requestFetch<{ data: any }>('/api/reports/commissions', {
     headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, page: page.value, pageSize },
+    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, page: page.value, pageSize }
   }),
   { watch: [dateFrom, dateTo, page] }
 )
@@ -46,7 +46,7 @@ const columns = [
   { accessorKey: 'order_entry_date', header: 'Data OS' },
   { id: 'amount', header: 'Comissão' },
   { id: 'order_total', header: 'Total OS' },
-  { id: 'status_col', header: 'Status' },
+  { id: 'status_col', header: 'Status' }
 ]
 </script>
 
@@ -54,12 +54,24 @@ const columns = [
   <UDashboardPanel>
     <template #header>
       <UDashboardNavbar title="Relatório de Comissões">
-        <template #leading><AppSidebarCollapse /></template>
+        <template #leading>
+          <AppSidebarCollapse />
+        </template>
         <template #right>
           <div class="flex items-center gap-2">
-            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
+            <UInput
+              v-model="dateFrom"
+              type="date"
+              size="sm"
+              class="w-36"
+            />
             <span class="text-muted text-sm">até</span>
-            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
+            <UInput
+              v-model="dateTo"
+              type="date"
+              size="sm"
+              class="w-36"
+            />
           </div>
         </template>
       </UDashboardNavbar>
@@ -69,20 +81,36 @@ const columns = [
       <!-- Summary cards -->
       <div v-if="summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-default">
         <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">{{ formatCurrency(summary.totalCommissions ?? 0) }}</p>
-          <p class="text-xs text-muted">Total comissões</p>
+          <p class="text-lg font-bold">
+            {{ formatCurrency(summary.totalCommissions ?? 0) }}
+          </p>
+          <p class="text-xs text-muted">
+            Total comissões
+          </p>
         </UPageCard>
         <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">{{ formatCurrency(summary.totalPaid ?? 0) }}</p>
-          <p class="text-xs text-muted">Pago</p>
+          <p class="text-lg font-bold">
+            {{ formatCurrency(summary.totalPaid ?? 0) }}
+          </p>
+          <p class="text-xs text-muted">
+            Pago
+          </p>
         </UPageCard>
         <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">{{ formatCurrency(summary.totalPending ?? 0) }}</p>
-          <p class="text-xs text-muted">Pendente</p>
+          <p class="text-lg font-bold">
+            {{ formatCurrency(summary.totalPending ?? 0) }}
+          </p>
+          <p class="text-xs text-muted">
+            Pendente
+          </p>
         </UPageCard>
         <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">{{ summary.employeeCount ?? 0 }}</p>
-          <p class="text-xs text-muted">Funcionários</p>
+          <p class="text-lg font-bold">
+            {{ summary.employeeCount ?? 0 }}
+          </p>
+          <p class="text-xs text-muted">
+            Funcionários
+          </p>
         </UPageCard>
       </div>
 
@@ -90,7 +118,12 @@ const columns = [
         <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="items" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="items"
+        class="min-h-0 flex-1"
+      >
         <template #order_entry_date-cell="{ row }">
           {{ formatDate(row.original.order_entry_date) }}
         </template>
@@ -101,8 +134,12 @@ const columns = [
           {{ formatCurrency(row.original.order_total_amount) }}
         </template>
         <template #status_col-cell="{ row }">
-          <UBadge :color="statusColorMap[row.original.status] ?? 'neutral'" variant="subtle"
-            :label="statusLabelMap[row.original.status] ?? row.original.status" size="sm" />
+          <UBadge
+            :color="statusColorMap[row.original.status] ?? 'neutral'"
+            variant="subtle"
+            :label="statusLabelMap[row.original.status] ?? row.original.status"
+            size="sm"
+          />
         </template>
       </UTable>
 

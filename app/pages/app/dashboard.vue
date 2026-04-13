@@ -17,7 +17,7 @@ const { data, status, refresh } = await useAsyncData(
   () => `dashboard-${dateFrom.value}-${dateTo.value}`,
   () => requestFetch<{ data: { overview: Record<string, any> } }>('/api/reports/overview', {
     headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value },
+    query: { dateFrom: dateFrom.value, dateTo: dateTo.value }
   }),
   { watch: [dateFrom, dateTo] }
 )
@@ -25,17 +25,17 @@ const { data, status, refresh } = await useAsyncData(
 // Also fetch today's appointments and open/in_progress service orders
 const { data: todayAppointments } = await useAsyncData(
   () => `dash-appts-${dateFrom.value}`,
-  () => requestFetch<{ items: any[]; total: number }>('/api/appointments', {
+  () => requestFetch<{ items: any[], total: number }>('/api/appointments', {
     headers: requestHeaders,
-    query: { date_from: defaultFrom, date_to: defaultTo, page_size: 10 },
+    query: { date_from: defaultFrom, date_to: defaultTo, page_size: 10 }
   })
 )
 
 const { data: openOrders } = await useAsyncData(
   'dash-open-orders',
-  () => requestFetch<{ items: any[]; total: number }>('/api/service-orders', {
+  () => requestFetch<{ items: any[], total: number }>('/api/service-orders', {
     headers: requestHeaders,
-    query: { status: 'in_progress', cursor: 0, limit: 10 },
+    query: { status: 'in_progress', cursor: 0, limit: 10 }
   })
 )
 
@@ -56,48 +56,48 @@ const statsCards = computed(() => {
       label: 'Faturamento bruto',
       value: formatCurrency(overview.value.grossRevenue),
       icon: 'i-lucide-trending-up',
-      color: 'text-green-500',
+      color: 'text-green-500'
     },
     {
       label: 'Lucro líquido',
       value: formatCurrency(overview.value.netProfit),
       icon: 'i-lucide-circle-dollar-sign',
-      color: 'text-blue-500',
+      color: 'text-blue-500'
     },
     {
       label: 'OS concluídas',
       value: overview.value.totalOrders ?? 0,
       icon: 'i-lucide-wrench',
-      color: 'text-orange-500',
+      color: 'text-orange-500'
     },
     {
       label: 'Ticket médio',
       value: formatCurrency(overview.value.averageTicket),
       icon: 'i-lucide-receipt',
-      color: 'text-purple-500',
+      color: 'text-purple-500'
     },
     {
       label: 'Novos clientes',
       value: overview.value.newClients ?? 0,
       icon: 'i-lucide-users',
-      color: 'text-teal-500',
+      color: 'text-teal-500'
     },
     {
       label: 'Margem de lucro',
       value: formatPercent(overview.value.profitMargin),
       icon: 'i-lucide-percent',
-      color: 'text-slate-500',
-    },
+      color: 'text-slate-500'
+    }
   ]
 })
 
 const statusColorMap: Record<string, string> = {
   estimate: 'neutral', open: 'info', in_progress: 'warning',
-  waiting_for_part: 'orange', completed: 'success', delivered: 'success', cancelled: 'error',
+  waiting_for_part: 'orange', completed: 'success', delivered: 'success', cancelled: 'error'
 }
 const statusLabelMap: Record<string, string> = {
   estimate: 'Orçamento', open: 'Aberta', in_progress: 'Em andamento',
-  waiting_for_part: 'Aguard. peça', completed: 'Concluída', delivered: 'Entregue', cancelled: 'Cancelada',
+  waiting_for_part: 'Aguard. peça', completed: 'Concluída', delivered: 'Entregue', cancelled: 'Cancelada'
 }
 </script>
 
@@ -110,9 +110,19 @@ const statusLabelMap: Record<string, string> = {
         </template>
         <template #right>
           <div class="flex items-center gap-2">
-            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
+            <UInput
+              v-model="dateFrom"
+              type="date"
+              size="sm"
+              class="w-36"
+            />
             <span class="text-muted text-sm">até</span>
-            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
+            <UInput
+              v-model="dateTo"
+              type="date"
+              size="sm"
+              class="w-36"
+            />
           </div>
         </template>
       </UDashboardNavbar>
@@ -135,8 +145,12 @@ const statusLabelMap: Record<string, string> = {
           >
             <div class="flex flex-col items-center gap-1">
               <UIcon :name="card.icon" :class="['text-2xl', card.color]" />
-              <p class="text-xl font-bold">{{ card.value }}</p>
-              <p class="text-xs text-muted">{{ card.label }}</p>
+              <p class="text-xl font-bold">
+                {{ card.value }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ card.label }}
+              </p>
             </div>
           </UPageCard>
         </div>
@@ -157,10 +171,19 @@ const statusLabelMap: Record<string, string> = {
                 class="py-2 flex items-center justify-between gap-2"
               >
                 <div>
-                  <p class="font-medium">{{ appt.clients?.name ?? '—' }}</p>
-                  <p class="text-muted text-xs">{{ appt.service_type }} — {{ appt.appointment_date }} {{ appt.time }}</p>
+                  <p class="font-medium">
+                    {{ appt.clients?.name ?? '—' }}
+                  </p>
+                  <p class="text-muted text-xs">
+                    {{ appt.service_type }} — {{ appt.appointment_date }} {{ appt.time }}
+                  </p>
                 </div>
-                <UBadge color="info" variant="subtle" :label="appt.status" size="sm" />
+                <UBadge
+                  color="info"
+                  variant="subtle"
+                  :label="appt.status"
+                  size="sm"
+                />
               </li>
             </ul>
             <template v-if="(todayAppointments?.total ?? 0) > 10" #footer>
@@ -185,8 +208,12 @@ const statusLabelMap: Record<string, string> = {
                 class="py-2 flex items-center justify-between gap-2"
               >
                 <div>
-                  <p class="font-medium">OS {{ order.number }} — {{ order._clientName ?? '—' }}</p>
-                  <p class="text-muted text-xs">{{ order._vehicleLabel ?? '' }}</p>
+                  <p class="font-medium">
+                    OS {{ order.number }} — {{ order._clientName ?? '—' }}
+                  </p>
+                  <p class="text-muted text-xs">
+                    {{ order._vehicleLabel ?? '' }}
+                  </p>
                 </div>
                 <UBadge
                   :color="statusColorMap[order.status] ?? 'neutral'"

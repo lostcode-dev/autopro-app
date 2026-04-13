@@ -32,7 +32,7 @@ const emptyForm = () => ({
   rate: '' as string | number,
   description: '',
   is_default: false,
-  is_active: true,
+  is_active: true
 })
 
 const form = reactive(emptyForm())
@@ -51,7 +51,7 @@ function openEdit(t: Tax) {
     rate: t.rate ?? '',
     description: t.description ?? '',
     is_default: t.is_default ?? false,
-    is_active: t.is_active ?? true,
+    is_active: t.is_active ?? true
   })
   isEditing.value = true
   selectedId.value = t.id
@@ -69,7 +69,7 @@ async function save() {
       rate: form.rate !== '' ? Number(form.rate) : null,
       description: form.description || null,
       is_default: form.is_default,
-      is_active: form.is_active,
+      is_active: form.is_active
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/taxes/${selectedId.value}`, { method: 'PUT', body })
@@ -109,7 +109,7 @@ const taxTypeOptions = [
   { label: 'PIS', value: 'pis' },
   { label: 'COFINS', value: 'cofins' },
   { label: 'IPI', value: 'ipi' },
-  { label: 'Outro', value: 'other' },
+  { label: 'Outro', value: 'other' }
 ]
 
 const columns = [
@@ -131,7 +131,7 @@ const columns = [
     header: 'Status',
     cell: ({ row }: { row: { original: Tax } }) => row.original.is_active ? 'Ativo' : 'Inativo'
   },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -140,13 +140,21 @@ const columns = [
     <template #header>
       <UDashboardNavbar title="Impostos">
         <template #right>
-          <UButton v-if="canUpdate" label="Novo imposto" icon="i-lucide-plus" color="neutral" @click="openCreate" />
+          <UButton
+            v-if="canUpdate"
+            label="Novo imposto"
+            icon="i-lucide-plus"
+            color="neutral"
+            @click="openCreate"
+          />
         </template>
       </UDashboardNavbar>
     </template>
 
     <div v-if="!canView" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar impostos.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar impostos.
+      </p>
     </div>
 
     <template v-else>
@@ -154,11 +162,31 @@ const columns = [
         <USkeleton v-for="i in 5" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="data || []" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="data || []"
+        class="min-h-0 flex-1"
+      >
         <template #actions-cell="{ row }">
           <div class="flex items-center gap-2 justify-end">
-            <UButton v-if="canUpdate" icon="i-lucide-pencil" color="neutral" variant="ghost" size="xs" @click="openEdit(row.original)" />
-            <UButton v-if="canUpdate" icon="i-lucide-trash-2" color="error" variant="ghost" size="xs" :loading="isDeleting" @click="remove(row.original)" />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openEdit(row.original)"
+            />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :loading="isDeleting"
+              @click="remove(row.original)"
+            />
           </div>
         </template>
       </UTable>
@@ -172,10 +200,23 @@ const columns = [
           <UInput v-model="form.name" class="w-full" />
         </UFormField>
         <UFormField label="Tipo">
-          <USelectMenu v-model="form.type" :items="taxTypeOptions" value-key="value" class="w-full" placeholder="Selecionar..." />
+          <USelectMenu
+            v-model="form.type"
+            :items="taxTypeOptions"
+            value-key="value"
+            class="w-full"
+            placeholder="Selecionar..."
+          />
         </UFormField>
         <UFormField label="Alíquota (%)">
-          <UInput v-model="form.rate" type="number" min="0" max="100" step="0.01" class="w-full" />
+          <UInput
+            v-model="form.rate"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            class="w-full"
+          />
         </UFormField>
         <UFormField label="Descrição">
           <UTextarea v-model="form.description" class="w-full" :rows="3" />
@@ -188,8 +229,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

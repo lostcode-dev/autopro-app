@@ -21,15 +21,15 @@ const { data, status, refresh } = await useAsyncData(
   'fiscal-product-invoices',
   async () => {
     if (!backendReady) return { items: [], total: 0 }
-    return requestFetch<{ items: any[]; total: number }>(
+    return requestFetch<{ items: any[], total: number }>(
       '/api/fiscal/product-invoices',
       {
         headers: requestHeaders,
         query: {
           search: search.value || undefined,
           page: page.value,
-          page_size: pageSize,
-        },
+          page_size: pageSize
+        }
       }
     )
   }
@@ -47,7 +47,7 @@ const columns = [
   { key: 'data_emissao', label: 'Emissão' },
   { key: 'destinatario_nome', label: 'Destinatário' },
   { key: 'valor_total', label: 'Total' },
-  { key: 'status', label: 'Status' },
+  { key: 'status', label: 'Status' }
 ]
 
 function formatDate(val: string | null) {
@@ -65,8 +65,12 @@ function formatCurrency(val: number | null) {
   <div class="p-6 space-y-6">
     <div class="flex items-center justify-between gap-4">
       <div>
-        <h1 class="text-xl font-semibold">Notas Fiscais de Produto (NF-e)</h1>
-        <p class="text-sm text-muted">Emissão e gestão de notas fiscais eletrônicas de produto.</p>
+        <h1 class="text-xl font-semibold">
+          Notas Fiscais de Produto (NF-e)
+        </h1>
+        <p class="text-sm text-muted">
+          Emissão e gestão de notas fiscais eletrônicas de produto.
+        </p>
       </div>
     </div>
 

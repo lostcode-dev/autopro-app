@@ -5,7 +5,7 @@ import {
   getNuvemFiscalApiToken,
   getNuvemFiscalApiBaseUrl,
   monitoredNuvemFiscalFetch,
-  sanitizeCpfCnpj,
+  sanitizeCpfCnpj
 } from '../../../utils/nuvem-fiscal'
 
 export default defineEventHandler(async (event) => {
@@ -30,11 +30,11 @@ export default defineEventHandler(async (event) => {
     init: {
       method: 'PUT',
       headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body),
-    },
+      body: JSON.stringify(body)
+    }
   })
 
   const data = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   if (!response.ok) {
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao atualizar certificado da empresa', details: data },
+      data: { error: 'Erro ao atualizar certificado da empresa', details: data }
     })
   }
 

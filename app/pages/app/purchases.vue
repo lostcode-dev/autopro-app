@@ -32,7 +32,7 @@ const dateTo = ref(defaultDateTo)
 
 const { data, status, refresh } = await useAsyncData(
   () => `purchases-${page.value}-${search.value}-${statusFilter.value}-${dateFrom.value}-${dateTo.value}`,
-  () => requestFetch<{ items: Purchase[]; total: number; page: number; page_size: number }>(
+  () => requestFetch<{ items: Purchase[], total: number, page: number, page_size: number }>(
     '/api/purchases',
     {
       headers: requestHeaders,
@@ -42,7 +42,7 @@ const { data, status, refresh } = await useAsyncData(
         date_from: dateFrom.value || undefined,
         date_to: dateTo.value || undefined,
         page: page.value,
-        page_size: pageSize,
+        page_size: pageSize
       }
     }
   ),
@@ -84,13 +84,13 @@ async function confirmPayment() {
   try {
     await $fetch(`/api/purchases/${selectedPurchaseForPay.value.id}/pay`, {
       method: 'POST',
-      body: { payment_date: payDate.value },
+      body: { payment_date: payDate.value }
     })
     toast.add({ title: 'Pagamento confirmado', color: 'success' })
     showPayModal.value = false
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível confirmar', color: 'error' })
   } finally {
     isPaying.value = false
@@ -113,7 +113,7 @@ const emptyForm = () => ({
   payment_status: 'pending' as string,
   invoice_number: '',
   due_date: '',
-  notes: '',
+  notes: ''
 })
 
 const form = reactive(emptyForm())
@@ -135,7 +135,7 @@ function openEdit(purchase: Purchase) {
     payment_status: purchase.payment_status ?? 'pending',
     invoice_number: purchase.invoice_number ?? '',
     due_date: purchase.due_date ?? '',
-    notes: purchase.notes ?? '',
+    notes: purchase.notes ?? ''
   })
   itemsJson.value = purchase.items ? JSON.stringify(purchase.items, null, 2) : '[]'
   isEditing.value = true
@@ -164,7 +164,7 @@ async function save() {
       invoice_number: form.invoice_number || null,
       due_date: form.due_date || null,
       notes: form.notes || null,
-      items: parsedItems.length ? parsedItems : null,
+      items: parsedItems.length ? parsedItems : null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/purchases/${selectedId.value}`, { method: 'PUT', body })
@@ -176,7 +176,7 @@ async function save() {
     showModal.value = false
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
   } finally {
     isSaving.value = false
@@ -191,7 +191,7 @@ async function remove(purchase: Purchase) {
     toast.add({ title: 'Compra removida', color: 'success' })
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover', color: 'error' })
   } finally {
     isDeleting.value = false
@@ -205,12 +205,12 @@ function formatCurrency(value: number | string) {
 const paymentStatusOptions = [
   { label: 'Todos', value: '' },
   { label: 'Pendente', value: 'pending' },
-  { label: 'Pago', value: 'paid' },
+  { label: 'Pago', value: 'paid' }
 ]
 
 const paymentStatusFormOptions = [
   { label: 'Pendente', value: 'pending' },
-  { label: 'Pago', value: 'paid' },
+  { label: 'Pago', value: 'paid' }
 ]
 
 const statusColorMap: Record<string, string> = { pending: 'warning', paid: 'success' }
@@ -222,7 +222,7 @@ const columns = [
   { accessorKey: 'invoice_number', header: 'Nota Fiscal' },
   { id: 'total_amount', header: 'Total' },
   { id: 'payment_status', header: 'Status' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -246,7 +246,9 @@ const columns = [
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar compras.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar compras.
+      </p>
     </div>
 
     <template v-else>
@@ -267,8 +269,18 @@ const columns = [
           placeholder="Todos"
           @update:model-value="page = 1"
         />
-        <UInput v-model="dateFrom" type="date" class="w-40" @update:model-value="page = 1" />
-        <UInput v-model="dateTo" type="date" class="w-40" @update:model-value="page = 1" />
+        <UInput
+          v-model="dateFrom"
+          type="date"
+          class="w-40"
+          @update:model-value="page = 1"
+        />
+        <UInput
+          v-model="dateTo"
+          type="date"
+          class="w-40"
+          @update:model-value="page = 1"
+        />
       </div>
 
       <!-- Table -->
@@ -348,8 +360,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showPayModal = false" />
-        <UButton label="Confirmar pagamento" color="success" :loading="isPaying" :disabled="isPaying" @click="confirmPayment" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showPayModal = false"
+        />
+        <UButton
+          label="Confirmar pagamento"
+          color="success"
+          :loading="isPaying"
+          :disabled="isPaying"
+          @click="confirmPayment"
+        />
       </div>
     </template>
   </UModal>
@@ -388,10 +411,21 @@ const columns = [
             <UInput v-model="form.due_date" type="date" class="w-full" />
           </UFormField>
           <UFormField label="Valor total" required>
-            <UInput v-model="form.total_amount" type="number" min="0" step="0.01" class="w-full" />
+            <UInput
+              v-model="form.total_amount"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Status">
-            <USelectMenu v-model="form.payment_status" :items="paymentStatusFormOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.payment_status"
+              :items="paymentStatusFormOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Nota fiscal" class="sm:col-span-2">
             <UInput v-model="form.invoice_number" class="w-full" />
@@ -404,8 +438,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

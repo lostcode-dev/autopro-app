@@ -51,7 +51,7 @@ const emptyForm = () => ({
   address_neighborhood: '',
   address_city: '',
   address_state: '',
-  notes: '',
+  notes: ''
 })
 
 const form = reactive(emptyForm())
@@ -80,7 +80,7 @@ function openEdit(s: Supplier) {
     address_neighborhood: s.address_neighborhood ?? '',
     address_city: s.address_city ?? '',
     address_state: s.address_state ?? '',
-    notes: s.notes ?? '',
+    notes: s.notes ?? ''
   })
   isEditing.value = true
   selectedId.value = s.id
@@ -108,7 +108,7 @@ async function save() {
       address_neighborhood: form.address_neighborhood || null,
       address_city: form.address_city || null,
       address_state: form.address_state || null,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/suppliers/${selectedId.value}`, { method: 'PUT', body })
@@ -153,13 +153,12 @@ async function lookupCep() {
     form.address_neighborhood = res.bairro || form.address_neighborhood
     form.address_city = res.localidade || form.address_city
     form.address_state = res.uf || form.address_state
-  } catch { toast.add({ title: 'Erro ao buscar CEP', color: 'error' }) }
-  finally { isLoadingCep.value = false }
+  } catch { toast.add({ title: 'Erro ao buscar CEP', color: 'error' }) } finally { isLoadingCep.value = false }
 }
 
 const personTypeOptions = [
   { label: 'Pessoa Jurídica', value: 'PJ' },
-  { label: 'Pessoa Física', value: 'PF' },
+  { label: 'Pessoa Física', value: 'PF' }
 ]
 
 const columns = [
@@ -168,7 +167,7 @@ const columns = [
   { accessorKey: 'tax_id', header: 'CNPJ/CPF' },
   { accessorKey: 'phone', header: 'Telefone' },
   { accessorKey: 'email', header: 'E-mail' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -177,29 +176,62 @@ const columns = [
     <template #header>
       <UDashboardNavbar title="Fornecedores">
         <template #right>
-          <UButton v-if="canCreate" label="Novo fornecedor" icon="i-lucide-plus" color="neutral" @click="openCreate" />
+          <UButton
+            v-if="canCreate"
+            label="Novo fornecedor"
+            icon="i-lucide-plus"
+            color="neutral"
+            @click="openCreate"
+          />
         </template>
       </UDashboardNavbar>
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar fornecedores.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar fornecedores.
+      </p>
     </div>
 
     <template v-else>
       <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput v-model="search" placeholder="Buscar por nome ou CNPJ..." icon="i-lucide-search" class="w-72" />
+        <UInput
+          v-model="search"
+          placeholder="Buscar por nome ou CNPJ..."
+          icon="i-lucide-search"
+          class="w-72"
+        />
       </div>
 
       <div v-if="status === 'pending'" class="p-4 space-y-3">
         <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="data || []" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="data || []"
+        class="min-h-0 flex-1"
+      >
         <template #actions-cell="{ row }">
           <div class="flex items-center gap-2 justify-end">
-            <UButton v-if="canUpdate" icon="i-lucide-pencil" color="neutral" variant="ghost" size="xs" @click="openEdit(row.original)" />
-            <UButton v-if="canDelete" icon="i-lucide-trash-2" color="error" variant="ghost" size="xs" :loading="isDeleting" @click="remove(row.original)" />
+            <UButton
+              v-if="canUpdate"
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openEdit(row.original)"
+            />
+            <UButton
+              v-if="canDelete"
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :loading="isDeleting"
+              @click="remove(row.original)"
+            />
           </div>
         </template>
       </UTable>
@@ -217,7 +249,12 @@ const columns = [
             <UInput v-model="form.trade_name" class="w-full" />
           </UFormField>
           <UFormField label="Tipo de pessoa">
-            <USelectMenu v-model="form.person_type" :items="personTypeOptions" value-key="value" class="w-full" />
+            <USelectMenu
+              v-model="form.person_type"
+              :items="personTypeOptions"
+              value-key="value"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="CNPJ / CPF">
             <UInput v-model="form.tax_id" class="w-full" />
@@ -242,7 +279,14 @@ const columns = [
           <UFormField label="CEP" class="sm:col-span-2">
             <div class="flex gap-2">
               <UInput v-model="form.address_zip_code" placeholder="00000-000" class="flex-1" />
-              <UButton label="Buscar" color="neutral" variant="outline" :loading="isLoadingCep" :disabled="isLoadingCep" @click="lookupCep" />
+              <UButton
+                label="Buscar"
+                color="neutral"
+                variant="outline"
+                :loading="isLoadingCep"
+                :disabled="isLoadingCep"
+                @click="lookupCep"
+              />
             </div>
           </UFormField>
           <UFormField label="Logradouro" class="sm:col-span-2">
@@ -272,8 +316,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

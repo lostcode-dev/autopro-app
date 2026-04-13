@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     current_balance,
     is_active,
     notes,
-    change_history,
+    change_history
   } = body
 
   if (!account_name || !account_type)
@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
       notes,
       change_history,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

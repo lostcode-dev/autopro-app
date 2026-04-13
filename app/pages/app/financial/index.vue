@@ -44,7 +44,7 @@ const dateTo = ref(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2
 
 const { data, status, refresh } = await useAsyncData(
   () => `financial-${page.value}-${search.value}-${statusFilter.value}-${typeFilter.value}-${dateFrom.value}-${dateTo.value}`,
-  () => requestFetch<{ items: Entry[]; total: number; page: number; page_size: number }>(
+  () => requestFetch<{ items: Entry[], total: number, page: number, page_size: number }>(
     '/api/financial',
     {
       headers: requestHeaders,
@@ -55,15 +55,15 @@ const { data, status, refresh } = await useAsyncData(
         date_from: dateFrom.value || undefined,
         date_to: dateTo.value || undefined,
         page: page.value,
-        page_size: pageSize,
-      },
+        page_size: pageSize
+      }
     }
   ),
   { watch: [page, search, statusFilter, typeFilter, dateFrom, dateTo] }
 )
 
 // Load bank accounts for form
-type BankAccount = { id: string; name: string }
+type BankAccount = { id: string, name: string }
 const { data: bankAccountsData } = await useAsyncData('fin-bank-accounts', () =>
   requestFetch<BankAccount[] | { items?: BankAccount[] }>('/api/bank-accounts', { headers: requestHeaders, query: { page_size: 100 } })
 )
@@ -130,7 +130,7 @@ const emptyForm = () => ({
   category: '',
   bank_account_id: '',
   notes: '',
-  recurrence: '',
+  recurrence: ''
 })
 
 const form = reactive(emptyForm())
@@ -152,7 +152,7 @@ function openEdit(entry: Entry) {
     category: String(entry.category ?? ''),
     bank_account_id: String(entry.bank_account_id ?? ''),
     notes: String(entry.notes ?? ''),
-    recurrence: String(entry.recurrence ?? ''),
+    recurrence: String(entry.recurrence ?? '')
   })
   isEditing.value = true
   selectedId.value = String(entry.id)
@@ -189,7 +189,7 @@ async function save() {
       category: form.category,
       bank_account_id: form.bank_account_id || null,
       notes: form.notes || null,
-      recurrence: form.recurrence || null,
+      recurrence: form.recurrence || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/financial/${selectedId.value}`, { method: 'PUT' as const, body })
@@ -221,26 +221,26 @@ function formatDate(value: string) {
 const statusFilterOptions = [
   { label: 'Todos', value: 'all' },
   { label: 'Pendente', value: 'pendente' },
-  { label: 'Pago', value: 'pago' },
+  { label: 'Pago', value: 'pago' }
 ]
 const typeFilterOptions = [
   { label: 'Todos', value: 'all' },
   { label: 'Receita', value: 'income' },
-  { label: 'Despesa', value: 'expense' },
+  { label: 'Despesa', value: 'expense' }
 ]
 const typeOptions = [
   { label: 'Receita', value: 'income' },
-  { label: 'Despesa', value: 'expense' },
+  { label: 'Despesa', value: 'expense' }
 ]
 const statusOptions = [
   { label: 'Pendente', value: 'pending' },
-  { label: 'Pago', value: 'pago' },
+  { label: 'Pago', value: 'pago' }
 ]
 const recurrenceOptions = [
   { label: 'Sem recorrência', value: '' },
   { label: 'Semanal', value: 'weekly' },
   { label: 'Mensal', value: 'monthly' },
-  { label: 'Anual', value: 'yearly' },
+  { label: 'Anual', value: 'yearly' }
 ]
 
 const typeBadgeColor: Record<string, BadgeColor> = { income: 'success', expense: 'error' }
@@ -255,7 +255,7 @@ const columns = [
   { id: 'type', header: 'Tipo' },
   { id: 'status_col', header: 'Status' },
   { id: 'amount_col', header: 'Valor' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 

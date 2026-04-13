@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
       justification: body.justification ?? null,
       notes: body.notes ?? null,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

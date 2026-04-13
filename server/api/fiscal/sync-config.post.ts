@@ -5,7 +5,7 @@ import {
   getNuvemFiscalApiBaseUrl,
   monitoredNuvemFiscalFetch,
   sanitizeCpfCnpj,
-  normalizeText,
+  normalizeText
 } from '../../utils/nuvem-fiscal'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 
@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
     nome_fantasia,
     fone,
     email,
-    endereco,
+    endereco
   } = body || {}
 
   if (!organization_id) {
@@ -42,8 +42,8 @@ export default defineEventHandler(async (event) => {
   const apiBaseUrl = getNuvemFiscalApiBaseUrl()
 
   const headers = {
-    Authorization: `Bearer ${apiToken}`,
-    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${apiToken}`,
+    'Content-Type': 'application/json'
   }
 
   // Check if company already exists
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
     authUserEmail: user.email!,
     functionName: 'syncConfiguracaoNuvemFiscal:check',
     url: `${apiBaseUrl}/empresas/${cpfCnpj}`,
-    init: { method: 'GET', headers },
+    init: { method: 'GET', headers }
   })
 
   const companyExists = getResp.ok
@@ -71,8 +71,8 @@ export default defineEventHandler(async (event) => {
       cidade: normalizeText(endereco?.cidade),
       uf: normalizeText(endereco?.uf)?.toUpperCase(),
       cep: sanitizeCpfCnpj(endereco?.cep) || undefined,
-      codigo_municipio: normalizeText(endereco?.codigo_municipio),
-    },
+      codigo_municipio: normalizeText(endereco?.codigo_municipio)
+    }
   }
 
   // Create or Update
@@ -85,7 +85,7 @@ export default defineEventHandler(async (event) => {
     authUserEmail: user.email!,
     functionName: companyExists ? 'syncConfiguracaoNuvemFiscal:update' : 'syncConfiguracaoNuvemFiscal:create',
     url,
-    init: { method, headers, body: JSON.stringify(nfPayload) },
+    init: { method, headers, body: JSON.stringify(nfPayload) }
   })
 
   const saveData = saveRaw ? JSON.parse(saveRaw) : null
@@ -113,7 +113,7 @@ export default defineEventHandler(async (event) => {
       last_synced_at: saveResp.ok ? nowIso : (existing?.last_synced_at || null),
       last_sync_attempt_at: nowIso,
       selected_uf: normalizeText(endereco?.uf)?.toUpperCase() || existing?.selected_uf,
-      nuvem_fiscal_response_json: JSON.stringify(saveData)?.slice(0, 5000),
+      nuvem_fiscal_response_json: JSON.stringify(saveData)?.slice(0, 5000)
     }
 
     if (existing?.id) {
@@ -134,8 +134,8 @@ export default defineEventHandler(async (event) => {
         success: false,
         error: companyExists ? 'Erro ao atualizar empresa na Nuvem Fiscal' : 'Erro ao criar empresa na Nuvem Fiscal',
         details: saveData,
-        syncRecord,
-      },
+        syncRecord
+      }
     })
   }
 
@@ -143,6 +143,6 @@ export default defineEventHandler(async (event) => {
     success: true,
     action: companyExists ? 'updated' : 'created',
     data: saveData,
-    syncRecord,
+    syncRecord
   }
 })

@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       status: 'authorized',
       authorization_date: new Date().toISOString(),
       authorized_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

@@ -23,7 +23,7 @@ export default defineEventHandler(async (event) => {
 
   const [purchasesResult, suppliersResult] = await Promise.all([
     supabase.from('purchases').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('purchase_date', { ascending: false }),
-    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const purchasesRaw = purchasesResult.data || []
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
   let filteredPurchases = purchasesRaw.map((p: any) => ({
     ...p,
     supplierName: suppliersMap.get(String(p?.supplier_id || ''))?.name || 'Unknown',
-    paymentStatus: getPurchasePaymentStatus(p),
+    paymentStatus: getPurchasePaymentStatus(p)
   }))
 
   if (dateFrom || dateTo) {
@@ -50,8 +50,8 @@ export default defineEventHandler(async (event) => {
   if (statusFilter) filteredPurchases = filteredPurchases.filter((p: any) => p.paymentStatus === statusFilter)
   if (searchTerm) {
     filteredPurchases = filteredPurchases.filter((p: any) =>
-      p.supplierName.toLowerCase().includes(searchTerm) ||
-      String(p?.invoice_number || '').toLowerCase().includes(searchTerm)
+      p.supplierName.toLowerCase().includes(searchTerm)
+      || String(p?.invoice_number || '').toLowerCase().includes(searchTerm)
     )
   }
 
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
   const totalPaid = filteredPurchases.filter((p: any) => p.paymentStatus === 'paid').reduce((s: number, p: any) => s + toNumber(p?.total_amount, 0), 0)
 
   // Chart: top 10 suppliers by total
-  const supplierTotals: Record<string, { name: string; total: number }> = {}
+  const supplierTotals: Record<string, { name: string, total: number }> = {}
   for (const p of filteredPurchases) {
     const name = p.supplierName
     if (!supplierTotals[name]) supplierTotals[name] = { name, total: 0 }
@@ -101,7 +101,7 @@ export default defineEventHandler(async (event) => {
       pagination,
       summary: { totalPurchased, totalPaid, totalPending: totalPurchased - totalPaid, count: filteredPurchases.length },
       charts: { bySupplier: bySupplierChart, byDay: byDayChart },
-      suppliers: suppliers.sort((a: any, b: any) => String(a?.name || '').localeCompare(String(b?.name || ''), 'pt-BR')),
-    },
+      suppliers: suppliers.sort((a: any, b: any) => String(a?.name || '').localeCompare(String(b?.name || ''), 'pt-BR'))
+    }
   }
 })

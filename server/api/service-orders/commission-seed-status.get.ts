@@ -19,11 +19,11 @@ function normalizeString(value: unknown) {
 function getStatusLabel(status: string) {
   const map: Record<string, string> = {
     estimate: 'Orçamento', open: 'Aberta', in_progress: 'Em andamento',
-    completed: 'Concluída', delivered: 'Entregue', cancelled: 'Cancelada',
+    completed: 'Concluída', delivered: 'Entregue', cancelled: 'Cancelada'
   }
   if (map[status]) return map[status]
   if (!status) return 'Não informado'
-  return String(status).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())
+  return String(status).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
 }
 
 function hasStoredItemCommission(item: any) {
@@ -76,7 +76,7 @@ export default defineEventHandler(async (event) => {
   const [ordersResult, clientsResult, employeesResult] = await Promise.all([
     supabase.from('service_orders').select('*').is('deleted_at', null).order('entry_date', { ascending: false }),
     supabase.from('clients').select('id, name').is('deleted_at', null),
-    supabase.from('employees').select('*').is('deleted_at', null),
+    supabase.from('employees').select('*').is('deleted_at', null)
   ])
 
   const orders = ordersResult.data || []
@@ -109,7 +109,7 @@ export default defineEventHandler(async (event) => {
       responsibleNames: responsibles.map((r: any) => r.name),
       requiresSeed: seedStatus.requiresSeed,
       seedStatusKey: seedStatus.statusKey,
-      seedStatusLabel: seedStatus.statusLabel,
+      seedStatusLabel: seedStatus.statusLabel
     }
   })
 
@@ -135,7 +135,7 @@ export default defineEventHandler(async (event) => {
     filteredOrders: filteredRows.length,
     requiresSeedCount: rows.filter((r: any) => r.requiresSeed).length,
     readyCount: rows.filter((r: any) => !r.requiresSeed && r.seedStatusKey === 'ok').length,
-    totalMissingItems: rows.reduce((sum: number, r: any) => sum + normalizeNumber(r.missingItemsCount), 0),
+    totalMissingItems: rows.reduce((sum: number, r: any) => sum + normalizeNumber(r.missingItemsCount), 0)
   }
 
   return {
@@ -143,7 +143,7 @@ export default defineEventHandler(async (event) => {
     data: {
       summary,
       items: pagedRows,
-      pagination: { page: currentPage, pageSize, totalItems, totalPages },
-    },
+      pagination: { page: currentPage, pageSize, totalItems, totalPages }
+    }
   }
 })

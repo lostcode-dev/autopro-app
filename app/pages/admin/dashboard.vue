@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin'],
+  middleware: ['workshop-admin']
 })
 useSeoMeta({ title: 'Admin Dashboard' })
 
@@ -24,27 +24,27 @@ const statsCards = computed(() => [
     value: stats.value?.total_organizations ?? 0,
     sub: `+${stats.value?.new_organizations_last_30_days ?? 0} nos últimos 30 dias`,
     icon: 'i-lucide-building-2',
-    color: 'primary',
+    color: 'primary'
   },
   {
     label: 'Usuários',
     value: stats.value?.total_users ?? 0,
     icon: 'i-lucide-users',
-    color: 'secondary',
+    color: 'secondary'
   },
   {
     label: 'Assinaturas Ativas',
     value: stats.value?.active_subscriptions ?? 0,
     sub: `${stats.value?.total_subscriptions ?? 0} total`,
     icon: 'i-lucide-credit-card',
-    color: 'success',
+    color: 'success'
   },
   {
     label: 'Ordens de Serviço',
     value: stats.value?.total_service_orders ?? 0,
     icon: 'i-lucide-wrench',
-    color: 'warning',
-  },
+    color: 'warning'
+  }
 ])
 
 const quotaList = computed(() => {
@@ -99,8 +99,12 @@ const quotaList = computed(() => {
               class="flex items-center justify-between py-3 gap-4"
             >
               <div class="min-w-0">
-                <p class="text-sm font-medium truncate">{{ quota.nome }}</p>
-                <p class="text-xs text-muted">{{ quota.descricao }}</p>
+                <p class="text-sm font-medium truncate">
+                  {{ quota.nome }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ quota.descricao }}
+                </p>
               </div>
               <div class="flex items-center gap-2 shrink-0">
                 <span class="text-sm font-semibold">{{ quota.uso_atual }}</span>

@@ -45,7 +45,7 @@ export default defineEventHandler(async (event) => {
     .update({
       status: 'rejected',
       rejection_reason: body.rejection_reason ?? null,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

@@ -58,12 +58,12 @@ export default defineEventHandler(async (event) => {
   }
 
   const updates: Record<string, unknown> = {
-    updated_by: authUser.email,
+    updated_by: authUser.email
   }
 
   const updatableFields = [
     'client_id', 'license_plate', 'brand', 'model',
-    'color', 'engine', 'fuel_type', 'notes',
+    'color', 'engine', 'fuel_type', 'notes'
   ]
 
   for (const field of updatableFields) {

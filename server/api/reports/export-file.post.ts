@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   const normalizedColumns = columns.map((column: any) => ({
     header: String(column?.header || ''),
     widthRatio: Number(column?.widthRatio || 0) > 0 ? Number(column.widthRatio) : 1 / columns.length,
-    align: column?.align === 'right' ? ('right' as const) : ('left' as const),
+    align: column?.align === 'right' ? ('right' as const) : ('left' as const)
   }))
 
   const normalizedRows = rows.map((row: any) =>
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
   if (format === 'csv') {
     const csv = [
       normalizedColumns.map((column: any) => csvEscape(column.header)).join(','),
-      ...normalizedRows.map((row: string[]) => row.map(csvEscape).join(',')),
+      ...normalizedRows.map((row: string[]) => row.map(csvEscape).join(','))
     ].join('\n')
 
     return {
@@ -41,8 +41,8 @@ export default defineEventHandler(async (event) => {
       data: {
         fileName: `${fileNameBase}_${today}.csv`,
         contentType: 'text/csv;charset=utf-8;',
-        base64: textToBase64(csv),
-      },
+        base64: textToBase64(csv)
+      }
     }
   }
 
@@ -50,7 +50,7 @@ export default defineEventHandler(async (event) => {
     title,
     subtitle: subtitle || undefined,
     columns: normalizedColumns,
-    rows: normalizedRows,
+    rows: normalizedRows
   })
 
   return {
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
     data: {
       fileName: `${fileNameBase}_${today}.pdf`,
       contentType: 'application/pdf',
-      base64,
-    },
+      base64
+    }
   }
 })

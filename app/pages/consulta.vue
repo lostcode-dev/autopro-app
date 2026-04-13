@@ -34,7 +34,7 @@ async function consultar() {
     const res = await $fetch<{ data: any }>('/api/consulta', { query: { cpf: digits } })
     result.value = res.data
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     errorMsg.value = err?.data?.statusMessage || 'Erro ao consultar. Tente novamente.'
   } finally {
     isLoading.value = false
@@ -60,7 +60,7 @@ const typeLabel: Record<string, string> = {
   // legacy PT keys
   salario: 'Salário',
   comissao: 'Comissão',
-  adiantamento: 'Adiantamento',
+  adiantamento: 'Adiantamento'
 }
 
 const statusColor: Record<string, string> = { paid: 'success', pending: 'warning', cancelled: 'error' }
@@ -71,8 +71,12 @@ const statusLabel: Record<string, string> = { paid: 'Pago', pending: 'Pendente',
   <div class="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-col items-center px-4 py-12 gap-6">
     <!-- Header -->
     <div class="text-center">
-      <h1 class="text-2xl font-bold">Consulta de Funcionário</h1>
-      <p class="text-muted mt-1">Digite seu CPF para consultar seus registros financeiros.</p>
+      <h1 class="text-2xl font-bold">
+        Consulta de Funcionário
+      </h1>
+      <p class="text-muted mt-1">
+        Digite seu CPF para consultar seus registros financeiros.
+      </p>
     </div>
 
     <!-- Search card -->
@@ -115,30 +119,51 @@ const statusLabel: Record<string, string> = { paid: 'Pago', pending: 'Pendente',
             <UIcon name="i-lucide-user" class="text-xl text-primary" />
           </div>
           <div>
-            <p class="font-semibold text-lg">{{ result.employee.name }}</p>
-            <p class="text-muted text-sm">CPF: {{ result.employee.tax_id_masked }}</p>
+            <p class="font-semibold text-lg">
+              {{ result.employee.name }}
+            </p>
+            <p class="text-muted text-sm">
+              CPF: {{ result.employee.tax_id_masked }}
+            </p>
           </div>
         </div>
 
         <!-- Totals -->
         <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-default text-center text-sm">
           <div>
-            <p class="text-muted text-xs">Registros</p>
-            <p class="font-bold">{{ result.summary.recordCount }}</p>
+            <p class="text-muted text-xs">
+              Registros
+            </p>
+            <p class="font-bold">
+              {{ result.summary.recordCount }}
+            </p>
           </div>
           <div>
-            <p class="text-muted text-xs">Total pago</p>
-            <p class="font-bold text-green-600">{{ formatCurrency(result.summary.totalPaid) }}</p>
+            <p class="text-muted text-xs">
+              Total pago
+            </p>
+            <p class="font-bold text-green-600">
+              {{ formatCurrency(result.summary.totalPaid) }}
+            </p>
           </div>
           <div>
-            <p class="text-muted text-xs">Total pendente</p>
-            <p class="font-bold text-yellow-500">{{ formatCurrency(result.summary.totalPending) }}</p>
+            <p class="text-muted text-xs">
+              Total pendente
+            </p>
+            <p class="font-bold text-yellow-500">
+              {{ formatCurrency(result.summary.totalPending) }}
+            </p>
           </div>
         </div>
       </UPageCard>
 
       <!-- Records list -->
-      <UPageCard v-if="result.records.length" class="w-full" title="Registros financeiros" variant="subtle">
+      <UPageCard
+        v-if="result.records.length"
+        class="w-full"
+        title="Registros financeiros"
+        variant="subtle"
+      >
         <ul class="divide-y divide-default">
           <li
             v-for="record in result.records"
@@ -146,9 +171,15 @@ const statusLabel: Record<string, string> = { paid: 'Pago', pending: 'Pendente',
             class="py-3 flex items-center justify-between gap-3"
           >
             <div>
-              <p class="font-medium text-sm">{{ typeLabel[record.type] ?? record.type }}</p>
-              <p class="text-muted text-xs">Ref: {{ formatDate(record.reference_date) }}{{ record.due_date ? ` · Venc: ${formatDate(record.due_date)}` : '' }}</p>
-              <p v-if="record.notes" class="text-muted text-xs">{{ record.notes }}</p>
+              <p class="font-medium text-sm">
+                {{ typeLabel[record.type] ?? record.type }}
+              </p>
+              <p class="text-muted text-xs">
+                Ref: {{ formatDate(record.reference_date) }}{{ record.due_date ? ` · Venc: ${formatDate(record.due_date)}` : '' }}
+              </p>
+              <p v-if="record.notes" class="text-muted text-xs">
+                {{ record.notes }}
+              </p>
             </div>
             <div class="flex flex-col items-end gap-1">
               <span class="font-semibold">{{ formatCurrency(record.amount) }}</span>

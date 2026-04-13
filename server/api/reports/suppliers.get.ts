@@ -22,7 +22,7 @@ export default defineEventHandler(async (event) => {
 
   const [purchasesResult, suppliersResult] = await Promise.all([
     supabase.from('purchases').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('purchase_date', { ascending: false }),
-    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const allPurchases = purchasesResult.data || []
@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   if (supplierIds.length > 0) filteredPurchases = filteredPurchases.filter((p: any) => supplierIds.includes(String(p?.supplier_id || '')))
 
   // Group by supplier
-  const supplierStats: Record<string, { totalPurchased: number; purchaseCount: number; itemCount: number; lastPurchase: string | null; topItemsMap: Record<string, number> }> = {}
+  const supplierStats: Record<string, { totalPurchased: number, purchaseCount: number, itemCount: number, lastPurchase: string | null, topItemsMap: Record<string, number> }> = {}
 
   for (const p of filteredPurchases) {
     const supplierId = String(p?.supplier_id || '')
@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  let supplierItems = Object.entries(supplierStats).map(([supplierId, stats]) => {
+  const supplierItems = Object.entries(supplierStats).map(([supplierId, stats]) => {
     const supplier = suppliersMap.get(supplierId)
     const topItems = Object.entries(stats.topItemsMap).sort(([, a], [, b]) => b - a).slice(0, 5)
     return {
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
       totalPurchased: stats.totalPurchased, purchaseCount: stats.purchaseCount,
       itemCount: stats.itemCount,
       avgPerPurchase: stats.purchaseCount > 0 ? stats.totalPurchased / stats.purchaseCount : 0,
-      lastPurchase: stats.lastPurchase, topItems,
+      lastPurchase: stats.lastPurchase, topItems
     }
   })
 
@@ -92,9 +92,9 @@ export default defineEventHandler(async (event) => {
         items: paginatedItems,
         summary: { totalPurchased: supplierItems.reduce((s, i) => s + i.totalPurchased, 0), totalSuppliers: supplierItems.length },
         pagination,
-        sort: { sortBy, sortOrder },
-      },
-    },
+        sort: { sortBy, sortOrder }
+      }
+    }
   }
 
   if (selectedSupplierId) {

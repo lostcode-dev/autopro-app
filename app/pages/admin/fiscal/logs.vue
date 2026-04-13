@@ -1,7 +1,7 @@
 <script setup lang="ts">
 definePageMeta({
   layout: 'admin',
-  middleware: ['workshop-admin'],
+  middleware: ['workshop-admin']
 })
 useSeoMeta({ title: 'Fiscal — Logs' })
 
@@ -13,11 +13,11 @@ const pageSize = 50
 
 const { data, status, refresh } = await useAsyncData(
   'admin-fiscal-logs',
-  () => requestFetch<{ data: { logs: any[]; page: number; pageSize: number; hasMore: boolean } }>(
+  () => requestFetch<{ data: { logs: any[], page: number, pageSize: number, hasMore: boolean } }>(
     '/api/fiscal/integration-logs',
     {
       headers: requestHeaders,
-      query: { page: page.value, pageSize },
+      query: { page: page.value, pageSize }
     }
   )
 )
@@ -34,7 +34,7 @@ const columns = [
   { key: 'status_code', label: 'Status' },
   { key: 'auth_user_email', label: 'Usuário' },
   { key: 'request_url', label: 'URL' },
-  { key: 'duration_ms', label: 'Duração (ms)' },
+  { key: 'duration_ms', label: 'Duração (ms)' }
 ]
 
 function formatDate(val: string | null) {

@@ -2,7 +2,7 @@ import { defineEventHandler, createError } from 'h3'
 import { requireAuthUser } from '../../utils/require-auth'
 import {
   NUVEM_FISCAL_OWNER_EMAIL,
-  resolveOrganizationIdByEmail,
+  resolveOrganizationIdByEmail
 } from '../../utils/nuvem-fiscal'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 
@@ -46,7 +46,7 @@ const ENDPOINTS = [
   { function_name: 'getNuvemFiscalNfseCancelamento', method: 'GET', path: '/nfse/{id}/cancelamento', integration: 'nfse' },
   { function_name: 'downloadNuvemFiscalNfsePdf', method: 'GET', path: '/nfse/{id}/pdf', integration: 'nfse' },
   { function_name: 'listNuvemFiscalNfseCidades', method: 'GET', path: '/nfse/cidades', integration: 'nfse' },
-  { function_name: 'getNuvemFiscalNfseCidadeMetadados', method: 'GET', path: '/nfse/cidades/{codigo_ibge}', integration: 'nfse' },
+  { function_name: 'getNuvemFiscalNfseCidadeMetadados', method: 'GET', path: '/nfse/cidades/{codigo_ibge}', integration: 'nfse' }
 ]
 
 export default defineEventHandler(async (event) => {
@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const supabase = getSupabaseAdminClient()
-  const results: Array<{ function_name: string; status: string; id?: string }> = []
+  const results: Array<{ function_name: string, status: string, id?: string }> = []
 
   for (const endpoint of ENDPOINTS) {
     try {
@@ -82,7 +82,7 @@ export default defineEventHandler(async (event) => {
         integration: endpoint.integration,
         description: (endpoint as any).description || null,
         is_active: true,
-        source: 'api_routes',
+        source: 'api_routes'
       }
 
       if (existing?.id) {
@@ -103,6 +103,6 @@ export default defineEventHandler(async (event) => {
 
   return {
     success: true,
-    data: { organization_id: organizationId, count: results.length, results },
+    data: { organization_id: organizationId, count: results.length, results }
   }
 })

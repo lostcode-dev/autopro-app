@@ -1,123 +1,123 @@
 // @ts-nocheck
 
-const DEFAULT_MAX_BODY_CHARS = 50_000;
+const DEFAULT_MAX_BODY_CHARS = 50_000
 
 function truncate(value, maxChars) {
-  if (!value) return value;
-  if (value.length <= maxChars) return value;
-  return value.slice(0, maxChars) + `\n...TRUNCATED (${value.length - maxChars} chars)`;
+  if (!value) return value
+  if (value.length <= maxChars) return value
+  return value.slice(0, maxChars) + `\n...TRUNCATED (${value.length - maxChars} chars)`
 }
 
 function headersToObject(headers) {
-  if (!headers) return {};
-  if (headers instanceof Headers) return Object.fromEntries(headers.entries());
-  if (Array.isArray(headers)) return Object.fromEntries(headers);
-  return { ...headers };
+  if (!headers) return {}
+  if (headers instanceof Headers) return Object.fromEntries(headers.entries())
+  if (Array.isArray(headers)) return Object.fromEntries(headers)
+  return { ...headers }
 }
 
 function redactHeaders(headers) {
-  const redacted = {};
+  const redacted = {}
   for (const [key, value] of Object.entries(headers)) {
-    const lower = key.toLowerCase();
+    const lower = key.toLowerCase()
     if (lower === 'authorization' || lower === 'cookie' || lower === 'set-cookie') {
-      redacted[key] = '[REDACTED]';
-      continue;
+      redacted[key] = '[REDACTED]'
+      continue
     }
-    redacted[key] = value;
+    redacted[key] = value
   }
-  return redacted;
+  return redacted
 }
 
 function safeJsonParse(text) {
-  try { return JSON.parse(text); } catch { return undefined; }
+  try { return JSON.parse(text) } catch { return undefined }
 }
 
 function sanitizeSecrets(value) {
-  const secretKeys = new Set(['authorization', 'token', 'api_token', 'apikey', 'api_key', 'password', 'senha', 'certificado', 'certificate', 'private_key', 'client_secret']);
-  if (Array.isArray(value)) return value.map(sanitizeSecrets);
+  const secretKeys = new Set(['authorization', 'token', 'api_token', 'apikey', 'api_key', 'password', 'senha', 'certificado', 'certificate', 'private_key', 'client_secret'])
+  if (Array.isArray(value)) return value.map(sanitizeSecrets)
   if (value && typeof value === 'object') {
-    const out = {};
+    const out = {}
     for (const [k, v] of Object.entries(value)) {
-      out[k] = secretKeys.has(k.toLowerCase()) ? '[REDACTED]' : sanitizeSecrets(v);
+      out[k] = secretKeys.has(k.toLowerCase()) ? '[REDACTED]' : sanitizeSecrets(v)
     }
-    return out;
+    return out
   }
-  return value;
+  return value
 }
 
 function inferIntegrationTypeFromUrl(url) {
   try {
-    const parsed = new URL(url);
-    const parts = parsed.pathname.split('/').filter(Boolean);
-    return parts[0];
-  } catch { return undefined; }
+    const parsed = new URL(url)
+    const parts = parsed.pathname.split('/').filter(Boolean)
+    return parts[0]
+  } catch { return undefined }
 }
 
 async function resolveOrganizationId(base44, email) {
-  if (!email) return undefined;
+  if (!email) return undefined
   try {
-    const users = await base44.asServiceRole.entities.User.filter({ email });
-    return users?.[0]?.organization_id;
-  } catch { return undefined; }
+    const users = await base44.asServiceRole.entities.User.filter({ email })
+    return users?.[0]?.organization_id
+  } catch { return undefined }
 }
 
 export async function monitoredNuvemFiscalFetch(options) {
-  const startedAt = Date.now();
+  const startedAt = Date.now()
   const {
     base44, authUserEmail, functionName, url, init,
     captureResponseBody = 'auto',
     maxResponseBodyChars = DEFAULT_MAX_BODY_CHARS,
-    integrationType,
-  } = options;
+    integrationType
+  } = options
 
-  let response;
-  let fetchError;
+  let response
+  let fetchError
 
   try {
-    response = await fetch(url, init);
+    response = await fetch(url, init)
   } catch (error) {
-    fetchError = error;
+    fetchError = error
   }
 
-  const durationMs = Date.now() - startedAt;
-  const requestHeaders = redactHeaders(headersToObject(init.headers));
-  const requestBodyText = typeof init.body === 'string' ? init.body : undefined;
-  const parsedRequestBody = requestBodyText ? safeJsonParse(requestBodyText) : undefined;
-  const integration = integrationType || inferIntegrationTypeFromUrl(url) || 'nuvem_fiscal';
+  const durationMs = Date.now() - startedAt
+  const requestHeaders = redactHeaders(headersToObject(init.headers))
+  const requestBodyText = typeof init.body === 'string' ? init.body : undefined
+  const parsedRequestBody = requestBodyText ? safeJsonParse(requestBodyText) : undefined
+  const integration = integrationType || inferIntegrationTypeFromUrl(url) || 'nuvem_fiscal'
 
-  let responseBodyText;
-  let parsedResponseBody;
-  let responseHeaders = {};
-  let responseStatus;
-  let responseOk;
+  let responseBodyText
+  let parsedResponseBody
+  let responseHeaders = {}
+  let responseStatus
+  let responseOk
 
   if (response) {
-    responseHeaders = redactHeaders(headersToObject(response.headers));
-    responseStatus = response.status;
-    responseOk = response.ok;
+    responseHeaders = redactHeaders(headersToObject(response.headers))
+    responseStatus = response.status
+    responseOk = response.ok
 
-    const contentType = response.headers.get('content-type') || '';
-    const shouldCaptureBody =
-      captureResponseBody === true ||
-      (captureResponseBody === 'auto' && (!response.ok || contentType.includes('application/json') || contentType.startsWith('text/')));
+    const contentType = response.headers.get('content-type') || ''
+    const shouldCaptureBody
+      = captureResponseBody === true
+        || (captureResponseBody === 'auto' && (!response.ok || contentType.includes('application/json') || contentType.startsWith('text/')))
 
     if (shouldCaptureBody) {
       try {
-        responseBodyText = await response.clone().text();
-        parsedResponseBody = responseBodyText ? safeJsonParse(responseBodyText) : undefined;
+        responseBodyText = await response.clone().text()
+        parsedResponseBody = responseBodyText ? safeJsonParse(responseBodyText) : undefined
       } catch { /* ignore */ }
     }
   }
 
-  let queryParams = {};
-  let requestPath;
+  let queryParams = {}
+  let requestPath
   try {
-    const parsedUrl = new URL(url);
-    requestPath = parsedUrl.pathname;
-    queryParams = Object.fromEntries(parsedUrl.searchParams.entries());
+    const parsedUrl = new URL(url)
+    requestPath = parsedUrl.pathname
+    queryParams = Object.fromEntries(parsedUrl.searchParams.entries())
   } catch { /* ignore */ }
 
-  const organizationId = await resolveOrganizationId(base44, authUserEmail);
+  const organizationId = await resolveOrganizationId(base44, authUserEmail)
 
   const logPayload = {
     organization_id: organizationId,
@@ -137,13 +137,13 @@ export async function monitoredNuvemFiscalFetch(options) {
     success: responseOk === true,
     error_message: fetchError instanceof Error ? fetchError.message : fetchError ? String(fetchError) : undefined,
     error_stack: fetchError instanceof Error ? fetchError.stack : undefined,
-    user_email: authUserEmail,
-  };
+    user_email: authUserEmail
+  }
 
   try {
-    await base44.asServiceRole.entities.NuvemFiscalIntegrationLog.create(logPayload);
+    await base44.asServiceRole.entities.NuvemFiscalIntegrationLog.create(logPayload)
   } catch { /* noop */ }
 
-  if (fetchError) throw fetchError;
-  return response;
+  if (fetchError) throw fetchError
+  return response
 }

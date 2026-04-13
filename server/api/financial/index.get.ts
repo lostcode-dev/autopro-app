@@ -45,6 +45,6 @@ export default defineEventHandler(async (event) => {
     items: data ?? [],
     total: count ?? 0,
     page,
-    page_size: pageSize,
+    page_size: pageSize
   }
 })

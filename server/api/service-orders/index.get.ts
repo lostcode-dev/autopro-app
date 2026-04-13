@@ -49,14 +49,14 @@ export default defineEventHandler(async (event) => {
 
   // Build lookup maps
   const clientNameById = new Map(clients.map(c => [c.id, c.name]))
-  const vehicleLabelById = new Map(vehicles.map(v => {
+  const vehicleLabelById = new Map(vehicles.map((v) => {
     const label = [v.brand, v.model].filter(Boolean).join(' ').trim()
     return [v.id, label ? `${label} - ${v.license_plate || ''}`.trim() : (v.license_plate || '')]
   }))
   const employeeNameById = new Map(employees.map(e => [e.id, e.name]))
   const masterProductNameById = new Map(masterProducts.map(p => [p.id, p.name]))
 
-  const installmentsByOrderId = new Map<string, { paid: number; total: number }>()
+  const installmentsByOrderId = new Map<string, { paid: number, total: number }>()
   for (const inst of installments) {
     const instOrderId = inst.service_order_id
     if (!instOrderId) continue

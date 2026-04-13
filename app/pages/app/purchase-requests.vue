@@ -24,7 +24,7 @@ const pageSize = 30
 
 const { data, status, refresh } = await useAsyncData(
   () => `purchase-requests-${page.value}-${search.value}-${statusFilter.value}`,
-  () => requestFetch<{ items: PurchaseRequest[]; total: number; page: number; page_size: number }>(
+  () => requestFetch<{ items: PurchaseRequest[], total: number, page: number, page_size: number }>(
     '/api/purchase-requests',
     {
       headers: requestHeaders,
@@ -32,7 +32,7 @@ const { data, status, refresh } = await useAsyncData(
         search: search.value || undefined,
         status: statusFilter.value || undefined,
         page: page.value,
-        page_size: pageSize,
+        page_size: pageSize
       }
     }
   ),
@@ -60,7 +60,7 @@ async function authorize(req: PurchaseRequest) {
     toast.add({ title: 'Solicitação autorizada', color: 'success' })
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível autorizar', color: 'error' })
   }
 }
@@ -77,13 +77,13 @@ async function confirmReject() {
   try {
     await $fetch(`/api/purchase-requests/${selectedForAction.value.id}/reject`, {
       method: 'POST',
-      body: { rejection_reason: rejectionReason.value || null },
+      body: { rejection_reason: rejectionReason.value || null }
     })
     toast.add({ title: 'Solicitação recusada', color: 'success' })
     showRejectModal.value = false
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível recusar', color: 'error' })
   } finally {
     isRejecting.value = false
@@ -97,14 +97,14 @@ const isSaving = ref(false)
 const isDeleting = ref(false)
 const selectedId = ref<string | null>(null)
 
-type RequestItem = { description: string; quantity: number; estimated_unit_price: number; estimated_total_price: number; notes: string }
+type RequestItem = { description: string, quantity: number, estimated_unit_price: number, estimated_total_price: number, notes: string }
 
 const emptyItem = (): RequestItem => ({ description: '', quantity: 1, estimated_unit_price: 0, estimated_total_price: 0, notes: '' })
 
 const emptyForm = () => ({
   supplier_id: '',
   justification: '',
-  notes: '',
+  notes: ''
 })
 
 const form = reactive(emptyForm())
@@ -131,7 +131,7 @@ function openEdit(req: PurchaseRequest) {
   Object.assign(form, {
     supplier_id: req.supplier_id ?? '',
     justification: req.justification ?? '',
-    notes: req.notes ?? '',
+    notes: req.notes ?? ''
   })
   items.value = Array.isArray(req.items) && req.items.length ? req.items.map((i: any) => ({ ...i })) : [emptyItem()]
   isEditing.value = true
@@ -151,7 +151,7 @@ async function save() {
       items: items.value,
       total_request_amount: totalAmount.value,
       justification: form.justification || null,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/purchase-requests/${selectedId.value}`, { method: 'PUT', body })
@@ -163,7 +163,7 @@ async function save() {
     showModal.value = false
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível salvar', color: 'error' })
   } finally {
     isSaving.value = false
@@ -178,7 +178,7 @@ async function remove(req: PurchaseRequest) {
     toast.add({ title: 'Solicitação removida', color: 'success' })
     await refresh()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível remover', color: 'error' })
   } finally {
     isDeleting.value = false
@@ -194,20 +194,20 @@ const statusFilterOptions = [
   { label: 'Aguardando', value: 'waiting' },
   { label: 'Autorizado', value: 'authorized' },
   { label: 'Recusado', value: 'rejected' },
-  { label: 'Comprado', value: 'purchased' },
+  { label: 'Comprado', value: 'purchased' }
 ]
 
 const statusColorMap: Record<string, string> = {
   waiting: 'warning',
   authorized: 'success',
   rejected: 'error',
-  purchased: 'info',
+  purchased: 'info'
 }
 const statusLabelMap: Record<string, string> = {
   waiting: 'Aguardando',
   authorized: 'Autorizado',
   rejected: 'Recusado',
-  purchased: 'Comprado',
+  purchased: 'Comprado'
 }
 
 const columns = [
@@ -217,7 +217,7 @@ const columns = [
   { accessorKey: 'requester', header: 'Solicitante' },
   { id: 'total_request_amount', header: 'Total estimado' },
   { id: 'status', header: 'Status' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -241,7 +241,9 @@ const columns = [
     </template>
 
     <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">Você não tem permissão para visualizar solicitações de compra.</p>
+      <p class="text-sm text-muted">
+        Você não tem permissão para visualizar solicitações de compra.
+      </p>
     </div>
 
     <template v-else>
@@ -345,14 +347,30 @@ const columns = [
           <strong>{{ selectedForAction?.suppliers?.name ?? selectedForAction?.supplier_id }}</strong>
         </p>
         <UFormField label="Motivo da recusa">
-          <UTextarea v-model="rejectionReason" class="w-full" :rows="3" placeholder="Opcional..." />
+          <UTextarea
+            v-model="rejectionReason"
+            class="w-full"
+            :rows="3"
+            placeholder="Opcional..."
+          />
         </UFormField>
       </div>
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showRejectModal = false" />
-        <UButton label="Recusar" color="error" :loading="isRejecting" :disabled="isRejecting" @click="confirmReject" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showRejectModal = false"
+        />
+        <UButton
+          label="Recusar"
+          color="error"
+          :loading="isRejecting"
+          :disabled="isRejecting"
+          @click="confirmReject"
+        />
       </div>
     </template>
   </UModal>
@@ -399,10 +417,23 @@ const columns = [
               <UInput v-model="item.description" class="w-full" />
             </UFormField>
             <UFormField label="Quantidade">
-              <UInput v-model="item.quantity" type="number" min="1" class="w-full" @update:model-value="recalcItem(item)" />
+              <UInput
+                v-model="item.quantity"
+                type="number"
+                min="1"
+                class="w-full"
+                @update:model-value="recalcItem(item)"
+              />
             </UFormField>
             <UFormField label="Preço unitário estimado">
-              <UInput v-model="item.estimated_unit_price" type="number" min="0" step="0.01" class="w-full" @update:model-value="recalcItem(item)" />
+              <UInput
+                v-model="item.estimated_unit_price"
+                type="number"
+                min="0"
+                step="0.01"
+                class="w-full"
+                @update:model-value="recalcItem(item)"
+              />
             </UFormField>
             <UFormField label="Total estimado" class="sm:col-span-2">
               <UInput :model-value="formatCurrency(item.estimated_total_price)" disabled class="w-full" />
@@ -430,8 +461,19 @@ const columns = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

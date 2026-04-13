@@ -36,13 +36,13 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
 
   const updates: Record<string, unknown> = {
-    updated_by: authUser.email,
+    updated_by: authUser.email
   }
 
   const updatableFields = [
     'name', 'phone', 'person_type', 'tax_id', 'email',
     'zip_code', 'street', 'address_number', 'address_complement',
-    'neighborhood', 'city', 'state', 'responsible_employees', 'notes',
+    'neighborhood', 'city', 'state', 'responsible_employees', 'notes'
   ]
 
   for (const field of updatableFields) {

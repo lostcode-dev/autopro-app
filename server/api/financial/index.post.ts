@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
       bank_account_id: body.bank_account_id ?? null,
       notes: body.notes ?? null,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

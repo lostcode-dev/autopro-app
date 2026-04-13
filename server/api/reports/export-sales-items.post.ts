@@ -21,7 +21,7 @@ function parseStringList(value: unknown): string[] {
     const n = value.trim()
     if (!n || ['all', 'todos', 'null', 'undefined'].includes(n)) return []
     if (n.startsWith('[') && n.endsWith(']')) { try { return parseStringList(JSON.parse(n)) } catch { return [] } }
-    if (n.includes(',')) return Array.from(new Set(n.split(',').map((i) => i.trim()).filter(Boolean)))
+    if (n.includes(',')) return Array.from(new Set(n.split(',').map(i => i.trim()).filter(Boolean)))
     return [n]
   }
   return []
@@ -152,7 +152,7 @@ function buildOrderRows(rows: any[]) {
         orderNumber: row?.orderNumber || '-',
         totalCost: normalizeNumber(row?.totalCost), commissionCost: normalizeNumber(row?.commissionCost),
         totalValue: normalizeNumber(row?.totalValue), itemCount: 1, date: row?.date || '',
-        responsibleNames: new Set(String(row?.responsible || '').split(',').map((i: string) => i.trim()).filter(Boolean)),
+        responsibleNames: new Set(String(row?.responsible || '').split(',').map((i: string) => i.trim()).filter(Boolean))
       })
       continue
     }
@@ -162,7 +162,7 @@ function buildOrderRows(rows: any[]) {
     current.itemCount += 1
     for (const rName of String(row?.responsible || '').split(',')) { const n = rName.trim(); if (n) current.responsibleNames.add(n) }
   }
-  return Array.from(grouped.values()).map((row) => ({ ...row, responsible: Array.from(row.responsibleNames).join(', ') || 'No responsible' }))
+  return Array.from(grouped.values()).map(row => ({ ...row, responsible: Array.from(row.responsibleNames).join(', ') || 'No responsible' }))
 }
 
 export default defineEventHandler(async (event) => {
@@ -180,8 +180,8 @@ export default defineEventHandler(async (event) => {
   const statusFiltersSet = new Set(parseStringList(body?.statusFilters).concat(parseStringList(body?.status)))
   const paymentStatusFiltersSet = new Set(parseStringList(body?.paymentStatusFilters))
   const categoryIdsSet = new Set(parseStringList(body?.categoryIds).concat(parseStringList(body?.categoryId)))
-  const costFilterSet = new Set(parseStringList(body?.costFilter).filter((v) => v === 'withCost' || v === 'zeroCost'))
-  const costSourceSet = new Set(parseStringList(body?.costSource).filter((v) => v === 'item' || v === 'product' || v === 'none'))
+  const costFilterSet = new Set(parseStringList(body?.costFilter).filter(v => v === 'withCost' || v === 'zeroCost'))
+  const costSourceSet = new Set(parseStringList(body?.costSource).filter(v => v === 'item' || v === 'product' || v === 'none'))
   const paymentMethodsSet = new Set(parseStringList(body?.paymentMethods))
   const format = body?.format === 'pdf' ? 'pdf' : 'csv'
   const viewMode = body?.viewMode === 'os' ? 'os' : 'item'
@@ -193,7 +193,7 @@ export default defineEventHandler(async (event) => {
     supabase.from('clients').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('products').select('id, name, unit_cost_price, category_id').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).eq('record_type', 'comissao').order('reference_date', { ascending: false }),
+    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).eq('record_type', 'comissao').order('reference_date', { ascending: false })
   ])
 
   const orders = ordersResult.data || []
@@ -273,7 +273,7 @@ export default defineEventHandler(async (event) => {
     } else {
       commissionByItemKey = computeOrderItemCommissionMap({
         order, responsibles, responsibleIdsSet, employeesMap, commissionTotalsByOrderEmployee,
-        normalizedItems: normalizedItems.map((item: any) => ({ key: item.key, categoryId: item.categoryId, totalValue: item.totalValue, totalCost: item.totalCostForCommission })),
+        normalizedItems: normalizedItems.map((item: any) => ({ key: item.key, categoryId: item.categoryId, totalValue: item.totalValue, totalCost: item.totalCostForCommission }))
       })
     }
 
@@ -294,7 +294,7 @@ export default defineEventHandler(async (event) => {
         totalValue: item.totalValue,
         responsible: itemResponsibles.length > 0 ? itemResponsibles.map((r: any) => r.name).join(', ') : 'No responsible',
         responsibleIds: itemResponsibles.map((r: any) => String(r.id)),
-        orderId: orderFilterValue, date: String(order?.entry_date || ''),
+        orderId: orderFilterValue, date: String(order?.entry_date || '')
       })
     }
   }
@@ -314,12 +314,12 @@ export default defineEventHandler(async (event) => {
     ? [
         { header: 'CLIENTE', widthRatio: 0.22 }, { header: 'OS', widthRatio: 0.08 }, { header: 'QTD. ITENS', widthRatio: 0.09 },
         { header: 'RESPONSÁVEL', widthRatio: 0.26 }, { header: 'CUSTO', widthRatio: 0.11, align: 'right' as const },
-        { header: 'CUSTO COMISSÃO', widthRatio: 0.11, align: 'right' as const }, { header: 'VALOR', widthRatio: 0.13, align: 'right' as const },
+        { header: 'CUSTO COMISSÃO', widthRatio: 0.11, align: 'right' as const }, { header: 'VALOR', widthRatio: 0.13, align: 'right' as const }
       ]
     : [
         { header: 'CLIENTE', widthRatio: 0.18 }, { header: 'OS', widthRatio: 0.07 }, { header: 'ITEM SEPARADO', widthRatio: 0.28 },
         { header: 'RESPONSÁVEL', widthRatio: 0.16 }, { header: 'CUSTO', widthRatio: 0.1, align: 'right' as const },
-        { header: 'CUSTO COMISSÃO', widthRatio: 0.1, align: 'right' as const }, { header: 'VALOR', widthRatio: 0.11, align: 'right' as const },
+        { header: 'CUSTO COMISSÃO', widthRatio: 0.1, align: 'right' as const }, { header: 'VALOR', widthRatio: 0.11, align: 'right' as const }
       ]
 
   const dataRows = tableRows.map((row: any) => (
@@ -337,8 +337,8 @@ export default defineEventHandler(async (event) => {
     rows: dataRows,
     footerRows: [
       { label: 'Total de Linhas', value: String(totalRows) },
-      { label: 'Total da Comissão', value: formatCurrency(totalCommission) },
-    ],
+      { label: 'Total da Comissão', value: formatCurrency(totalCommission) }
+    ]
   })
 
   return { success: true, data }

@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
     bank_account_id,
     payment_receipt_days,
     is_active,
-    rates,
+    rates
   } = body
 
   const { data: item, error } = await supabase
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
       ...(payment_receipt_days !== undefined && { payment_receipt_days }),
       ...(is_active !== undefined && { is_active }),
       ...(rates !== undefined && { rates }),
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

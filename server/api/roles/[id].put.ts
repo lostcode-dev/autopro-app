@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
       ...(name !== undefined && { name }),
       ...(display_name !== undefined && { display_name }),
       ...(description !== undefined && { description }),
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

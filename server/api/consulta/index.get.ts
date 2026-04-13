@@ -42,14 +42,14 @@ export default defineEventHandler(async (event) => {
         id: employee.id,
         name: employee.name,
         // Mask CPF for display: show only last 4 digits
-        tax_id_masked: `***.***.***-${cpf.slice(9)}`,
+        tax_id_masked: `***.***.***-${cpf.slice(9)}`
       },
       records: records ?? [],
       summary: {
         totalPaid: (records ?? []).filter(r => r.status === 'paid').reduce((s, r) => s + (parseFloat(String(r.amount)) || 0), 0),
         totalPending: (records ?? []).filter(r => r.status !== 'paid').reduce((s, r) => s + (parseFloat(String(r.amount)) || 0), 0),
-        recordCount: (records ?? []).length,
-      },
-    },
+        recordCount: (records ?? []).length
+      }
+    }
   }
 })

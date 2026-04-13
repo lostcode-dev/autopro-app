@@ -80,7 +80,7 @@ export async function monitoredNuvemFiscalFetch(options: {
     captureResponseBody = 'auto',
     maxResponseBodyChars = DEFAULT_MAX_BODY_CHARS,
     integrationType,
-    organizationId,
+    organizationId
   } = options
 
   let response: Response | undefined
@@ -131,7 +131,7 @@ export async function monitoredNuvemFiscalFetch(options: {
     response_body: responseBodySafe ? truncate(JSON.stringify(responseBodySafe), maxResponseBodyChars) : null,
     duration_ms: durationMs,
     error_message: fetchError ? String(fetchError?.message || fetchError) : null,
-    created_at: new Date().toISOString(),
+    created_at: new Date().toISOString()
   }
 
   try {
@@ -202,13 +202,13 @@ export async function getNuvemFiscalApiToken(): Promise<string> {
     grant_type: 'client_credentials',
     client_id: clientId,
     client_secret: clientSecret,
-    scope,
+    scope
   })
 
   const tokenResponse = await fetch(authUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: tokenBody.toString(),
+    body: tokenBody.toString()
   })
 
   if (!tokenResponse.ok) {
@@ -226,7 +226,7 @@ export async function getNuvemFiscalApiToken(): Promise<string> {
     token_type: (tokenData.token_type as string) ?? 'Bearer',
     expires_in: tokenData.expires_in as number,
     expires_at: expiresAt,
-    scope: (tokenData.scope as string) ?? scope,
+    scope: (tokenData.scope as string) ?? scope
   }
 
   if (cached?.id) {

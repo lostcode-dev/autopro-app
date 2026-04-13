@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
 
   const updates: Record<string, unknown> = {
-    updated_by: authUser.email,
+    updated_by: authUser.email
   }
 
   if (body.display_name !== undefined)

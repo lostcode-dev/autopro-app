@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     notes,
     unit_sale_price,
     unit_cost_price,
-    group_items,
+    group_items
   } = body
 
   const { data: item, error } = await supabase
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
       ...(unit_sale_price !== undefined && { unit_sale_price }),
       ...(unit_cost_price !== undefined && { unit_cost_price }),
       ...(group_items !== undefined && { group_items }),
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

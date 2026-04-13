@@ -20,12 +20,12 @@ export default defineEventHandler(async (event) => {
     orgsResult,
     usersResult,
     subscriptionsResult,
-    serviceOrdersResult,
+    serviceOrdersResult
   ] = await Promise.all([
     supabase.from('organizations').select('id, created_at', { count: 'exact', head: false }).is('deleted_at', null),
     supabase.from('user_profiles').select('id', { count: 'exact', head: false }).is('deleted_at', null),
     supabase.from('subscriptions').select('id, status', { count: 'exact', head: false }),
-    supabase.from('service_orders').select('id', { count: 'exact', head: false }).is('deleted_at', null),
+    supabase.from('service_orders').select('id', { count: 'exact', head: false }).is('deleted_at', null)
   ])
 
   const activeSubscriptions = (subscriptionsResult.data || []).filter(
@@ -46,6 +46,6 @@ export default defineEventHandler(async (event) => {
     total_subscriptions: subscriptionsResult.count ?? (subscriptionsResult.data || []).length,
     active_subscriptions: activeSubscriptions,
     total_service_orders: serviceOrdersResult.count ?? (serviceOrdersResult.data || []).length,
-    new_organizations_last_30_days: recentOrgs,
+    new_organizations_last_30_days: recentOrgs
   }
 })

@@ -57,21 +57,21 @@ export async function buildTablePdfBase64({
   subtitle,
   columns,
   rows,
-  footerRows,
+  footerRows
 }: {
   title: string
   subtitle?: string
-  columns: Array<{ header: string; widthRatio: number; align?: 'left' | 'right' }>
+  columns: Array<{ header: string, widthRatio: number, align?: 'left' | 'right' }>
   rows: string[][]
-  footerRows?: Array<{ label: string; value: string }>
+  footerRows?: Array<{ label: string, value: string }>
 }) {
   const pdfDocument = await PDFDocument.create()
   const fontRegular = await pdfDocument.embedFont(StandardFonts.Helvetica)
   const fontBold = await pdfDocument.embedFont(StandardFonts.HelveticaBold)
   const usableWidth = PAGE_WIDTH - MARGIN_X * 2
-  const normalizedColumns = columns.map((column) => ({
+  const normalizedColumns = columns.map(column => ({
     ...column,
-    width: usableWidth * column.widthRatio,
+    width: usableWidth * column.widthRatio
   }))
 
   let page = pdfDocument.addPage([PAGE_WIDTH, PAGE_HEIGHT])
@@ -145,15 +145,15 @@ export async function buildReportDownloadData({
   fileNameBase,
   columns,
   rows,
-  footerRows,
+  footerRows
 }: {
   format: 'csv' | 'pdf'
   title: string
   subtitle?: string
   fileNameBase: string
-  columns: Array<{ header: string; widthRatio?: number; align?: 'left' | 'right' }>
+  columns: Array<{ header: string, widthRatio?: number, align?: 'left' | 'right' }>
   rows: any[][]
-  footerRows?: Array<{ label: string; value: string }>
+  footerRows?: Array<{ label: string, value: string }>
 }) {
   if (!Array.isArray(columns) || columns.length === 0) {
     throw new Error('As colunas do relatório são obrigatórias.')
@@ -162,19 +162,19 @@ export async function buildReportDownloadData({
     throw new Error('Não há dados para exportar.')
   }
 
-  const normalizedColumns = columns.map((column) => ({
+  const normalizedColumns = columns.map(column => ({
     header: String(column?.header || ''),
     widthRatio: Number(column?.widthRatio || 0) > 0 ? Number(column.widthRatio) : 1 / columns.length,
-    align: (column?.align === 'right' ? 'right' : 'left') as 'left' | 'right',
+    align: (column?.align === 'right' ? 'right' : 'left') as 'left' | 'right'
   }))
 
-  const normalizedRows = rows.map((row) => (Array.isArray(row) ? row : []).map((cell) => String(cell ?? '')))
+  const normalizedRows = rows.map(row => (Array.isArray(row) ? row : []).map(cell => String(cell ?? '')))
   const today = toLocalDateOnly(new Date())
 
   if (format === 'csv') {
     const csvLines = [
-      normalizedColumns.map((column) => csvEscape(column.header)).join(','),
-      ...normalizedRows.map((row) => row.map(csvEscape).join(',')),
+      normalizedColumns.map(column => csvEscape(column.header)).join(','),
+      ...normalizedRows.map(row => row.map(csvEscape).join(','))
     ]
     if (footerRows && footerRows.length > 0) {
       csvLines.push('')

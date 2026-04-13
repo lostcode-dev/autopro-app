@@ -6,7 +6,7 @@ import {
   getNuvemFiscalApiBaseUrl,
   monitoredNuvemFiscalFetch,
   normalizeText,
-  extractFilename,
+  extractFilename
 } from '../../../utils/nuvem-fiscal'
 
 export default defineEventHandler(async (event) => {
@@ -30,16 +30,16 @@ export default defineEventHandler(async (event) => {
     url: `${apiBaseUrl}/nfe/${encodeURIComponent(id)}/carta-correcao/pdf`,
     init: {
       method: 'GET',
-      headers: { Authorization: `Bearer ${apiToken}` },
+      headers: { Authorization: `Bearer ${apiToken}` }
     },
-    captureResponseBody: 'never',
+    captureResponseBody: 'never'
   })
 
   if (!response.ok) {
     const errText = await response.text()
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao baixar PDF da carta de correção da NF-e', details: errText },
+      data: { error: 'Erro ao baixar PDF da carta de correção da NF-e', details: errText }
     })
   }
 

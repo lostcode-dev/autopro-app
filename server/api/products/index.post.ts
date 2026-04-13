@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     notes,
     unit_sale_price,
     unit_cost_price,
-    group_items,
+    group_items
   } = body
 
   if (!name || !code || !type)
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
       unit_cost_price,
       group_items,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

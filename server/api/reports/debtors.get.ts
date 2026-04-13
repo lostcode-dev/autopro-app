@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const [ordersResult, installmentsResult, clientsResult] = await Promise.all([
     supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
     supabase.from('service_order_installments').select('*').eq('organization_id', organizationId),
-    supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const orders = ordersResult.data || []
@@ -36,7 +36,7 @@ export default defineEventHandler(async (event) => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
-  const debtorsMap: Record<string, { clientId: string; totalOwed: number; pendingItems: any[]; daysOverdue: number; earliestDue: string | null }> = {}
+  const debtorsMap: Record<string, { clientId: string, totalOwed: number, pendingItems: any[], daysOverdue: number, earliestDue: string | null }> = {}
 
   // From service orders (non-installment, unpaid)
   for (const order of orders) {
@@ -62,7 +62,7 @@ export default defineEventHandler(async (event) => {
       type: 'order', id: order.id, number: order?.number || '-', amount,
       dueDate, paymentMethod: order?.payment_method || null,
       orderStatus: order?.status || null, daysOverdue,
-      status: daysOverdue > 0 ? 'overdue' : 'current',
+      status: daysOverdue > 0 ? 'overdue' : 'current'
     })
   }
 
@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
       type: 'installment', id: installment.id, number: `${order?.number || '-'} P${installment?.installment_number || '?'}`,
       amount, dueDate, paymentMethod: installment?.payment_method || null,
       orderStatus: order?.status || null, daysOverdue,
-      status: daysOverdue > 0 ? 'overdue' : 'current',
+      status: daysOverdue > 0 ? 'overdue' : 'current'
     })
   }
 
@@ -102,17 +102,17 @@ export default defineEventHandler(async (event) => {
       clientName: client?.name || 'Unknown',
       phone: client?.phone || null,
       email: client?.email || null,
-      status: debtor.daysOverdue > 0 ? 'overdue' : 'current',
+      status: debtor.daysOverdue > 0 ? 'overdue' : 'current'
     }
   })
 
-  if (clientIds.length > 0) debtors = debtors.filter((d) => clientIds.includes(d.clientId))
-  if (statusFilters.length > 0) debtors = debtors.filter((d) => statusFilters.includes(d.status))
+  if (clientIds.length > 0) debtors = debtors.filter(d => clientIds.includes(d.clientId))
+  if (statusFilters.length > 0) debtors = debtors.filter(d => statusFilters.includes(d.status))
   if (paymentMethodFilters.length > 0) {
-    debtors = debtors.filter((d) => d.pendingItems.some((i: any) => paymentMethodFilters.includes(String(i.paymentMethod || 'no_payment'))))
+    debtors = debtors.filter(d => d.pendingItems.some((i: any) => paymentMethodFilters.includes(String(i.paymentMethod || 'no_payment'))))
   }
   if (dateFrom || dateTo) {
-    debtors = debtors.filter((d) => d.pendingItems.some((i: any) => {
+    debtors = debtors.filter(d => d.pendingItems.some((i: any) => {
       const due = i.dueDate ? new Date(`${i.dueDate}T00:00:00`) : null
       if (!due || Number.isNaN(due.getTime())) return false
       if (dateFrom && due < dateFrom) return false
@@ -121,10 +121,10 @@ export default defineEventHandler(async (event) => {
     }))
   }
   if (searchTerm) {
-    debtors = debtors.filter((d) =>
-      d.clientName.toLowerCase().includes(searchTerm) ||
-      (d.phone && d.phone.toLowerCase().includes(searchTerm)) ||
-      (d.email && d.email.toLowerCase().includes(searchTerm))
+    debtors = debtors.filter(d =>
+      d.clientName.toLowerCase().includes(searchTerm)
+      || (d.phone && d.phone.toLowerCase().includes(searchTerm))
+      || (d.email && d.email.toLowerCase().includes(searchTerm))
     )
   }
 
@@ -139,8 +139,8 @@ export default defineEventHandler(async (event) => {
 
   const totals = {
     total: debtors.reduce((s, d) => s + d.totalOwed, 0),
-    overdue: debtors.filter((d) => d.status === 'overdue').reduce((s, d) => s + d.totalOwed, 0),
-    current: debtors.filter((d) => d.status === 'current').reduce((s, d) => s + d.totalOwed, 0),
+    overdue: debtors.filter(d => d.status === 'overdue').reduce((s, d) => s + d.totalOwed, 0),
+    current: debtors.filter(d => d.status === 'current').reduce((s, d) => s + d.totalOwed, 0)
   }
 
   const availableClients = clients.map((c: any) => ({ value: c.id, label: c.name || 'No name' })).sort((a: any, b: any) => a.label.localeCompare(b.label, 'pt-BR'))
@@ -154,8 +154,8 @@ export default defineEventHandler(async (event) => {
         items: paginatedItems,
         totals,
         pagination,
-        sort: { sortBy, sortOrder },
-      },
-    },
+        sort: { sortBy, sortOrder }
+      }
+    }
   }
 })

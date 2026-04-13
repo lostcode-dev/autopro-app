@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
       description: body.description ?? null,
       organization_id: organizationId,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

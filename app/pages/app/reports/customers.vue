@@ -27,8 +27,8 @@ const { data, status } = await useAsyncData(
       page: page.value,
       pageSize,
       searchTerm: search.value || undefined,
-      selectedClientId: selectedClientId.value || undefined,
-    },
+      selectedClientId: selectedClientId.value || undefined
+    }
   }),
   { watch: [dateFrom, dateTo, page, search] }
 )
@@ -52,7 +52,7 @@ const columns = [
   { id: 'totalPaid', header: 'Total pago' },
   { accessorKey: 'totalOrders', header: 'OS' },
   { id: 'averageTicket', header: 'Ticket médio' },
-  { id: 'lastVisit', header: 'Última visita' },
+  { id: 'lastVisit', header: 'Última visita' }
 ]
 </script>
 
@@ -60,12 +60,24 @@ const columns = [
   <UDashboardPanel>
     <template #header>
       <UDashboardNavbar title="Relatório de Clientes">
-        <template #leading><AppSidebarCollapse /></template>
+        <template #leading>
+          <AppSidebarCollapse />
+        </template>
         <template #right>
           <div class="flex items-center gap-2">
-            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
+            <UInput
+              v-model="dateFrom"
+              type="date"
+              size="sm"
+              class="w-36"
+            />
             <span class="text-muted text-sm">até</span>
-            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
+            <UInput
+              v-model="dateTo"
+              type="date"
+              size="sm"
+              class="w-36"
+            />
           </div>
         </template>
       </UDashboardNavbar>
@@ -75,29 +87,52 @@ const columns = [
       <!-- Summary -->
       <div class="grid grid-cols-3 divide-x divide-default border-b border-default text-center text-sm py-3">
         <div>
-          <p class="text-muted text-xs">Receita total</p>
-          <p class="font-bold">{{ formatCurrency(summary.totalRevenue ?? 0) }}</p>
+          <p class="text-muted text-xs">
+            Receita total
+          </p>
+          <p class="font-bold">
+            {{ formatCurrency(summary.totalRevenue ?? 0) }}
+          </p>
         </div>
         <div>
-          <p class="text-muted text-xs">Clientes ativos</p>
-          <p class="font-bold">{{ summary.totalActiveClients ?? 0 }}</p>
+          <p class="text-muted text-xs">
+            Clientes ativos
+          </p>
+          <p class="font-bold">
+            {{ summary.totalActiveClients ?? 0 }}
+          </p>
         </div>
         <div>
-          <p class="text-muted text-xs">Total de OS</p>
-          <p class="font-bold">{{ summary.totalOrders ?? 0 }}</p>
+          <p class="text-muted text-xs">
+            Total de OS
+          </p>
+          <p class="font-bold">
+            {{ summary.totalOrders ?? 0 }}
+          </p>
         </div>
       </div>
 
       <!-- Search -->
       <div class="p-4 border-b border-default">
-        <UInput v-model="search" placeholder="Buscar cliente..." icon="i-lucide-search" class="w-72" @update:model-value="page = 1" />
+        <UInput
+          v-model="search"
+          placeholder="Buscar cliente..."
+          icon="i-lucide-search"
+          class="w-72"
+          @update:model-value="page = 1"
+        />
       </div>
 
       <div v-if="status === 'pending'" class="p-4 space-y-3">
         <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
       </div>
 
-      <UTable v-else :columns="columns" :data="items" class="min-h-0 flex-1">
+      <UTable
+        v-else
+        :columns="columns"
+        :data="items"
+        class="min-h-0 flex-1"
+      >
         <template #totalSpent-cell="{ row }">
           <span class="font-medium">{{ formatCurrency(row.original.totalSpent) }}</span>
         </template>

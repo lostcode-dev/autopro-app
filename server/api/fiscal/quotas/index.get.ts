@@ -4,7 +4,7 @@ import {
   NUVEM_FISCAL_OWNER_EMAIL,
   getNuvemFiscalApiToken,
   getNuvemFiscalApiBaseUrl,
-  monitoredNuvemFiscalFetch,
+  monitoredNuvemFiscalFetch
 } from '../../../utils/nuvem-fiscal'
 
 export default defineEventHandler(async (event) => {
@@ -33,10 +33,10 @@ export default defineEventHandler(async (event) => {
     init: {
       method: 'GET',
       headers: {
-        Authorization: `Bearer ${apiToken}`,
-        'Content-Type': 'application/json',
-      },
-    },
+        'Authorization': `Bearer ${apiToken}`,
+        'Content-Type': 'application/json'
+      }
+    }
   })
 
   const data = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
   if (!response.ok) {
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao listar cotas na Nuvem Fiscal', details: data },
+      data: { error: 'Erro ao listar cotas na Nuvem Fiscal', details: data }
     })
   }
 

@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
       description,
       is_system_role: false,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()

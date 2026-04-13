@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
       ...(name !== undefined && { name }),
       ...(type !== undefined && { type }),
       ...(rate !== undefined && { rate }),
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .eq('id', id)
     .select()

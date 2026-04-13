@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
     'zip_code', 'street', 'address_number', 'address_complement',
     'neighborhood', 'city', 'state',
     'contact_name', 'contact_role', 'contact_phone', 'contact_email',
-    'category', 'payment_term_days', 'credit_limit', 'is_active', 'notes',
+    'category', 'payment_term_days', 'credit_limit', 'is_active', 'notes'
   ] as const
 
   const updates: Record<string, unknown> = { updated_by: authUser.email }

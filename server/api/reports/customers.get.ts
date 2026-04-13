@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
 
   const [ordersResult, clientsResult] = await Promise.all([
     supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
   const orders = ordersResult.data || []
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
   })
 
   // Group by client
-  const groupedByClient: Record<string, { totalSpent: number; totalPaid: number; totalOrders: number; lastVisit: string | null }> = {}
+  const groupedByClient: Record<string, { totalSpent: number, totalPaid: number, totalOrders: number, lastVisit: string | null }> = {}
   for (const o of filteredOrders) {
     const clientId = String(o?.client_id || '')
     if (!clientId) continue
@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
     return { id: clientId, name: client?.name || 'Unknown', ...stats }
   })
 
-  if (searchTerm) items = items.filter((i) => i.name.toLowerCase().includes(searchTerm))
+  if (searchTerm) items = items.filter(i => i.name.toLowerCase().includes(searchTerm))
 
   const factor = sortFactor(sortOrder)
   items.sort((a, b) => {
@@ -77,7 +77,7 @@ export default defineEventHandler(async (event) => {
   const summary = {
     totalRevenue: items.reduce((s, i) => s + i.totalSpent, 0),
     totalActiveClients: items.length,
-    totalOrders: items.reduce((s, i) => s + i.totalOrders, 0),
+    totalOrders: items.reduce((s, i) => s + i.totalOrders, 0)
   }
 
   const { data: paginatedItems, pagination } = paginate(items, page, pageSize)
@@ -87,8 +87,8 @@ export default defineEventHandler(async (event) => {
       items: skipList ? [] : paginatedItems,
       pagination,
       sort: { sortBy, sortOrder },
-      summary,
-    },
+      summary
+    }
   }
 
   if (selectedClientId) {
@@ -97,7 +97,7 @@ export default defineEventHandler(async (event) => {
     const totalSpent = clientOrders.reduce((s: number, o: any) => s + toNumber(o?.total_amount, 0), 0)
     result.data.selectedCustomerDetail = {
       client, orders: clientOrders,
-      stats: { totalSpent, totalOrders: clientOrders.length, averageTicket: clientOrders.length > 0 ? totalSpent / clientOrders.length : 0 },
+      stats: { totalSpent, totalOrders: clientOrders.length, averageTicket: clientOrders.length > 0 ? totalSpent / clientOrders.length : 0 }
     }
   }
 

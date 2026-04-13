@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     bank_account_id,
     payment_receipt_days,
     is_active,
-    rates,
+    rates
   } = body
 
   if (!terminal_name)
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event) => {
       is_active,
       rates,
       created_by: authUser.email,
-      updated_by: authUser.email,
+      updated_by: authUser.email
     })
     .select()
     .single()
