@@ -25,6 +25,27 @@ Because of that, the next migration phase must include:
 - new Vue/Nuxt composables for auth, organization, permissions, and data access
 - selective port of business components and utilities from the old project
 
+## REST Conventions
+
+### HTTP method semantics
+
+| Method | When to use | Body | Response |
+|--------|------------|------|----------|
+| `GET` | Read / list / search | — | resource or `{ items, total, page }` |
+| `POST` | Create a new resource | resource fields | created resource |
+| `PUT` | Full or partial update of an existing resource | fields to update | updated resource |
+| `DELETE` | Soft-delete an existing resource | — | `{ success: true }` |
+| `POST /:id/action` | Trigger a side-effect that is not a plain CRUD (cancel, pay, generate) | action params | result |
+
+### What is NOT allowed
+
+- `POST /api/resource/list` — use `GET /api/resource`
+- `POST /api/resource/save` — use `POST` (create) or `PUT /:id` (update)
+- `POST /api/resource/delete` — use `DELETE /:id`
+- `POST /api/resource/get` — use `GET /:id`
+- Verb-based route segments (`/update-fields`, `/get-by-email`, `/list-organization`)
+
+
 ---
 
 ## Key Findings
@@ -389,18 +410,15 @@ Pages/modules:
 - `reports/profit`
 - `reports/sales-items`
 - `Consulta`
-- `Consultoria`
 
 Required backend/API work:
 - financial entry CRUD and status transitions
 - bulk payment/update endpoints where applicable
 - report aggregation endpoints
 - employee public consultation endpoint for `/consulta`
-- AI/analysis endpoint review for `Consultoria`
 
 Important notes:
 - `Consulta` should be isolated from `/app` because it behaves like a public/self-service page.
-- `Consultoria` should be migrated only after reports and financial data are stable, since it depends on aggregate business intelligence and possibly AI generation.
 
 Exit criteria:
 - financial team and management reports no longer depend on the old React app
@@ -517,3 +535,4 @@ The most important dependency chain is:
 Foundation -> Settings/Master Data -> Service Orders/Appointments -> Financial/Reports -> Fiscal/Admin
 
 If we respect this order, we avoid porting pages that still depend on Base44 internals or backend pieces that are not ready yet.
+
