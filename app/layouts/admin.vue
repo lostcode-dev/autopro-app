@@ -71,12 +71,12 @@ watch(
           to="/admin/dashboard"
           class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
         >
-          <AppLogo :show-label="false" size="sm" />
+          <AppLogo size="sm" />
           <span
             v-if="!collapsed"
-            class="text-sm font-semibold text-highlighted truncate"
+            class="text-xs font-medium text-muted truncate"
           >
-            AutoPro Admin
+            Admin
           </span>
         </NuxtLink>
       </template>
