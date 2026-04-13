@@ -1,7 +1,7 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
-import { getSupabaseAdminClient } from '../../utils/supabase'
-import { requireAuthUser } from '../../utils/require-auth'
-import { resolveOrganizationId } from '../../utils/organization'
+import { getSupabaseAdminClient } from '../../../utils/supabase'
+import { requireAuthUser } from '../../../utils/require-auth'
+import { resolveOrganizationId } from '../../../utils/organization'
 
 /**
  * POST /api/financial/:id/pay
