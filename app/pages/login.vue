@@ -44,9 +44,6 @@ const fields = [{
   defaultValue: true
 }]
 
-const providers = [
-]
-
 const schema = z.object({
   email: z.email('Email inválido'),
   password: z.string().min(8, 'A senha deve ter pelo menos 8 caracteres'),
@@ -101,7 +98,6 @@ async function onSubmit(payload?: FormSubmitEvent<Schema>) {
   <UAuthForm
     :fields="fields"
     :schema="schema"
-    :providers="providers"
     :loading="submitting"
     :disabled="submitting"
     title="Bem-vindo de volta"
@@ -117,7 +113,7 @@ async function onSubmit(payload?: FormSubmitEvent<Schema>) {
 
     <template #password-hint>
       <ULink
-        to="/"
+        to="/forgot-password"
         class="text-primary font-medium"
         tabindex="-1"
       >Esqueceu a senha?</ULink>

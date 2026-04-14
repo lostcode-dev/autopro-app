@@ -11,7 +11,7 @@ export async function resolveOrganizationId(event: H3Event, userId: string) {
   const { data: profile, error } = await supabase
     .from('user_profiles')
     .select('organization_id')
-    .eq('id', userId)
+    .eq('user_id', userId)
     .maybeSingle()
 
   if (error) {

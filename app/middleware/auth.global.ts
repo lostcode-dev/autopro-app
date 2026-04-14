@@ -5,7 +5,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const isAppRoute = to.path.startsWith('/app')
   const isAdminRoute = to.path.startsWith('/admin')
   const isProtectedRoute = isAppRoute || isAdminRoute
-  const isAuthRoute = to.path === '/login' || to.path === '/signup'
+  const isAuthRoute = to.path === '/login' || to.path === '/signup' || to.path === '/forgot-password' || to.path === '/reset-password'
   const userCookie = useCookie<string | null>('sb-user')
 
   const hasSessionHints = (() => {

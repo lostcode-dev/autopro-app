@@ -44,14 +44,21 @@ export default eventHandler(async (event) => {
   if (data.user) {
     const supabaseAdmin = getSupabaseAdminClient()
 
-    const [userPreferencesResult, notificationPreferencesResult] = await Promise.all([
+    const [profileResult, userPreferencesResult, notificationPreferencesResult] = await Promise.all([
+      supabaseAdmin
+        .from('user_profiles')
+        .upsert({
+          user_id: data.user.id,
+          email: data.user.email,
+          display_name: parsed.data.name
+        }, { onConflict: 'user_id' }),
       supabaseAdmin
         .from('user_preferences')
         .upsert({
           user_id: data.user.id,
-          primary_color: 'emerald',
+          primary_color: 'purple',
           neutral_color: 'slate',
-          color_mode: 'dark',
+          color_mode: 'light',
           timezone: 'UTC'
         }, { onConflict: 'user_id' }),
       supabaseAdmin
@@ -62,7 +69,6 @@ export default eventHandler(async (event) => {
           channel_email: true,
           channel_web_push: false,
           channel_mobile_push: false,
-          habit_reminders: true,
           weekly_digest: false,
           product_updates: true,
           important_updates: true,
@@ -71,10 +77,27 @@ export default eventHandler(async (event) => {
         }, { onConflict: 'user_id' })
     ])
 
-    if (userPreferencesResult.error || notificationPreferencesResult.error) {
+    if (profileResult.error) {
+      console.error('[signup] user_profiles upsert failed:', profileResult.error)
       throw createError({
         statusCode: 500,
-        statusMessage: 'Não foi possível inicializar as preferências do usuário'
+        statusMessage: `user_profiles: ${profileResult.error.message}`
+      })
+    }
+
+    if (userPreferencesResult.error) {
+      console.error('[signup] user_preferences upsert failed:', userPreferencesResult.error)
+      throw createError({
+        statusCode: 500,
+        statusMessage: `user_preferences: ${userPreferencesResult.error.message}`
+      })
+    }
+
+    if (notificationPreferencesResult.error) {
+      console.error('[signup] notification_preferences upsert failed:', notificationPreferencesResult.error)
+      throw createError({
+        statusCode: 500,
+        statusMessage: `notification_preferences: ${notificationPreferencesResult.error.message}`
       })
     }
   }

@@ -14,7 +14,7 @@ export default eventHandler(async (event) => {
   const { data: profile, error: profileError } = await supabase
     .from('user_profiles')
     .select('*')
-    .eq('email', authUser.email!)
+    .eq('user_id', authUser.id)
     .maybeSingle()
 
   if (profileError || !profile) {

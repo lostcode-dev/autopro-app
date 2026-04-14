@@ -37,8 +37,6 @@ const fields = [{
   placeholder: 'Crie uma senha'
 }]
 
-const providers = []
-
 const schema = z.object({
   name: z.string().min(1, 'O nome é obrigatório'),
   email: z.email('Email inválido'),
@@ -111,7 +109,6 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
   <UAuthForm
     :fields="fields"
     :schema="schema"
-    :providers="providers"
     title="Crie sua conta"
     :submit="{ label: 'Criar conta' }"
     :loading="submitting"
