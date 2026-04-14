@@ -27,7 +27,9 @@ export type WorkshopBootstrapResponse = {
   roleActions: WorkshopRoleAction[]
   permissions: PermissionMap
   organizationId: string | null
+  isOwner: boolean
   isAdmin: boolean
+  onboardingCompleted: boolean
   terminated: boolean
   termination_date: string | null
   termination_reason: string | null

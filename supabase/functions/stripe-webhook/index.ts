@@ -1,6 +1,26 @@
 import Stripe from 'npm:stripe@20.4.0'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
+// ---------------------------------------------------------------------------
+// stripe-webhook — Supabase Edge Function
+//
+// Single authoritative webhook handler. Runs independently of the Nuxt app
+// so payments are processed even during app deployments/restarts.
+//
+// Handles:
+//   checkout.session.completed       → create org + link user + subscription
+//   customer.subscription.*          → sync stripe_subscriptions table
+//   invoice.paid                     → sync stripe_invoices + activate org
+//   invoice.payment_failed           → sync stripe_invoices + suspend org
+//   invoice.*  (other)               → sync stripe_invoices table
+//
+// Env vars required (set in Supabase dashboard → Edge Functions → Secrets):
+//   SUPABASE_URL
+//   SUPABASE_SERVICE_ROLE_KEY
+//   STRIPE_SECRET_KEY
+//   STRIPE_WEBHOOK_SECRET
+// ---------------------------------------------------------------------------
+
 type Env = {
   SUPABASE_URL: string
   SUPABASE_SERVICE_ROLE_KEY: string
@@ -20,66 +40,520 @@ function getEnv(): Env {
   return { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET }
 }
 
-function toIso(seconds: number | null | undefined) {
-  if (!seconds)
-    return null
+function toIso(seconds: number | null | undefined): string | null {
+  if (!seconds) return null
   return new Date(seconds * 1000).toISOString()
 }
 
-async function safeInsertNotification(
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+async function resolveUserId(
   supabase: ReturnType<typeof createClient>,
-  payload: {
-    user_id: string
-    body: string
-    link_path?: string | null
-    sender_name?: string | null
-    sender_email?: string | null
-    sender_avatar_url?: string | null
-    metadata?: Record<string, unknown>
+  opts: { clientReferenceId?: string | null, userIdMeta?: string | null, stripeCustomerId?: string | null }
+): Promise<string | null> {
+  // 1. Prefer explicit user_id from session metadata / client_reference_id
+  const explicit = opts.clientReferenceId || opts.userIdMeta
+  if (explicit) return explicit
+
+  // 2. Fallback: look up by stripe_customer_id stored in user_profiles
+  if (opts.stripeCustomerId) {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('user_id')
+      .eq('stripe_customer_id', opts.stripeCustomerId)
+      .maybeSingle<{ user_id: string }>()
+
+    if (data?.user_id) return data.user_id
+
+    // 3. Fallback: legacy stripe_customers table (may exist from billing/checkout.post.ts)
+    const { data: sc } = await supabase
+      .from('stripe_customers')
+      .select('user_id')
+      .eq('stripe_customer_id', opts.stripeCustomerId)
+      .maybeSingle<{ user_id: string }>()
+
+    if (sc?.user_id) return sc.user_id
+  }
+
+  return null
+}
+
+async function ensureOrganization(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  userEmail: string | null
+): Promise<string | null> {
+  // Load current profile
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('id, organization_id, role_id, display_name, email')
+    .eq('user_id', userId)
+    .maybeSingle<{
+      id: string
+      organization_id: string | null
+      role_id: string | null
+      display_name: string | null
+      email: string | null
+    }>()
+
+  if (!profile) {
+    console.error(`[stripe-webhook] User profile not found for user_id=${userId}`)
+    return null
+  }
+
+  // Already has org — nothing to do
+  if (profile.organization_id) return profile.organization_id
+
+  // Create organization
+  const email = profile.email || userEmail || null
+  const displayName = profile.display_name || email?.split('@')[0] || 'Oficina'
+  const orgName = `${displayName}`
+
+  const { data: org, error: orgErr } = await supabase
+    .from('organizations')
+    .insert({
+      name: orgName,
+      email,
+      active: true,
+      created_by: 'stripe-webhook'
+    })
+    .select('id')
+    .single<{ id: string }>()
+
+  if (orgErr || !org) {
+    console.error('[stripe-webhook] Failed to create organization:', orgErr?.message)
+    return null
+  }
+
+  // Resolve admin role
+  let roleId = profile.role_id
+  if (!roleId) {
+    const { data: adminRole } = await supabase
+      .from('roles')
+      .select('id')
+      .eq('name', 'admin')
+      .eq('is_system_role', true)
+      .maybeSingle<{ id: string }>()
+
+    roleId = adminRole?.id ?? null
+  }
+
+  // Link org + role to user profile
+  await supabase
+    .from('user_profiles')
+    .update({
+      organization_id: org.id,
+      role_id: roleId,
+      updated_by: 'stripe-webhook'
+    })
+    .eq('id', profile.id)
+
+  console.log(`[stripe-webhook] Organization created and linked: ${org.id} → user ${userId}`)
+  return org.id
+}
+
+async function upsertOrgSubscription(
+  supabase: ReturnType<typeof createClient>,
+  opts: {
+    organizationId: string
+    userEmail: string | null
+    status: string
+    stripeCustomerId: string | null
+    stripeSubscriptionId: string | null
+    planName: string | null
+    monthlyAmount: number | null
+    startDate: string | null
+    nextPaymentDate: string | null
   }
 ) {
-  try {
-    const { error } = await supabase
-      .from('notifications')
-      .insert({
-        user_id: payload.user_id,
-        type: 'system',
-        body: payload.body,
-        link_path: payload.link_path ?? null,
-        sender_name: payload.sender_name ?? 'Kortex',
-        sender_email: payload.sender_email ?? null,
-        sender_avatar_url: payload.sender_avatar_url ?? null,
-        metadata: payload.metadata ?? {}
+  const { data: existing } = await supabase
+    .from('subscriptions')
+    .select('id')
+    .eq('organization_id', opts.organizationId)
+    .maybeSingle<{ id: string }>()
+
+  if (existing) {
+    await supabase
+      .from('subscriptions')
+      .update({
+        status: opts.status,
+        stripe_customer_id: opts.stripeCustomerId,
+        stripe_subscription_id: opts.stripeSubscriptionId,
+        plan_name: opts.planName,
+        monthly_amount: opts.monthlyAmount,
+        next_payment_date: opts.nextPaymentDate,
+        updated_by: 'stripe-webhook'
       })
+      .eq('id', existing.id)
+  } else {
+    await supabase
+      .from('subscriptions')
+      .insert({
+        organization_id: opts.organizationId,
+        user_email: opts.userEmail || '',
+        status: opts.status,
+        stripe_customer_id: opts.stripeCustomerId,
+        stripe_subscription_id: opts.stripeSubscriptionId,
+        plan_name: opts.planName,
+        monthly_amount: opts.monthlyAmount,
+        start_date: opts.startDate,
+        next_payment_date: opts.nextPaymentDate,
+        created_by: 'stripe-webhook'
+      })
+  }
+}
 
-    if (!error)
-      return
+async function upsertStripeSubscription(
+  supabase: ReturnType<typeof createClient>,
+  subscription: Stripe.Subscription,
+  userId: string | null
+) {
+  const customerId = typeof subscription.customer === 'string'
+    ? subscription.customer
+    : subscription.customer?.id ?? null
 
-    // Backwards-compat (if DB still has is_system)
+  const resolvedUserId = userId
+    || (subscription.metadata?.user_id ?? null)
+    || (subscription.metadata?.supabase_user_id ?? null)
+
+  if (!resolvedUserId) return
+
+  if (customerId) {
+    // Best-effort: store in legacy stripe_customers table if it exists
+    await supabase
+      .from('stripe_customers')
+      .upsert({ user_id: resolvedUserId, stripe_customer_id: customerId }, { onConflict: 'user_id' })
+      .then(() => {/* ignore errors — table may not exist */})
+  }
+
+  const item = subscription.items.data?.[0]
+
+  await supabase
+    .from('stripe_subscriptions')
+    .upsert({
+      user_id: resolvedUserId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subscription.id,
+      status: subscription.status,
+      price_id: item?.price?.id ?? null,
+      quantity: item?.quantity ?? null,
+      cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+      current_period_start: toIso(subscription.current_period_start),
+      current_period_end: toIso(subscription.current_period_end),
+      canceled_at: toIso(subscription.canceled_at),
+      metadata: subscription.metadata ?? {}
+    }, { onConflict: 'stripe_subscription_id' })
+}
+
+async function upsertStripeInvoice(
+  supabase: ReturnType<typeof createClient>,
+  invoice: Stripe.Invoice
+) {
+  const customerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id ?? null
+
+  if (!customerId) return
+
+  // Resolve user_id
+  const { data: profileRow } = await supabase
+    .from('user_profiles')
+    .select('user_id')
+    .eq('stripe_customer_id', customerId)
+    .maybeSingle<{ user_id: string }>()
+
+  let userId = profileRow?.user_id ?? null
+
+  if (!userId) {
+    const { data: sc } = await supabase
+      .from('stripe_customers')
+      .select('user_id')
+      .eq('stripe_customer_id', customerId)
+      .maybeSingle<{ user_id: string }>()
+
+    userId = sc?.user_id ?? null
+  }
+
+  if (!userId) return
+
+  const subId = typeof invoice.subscription === 'string'
+    ? invoice.subscription
+    : invoice.subscription?.id ?? null
+
+  const line = invoice.lines?.data?.[0]
+
+  await supabase
+    .from('stripe_invoices')
+    .upsert({
+      user_id: userId,
+      stripe_customer_id: customerId,
+      stripe_subscription_id: subId,
+      stripe_invoice_id: invoice.id,
+      status: invoice.status ?? null,
+      currency: invoice.currency ?? null,
+      total: invoice.total ?? null,
+      amount_due: invoice.amount_due ?? null,
+      amount_paid: invoice.amount_paid ?? null,
+      amount_remaining: invoice.amount_remaining ?? null,
+      invoice_number: invoice.number ?? null,
+      hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+      invoice_pdf: invoice.invoice_pdf ?? null,
+      collection_method: invoice.collection_method ?? null,
+      due_date: toIso(invoice.due_date),
+      period_start: toIso(line?.period?.start),
+      period_end: toIso(line?.period?.end),
+      paid: invoice.paid ?? null,
+      created: toIso(invoice.created),
+      data: invoice as unknown as Record<string, unknown>
+    }, { onConflict: 'stripe_invoice_id' })
+}
+
+async function sendNotification(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  body: string,
+  linkPath: string,
+  metadata: Record<string, unknown> = {}
+) {
+  try {
     await supabase
       .from('notifications')
       .insert({
-        user_id: payload.user_id,
-        is_system: true,
-        body: payload.body,
-        link_path: payload.link_path ?? null,
-        sender_name: payload.sender_name ?? 'Kortex',
-        sender_email: payload.sender_email ?? null,
-        sender_avatar_url: payload.sender_avatar_url ?? null,
-        metadata: payload.metadata ?? {}
-      } as unknown as Record<string, unknown>)
+        user_id: userId,
+        type: 'system',
+        body,
+        link_path: linkPath,
+        sender_name: 'beenk',
+        metadata
+      })
   } catch {
-    // best-effort
+    // best-effort — notifications are non-critical
   }
 }
+
+// ---------------------------------------------------------------------------
+// Event handlers
+// ---------------------------------------------------------------------------
+
+async function onCheckoutCompleted(
+  session: Stripe.Checkout.Session,
+  supabase: ReturnType<typeof createClient>,
+  stripe: Stripe
+) {
+  const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null
+  const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null
+
+  const userId = await resolveUserId(supabase, {
+    clientReferenceId: session.client_reference_id,
+    userIdMeta: session.metadata?.user_id,
+    stripeCustomerId: customerId
+  })
+
+  if (!userId) {
+    console.error('[stripe-webhook] checkout.session.completed: could not resolve user_id')
+    return
+  }
+
+  const userEmail = session.metadata?.user_email ?? session.customer_email ?? null
+
+  // Store stripe_customer_id on user_profiles for future lookups
+  if (customerId) {
+    await supabase
+      .from('user_profiles')
+      .update({ stripe_customer_id: customerId })
+      .eq('user_id', userId)
+      .is('stripe_customer_id', null)
+  }
+
+  // Create organization if needed
+  const organizationId = await ensureOrganization(supabase, userId, userEmail)
+  if (!organizationId) return
+
+  // Sync stripe_subscriptions table
+  if (subId) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(subId, {
+        expand: ['items.data.price.product']
+      })
+
+      await upsertStripeSubscription(supabase, sub, userId)
+
+      // Upsert workshop subscriptions table
+      const item = sub.items.data[0]
+      const price = item?.price
+      const product = price?.product
+      const planName = typeof product === 'object' && product !== null && 'name' in product
+        ? (product as { name: string }).name
+        : null
+
+      await upsertOrgSubscription(supabase, {
+        organizationId,
+        userEmail,
+        status: 'active',
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subId,
+        planName,
+        monthlyAmount: price?.unit_amount ? price.unit_amount / 100 : null,
+        startDate: toIso(sub.current_period_start),
+        nextPaymentDate: toIso(sub.current_period_end)
+      })
+    } catch (err) {
+      console.warn('[stripe-webhook] Could not retrieve subscription details:', err)
+    }
+  }
+
+  await sendNotification(supabase, userId, 'Sua assinatura foi ativada. Bem-vindo!', '/app/settings/subscription', {
+    stripe_subscription_id: subId,
+    stripe_customer_id: customerId
+  })
+}
+
+async function onSubscriptionEvent(
+  subscription: Stripe.Subscription,
+  eventType: string,
+  supabase: ReturnType<typeof createClient>
+) {
+  const customerId = typeof subscription.customer === 'string'
+    ? subscription.customer
+    : subscription.customer?.id ?? null
+
+  const userId = await resolveUserId(supabase, {
+    userIdMeta: subscription.metadata?.user_id || subscription.metadata?.supabase_user_id,
+    stripeCustomerId: customerId
+  })
+
+  await upsertStripeSubscription(supabase, subscription, userId)
+
+  // Sync org subscription status
+  const { data: orgSub } = await supabase
+    .from('subscriptions')
+    .select('id, organization_id')
+    .eq('stripe_subscription_id', subscription.id)
+    .maybeSingle<{ id: string, organization_id: string }>()
+
+  if (orgSub) {
+    const statusMap: Record<string, string> = {
+      active: 'active', trialing: 'active',
+      past_due: 'suspended', unpaid: 'suspended',
+      canceled: 'cancelled', incomplete: 'suspended',
+      incomplete_expired: 'cancelled', paused: 'suspended'
+    }
+
+    const newStatus = statusMap[subscription.status] ?? 'suspended'
+    const isActive = newStatus === 'active'
+
+    await Promise.all([
+      supabase.from('subscriptions').update({
+        status: newStatus,
+        next_payment_date: toIso(subscription.current_period_end),
+        updated_by: 'stripe-webhook'
+      }).eq('id', orgSub.id),
+      supabase.from('organizations').update({
+        active: isActive,
+        updated_by: 'stripe-webhook'
+      }).eq('id', orgSub.organization_id)
+    ])
+  }
+
+  if (userId) {
+    if (eventType === 'customer.subscription.deleted') {
+      await sendNotification(supabase, userId, 'Sua assinatura foi cancelada.', '/app/settings/subscription', {
+        stripe_subscription_id: subscription.id
+      })
+    }
+    if (eventType === 'customer.subscription.updated' && subscription.cancel_at_period_end) {
+      await sendNotification(supabase, userId, 'Cancelamento agendado para o fim do período de cobrança.', '/app/settings/subscription', {
+        stripe_subscription_id: subscription.id
+      })
+    }
+  }
+}
+
+async function onInvoicePaid(
+  invoice: Stripe.Invoice,
+  supabase: ReturnType<typeof createClient>,
+  stripe: Stripe
+) {
+  await upsertStripeInvoice(supabase, invoice)
+
+  const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id ?? null
+  if (subId) {
+    const sub = await stripe.subscriptions.retrieve(subId)
+    const userId = await resolveUserId(supabase, {
+      userIdMeta: sub.metadata?.user_id || sub.metadata?.supabase_user_id,
+      stripeCustomerId: typeof sub.customer === 'string' ? sub.customer : sub.customer?.id ?? null
+    })
+    await upsertStripeSubscription(supabase, sub, userId)
+  }
+
+  // Ensure org stays active
+  const { data: orgSub } = await supabase
+    .from('subscriptions')
+    .select('id, organization_id')
+    .eq('stripe_subscription_id', subId ?? '')
+    .maybeSingle<{ id: string, organization_id: string }>()
+
+  if (orgSub) {
+    await Promise.all([
+      supabase.from('subscriptions').update({ status: 'active', updated_by: 'stripe-webhook' }).eq('id', orgSub.id),
+      supabase.from('organizations').update({ active: true, updated_by: 'stripe-webhook' }).eq('id', orgSub.organization_id)
+    ])
+  }
+
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null
+  const userId = await resolveUserId(supabase, { stripeCustomerId: customerId })
+  if (userId) {
+    await sendNotification(supabase, userId, 'Pagamento confirmado. Sua fatura está disponível.', '/app/settings/subscription', {
+      stripe_invoice_id: invoice.id
+    })
+  }
+}
+
+async function onInvoicePaymentFailed(
+  invoice: Stripe.Invoice,
+  supabase: ReturnType<typeof createClient>
+) {
+  await upsertStripeInvoice(supabase, invoice)
+
+  const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id ?? null
+
+  const { data: orgSub } = await supabase
+    .from('subscriptions')
+    .select('id, organization_id')
+    .eq('stripe_subscription_id', subId ?? '')
+    .maybeSingle<{ id: string, organization_id: string }>()
+
+  if (orgSub) {
+    await supabase
+      .from('subscriptions')
+      .update({ status: 'suspended', updated_by: 'stripe-webhook' })
+      .eq('id', orgSub.id)
+  }
+
+  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null
+  const userId = await resolveUserId(supabase, { stripeCustomerId: customerId })
+  if (userId) {
+    await sendNotification(supabase, userId, 'Falha no pagamento. Atualize sua forma de pagamento.', '/app/settings/subscription', {
+      stripe_invoice_id: invoice.id
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Entry point
+// ---------------------------------------------------------------------------
 
 Deno.serve(async (req) => {
   try {
     const env = getEnv()
+
     const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
       httpClient: Stripe.createFetchHttpClient(),
       cryptoProvider: Stripe.createSubtleCryptoProvider()
     })
+
     const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
 
     const signature = req.headers.get('stripe-signature')
@@ -88,224 +562,47 @@ Deno.serve(async (req) => {
 
     const payload = await req.text()
     let event: Stripe.Event
+
     try {
-      event = stripe.webhooks.constructEvent(payload, signature, env.STRIPE_WEBHOOK_SECRET)
+      event = await stripe.webhooks.constructEventAsync(payload, signature, env.STRIPE_WEBHOOK_SECRET)
     } catch {
       return new Response('Invalid signature', { status: 400 })
     }
 
-    const upsertSubscription = async (subscription: Stripe.Subscription, supabaseUserId: string | null) => {
-      const stripeCustomerId = typeof subscription.customer === 'string'
-        ? subscription.customer
-        : subscription.customer?.id
+    console.log(`[stripe-webhook] Event: ${event.type} (${event.id})`)
 
-      let userId = supabaseUserId || (subscription.metadata?.supabase_user_id ?? null)
+    switch (event.type) {
+      case 'checkout.session.completed':
+        await onCheckoutCompleted(event.data.object as Stripe.Checkout.Session, supabase, stripe)
+        break
 
-      if (!userId && stripeCustomerId) {
-        const { data } = await supabase
-          .from('stripe_customers')
-          .select('user_id')
-          .eq('stripe_customer_id', stripeCustomerId)
-          .maybeSingle<{ user_id: string }>()
+      case 'customer.subscription.created':
+      case 'customer.subscription.updated':
+      case 'customer.subscription.deleted':
+        await onSubscriptionEvent(event.data.object as Stripe.Subscription, event.type, supabase)
+        break
 
-        userId = data?.user_id ?? null
-      }
+      case 'invoice.paid':
+      case 'invoice.payment_succeeded':
+        await onInvoicePaid(event.data.object as Stripe.Invoice, supabase, stripe)
+        break
 
-      if (!userId)
-        return
+      case 'invoice.payment_failed':
+        await onInvoicePaymentFailed(event.data.object as Stripe.Invoice, supabase)
+        break
 
-      if (stripeCustomerId) {
-        await supabase
-          .from('stripe_customers')
-          .upsert({ user_id: userId, stripe_customer_id: stripeCustomerId }, { onConflict: 'user_id' })
-      }
-
-      const item = subscription.items.data?.[0]
-
-      await supabase
-        .from('stripe_subscriptions')
-        .upsert({
-          user_id: userId,
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: subscription.id,
-          status: subscription.status,
-          price_id: item?.price?.id ?? null,
-          quantity: item?.quantity ?? null,
-          cancel_at_period_end: subscription.cancel_at_period_end ?? false,
-          current_period_start: toIso(subscription.current_period_start),
-          current_period_end: toIso(subscription.current_period_end),
-          canceled_at: toIso(subscription.canceled_at),
-          metadata: subscription.metadata ?? {}
-        }, { onConflict: 'stripe_subscription_id' })
-    }
-
-    const upsertInvoice = async (invoice: Stripe.Invoice) => {
-      const stripeCustomerId = typeof invoice.customer === 'string'
-        ? invoice.customer
-        : invoice.customer?.id
-
-      if (!stripeCustomerId)
-        return
-
-      const { data: customerRow } = await supabase
-        .from('stripe_customers')
-        .select('user_id')
-        .eq('stripe_customer_id', stripeCustomerId)
-        .maybeSingle<{ user_id: string }>()
-
-      const userId = customerRow?.user_id
-      if (!userId)
-        return
-
-      const stripeSubscriptionId = typeof invoice.subscription === 'string'
-        ? invoice.subscription
-        : invoice.subscription?.id
-
-      const line = invoice.lines?.data?.[0]
-      const periodStart = line?.period?.start
-      const periodEnd = line?.period?.end
-
-      await supabase
-        .from('stripe_invoices')
-        .upsert({
-          user_id: userId,
-          stripe_customer_id: stripeCustomerId,
-          stripe_subscription_id: stripeSubscriptionId ?? null,
-          stripe_invoice_id: invoice.id,
-          status: invoice.status ?? null,
-          currency: invoice.currency ?? null,
-          total: invoice.total ?? null,
-          amount_due: invoice.amount_due ?? null,
-          amount_paid: invoice.amount_paid ?? null,
-          amount_remaining: invoice.amount_remaining ?? null,
-          invoice_number: invoice.number ?? null,
-          hosted_invoice_url: invoice.hosted_invoice_url ?? null,
-          invoice_pdf: invoice.invoice_pdf ?? null,
-          collection_method: invoice.collection_method ?? null,
-          due_date: toIso(invoice.due_date),
-          period_start: toIso(periodStart),
-          period_end: toIso(periodEnd),
-          paid: invoice.paid ?? null,
-          created: toIso(invoice.created),
-          data: invoice as unknown as Record<string, unknown>
-        }, { onConflict: 'stripe_invoice_id' })
-    }
-
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session
-      const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id
-      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id
-      const supabaseUserId = (session.client_reference_id || (session.metadata?.supabase_user_id ?? null)) as string | null
-
-      if (supabaseUserId && customerId) {
-        await supabase
-          .from('stripe_customers')
-          .upsert({ user_id: supabaseUserId, stripe_customer_id: customerId }, { onConflict: 'user_id' })
-      }
-
-      if (subscriptionId) {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-        await upsertSubscription(subscription, supabaseUserId)
-
-        if (supabaseUserId) {
-          await safeInsertNotification(supabase, {
-            user_id: supabaseUserId,
-            body: 'Assinatura iniciada com sucesso.',
-            link_path: '/app/settings/subscription',
-            metadata: {
-              stripe_subscription_id: subscription.id,
-              stripe_customer_id: customerId
-            }
-          })
+      default:
+        if (event.type.startsWith('invoice.')) {
+          await upsertStripeInvoice(supabase, event.data.object as Stripe.Invoice)
         }
-      }
-    }
-
-    if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated' || event.type === 'customer.subscription.deleted') {
-      const subscription = event.data.object as Stripe.Subscription
-      await upsertSubscription(subscription, null)
-
-      const stripeCustomerId = typeof subscription.customer === 'string'
-        ? subscription.customer
-        : subscription.customer?.id
-
-      if (stripeCustomerId) {
-        const { data } = await supabase
-          .from('stripe_customers')
-          .select('user_id')
-          .eq('stripe_customer_id', stripeCustomerId)
-          .maybeSingle<{ user_id: string }>()
-
-        const userId = data?.user_id
-        if (userId) {
-          if (event.type === 'customer.subscription.deleted') {
-            await safeInsertNotification(supabase, {
-              user_id: userId,
-              body: 'Sua assinatura foi cancelada.',
-              link_path: '/app/settings/subscription',
-              metadata: { stripe_subscription_id: subscription.id }
-            })
-          }
-
-          if (event.type === 'customer.subscription.updated' && subscription.cancel_at_period_end) {
-            await safeInsertNotification(supabase, {
-              user_id: userId,
-              body: 'Cancelamento da assinatura agendado para o fim do período.',
-              link_path: '/app/settings/subscription',
-              metadata: { stripe_subscription_id: subscription.id }
-            })
-          }
-        }
-      }
-    }
-
-    if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
-      const invoice = event.data.object as Stripe.Invoice
-      await upsertInvoice(invoice)
-
-      const stripeCustomerId = typeof invoice.customer === 'string'
-        ? invoice.customer
-        : invoice.customer?.id
-
-      if (stripeCustomerId) {
-        const { data: customerRow } = await supabase
-          .from('stripe_customers')
-          .select('user_id')
-          .eq('stripe_customer_id', stripeCustomerId)
-          .maybeSingle<{ user_id: string }>()
-
-        const userId = customerRow?.user_id
-        if (userId) {
-          await safeInsertNotification(supabase, {
-            user_id: userId,
-            body: event.type === 'invoice.paid'
-              ? 'Pagamento confirmado. Sua fatura está disponível.'
-              : 'Falha no pagamento. Atualize sua forma de pagamento.',
-            link_path: '/app/settings/subscription',
-            metadata: {
-              stripe_invoice_id: invoice.id,
-              stripe_subscription_id: typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id
-            }
-          })
-        }
-      }
-
-      const subscriptionId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id
-      if (subscriptionId) {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId)
-        await upsertSubscription(subscription, null)
-      }
-    }
-
-    if (event.type.startsWith('invoice.') && event.type !== 'invoice.paid' && event.type !== 'invoice.payment_failed') {
-      const invoice = event.data.object as Stripe.Invoice
-      await upsertInvoice(invoice)
+        break
     }
 
     return new Response(JSON.stringify({ received: true }), {
       headers: { 'content-type': 'application/json' }
     })
-  } catch {
+  } catch (err) {
+    console.error('[stripe-webhook] Unhandled error:', err)
     return new Response('Internal error', { status: 500 })
   }
 })

@@ -48,7 +48,9 @@ export default eventHandler(async (event) => {
   const userRole = roleResult.data ?? null
   const employee = employeeResult.data ?? null
   const roles = rolesResult.data ?? []
-  const isAdmin = userRole?.name === 'admin' || userRole?.is_system_role === true
+  const isOwner = profile.is_owner === true
+  const isAdmin = isOwner || userRole?.name === 'admin' || userRole?.is_system_role === true
+  const onboardingCompleted = organization ? (organization as Record<string, unknown>).onboarding_completed === true : false
 
   if (employee?.termination_date) {
     const terminationDate = new Date(employee.termination_date)
@@ -63,10 +65,12 @@ export default eventHandler(async (event) => {
         roleActions: [],
         permissions: {},
         organizationId,
+        isOwner,
         isAdmin,
         terminated: true,
         termination_date: employee.termination_date ?? null,
         termination_reason: employee.termination_reason ?? null,
+        onboardingCompleted,
         user: profile,
         role: userRole
       }
@@ -103,10 +107,12 @@ export default eventHandler(async (event) => {
     roleActions,
     permissions,
     organizationId,
+    isOwner,
     isAdmin,
     terminated: false,
     termination_date: null,
     termination_reason: null,
+    onboardingCompleted,
     user: profile,
     role: userRole
   }

@@ -33,6 +33,7 @@ export default defineNuxtConfig({
     supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
 
     stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+    stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     stripeAllowedPriceIds: process.env.STRIPE_ALLOWED_PRICE_IDS,
     stripeBillingPortalConfigurationId:
       process.env.STRIPE_BILLING_PORTAL_CONFIGURATION_ID,
@@ -57,7 +58,9 @@ export default defineNuxtConfig({
         && process.env.NUXT_PUBLIC_POSTHOG_ENABLED === 'true',
       posthogHost:
         process.env.NUXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
-      posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY ?? ''
+      posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY ?? '',
+      stripeStarterPriceId: process.env.NUXT_PUBLIC_STRIPE_PRICE_ID_STARTER ?? '',
+      stripeProPriceId: process.env.NUXT_PUBLIC_STRIPE_PRICE_ID_PRO ?? ''
     }
   },
 
@@ -65,6 +68,7 @@ export default defineNuxtConfig({
     '/docs': { redirect: '/docs/getting-started', prerender: false },
     '/app': { prerender: false },
     '/app/**': { prerender: false },
+    '/checkout/**': { prerender: false },
     '/api/**': {
       cors: true
     }

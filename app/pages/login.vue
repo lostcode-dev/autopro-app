@@ -2,6 +2,8 @@
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { useAuth } from '~/composables/useAuth'
+import { useWorkshopBootstrap } from '~/composables/useWorkshopBootstrap'
+import { resolveAuthenticatedDestination } from '~/middleware/auth.global'
 import { PostHogEvent } from '~/types/analytics'
 
 definePageMeta({
@@ -15,6 +17,7 @@ useSeoMeta({
 
 const toast = useToast()
 const auth = useAuth()
+const bootstrap = useWorkshopBootstrap()
 const router = useRouter()
 const { capture } = usePostHog()
 const rememberedEmail = useCookie<string | null>('remembered-login-email', {
@@ -73,13 +76,15 @@ async function onSubmit(payload?: FormSubmitEvent<Schema>) {
       remember: payload.data.remember ?? true
     })
 
+    await bootstrap.fetchBootstrap(true)
+
     toast.add({
       title: 'Login realizado',
       description: 'Bem-vindo de volta!',
       color: 'success'
     })
 
-    await router.push('/app')
+    await router.push(resolveAuthenticatedDestination(bootstrap))
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível entrar'

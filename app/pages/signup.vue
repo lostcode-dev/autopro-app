@@ -90,7 +90,7 @@ async function onSubmit(payload: FormSubmitEvent<Schema>) {
       description: 'Você já está logado.',
       color: 'success'
     })
-    await router.push('/app')
+    await router.push('/subscription')
   } catch (error: unknown) {
     const err = error as FetchErrorLike
 

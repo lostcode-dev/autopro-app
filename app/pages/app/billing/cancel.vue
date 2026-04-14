@@ -1,11 +1,6 @@
 <script setup lang="ts">
-definePageMeta({ layout: 'app' })
+// Redirect immediately — the user cancelled Stripe checkout so they have no
+// organization yet, meaning /app/** is inaccessible. Send them back to the
+// subscription selection screen.
+await navigateTo('/subscription', { replace: true })
 </script>
-
-<template>
-  <WorkshopPagePlaceholder
-    title="Pagamento cancelado"
-    description="Callback de cancelamento do checkout e assinatura."
-    legacy-source="old_project/src/pages/PagamentoCancelado.jsx"
-  />
-</template>

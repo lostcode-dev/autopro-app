@@ -34,7 +34,9 @@ export function useWorkshopBootstrap() {
   const roleActions = computed(() => data.value?.roleActions ?? [])
   const permissions = computed<PermissionMap>(() => data.value?.permissions ?? getEmptyPermissions())
   const organizationId = computed(() => data.value?.organizationId ?? currentUser.value?.organization_id ?? null)
+  const isOwner = computed(() => data.value?.isOwner === true)
   const isAdmin = computed(() => data.value?.isAdmin === true)
+  const isOnboardingComplete = computed(() => data.value?.onboardingCompleted === true)
   const terminated = computed(() => data.value?.terminated === true)
   const ready = computed(() => state.value.ready)
   const pending = computed(() => state.value.pending)
@@ -118,7 +120,9 @@ export function useWorkshopBootstrap() {
     roleActions,
     permissions,
     organizationId,
+    isOwner,
     isAdmin,
+    isOnboardingComplete,
     terminated,
     ready,
     pending,

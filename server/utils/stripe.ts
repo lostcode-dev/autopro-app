@@ -19,6 +19,18 @@ export function getStripe() {
   return stripeClient
 }
 
+export function getStripeWebhookSecret(): string {
+  const config = useRuntimeConfig()
+  const secret = config.stripeWebhookSecret
+  if (!secret) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'Stripe webhook secret is not configured'
+    })
+  }
+  return String(secret)
+}
+
 export function getAllowedStripePriceIds() {
   const config = useRuntimeConfig()
   const raw = config.stripeAllowedPriceIds
