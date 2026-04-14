@@ -34,14 +34,8 @@ export default eventHandler(async (event) => {
       ? supabase.from('employees').select('*').eq('id', profile.employee_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     organizationId
-      ? supabase
-          .from('roles')
-          .select('*')
-          .or(`organization_id.eq.${organizationId},is_system_role.eq.true`)
-      : supabase
-          .from('roles')
-          .select('*')
-          .eq('is_system_role', true)
+      ? supabase.from('roles').select('*').eq('organization_id', organizationId)
+      : Promise.resolve({ data: [], error: null })
   ])
 
   const organization = orgResult.data ?? null

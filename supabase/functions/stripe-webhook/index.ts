@@ -127,17 +127,51 @@ async function ensureOrganization(
     return null
   }
 
-  // Resolve admin role
+  // Ensure admin role exists for this organization
+  // roles.organization_id is NOT NULL, so every role must be org-scoped.
   let roleId = profile.role_id
-  if (!roleId) {
-    const { data: adminRole } = await supabase
-      .from('roles')
-      .select('id')
-      .eq('name', 'admin')
-      .eq('is_system_role', true)
-      .maybeSingle<{ id: string }>()
 
-    roleId = adminRole?.id ?? null
+  const { data: existingAdminRole } = await supabase
+    .from('roles')
+    .select('id')
+    .eq('organization_id', org.id)
+    .eq('name', 'admin')
+    .maybeSingle<{ id: string }>()
+
+  if (existingAdminRole) {
+    roleId = existingAdminRole.id
+  } else {
+    const { data: newRole, error: roleErr } = await supabase
+      .from('roles')
+      .insert({
+        organization_id: org.id,
+        name: 'admin',
+        display_name: 'Administrador',
+        description: 'Acesso total ao sistema. Criado automaticamente na assinatura.',
+        is_system_role: true,
+        created_by: 'stripe-webhook'
+      })
+      .select('id')
+      .single<{ id: string }>()
+
+    if (roleErr || !newRole) {
+      console.error('[stripe-webhook] Failed to create admin role:', roleErr?.message)
+    } else {
+      roleId = newRole.id
+
+      // Grant all existing actions to the admin role
+      const { data: allActions } = await supabase.from('actions').select('id')
+      if (allActions?.length) {
+        await supabase.from('role_actions').insert(
+          (allActions as { id: string }[]).map(a => ({
+            role_id: roleId!,
+            action_id: a.id,
+            is_granted: true,
+            created_by: 'stripe-webhook'
+          }))
+        )
+      }
+    }
   }
 
   // Link org + role to user profile
