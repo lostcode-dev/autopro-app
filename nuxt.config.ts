@@ -100,10 +100,10 @@ export default defineNuxtConfig({
   pwa: {
     registerType: 'autoUpdate',
     manifest: {
-      name: 'Kortex',
-      short_name: 'Kortex',
+      name: 'AutoPro',
+      short_name: 'AutoPro',
       description:
-        'Sistema pessoal de conhecimento para capturar, organizar e transformar ideias em ação.',
+        'Sistema para oficinas mecanicas com ordens de servico, clientes, veiculos, estoque, financeiro e operacao administrativa.',
       theme_color: '#9333ea',
       background_color: '#f8fafc',
       display: 'standalone',
@@ -111,7 +111,7 @@ export default defineNuxtConfig({
       scope: '/',
       start_url: '/app',
       lang: 'pt-BR',
-      categories: ['productivity', 'lifestyle'],
+      categories: ['productivity', 'business'],
       icons: [
         {
           src: '/icons/icon-72x72.png',

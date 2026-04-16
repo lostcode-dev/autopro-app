@@ -7,6 +7,7 @@
  */
 
 import { execSync } from 'child_process'
+import { fileURLToPath } from 'url'
 import { readFile } from 'fs/promises'
 
 // Check if sharp is available, install temporarily if not
@@ -22,10 +23,11 @@ const sharp = (await import('sharp')).default
 const sizes = [72, 96, 128, 144, 152, 192, 384, 512]
 const maskableSizes = [192, 512]
 
-const svgIcon = await readFile(new URL('../public/icons/kortex-icon.svg', import.meta.url), 'utf8')
-const maskableSvg = await readFile(new URL('../public/icons/kortex-icon.svg', import.meta.url), 'utf8')
+const svgIcon = await readFile(new URL('../public/icons/autopro-icon.svg', import.meta.url), 'utf8')
+const maskableSvg = await readFile(new URL('../public/icons/autopro-icon.svg', import.meta.url), 'utf8')
 
-const outDir = new URL('../public/icons/', import.meta.url).pathname
+const outDir = fileURLToPath(new URL('../public/icons/', import.meta.url))
+const faviconPath = fileURLToPath(new URL('../public/favicon.ico', import.meta.url))
 
 for (const size of sizes) {
   const filename = `icon-${size}x${size}.png`
@@ -53,7 +55,7 @@ await sharp(Buffer.from(svgIcon))
 console.log('✓ apple-touch-icon.png')
 
 try {
-  execSync(`convert ${outDir}kortex-icon.svg -background none -define icon:auto-resize=16,32,48 ${new URL('../public/favicon.ico', import.meta.url).pathname}`, { stdio: 'ignore' })
+  execSync(`convert ${outDir}autopro-icon.svg -background none -define icon:auto-resize=16,32,48 ${faviconPath}`, { stdio: 'ignore' })
   console.log('✓ favicon.ico')
 } catch {
   console.log('! favicon.ico was not regenerated because ImageMagick `convert` is unavailable')

@@ -46,11 +46,11 @@ useHead({
     { name: 'format-detection', content: 'telephone=no' }
   ],
   link: [
-    { rel: 'icon', type: 'image/svg+xml', href: '/icons/beenk-icon.svg' },
+    { rel: 'icon', type: 'image/svg+xml', href: '/icons/autopro-icon.svg' },
     { rel: 'alternate icon', type: 'image/png', href: '/icons/icon-192x192.png' },
     { rel: 'shortcut icon', href: '/favicon.ico' },
     { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' },
-    { rel: 'mask-icon', href: '/icons/beenk-mono.svg', color: '#8b5cf6' }
+    { rel: 'mask-icon', href: '/icons/autopro-mono.svg', color: '#8b5cf6' }
   ],
   htmlAttrs: {
     lang: 'pt-BR'
