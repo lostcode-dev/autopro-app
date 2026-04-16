@@ -123,17 +123,7 @@ const statusOptions = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Agendamentos">
-        <template #right>
-          <UButton
-            v-if="canCreate"
-            label="Novo agendamento"
-            icon="i-lucide-plus"
-            color="neutral"
-            @click="openCreate()"
-          />
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Agendamentos"/>
     </template>
 
     <template #body>
@@ -143,7 +133,7 @@ const statusOptions = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.25rem] border border-default/90 bg-default shadow-sm">
         <!-- Calendar toolbar -->
         <AppointmentsCalendarHeader
           :view="calendarView"
