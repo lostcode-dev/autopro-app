@@ -221,7 +221,7 @@ function getPersonTypeLabel(personType: PersonType) {
 
 function formatContact(client: Client): string {
   const raw = client.phone || client.mobile_phone
-  return raw ? formatPhone(raw) : 'Telefone nao informado'
+  return raw ? formatPhone(raw) : 'Telefone não informado'
 }
 
 // Modal
@@ -249,14 +249,6 @@ function requestRemove(client: Client) {
   showDeleteModal.value = true
 }
 
-function closeDeleteModal() {
-  if (isDeleting.value)
-    return
-
-  showDeleteModal.value = false
-  clientPendingDeletion.value = null
-}
-
 async function remove(client: Client) {
   if (isDeleting.value)
     return
@@ -276,7 +268,7 @@ async function remove(client: Client) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel remover.',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover.',
       color: 'error'
     })
   } finally {
@@ -293,8 +285,8 @@ async function confirmRemove() {
 
 const personTypeFilterOptions = [
   { label: 'Todos os tipos', value: ALL_PERSON_TYPES_VALUE },
-  { label: 'Pessoa Fisica', value: 'pf' },
-  { label: 'Pessoa Juridica', value: 'pj' }
+  { label: 'Pessoa Física', value: 'pf' },
+  { label: 'Pessoa Jurídica', value: 'pj' }
 ]
 
 const lineColumns = [
@@ -302,7 +294,7 @@ const lineColumns = [
   { accessorKey: 'person_type', header: 'Tipo', enableSorting: true },
   { accessorKey: 'tax_id', header: 'CPF/CNPJ', enableSorting: true },
   { accessorKey: 'phone', header: 'Telefone', enableSorting: false },
-  { id: 'actions', header: 'Acoes', enableSorting: false }
+  { id: 'actions', header: 'Ações', enableSorting: false }
 ]
 </script>
 
@@ -325,7 +317,7 @@ const lineColumns = [
     <template #body>
       <div v-if="!canRead" class="p-6">
         <p class="text-sm text-muted">
-          Voce nao tem permissao para visualizar clientes.
+          Você não tem permissão para visualizar clientes.
         </p>
       </div>
 
@@ -373,7 +365,7 @@ const lineColumns = [
                     {{ row.original.name }}
                   </p>
                   <p class="truncate text-xs text-muted">
-                    {{ row.original.email || 'E-mail nao informado' }}
+                    {{ row.original.email || 'E-mail não informado' }}
                   </p>
                 </div>
               </div>
@@ -473,15 +465,15 @@ const lineColumns = [
                       </div>
                       <div class="flex items-center gap-2">
                         <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
-                        <span class="truncate">{{ client.email || 'E-mail nao informado' }}</span>
+                        <span class="truncate">{{ client.email || 'E-mail não informado' }}</span>
                       </div>
                       <div class="flex items-center gap-2">
                         <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
-                        <span class="truncate">{{ formatTaxId(client.tax_id as string | null, client.person_type as PersonType) || 'CPF/CNPJ nao informado' }}</span>
+                        <span class="truncate">{{ formatTaxId(client.tax_id as string | null, client.person_type as PersonType) || 'CPF/CNPJ não informado' }}</span>
                       </div>
                       <div class="flex items-center gap-2">
                         <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
-                        <span class="truncate">{{ [client.city, client.state].filter(Boolean).join(' / ') || 'Localizacao nao informada' }}</span>
+                        <span class="truncate">{{ [client.city, client.state].filter(Boolean).join(' / ') || 'Localização não informada' }}</span>
                       </div>
                     </div>
                   </div>
@@ -500,35 +492,21 @@ const lineColumns = [
     @saved="refresh"
   />
 
-  <UModal
-    :open="showDeleteModal"
+  <AppConfirmModal
+    v-model:open="showDeleteModal"
     title="Confirmar exclusão"
-    @update:open="value => !value && closeDeleteModal()"
+    confirm-label="Excluir cliente"
+    confirm-color="error"
+    :loading="isDeleting"
+    @confirm="confirmRemove"
+    @update:open="value => { showDeleteModal = value; if (!value && !isDeleting) clientPendingDeletion = null }"
   >
-    <template #body>
-      <div class="space-y-4">
-        <p class="text-sm text-muted">
-          Tem certeza que deseja excluir
-          <strong class="text-highlighted">{{ clientPendingDeletion?.name || 'este cliente' }}</strong>?
-          Esta acao nao pode ser desfeita.
-        </p>
-
-        <div class="flex justify-end gap-3">
-          <UButton
-            label="Cancelar"
-            color="neutral"
-            variant="ghost"
-            :disabled="isDeleting"
-            @click="closeDeleteModal"
-          />
-          <UButton
-            label="Excluir cliente"
-            color="error"
-            :loading="isDeleting"
-            @click="confirmRemove"
-          />
-        </div>
-      </div>
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir
+        <strong class="text-highlighted">{{ clientPendingDeletion?.name || 'este cliente' }}</strong>?
+        Esta ação não pode ser desfeita.
+      </p>
     </template>
-  </UModal>
+  </AppConfirmModal>
 </template>
