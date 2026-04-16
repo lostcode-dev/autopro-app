@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced } from "@vueuse/core";
-import type { SortingState } from "@tanstack/table-core";
+import type { RowSelectionState, SortingState } from "@tanstack/table-core";
 import { ActionCode } from "~/constants/action-codes";
 import type { Client, PersonType } from "~/types/clients";
 
@@ -265,7 +265,11 @@ watch(sorting, async () => {
 });
 
 function getClientInitial(name: string) {
-  return name.trim().charAt(0).toUpperCase() || "C";
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return 'C'
+  const first = parts[0]!.charAt(0).toUpperCase()
+  const last = parts.length > 1 ? parts[parts.length - 1]!.charAt(0).toUpperCase() : ''
+  return first + last
 }
 
 function getPersonTypeLabel(personType: PersonType) {
@@ -352,6 +356,92 @@ const lineColumns = [
   { id: 'actions', header: 'Ações', enableSorting: false },
 ]
 
+// ─── Seleção de linhas ──────────────────────────────────────────────────────
+
+const rowSelection = ref<RowSelectionState>({})
+const selectedIds = computed(() =>
+  Object.entries(rowSelection.value)
+    .filter(([, v]) => v)
+    .map(([id]) => id),
+)
+const selectedCount = computed(() => selectedIds.value.length)
+
+watch(viewMode, () => {
+  rowSelection.value = {}
+})
+
+// ─── Importação em massa ─────────────────────────────────────────────────────
+
+const showImportModal = ref(false)
+
+// ─── Exportação ──────────────────────────────────────────────────────────────
+
+async function exportCsv() {
+  try {
+    const all = await $fetch<ClientsResponse>('/api/clients', {
+      query: {
+        search: debouncedSearch.value || undefined,
+        person_type:
+          personTypeFilter.value !== ALL_PERSON_TYPES_VALUE
+            ? personTypeFilter.value
+            : undefined,
+        page: 1,
+        page_size: 2000,
+        sort_by: sorting.value[0]?.id || undefined,
+        sort_order: sorting.value[0]?.desc ? 'desc' : 'asc',
+      },
+    })
+    const items = all.items
+    if (!items.length) {
+      toast.add({ title: 'Nenhum cliente para exportar', color: 'warning' })
+      return
+    }
+    const headers = [
+      'nome', 'tipo_pessoa', 'email', 'telefone', 'celular',
+      'cpf_cnpj', 'cep', 'logradouro', 'numero', 'complemento',
+      'bairro', 'cidade', 'estado', 'observacoes',
+    ]
+    const rows = items.map((c) => [
+      c.name, c.person_type, c.email, c.phone, c.mobile_phone,
+      c.tax_id, c.zip_code, c.street, c.address_number, c.address_complement,
+      c.neighborhood, c.city, c.state, c.notes,
+    ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `clientes_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    toast.add({ title: 'Erro ao exportar', color: 'error' })
+  }
+}
+
+// ─── Exclusão em massa ────────────────────────────────────────────────────────
+
+const showBulkDeleteModal = ref(false)
+const isBulkDeleting = ref(false)
+
+async function confirmBulkDelete() {
+  if (!selectedIds.value.length || isBulkDeleting.value) return
+  isBulkDeleting.value = true
+  try {
+    await Promise.all(
+      selectedIds.value.map((id) => $fetch(`/api/clients/${id}`, { method: 'DELETE' })),
+    )
+    toast.add({ title: `${selectedIds.value.length} cliente(s) removido(s)`, color: 'success' })
+    rowSelection.value = {}
+    showBulkDeleteModal.value = false
+    await refresh()
+  } catch {
+    toast.add({ title: 'Erro ao excluir clientes', color: 'error' })
+  } finally {
+    isBulkDeleting.value = false
+  }
+}
+
 // ─── Veículos ────────────────────────────────────────────────────────────────
 
 const showVehiclesModal = ref(false)
@@ -376,17 +466,7 @@ function openHistoryModal(client: Client) {
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Clientes">
-        <template #right>
-          <UButton
-            v-if="canCreate"
-            label="Novo cliente"
-            icon="i-lucide-plus"
-            color="neutral"
-            @click="openCreate"
-          />
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Clientes" />
     </template>
 
     <template #body>
@@ -404,6 +484,7 @@ function openHistoryModal(client: Client) {
             v-model:page="page"
             v-model:page-size="pageSize"
             v-model:sorting="sorting"
+            v-model:row-selection="rowSelection"
             :columns="lineColumns"
             :data="clientItems"
             :loading-variant="viewMode === 'card' ? 'card' : 'row'"
@@ -421,12 +502,51 @@ function openHistoryModal(client: Client) {
             empty-title="Nenhum cliente encontrado"
             empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
           >
+            <template #toolbar-right>
+              <UTooltip text="Importar clientes">
+                <UButton
+                  icon="i-lucide-upload"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="showImportModal = true"
+                />
+              </UTooltip>
+              <UTooltip text="Exportar clientes">
+                <UButton
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="exportCsv"
+                />
+              </UTooltip>
+              <UTooltip v-if="canDelete" :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'">
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="outline"
+                  size="sm"
+                  :disabled="selectedCount === 0"
+                  @click="showBulkDeleteModal = true"
+                />
+              </UTooltip>
+              <UButton
+                v-if="canCreate"
+                label="Novo cliente"
+                icon="i-lucide-plus"
+                size="sm"
+                @click="openCreate"
+              />
+            </template>
+
             <template #filters>
               <USelectMenu
                 v-model="personTypeFilter"
                 :items="personTypeFilterOptions"
                 value-key="value"
                 class="w-full sm:w-52"
+                :search-input="false"
               />
             </template>
 
@@ -675,4 +795,26 @@ function openHistoryModal(client: Client) {
     v-model:open="showHistoryModal"
     :client="historyClient"
   />
+
+  <CustomersImportModal
+    v-model:open="showImportModal"
+    @imported="refresh"
+  />
+
+  <AppConfirmModal
+    v-model:open="showBulkDeleteModal"
+    title="Excluir clientes selecionados"
+    confirm-label="Excluir todos"
+    confirm-color="error"
+    :loading="isBulkDeleting"
+    @confirm="confirmBulkDelete"
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir
+        <strong class="text-highlighted">{{ selectedCount }} cliente(s)</strong>?
+        Esta ação não pode ser desfeita.
+      </p>
+    </template>
+  </AppConfirmModal>
 </template>

@@ -150,6 +150,7 @@ const currentRowSelection = computed({
   set: (value) => {
     internalRowSelection.value = value
     emit('update:rowSelection', value)
+    emit('update:row-selection' as never, value)
     emit('row-selection-change', value)
   }
 })
@@ -190,7 +191,7 @@ const effectiveLoadingVariant = computed(() =>
 )
 const showCardLoading = computed(() => props.loading && effectiveLoadingVariant.value === 'card')
 const hasToolbar = computed(() =>
-  props.showSearch || props.showViewModeToggle || Boolean(slots.filters)
+  props.showSearch || props.showViewModeToggle || Boolean(slots.filters) || Boolean(slots['toolbar-right'])
 )
 const cardColumns = computed(() =>
   props.columns.filter(column => !isActionsColumn(column) && getColumnKey(column) !== '__select')
@@ -200,7 +201,7 @@ const secondaryCardColumn = computed(() => cardColumns.value[1])
 const additionalCardColumns = computed(() => cardColumns.value.slice(2))
 const pageSizeSelectItems = computed(() =>
   props.pageSizeOptions.map(option => ({
-    label: `${option} por pagina`,
+    label: `${option} por página`,
     value: String(option)
   }))
 )
@@ -460,10 +461,10 @@ const emptyHeaderTableClass = 'shrink-0'
         <slot name="filters" />
 
         <div
-          v-if="showViewModeToggle"
-          class="sm:ml-auto"
+          v-if="showViewModeToggle || $slots['toolbar-right']"
+          class="ml-auto flex items-center gap-2"
         >
-          <UButtonGroup>
+          <UButtonGroup v-if="showViewModeToggle">
             <UButton
               icon="i-lucide-list"
               color="neutral"
@@ -477,6 +478,10 @@ const emptyHeaderTableClass = 'shrink-0'
               @click="currentDisplayMode = 'card'"
             />
           </UButtonGroup>
+          <template v-if="showViewModeToggle && $slots['toolbar-right']">
+            <USeparator orientation="vertical" class="h-5" />
+          </template>
+          <slot name="toolbar-right" />
         </div>
       </div>
     </div>
@@ -590,31 +595,29 @@ const emptyHeaderTableClass = 'shrink-0'
         v-else
         class="min-h-0 flex-1 overflow-auto"
       >
+        <div v-if="loading" class="space-y-3 p-4 md:p-5">
+          <slot name="loading-row">
+            <slot name="loading">
+              <USkeleton
+                v-for="index in loadingRows"
+                :key="index"
+                :class="rowSkeletonClass"
+              />
+            </slot>
+          </slot>
+        </div>
         <UTable
+          v-else
           v-model:sorting="currentSorting"
           v-model:row-selection="currentRowSelection"
           :columns="normalizedColumns"
           :data="data"
           :class="tableClass"
-          :loading="loading"
           :sticky="stickyHeader ? 'header' : false"
           :get-row-id="getRowId"
           :row-selection-options="selectable ? { enableRowSelection: true } : undefined"
           :ui="tableUi"
         >
-          <template #loading>
-            <slot name="loading-row">
-              <slot name="loading">
-                <div class="space-y-3 p-4 md:p-5">
-                  <USkeleton
-                    v-for="index in loadingRows"
-                    :key="index"
-                    :class="rowSkeletonClass"
-                  />
-                </div>
-              </slot>
-            </slot>
-          </template>
 
           <template
             v-for="slotName in forwardedSlotNames"
@@ -624,6 +627,7 @@ const emptyHeaderTableClass = 'shrink-0'
             <slot :name="slotName" v-bind="slotProps ?? {}" />
           </template>
         </UTable>
+
       </div>
     </div>
 
@@ -646,12 +650,13 @@ const emptyHeaderTableClass = 'shrink-0'
           size="sm"
           color="neutral"
           variant="ghost"
+          :search-input="false"
         />
         <span
           v-else
           class="text-xs uppercase tracking-[0.08em] text-muted"
         >
-          {{ pageSize }} por pagina
+          {{ pageSize }} por página
         </span>
       </div>
 
