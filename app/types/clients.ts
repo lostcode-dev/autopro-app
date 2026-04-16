@@ -17,4 +17,5 @@ export type Client = {
   city: string | null
   state: string | null
   notes: string | null
+  responsible_employees: { employee_id: string }[] | null
 }
