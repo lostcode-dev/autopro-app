@@ -22,13 +22,24 @@ function item(label: string, icon: string, to: string): NavigationMenuItem {
   }
 }
 
+function triggerItem(label: string, icon: string, to: string, children: NavigationMenuItem[]): NavigationMenuItem {
+  return {
+    label,
+    icon,
+    to,
+    defaultOpen: true,
+    type: 'trigger',
+    children
+  }
+}
+
 const links = computed<NavigationMenuItem[][]>(() => {
   const operational: NavigationMenuItem[] = [
     item('Dashboard', 'i-lucide-house', '/app/dashboard')
   ]
 
   if (workshop.can(ActionCode.ORDERS_READ))
-    operational.push(item('Ordens de servico', 'i-lucide-clipboard-list', '/app/service-orders'))
+    operational.push(item('Ordens de serviço', 'i-lucide-clipboard-list', '/app/service-orders'))
 
   if (workshop.can(ActionCode.APPOINTMENTS_READ))
     operational.push(item('Agendamentos', 'i-lucide-calendar-days', '/app/appointments'))
@@ -37,51 +48,71 @@ const links = computed<NavigationMenuItem[][]>(() => {
     operational.push(item('Clientes', 'i-lucide-users', '/app/customers'))
 
   if (workshop.can(ActionCode.VEHICLES_READ))
-    operational.push(item('Veiculos', 'i-lucide-car-front', '/app/vehicles'))
+    operational.push(item('Veículos', 'i-lucide-car-front', '/app/vehicles'))
 
-  const catalog: NavigationMenuItem[] = []
+  const productsChildren: NavigationMenuItem[] = []
 
   if (workshop.can(ActionCode.PRODUCTS_READ))
-    catalog.push(item('Produtos', 'i-lucide-package', '/app/products'))
+    productsChildren.push(item('Visão geral', 'i-lucide-package', '/app/products'))
 
   if (workshop.can(ActionCode.INVENTORY_READ))
-    catalog.push(item('Estoque', 'i-lucide-box', '/app/inventory'))
+    productsChildren.push(item('Estoque', 'i-lucide-box', '/app/inventory'))
 
   if (workshop.can(ActionCode.SUPPLIERS_READ))
-    catalog.push(item('Fornecedores', 'i-lucide-truck', '/app/suppliers'))
-
-  if (workshop.can(ActionCode.PURCHASES_READ))
-    catalog.push(item('Compras', 'i-lucide-shopping-cart', '/app/purchases'))
-
-  if (workshop.can(ActionCode.RETURNS_READ))
-    catalog.push(item('Devolucoes', 'i-lucide-undo-2', '/app/purchase-returns'))
+    productsChildren.push(item('Fornecedores', 'i-lucide-briefcase-business', '/app/suppliers'))
 
   if (workshop.can(ActionCode.AUTHORIZATIONS_READ))
-    catalog.push(item('Autorizacoes', 'i-lucide-badge-check', '/app/purchase-requests'))
+    productsChildren.push(item('Autorizações', 'i-lucide-clipboard-list', '/app/purchase-requests'))
 
-  const finance: NavigationMenuItem[] = []
+  if (workshop.can(ActionCode.PURCHASES_READ))
+    productsChildren.push(item('Compras', 'i-lucide-shopping-cart', '/app/purchases'))
+
+  if (workshop.can(ActionCode.RETURNS_READ))
+    productsChildren.push(item('Devoluções', 'i-lucide-undo-2', '/app/purchase-returns'))
+
+  const catalog: NavigationMenuItem[] = productsChildren.length > 0
+    ? [triggerItem('Produtos', 'i-lucide-shopping-bag', '/app/products', productsChildren)]
+    : []
+
+  const financeChildren: NavigationMenuItem[] = []
 
   if (workshop.can(ActionCode.FINANCIAL_READ))
-    finance.push(item('Financeiro', 'i-lucide-wallet', '/app/financial'))
+    financeChildren.push(item('Visão geral', 'i-lucide-dollar-sign', '/app/financial'))
 
   if (workshop.can(ActionCode.BANK_ACCOUNTS_READ))
-    finance.push(item('Contas', 'i-lucide-landmark', '/app/financial/accounts'))
-
-  if (workshop.can(ActionCode.PAYMENT_MACHINES_VIEW))
-    finance.push(item('Maquininhas', 'i-lucide-credit-card', '/app/financial/machines'))
+    financeChildren.push(item('Contas bancárias', 'i-lucide-landmark', '/app/financial/accounts'))
 
   if (workshop.can(ActionCode.TAXES_VIEW))
-    finance.push(item('Impostos', 'i-lucide-receipt', '/app/financial/taxes'))
+    financeChildren.push(item('Impostos', 'i-lucide-percent', '/app/financial/taxes'))
+
+  if (workshop.can(ActionCode.PAYMENT_MACHINES_VIEW))
+    financeChildren.push(item('Maquininhas', 'i-lucide-credit-card', '/app/financial/machines'))
+
+  const finance: NavigationMenuItem[] = financeChildren.length > 0
+    ? [triggerItem('Financeiro', 'i-lucide-dollar-sign', '/app/financial', financeChildren)]
+    : []
+
+  const fiscalChildren: NavigationMenuItem[] = []
+
+  if (workshop.can(ActionCode.SERVICE_INVOICE_READ))
+    fiscalChildren.push(item('NFS-e serviço', 'i-lucide-receipt', '/app/fiscal/service-invoices'))
+
+  if (workshop.can(ActionCode.PRODUCT_INVOICE_READ))
+    fiscalChildren.push(item('NF-e produto', 'i-lucide-file-text', '/app/fiscal/product-invoices'))
+
+  const fiscal: NavigationMenuItem[] = fiscalChildren.length > 0
+    ? [triggerItem('Notas fiscais', 'i-lucide-file-text', '/app/fiscal/service-invoices', fiscalChildren)]
+    : []
 
   const reportsChildren: NavigationMenuItem[] = [
-    item('Visao geral', 'i-lucide-layout-dashboard', '/app/reports')
+    item('Visão geral', 'i-lucide-layout-dashboard', '/app/reports')
   ]
 
   if (workshop.can(ActionCode.REPORTS_CUSTOMERS))
     reportsChildren.push(item('Clientes', 'i-lucide-users', '/app/reports/customers'))
 
   if (workshop.can(ActionCode.REPORTS_COMMISSIONS))
-    reportsChildren.push(item('Comissoes', 'i-lucide-hand-coins', '/app/reports/commissions'))
+    reportsChildren.push(item('Comissões', 'i-lucide-hand-coins', '/app/reports/commissions'))
 
   if (workshop.can(ActionCode.REPORTS_PURCHASES))
     reportsChildren.push(item('Compras', 'i-lucide-shopping-cart', '/app/reports/purchases'))
@@ -103,7 +134,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
 
   const reports: NavigationMenuItem[] = workshop.can(ActionCode.REPORTS_VIEW)
     ? [{
-        label: 'Relatorios',
+        label: 'Relatórios',
         icon: 'i-lucide-bar-chart-3',
         to: '/app/reports',
         defaultOpen: true,
@@ -115,21 +146,21 @@ const links = computed<NavigationMenuItem[][]>(() => {
   const settingsChildren: NavigationMenuItem[] = [
     item('Perfil', 'i-lucide-user', '/app/settings/profile'),
     item('Assinatura', 'i-lucide-credit-card', '/app/settings/subscription'),
-    item('Notificacoes', 'i-lucide-bell', '/app/settings/notifications'),
-    item('Seguranca', 'i-lucide-lock', '/app/settings/security')
+    item('Notificações', 'i-lucide-bell', '/app/settings/notifications'),
+    item('Segurança', 'i-lucide-lock', '/app/settings/security')
   ]
 
   if (workshop.can(ActionCode.SETTINGS_VIEW))
     settingsChildren.splice(1, 0, item('Empresa', 'i-lucide-building-2', '/app/settings/company'))
 
   if (workshop.can(ActionCode.EMPLOYEES_READ))
-    settingsChildren.splice(Math.min(settingsChildren.length, 2), 0, item('Funcionarios', 'i-lucide-users-round', '/app/settings/employees'))
+    settingsChildren.splice(Math.min(settingsChildren.length, 2), 0, item('Funcionários', 'i-lucide-users-round', '/app/settings/employees'))
 
   if (workshop.can(ActionCode.ROLES_VIEW))
-    settingsChildren.splice(Math.min(settingsChildren.length, 3), 0, item('Permissoes', 'i-lucide-shield-check', '/app/settings/roles'))
+    settingsChildren.splice(Math.min(settingsChildren.length, 3), 0, item('Permissões', 'i-lucide-shield-check', '/app/settings/roles'))
 
   const settings: NavigationMenuItem[] = [{
-    label: 'Configuracoes',
+    label: 'Configurações',
     to: '/app/settings',
     icon: 'i-lucide-settings',
     defaultOpen: true,
@@ -141,6 +172,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     operational,
     catalog,
     finance,
+    fiscal,
     reports,
     settings,
     [
