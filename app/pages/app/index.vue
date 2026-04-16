@@ -181,7 +181,8 @@ const apptStatusLabelMap: Record<string, string> = {
             <div v-if="status === 'pending'" class="space-y-2">
               <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
             </div>
-            <div v-else-if="!dashStats?.recentOrders?.length" class="text-sm text-muted py-4 text-center">
+            <div v-else-if="!dashStats?.recentOrders?.length" class="text-sm text-muted py-8 text-center flex flex-col items-center gap-2">
+              <UIcon name="i-lucide-wind" class="text-2xl text-muted" />
               Nenhuma ordem de serviço encontrada.
             </div>
             <ul v-else class="divide-y divide-default text-sm">
@@ -239,7 +240,7 @@ const apptStatusLabelMap: Record<string, string> = {
               <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
             </div>
             <div v-else-if="!dashStats?.todaySchedule?.length" class="text-sm text-muted py-8 text-center flex flex-col items-center gap-2">
-              <UIcon name="i-lucide-calendar" class="text-2xl text-muted" />
+              <UIcon name="i-lucide-wind" class="text-2xl text-muted" />
               Nenhum agendamento para hoje.
             </div>
             <ul v-else class="divide-y divide-default text-sm">
