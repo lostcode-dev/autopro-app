@@ -44,6 +44,14 @@ function shouldOpenGroup(to: string, children: NavigationMenuItem[]) {
   return isRouteMatch(to) || children.some(child => child.to ? isRouteMatch(String(child.to)) : false)
 }
 
+function sortChildren(children: NavigationMenuItem[]): NavigationMenuItem[] {
+  const overview = children.find(c => c.label?.toLowerCase() === 'visão geral')
+  const rest = children
+    .filter(c => c.label?.toLowerCase() !== 'visão geral')
+    .sort((a, b) => (a.label ?? '').localeCompare(b.label ?? '', 'pt-BR', { sensitivity: 'base' }))
+  return overview ? [overview, ...rest] : rest
+}
+
 function triggerItem(label: string, icon: string, to: string, children: NavigationMenuItem[]): NavigationMenuItem {
   return {
     label,
@@ -93,7 +101,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     productsChildren.push(item('Devoluções', 'i-lucide-undo-2', '/app/purchase-returns'))
 
   const catalog: NavigationMenuItem[] = productsChildren.length > 0
-    ? [triggerItem('Produtos', 'i-lucide-shopping-bag', '/app/products', productsChildren)]
+    ? [triggerItem('Produtos', 'i-lucide-shopping-bag', '/app/products', sortChildren(productsChildren))]
     : []
 
   const financeChildren: NavigationMenuItem[] = []
@@ -114,7 +122,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     financeChildren.push(item('Notas fiscais', 'i-lucide-receipt', '/app/fiscal/service-invoices'))
 
   const finance: NavigationMenuItem[] = financeChildren.length > 0
-    ? [triggerItem('Financeiro', 'i-lucide-dollar-sign', '/app/financial', financeChildren)]
+    ? [triggerItem('Financeiro', 'i-lucide-dollar-sign', '/app/financial', sortChildren(financeChildren))]
     : []
 
   const reportsChildren: NavigationMenuItem[] = [
@@ -152,7 +160,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
         to: '/app/reports',
         open: shouldOpenGroup('/app/reports', reportsChildren),
         type: 'trigger',
-        children: reportsChildren
+        children: sortChildren(reportsChildren)
       }]
     : []
 
@@ -178,7 +186,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     icon: 'i-lucide-settings',
     open: shouldOpenGroup('/app/settings', settingsChildren),
     type: 'trigger',
-    children: settingsChildren
+    children: sortChildren(settingsChildren)
   }]
 
   const primaryLinks = [

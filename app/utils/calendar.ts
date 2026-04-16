@@ -1,9 +1,12 @@
 export type CalendarView = 'month' | 'week' | 'day'
 
-export const HOUR_START = 7
-export const HOUR_END = 20
-/** 1 pixel per minute — container height in px */
-export const GRID_HEIGHT = (HOUR_END - HOUR_START) * 60 // 780
+export const HOUR_START = 0   // 00:00
+export const HOUR_END = 24    // 23:30 (last slot)
+export const SLOT_MINUTES = 30
+export const SLOT_HEIGHT_PX = 48
+export const TOTAL_SLOTS = (HOUR_END - HOUR_START) * (60 / SLOT_MINUTES) // 48
+/** Total scrollable grid height in pixels (48 slots × 48px) */
+export const GRID_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT_PX // 2304
 
 /** Formats a Date to YYYY-MM-DD using local time (avoids UTC offset issues) */
 export function toISO(d: Date): string {
@@ -72,35 +75,39 @@ export function buildWeekDays(d: Date): Date[] {
   })
 }
 
-/** Returns time slot labels every 30 min from HOUR_START to HOUR_END */
+/** Returns time slot labels every 30 min from 00:00 to 23:30 (48 slots) */
 export function buildTimeSlots(): string[] {
   const slots: string[] = []
   for (let h = HOUR_START; h < HOUR_END; h++) {
     slots.push(`${String(h).padStart(2, '0')}:00`)
     slots.push(`${String(h).padStart(2, '0')}:30`)
   }
-  return slots
+  return slots // ['00:00', '00:30', ..., '23:00', '23:30']
 }
 
-/** Converts a HH:MM time string to pixel offset from top of the event grid */
+/**
+ * Converts a HH:MM time string to pixel offset from the top of the grid (00:00).
+ * Returns px position — used as `top` in absolute-positioned event cards.
+ */
 export function minuteFromStart(time: string): number {
   const [hh, mm] = time.split(':').map(Number)
-  const minutes = (hh - HOUR_START) * 60 + (mm ?? 0)
-  return Math.max(0, Math.min(minutes, GRID_HEIGHT - 1))
+  const totalMinutes = hh * 60 + (mm ?? 0)
+  return (totalMinutes / SLOT_MINUTES) * SLOT_HEIGHT_PX
 }
 
-/** Current time pixel offset (for the now-indicator) */
+/** Current time pixel offset — used for the now-indicator `top` value */
 export function getCurrentMinuteFromStart(): number {
   const now = new Date()
-  return (now.getHours() - HOUR_START) * 60 + now.getMinutes()
+  const totalMinutes = now.getHours() * 60 + now.getMinutes()
+  return (totalMinutes / SLOT_MINUTES) * SLOT_HEIGHT_PX
 }
 
+/** Always true: 24h grid covers the full day */
 export function isCurrentTimeVisible(): boolean {
-  const h = new Date().getHours()
-  return h >= HOUR_START && h < HOUR_END
+  return true
 }
 
-/** Short weekday name for a date (Mon, Ter, Qua…) */
+/** Short weekday name for a date (seg, ter, qua…) */
 export function formatDayShort(d: Date): string {
   return d
     .toLocaleDateString('pt-BR', { weekday: 'short' })
@@ -124,4 +131,15 @@ export function formatCalendarTitle(d: Date, view: CalendarView): string {
     return `${fStr} – ${tStr}`
   }
   return new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(d)
+}
+
+/**
+ * Scrolls the given container element to show the current time (or 07:00 as fallback).
+ * Call on mount for WeekView and DayView.
+ */
+export function scrollToCurrentTime(containerEl: HTMLElement) {
+  const now = new Date()
+  const totalMinutes = now.getHours() * 60 + now.getMinutes()
+  const scrollTop = (totalMinutes / SLOT_MINUTES) * SLOT_HEIGHT_PX - 200
+  containerEl.scrollTop = Math.max(0, scrollTop)
 }

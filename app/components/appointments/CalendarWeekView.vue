@@ -8,6 +8,7 @@ import {
   getCurrentMinuteFromStart,
   isCurrentTimeVisible as checkCurrentTimeVisible,
   formatDayShort,
+  scrollToCurrentTime,
   HOUR_START,
   HOUR_END,
   GRID_HEIGHT,
@@ -31,12 +32,23 @@ const timeSlots = buildTimeSlots()
 const currentMinute = ref(getCurrentMinuteFromStart())
 const currentTimeVisible = ref(checkCurrentTimeVisible())
 
+// Ref to the scrollable container for auto-scroll to current time
+const scrollContainerRef = ref<HTMLElement | null>(null)
+
 onMounted(() => {
+  if (scrollContainerRef.value) scrollToCurrentTime(scrollContainerRef.value)
+
   const interval = setInterval(() => {
     currentMinute.value = getCurrentMinuteFromStart()
     currentTimeVisible.value = checkCurrentTimeVisible()
   }, 60_000)
   onUnmounted(() => clearInterval(interval))
+})
+
+watch(() => props.currentDate, () => {
+  nextTick(() => {
+    if (scrollContainerRef.value) scrollToCurrentTime(scrollContainerRef.value)
+  })
 })
 
 function getEventsForDay(day: Date): Appointment[] {
@@ -74,7 +86,7 @@ function getEventStyle(appt: Appointment): Record<string, string> {
 
 <template>
   <!-- Outer: fills remaining height, scrolls as a unit -->
-  <div class="min-h-0 flex-1 overflow-auto">
+  <div ref="scrollContainerRef" class="min-h-0 flex-1 overflow-auto">
     <div class="flex min-w-max">
       <!-- Time gutter: sticky left so it stays visible on horizontal scroll -->
       <div class="sticky left-0 z-20 w-14 shrink-0 border-r border-default bg-default">
