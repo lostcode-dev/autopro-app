@@ -1,6 +1,29 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
+import type { SortingState } from '@tanstack/vue-table'
 import { ActionCode } from '~/constants/action-codes'
+
+function formatTaxId(taxId: string | null, personType: PersonType): string {
+  if (!taxId)
+    return '-'
+  const digits = taxId.replace(/\D/g, '')
+  if (personType === 'pf' && digits.length === 11)
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  if (personType === 'pj' && digits.length === 14)
+    return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+  return taxId
+}
+
+function formatPhone(phone: string | null): string {
+  if (!phone)
+    return '-'
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10)
+    return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  if (digits.length === 11)
+    return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return phone
+}
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Clientes' })
@@ -37,7 +60,7 @@ type ClientsResponse = {
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
-const MANAGED_QUERY_KEYS = ['search', 'personType', 'page', 'pageSize', 'view'] as const
+const MANAGED_QUERY_KEYS = ['search', 'personType', 'page', 'pageSize', 'view', 'sortBy', 'sortOrder'] as const
 
 const toast = useToast()
 const workshop = useWorkshopPermissions()
@@ -76,15 +99,23 @@ const pageSize = ref(parsePageSize(route.query.pageSize))
 const viewMode = ref<ViewMode>(parseView(route.query.view))
 const isLoadingCep = ref(false)
 
+const sorting = ref<SortingState>(
+  typeof route.query.sortBy === 'string' && route.query.sortBy
+    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
+    : []
+)
+
 const requestQuery = computed(() => ({
   search: search.value || undefined,
   person_type: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
   page: page.value,
-  page_size: pageSize.value
+  page_size: pageSize.value,
+  sort_by: sorting.value[0]?.id || undefined,
+  sort_order: sorting.value[0] ? (sorting.value[0].desc ? 'desc' : 'asc') : undefined
 }))
 
 const { data, status, refresh } = await useAsyncData(
-  () => `clients-${search.value}-${personTypeFilter.value}-${page.value}-${pageSize.value}`,
+  () => `clients-${search.value}-${personTypeFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
   async () => {
     if (!canRead.value) {
       return {
@@ -130,7 +161,9 @@ function buildManagedQuery() {
     personType: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
     page: page.value > 1 ? String(page.value) : undefined,
     pageSize: pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
-    view: viewMode.value !== 'line' ? viewMode.value : undefined
+    view: viewMode.value !== 'line' ? viewMode.value : undefined,
+    sortBy: sorting.value[0]?.id || undefined,
+    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined
   }
 }
 
@@ -166,6 +199,16 @@ watch(() => route.query, (query) => {
     pageSize.value = nextPageSize
   if (viewMode.value !== nextView)
     viewMode.value = nextView
+
+  const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : ''
+  const nextSortDesc = query.sortOrder === 'desc'
+  const currentSort = sorting.value[0]
+  if (nextSortBy) {
+    if (!currentSort || currentSort.id !== nextSortBy || currentSort.desc !== nextSortDesc)
+      sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
+  } else if (currentSort) {
+    sorting.value = []
+  }
 })
 
 watchDebounced(search, async () => {
@@ -192,6 +235,11 @@ watch(pageSize, async () => {
 
 watch(viewMode, syncQuery)
 
+watch(sorting, async () => {
+  page.value = 1
+  await syncQuery()
+})
+
 function clearFilters() {
   search.value = ''
   personTypeFilter.value = ALL_PERSON_TYPES_VALUE
@@ -206,8 +254,9 @@ function getPersonTypeLabel(personType: PersonType) {
   return personType === 'pf' ? 'PF' : 'PJ'
 }
 
-function formatContact(client: Client) {
-  return client.phone || client.mobile_phone || 'Telefone não informado'
+function formatContact(client: Client): string {
+  const raw = client.phone || client.mobile_phone
+  return raw ? formatPhone(raw) : 'Telefone não informado'
 }
 
 // Modal
@@ -384,12 +433,12 @@ const personTypeFilterOptions = [
 ]
 
 const lineColumns = [
-  { accessorKey: 'name', header: 'Cliente' },
-  { accessorKey: 'person_type', header: 'Tipo' },
-  { accessorKey: 'tax_id', header: 'CPF/CNPJ' },
-  { accessorKey: 'phone', header: 'Telefone' },
-  { accessorKey: 'email', header: 'E-mail' },
-  { id: 'actions', header: '' }
+  { accessorKey: 'name', header: 'Cliente', enableSorting: true },
+  { accessorKey: 'person_type', header: 'Tipo', enableSorting: true },
+  { accessorKey: 'tax_id', header: 'CPF/CNPJ', enableSorting: true },
+  { accessorKey: 'phone', header: 'Telefone', enableSorting: false },
+  { accessorKey: 'email', header: 'E-mail', enableSorting: true },
+  { id: 'actions', header: '', enableSorting: false }
 ]
 </script>
 
@@ -454,6 +503,7 @@ const lineColumns = [
           v-if="viewMode === 'line'"
           v-model:page="page"
           v-model:page-size="pageSize"
+          v-model:sorting="sorting"
           :columns="lineColumns"
           :data="clientItems"
           selectable
@@ -494,13 +544,13 @@ const lineColumns = [
 
           <template #tax_id-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ row.original.tax_id || '-' }}
+              {{ formatTaxId(row.original.tax_id as string | null, row.original.person_type as PersonType) }}
             </span>
           </template>
 
           <template #phone-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatContact(row.original) }}
+              {{ formatContact(row.original as Client) }}
             </span>
           </template>
 
@@ -576,7 +626,7 @@ const lineColumns = [
                     </div>
                     <div class="flex items-center gap-2">
                       <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
-                      <span class="truncate">{{ client.tax_id || 'CPF/CNPJ não informado' }}</span>
+                      <span class="truncate">{{ formatTaxId(client.tax_id, client.person_type) || 'CPF/CNPJ não informado' }}</span>
                     </div>
                     <div class="flex items-center gap-2">
                       <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />

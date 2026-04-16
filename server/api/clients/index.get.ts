@@ -38,7 +38,13 @@ export default defineEventHandler(async (event) => {
     dbQuery = dbQuery.eq('person_type', query.person_type as string)
   }
 
-  dbQuery = dbQuery.order('name', { ascending: true }).range(from, to)
+  const ALLOWED_SORT_COLUMNS = ['name', 'person_type', 'tax_id', 'email', 'phone', 'created_at'] as const
+  const sortBy = ALLOWED_SORT_COLUMNS.includes(query.sort_by as typeof ALLOWED_SORT_COLUMNS[number])
+    ? (query.sort_by as string)
+    : 'name'
+  const sortAscending = (query.sort_order as string) !== 'desc'
+
+  dbQuery = dbQuery.order(sortBy, { ascending: sortAscending }).range(from, to)
 
   const { data: items, count, error } = await dbQuery
 
