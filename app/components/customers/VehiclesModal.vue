@@ -346,9 +346,8 @@ function vehicleLabel(v: Vehicle): string {
     <template #footer>
       <div
         v-if="!showVehicleForm"
-        class="flex w-full items-center justify-between"
+        class="flex w-full items-center justify-end"
       >
-        <span class="text-xs text-muted">{{ vehiclesList.length }} veículo(s)</span>
         <UButton
           label="Adicionar veículo"
           icon="i-lucide-plus"

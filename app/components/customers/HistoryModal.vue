@@ -203,21 +203,5 @@ const statusLabelMap: Record<string, string> = {
         </div>
       </template>
     </template>
-
-    <template #footer>
-      <div class="flex w-full items-center justify-between">
-        <span class="text-xs text-muted">
-          {{ historyOrders.length }} OS encontrada(s)
-        </span>
-        <UButton
-          label="Ver todas as OSs"
-          icon="i-lucide-external-link"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          :to="`/app/service-orders?clientId=${client?.id}`"
-        />
-      </div>
-    </template>
   </UModal>
 </template>
