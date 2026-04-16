@@ -74,19 +74,22 @@ function parsePersonType(value: unknown): PersonType | typeof ALL_PERSON_TYPES_V
 }
 
 const search = ref(typeof route.query.search === 'string' ? route.query.search : '')
+const debouncedSearch = ref(search.value)
 const personTypeFilter = ref<PersonType | typeof ALL_PERSON_TYPES_VALUE>(parsePersonType(route.query.personType))
 const page = ref(parsePage(route.query.page))
 const pageSize = ref(parsePageSize(route.query.pageSize))
 const viewMode = ref<ViewMode>(parseView(route.query.view))
 
+const DEFAULT_SORT = { id: 'name', desc: false }
+
 const sorting = ref<SortingState>(
   typeof route.query.sortBy === 'string' && route.query.sortBy
     ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
-    : []
+    : [DEFAULT_SORT]
 )
 
 const requestQuery = computed(() => ({
-  search: search.value || undefined,
+  search: debouncedSearch.value || undefined,
   person_type: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
   page: page.value,
   page_size: pageSize.value,
@@ -95,7 +98,7 @@ const requestQuery = computed(() => ({
 }))
 
 const { data, status, refresh } = await useAsyncData(
-  () => `clients-${search.value}-${personTypeFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
+  () => `clients-${debouncedSearch.value}-${personTypeFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
   async () => {
     if (!canRead.value) {
       return {
@@ -160,8 +163,10 @@ watch(() => route.query, (query) => {
   const nextPageSize = parsePageSize(query.pageSize)
   const nextView = parseView(query.view)
 
-  if (search.value !== nextSearch)
+  if (search.value !== nextSearch) {
     search.value = nextSearch
+    debouncedSearch.value = nextSearch
+  }
   if (personTypeFilter.value !== nextPersonType)
     personTypeFilter.value = nextPersonType
   if (page.value !== nextPage)
@@ -177,12 +182,13 @@ watch(() => route.query, (query) => {
   if (nextSortBy) {
     if (!currentSort || currentSort.id !== nextSortBy || currentSort.desc !== nextSortDesc)
       sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
-  } else if (currentSort) {
-    sorting.value = []
+  } else if (!currentSort || currentSort.id !== DEFAULT_SORT.id || currentSort.desc !== DEFAULT_SORT.desc) {
+    sorting.value = [DEFAULT_SORT]
   }
 })
 
-watchDebounced(search, async () => {
+watchDebounced(search, async (val) => {
+  debouncedSearch.value = val
   page.value = 1
   await syncQuery()
 }, { debounce: 300, maxWait: 800 })
