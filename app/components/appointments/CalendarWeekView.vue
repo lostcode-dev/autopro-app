@@ -87,7 +87,8 @@ function getEventStyle(appt: Appointment): Record<string, string> {
 <template>
   <!-- Outer: fills remaining height, scrolls as a unit -->
   <div ref="scrollContainerRef" class="min-h-0 flex-1 overflow-auto">
-    <div class="flex min-w-max">
+    <!-- min-w-full: fills screen on large displays; min-w-max: enables h-scroll on mobile -->
+    <div class="flex min-w-full" style="min-width: max(100%, calc(3.5rem + 7 * 8rem))">
       <!-- Time gutter: sticky left so it stays visible on horizontal scroll -->
       <div class="sticky left-0 z-20 w-14 shrink-0 border-r border-default bg-default">
         <!-- Spacer for day header row -->
@@ -110,12 +111,12 @@ function getEventStyle(appt: Appointment): Record<string, string> {
         </div>
       </div>
 
-      <!-- Day columns -->
-      <div class="flex">
+      <!-- Day columns: flex-1 so they expand on wide screens; min-w-32 so they don't collapse on mobile -->
+      <div class="flex flex-1">
         <div
           v-for="day in weekDays"
           :key="toISO(day)"
-          class="flex w-36 flex-none flex-col border-r border-default last:border-r-0"
+          class="flex min-w-32 flex-1 flex-col border-r border-default last:border-r-0"
         >
           <!-- Day header: sticky top -->
           <div

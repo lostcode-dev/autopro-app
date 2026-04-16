@@ -2,34 +2,16 @@
 import { watchDebounced, useVirtualList, useIntersectionObserver } from "@vueuse/core";
 import { ActionCode } from "~/constants/action-codes";
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
-type ServiceOrder = {
-  id: string;
-  number: string | null;
-  status: string;
-  payment_status: string | null;
-  is_installment: boolean;
-  client_id: string | null;
-  client_name: string | null;
-  vehicle_id: string | null;
-  vehicle_label: string | null;
-  entry_date: string | null;
-  reported_defect: string | null;
-  total_amount: number | null;
-  responsible_name: string | null;
-  has_commissions: boolean;
-  installments_progress: { paid: number; total: number } | null;
-};
+import type { ServiceOrder } from '~/types/service-orders'
 
 type ServiceOrdersApiResponse = {
   data: {
-    items: ServiceOrder[];
-    nextCursor: number | null;
-    totalFiltered: number;
-    totalAll: number;
-  };
-};
+    items: ServiceOrder[]
+    nextCursor: number | null
+    totalFiltered: number
+    totalAll: number
+  }
+}
 
 // ─── Page meta ─────────────────────────────────────────────────────────────────
 
@@ -169,30 +151,16 @@ if (canRead.value) await loadMore();
 // ─── Detail Slideover ──────────────────────────────────────────────────────────
 
 const showDetail = ref(false);
-const isLoadingDetail = ref(false);
-const orderDetail = ref<any | null>(null);
-const selectedOrderId = ref<string | null>(null);
+const selectedOrder = ref<ServiceOrder | null>(null);
 
-async function openDetail(order: ServiceOrder) {
-  selectedOrderId.value = order.id;
-  orderDetail.value = null;
+function openDetail(order: ServiceOrder) {
+  selectedOrder.value = order;
   showDetail.value = true;
-  isLoadingDetail.value = true;
-  try {
-    const result = await $fetch<any>(`/api/service-orders/${order.id}`);
-    orderDetail.value = result.data;
-  } catch {
-    toast.add({ title: "Erro ao carregar detalhes", color: "error" });
-    showDetail.value = false;
-  } finally {
-    isLoadingDetail.value = false;
-  }
 }
 
 function closeDetail() {
   showDetail.value = false;
-  orderDetail.value = null;
-  selectedOrderId.value = null;
+  selectedOrder.value = null;
 }
 
 // ─── Cancel ────────────────────────────────────────────────────────────────────
@@ -216,7 +184,7 @@ async function confirmCancel() {
     toast.add({ title: "OS cancelada", color: "success" });
     showCancelModal.value = false;
     orderPendingCancel.value = null;
-    if (showDetail.value && selectedOrderId.value === order.id) closeDetail();
+    if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail();
     resetAndLoad();
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }; statusMessage?: string };
@@ -251,7 +219,7 @@ async function confirmDelete() {
     toast.add({ title: "OS removida", color: "success" });
     showDeleteModal.value = false;
     orderPendingDeletion.value = null;
-    if (showDetail.value && selectedOrderId.value === order.id) closeDetail();
+    if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail();
     resetAndLoad();
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }; statusMessage?: string };
@@ -265,21 +233,6 @@ async function confirmDelete() {
   }
 }
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function formatCurrency(value: number | string | null | undefined) {
-  return parseFloat(String(value || 0)).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "—";
-  const [y, m, d] = value.split("-");
-  return `${d}/${m}/${y}`;
-}
-
 const statusFilterOptions = [
   { label: "Todas", value: "all" },
   { label: "Orçamento", value: "estimate" },
@@ -291,34 +244,7 @@ const statusFilterOptions = [
   { label: "Cancelada", value: "cancelled" },
 ];
 
-const statusColorMap: Record<string, string> = {
-  estimate: "neutral",
-  open: "info",
-  in_progress: "warning",
-  waiting_for_part: "warning",
-  completed: "success",
-  delivered: "success",
-  cancelled: "error",
-};
-const statusLabelMap: Record<string, string> = {
-  estimate: "Orçamento",
-  open: "Aberta",
-  in_progress: "Em andamento",
-  waiting_for_part: "Aguard. peça",
-  completed: "Concluída",
-  delivered: "Entregue",
-  cancelled: "Cancelada",
-};
-const paymentStatusColorMap: Record<string, string> = {
-  pending: "warning",
-  paid: "success",
-  partial: "info",
-};
-const paymentStatusLabelMap: Record<string, string> = {
-  pending: "Pendente",
-  paid: "Pago",
-  partial: "Parcial",
-};
+
 </script>
 
 <template>
@@ -402,115 +328,14 @@ const paymentStatusLabelMap: Record<string, string> = {
               class="grid grid-cols-1 gap-0 px-4 py-2 xl:grid-cols-2 xl:gap-4"
             >
               <!-- Card da OS -->
-              <UCard
-                class="h-full cursor-pointer border border-default/80 shadow-sm transition-colors hover:bg-elevated"
-                @click="openDetail(order)"
-              >
-                <div class="flex h-full items-start gap-4">
-                  <!-- Ícone -->
-                  <div
-                    class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary"
-                  >
-                    <UIcon name="i-lucide-wrench" class="size-6" />
-                  </div>
-
-                  <div class="min-w-0 flex-1 space-y-2">
-                    <!-- Linha 1: número + cliente + ações -->
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="min-w-0">
-                        <p class="truncate font-semibold text-highlighted">
-                          OS #{{ order.number }}
-                          <span class="font-normal text-muted">—</span>
-                          {{ order.client_name ?? "—" }}
-                        </p>
-                        <p class="truncate text-xs text-muted">
-                          {{ order.vehicle_label ?? "Veículo não informado" }}
-                        </p>
-                      </div>
-
-                      <!-- Ações -->
-                      <div
-                        class="flex shrink-0 items-center gap-1"
-                        @click.stop
-                      >
-                        <UTooltip text="Ver detalhes">
-                          <UButton
-                            icon="i-lucide-eye"
-                            color="neutral"
-                            variant="ghost"
-                            size="xs"
-                            @click="openDetail(order)"
-                          />
-                        </UTooltip>
-                        <UTooltip
-                          v-if="
-                            canCancel &&
-                            !['cancelled', 'delivered'].includes(order.status)
-                          "
-                          text="Cancelar OS"
-                        >
-                          <UButton
-                            icon="i-lucide-ban"
-                            color="warning"
-                            variant="ghost"
-                            size="xs"
-                            @click="requestCancel(order)"
-                          />
-                        </UTooltip>
-                        <UTooltip v-if="canDelete" text="Excluir OS">
-                          <UButton
-                            icon="i-lucide-trash-2"
-                            color="error"
-                            variant="ghost"
-                            size="xs"
-                            @click="requestDelete(order)"
-                          />
-                        </UTooltip>
-                      </div>
-                    </div>
-
-                    <!-- Linha 2: defeito relatado -->
-                    <p class="truncate text-sm text-muted">
-                      {{
-                        order.reported_defect || "Sem defeito relatado"
-                      }}
-                    </p>
-
-                    <!-- Linha 3: badges + valor + data -->
-                    <div class="flex items-center justify-between gap-2">
-                      <div class="flex flex-wrap items-center gap-1.5">
-                        <UBadge
-                          :color="statusColorMap[order.status] ?? 'neutral'"
-                          :label="statusLabelMap[order.status] ?? order.status"
-                          variant="subtle"
-                          size="xs"
-                        />
-                        <UBadge
-                          v-if="order.payment_status"
-                          :color="
-                            paymentStatusColorMap[order.payment_status] ??
-                            'neutral'
-                          "
-                          :label="
-                            paymentStatusLabelMap[order.payment_status] ??
-                            order.payment_status
-                          "
-                          variant="soft"
-                          size="xs"
-                        />
-                      </div>
-                      <div class="shrink-0 text-right">
-                        <p class="text-sm font-semibold text-highlighted">
-                          {{ formatCurrency(order.total_amount) }}
-                        </p>
-                        <p class="text-xs text-muted">
-                          {{ formatDate(order.entry_date) }}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </UCard>
+              <ServiceOrdersOrderCard
+                :order="order"
+                :can-cancel="canCancel"
+                :can-delete="canDelete"
+                @view="openDetail"
+                @cancel="requestCancel"
+                @delete="requestDelete"
+              />
 
               <!-- Coluna direita vazia no xl (grid 2 colunas) — preenchida pelo próximo item -->
               <div v-if="index % 2 !== 0" class="hidden xl:block" />
@@ -591,184 +416,11 @@ const paymentStatusLabelMap: Record<string, string> = {
   </AppConfirmModal>
 
   <!-- ── Detail Slideover ─────────────────────────────────────────────────────── -->
-  <USlideover
+  <ServiceOrdersDetailSlideover
     v-model:open="showDetail"
-    side="right"
-    :ui="{ content: 'max-w-2xl' }"
-  >
-    <template #header>
-      <div v-if="orderDetail">
-        <h2 class="text-lg font-bold text-highlighted">
-          OS #{{ orderDetail.order.number }}
-        </h2>
-        <div class="mt-1 flex flex-wrap items-center gap-2">
-          <UBadge
-            :color="statusColorMap[orderDetail.order.status] ?? 'neutral'"
-            :label="statusLabelMap[orderDetail.order.status] ?? orderDetail.order.status"
-            variant="subtle"
-          />
-          <UBadge
-            v-if="orderDetail.order.payment_status"
-            :color="paymentStatusColorMap[orderDetail.order.payment_status] ?? 'neutral'"
-            :label="paymentStatusLabelMap[orderDetail.order.payment_status] ?? orderDetail.order.payment_status"
-            variant="soft"
-          />
-        </div>
-      </div>
-      <div v-else-if="isLoadingDetail">
-        <USkeleton class="h-6 w-32" />
-        <USkeleton class="mt-1 h-4 w-24" />
-      </div>
-    </template>
-
-    <template #body>
-      <!-- Loading -->
-      <div v-if="isLoadingDetail" class="space-y-4 p-6">
-        <USkeleton class="h-8 w-48" />
-        <USkeleton class="h-4 w-full" />
-        <USkeleton class="h-4 w-3/4" />
-        <USkeleton class="h-32 w-full" />
-      </div>
-
-      <div v-else-if="orderDetail" class="space-y-5 p-4">
-        <!-- Entrada -->
-        <p class="text-sm text-muted">
-          Entrada: {{ formatDate(orderDetail.order.entry_date) }}
-        </p>
-
-        <!-- Cliente e Veículo -->
-        <UPageCard title="Cliente e Veículo" variant="subtle">
-          <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <div>
-              <dt class="text-muted">Cliente</dt>
-              <dd class="font-medium text-highlighted">
-                {{ orderDetail.client?.name ?? "—" }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-muted">Telefone</dt>
-              <dd>{{ orderDetail.client?.phone ?? "—" }}</dd>
-            </div>
-            <div>
-              <dt class="text-muted">Veículo</dt>
-              <dd class="font-medium text-highlighted">
-                {{
-                  orderDetail.vehicle
-                    ? [
-                        orderDetail.vehicle.brand,
-                        orderDetail.vehicle.model,
-                      ]
-                        .filter(Boolean)
-                        .join(" ")
-                    : "—"
-                }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-muted">Placa</dt>
-              <dd>{{ orderDetail.vehicle?.license_plate ?? "—" }}</dd>
-            </div>
-          </dl>
-        </UPageCard>
-
-        <!-- Financeiro -->
-        <UPageCard title="Financeiro" variant="subtle">
-          <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <div>
-              <dt class="text-muted">Total</dt>
-              <dd class="text-base font-bold text-highlighted">
-                {{ formatCurrency(orderDetail.order.total_amount) }}
-              </dd>
-            </div>
-            <div>
-              <dt class="text-muted">Desconto</dt>
-              <dd>{{ formatCurrency(orderDetail.order.discount) }}</dd>
-            </div>
-            <div>
-              <dt class="text-muted">Forma de pagamento</dt>
-              <dd>{{ orderDetail.order.payment_method ?? "—" }}</dd>
-            </div>
-            <div>
-              <dt class="text-muted">Parcelas</dt>
-              <dd>{{ orderDetail.installments?.length ?? 0 }}</dd>
-            </div>
-          </dl>
-        </UPageCard>
-
-        <!-- Diagnóstico -->
-        <UPageCard
-          v-if="
-            orderDetail.order.reported_defect || orderDetail.order.diagnosis
-          "
-          title="Diagnóstico"
-          variant="subtle"
-        >
-          <div class="space-y-2 text-sm">
-            <div v-if="orderDetail.order.reported_defect">
-              <p class="text-xs text-muted">Defeito relatado</p>
-              <p>{{ orderDetail.order.reported_defect }}</p>
-            </div>
-            <div v-if="orderDetail.order.diagnosis">
-              <p class="text-xs text-muted">Diagnóstico técnico</p>
-              <p>{{ orderDetail.order.diagnosis }}</p>
-            </div>
-          </div>
-        </UPageCard>
-
-        <!-- Itens -->
-        <UPageCard
-          v-if="orderDetail.order.items?.length"
-          title="Itens"
-          variant="subtle"
-        >
-          <div class="space-y-2">
-            <div
-              v-for="(item, i) in orderDetail.order.items"
-              :key="i"
-              class="flex items-center justify-between border-b border-default pb-1 text-sm last:border-0 last:pb-0"
-            >
-              <div>
-                <span class="font-medium">{{
-                  item.name ?? item.description
-                }}</span>
-                <span class="ml-1 text-muted">× {{ item.quantity }}</span>
-              </div>
-              <span>{{
-                formatCurrency(
-                  (item.unit_price ?? 0) * (item.quantity ?? 1),
-                )
-              }}</span>
-            </div>
-          </div>
-        </UPageCard>
-
-        <!-- Observações -->
-        <UPageCard
-          v-if="orderDetail.order.notes"
-          title="Observações"
-          variant="subtle"
-        >
-          <p class="text-sm">{{ orderDetail.order.notes }}</p>
-        </UPageCard>
-
-        <!-- Ações -->
-        <div
-          v-if="
-            canCancel &&
-            !['cancelled', 'delivered'].includes(orderDetail.order.status)
-          "
-          class="flex flex-wrap gap-2 pt-2"
-        >
-          <UButton
-            label="Cancelar OS"
-            icon="i-lucide-ban"
-            color="warning"
-            variant="outline"
-            :loading="isCancelling"
-            @click="requestCancel(orderDetail.order)"
-          />
-        </div>
-      </div>
-    </template>
-  </USlideover>
+    :order="selectedOrder"
+    :can-cancel="canCancel"
+    :is-cancelling="isCancelling"
+    @cancel="requestCancel"
+  />
 </template>

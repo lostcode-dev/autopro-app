@@ -81,7 +81,7 @@ function getEventStyle(appt: Appointment): Record<string, string> {
 
 <template>
   <div ref="scrollContainerRef" class="min-h-0 flex-1 overflow-auto">
-    <div class="flex min-w-max">
+    <div class="flex min-w-full">
       <!-- Time gutter: sticky left -->
       <div class="sticky left-0 z-20 w-14 shrink-0 border-r border-default bg-default">
         <!-- Spacer for day header -->
