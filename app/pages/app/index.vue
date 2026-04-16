@@ -5,88 +5,71 @@ useSeoMeta({ title: 'Dashboard' })
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const now = new Date()
-const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-const dateFrom = ref(defaultFrom)
-const dateTo = ref(defaultTo)
-
-const { data, status, refresh } = await useAsyncData(
-  () => `dashboard-${dateFrom.value}-${dateTo.value}`,
-  () => requestFetch<{ data: { overview: Record<string, any> } }>('/api/reports/overview', {
-    headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value }
-  }),
-  { watch: [dateFrom, dateTo] }
+const { data: dashStats, status } = await useAsyncData(
+  'dashboard-stats',
+  () => requestFetch<{
+    openOrdersCount: number
+    grossRevenue: number
+    totalClients: number
+    todayAppointmentsCount: number
+    lowStockCount: number
+    recentOrders: {
+      id: string
+      number: string | number
+      status: string
+      entry_date: string
+      reported_defect: string | null
+      total_amount: number
+      clientName: string
+      vehicleLabel: string
+    }[]
+    todaySchedule: {
+      id: string
+      time: string
+      status: string
+      service_type: string
+      clientName: string
+      vehicleLabel: string
+    }[]
+  }>('/api/reports/dashboard-stats', { headers: requestHeaders })
 )
 
-// Also fetch today's appointments and open/in_progress service orders
-const { data: todayAppointments } = await useAsyncData(
-  () => `dash-appts-${dateFrom.value}`,
-  () => requestFetch<{ items: any[], total: number }>('/api/appointments', {
-    headers: requestHeaders,
-    query: { date_from: defaultFrom, date_to: defaultTo, page_size: 10 }
-  })
-)
-
-const { data: openOrders } = await useAsyncData(
-  'dash-open-orders',
-  () => requestFetch<{ items: any[], total: number }>('/api/service-orders', {
-    headers: requestHeaders,
-    query: { status: 'in_progress', cursor: 0, limit: 10 }
-  })
-)
-
-const overview = computed(() => data.value?.data?.overview ?? null)
-
-function formatCurrency(value: number | string) {
-  return parseFloat(String(value || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+function formatCurrency(value: number) {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-function formatPercent(value: number) {
-  return `${parseFloat(String(value || 0)).toFixed(1)}%`
+function formatDate(value: string) {
+  if (!value) return '—'
+  const [y, m, d] = value.split('-')
+  return `${d}/${m}/${y}`
 }
 
 const statsCards = computed(() => {
-  if (!overview.value) return []
+  if (!dashStats.value) return []
   return [
     {
-      label: 'Faturamento bruto',
-      value: formatCurrency(overview.value.grossRevenue),
+      label: 'OS em Andamento',
+      value: dashStats.value.openOrdersCount,
+      icon: 'i-lucide-wrench',
+      color: 'text-blue-500'
+    },
+    {
+      label: 'Faturamento do Mês',
+      value: formatCurrency(dashStats.value.grossRevenue),
       icon: 'i-lucide-trending-up',
       color: 'text-green-500'
     },
     {
-      label: 'Lucro líquido',
-      value: formatCurrency(overview.value.netProfit),
-      icon: 'i-lucide-circle-dollar-sign',
-      color: 'text-blue-500'
-    },
-    {
-      label: 'OS concluídas',
-      value: overview.value.totalOrders ?? 0,
-      icon: 'i-lucide-wrench',
-      color: 'text-orange-500'
-    },
-    {
-      label: 'Ticket médio',
-      value: formatCurrency(overview.value.averageTicket),
-      icon: 'i-lucide-receipt',
+      label: 'Total de Clientes',
+      value: dashStats.value.totalClients,
+      icon: 'i-lucide-users',
       color: 'text-purple-500'
     },
     {
-      label: 'Novos clientes',
-      value: overview.value.newClients ?? 0,
-      icon: 'i-lucide-users',
-      color: 'text-teal-500'
-    },
-    {
-      label: 'Margem de lucro',
-      value: formatPercent(overview.value.profitMargin),
-      icon: 'i-lucide-percent',
-      color: 'text-slate-500'
+      label: 'Agendamentos Hoje',
+      value: dashStats.value.todayAppointmentsCount,
+      icon: 'i-lucide-calendar',
+      color: 'text-orange-500'
     }
   ]
 })
@@ -99,6 +82,13 @@ const statusLabelMap: Record<string, string> = {
   estimate: 'Orçamento', open: 'Aberta', in_progress: 'Em andamento',
   waiting_for_part: 'Aguard. peça', completed: 'Concluída', delivered: 'Entregue', cancelled: 'Cancelada'
 }
+
+const apptStatusColorMap: Record<string, string> = {
+  scheduled: 'neutral', confirmed: 'success', cancelled: 'error', completed: 'success'
+}
+const apptStatusLabelMap: Record<string, string> = {
+  scheduled: 'Agendado', confirmed: 'Confirmado', cancelled: 'Cancelado', completed: 'Concluído'
+}
 </script>
 
 <template>
@@ -109,21 +99,7 @@ const statusLabelMap: Record<string, string> = {
           <AppSidebarCollapse />
         </template>
         <template #right>
-          <div class="flex items-center gap-2">
-            <UInput
-              v-model="dateFrom"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
-            <span class="text-muted text-sm">até</span>
-            <UInput
-              v-model="dateTo"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
-          </div>
+          <NotificationsButton />
         </template>
       </UDashboardNavbar>
     </template>
@@ -131,12 +107,12 @@ const statusLabelMap: Record<string, string> = {
     <template #body>
       <div class="p-4 space-y-6">
         <!-- Stats cards skeleton -->
-        <div v-if="status === 'pending'" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-          <USkeleton v-for="i in 6" :key="i" class="h-28 rounded-xl" />
+        <div v-if="status === 'pending'" class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+          <USkeleton v-for="i in 4" :key="i" class="h-28 rounded-xl" />
         </div>
 
         <!-- Stats cards -->
-        <div v-else class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div v-else class="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <UPageCard
             v-for="card in statsCards"
             :key="card.label"
@@ -155,100 +131,119 @@ const statusLabelMap: Record<string, string> = {
           </UPageCard>
         </div>
 
+        <!-- Low stock banner -->
+        <div
+          v-if="(dashStats?.lowStockCount ?? 0) > 0"
+          class="flex items-center gap-3 rounded-xl border border-warning bg-warning/10 p-4"
+        >
+          <UIcon name="i-lucide-alert-triangle" class="text-warning text-xl shrink-0" />
+          <div>
+            <p class="font-semibold text-sm">
+              Atenção ao Estoque
+            </p>
+            <p class="text-xs text-muted">
+              {{ dashStats!.lowStockCount }} peça{{ dashStats!.lowStockCount > 1 ? 's' : '' }} com estoque baixo
+            </p>
+          </div>
+          <NuxtLink to="/app/inventory" class="ml-auto text-xs text-primary hover:underline">
+            Ver itens →
+          </NuxtLink>
+        </div>
+
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <!-- Today's appointments -->
-          <UPageCard title="Agendamentos do período" variant="subtle">
-            <div v-if="!todayAppointments" class="space-y-2">
-              <USkeleton v-for="i in 3" :key="i" class="h-10 w-full" />
+          <!-- Ordens recentes -->
+          <UPageCard title="Ordens Recentes" variant="subtle">
+            <div v-if="status === 'pending'" class="space-y-2">
+              <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
             </div>
-            <div v-else-if="!todayAppointments.items?.length" class="text-sm text-muted py-4 text-center">
-              Nenhum agendamento no período.
+            <div v-else-if="!dashStats?.recentOrders?.length" class="text-sm text-muted py-4 text-center">
+              Nenhuma ordem de serviço encontrada.
             </div>
             <ul v-else class="divide-y divide-default text-sm">
               <li
-                v-for="appt in todayAppointments.items"
-                :key="appt.id"
-                class="py-2 flex items-center justify-between gap-2"
+                v-for="order in dashStats!.recentOrders"
+                :key="order.id"
+                class="py-2 flex items-start justify-between gap-2"
               >
-                <div>
-                  <p class="font-medium">
-                    {{ appt.clients?.name ?? '—' }}
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <p class="font-medium">
+                      OS {{ order.number }} — {{ order.clientName }}
+                    </p>
+                    <UBadge
+                      :color="statusColorMap[order.status] ?? 'neutral'"
+                      variant="subtle"
+                      :label="statusLabelMap[order.status] ?? order.status"
+                      size="xs"
+                    />
+                  </div>
+                  <p class="text-muted text-xs truncate">
+                    {{ order.vehicleLabel }}
                   </p>
-                  <p class="text-muted text-xs">
-                    {{ appt.service_type }} — {{ appt.appointment_date }} {{ appt.time }}
+                  <p v-if="order.reported_defect" class="text-muted text-xs truncate">
+                    {{ order.reported_defect }}
                   </p>
                 </div>
-                <UBadge
-                  color="info"
-                  variant="subtle"
-                  :label="appt.status"
-                  size="sm"
-                />
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-medium">
+                    {{ formatCurrency(order.total_amount) }}
+                  </p>
+                  <p class="text-muted text-xs">
+                    {{ formatDate(order.entry_date) }}
+                  </p>
+                </div>
               </li>
             </ul>
-            <template v-if="(todayAppointments?.total ?? 0) > 10" #footer>
-              <NuxtLink to="/app/appointments" class="text-xs text-primary hover:underline">
-                Ver todos ({{ todayAppointments?.total }})
+            <template #footer>
+              <NuxtLink to="/app/service-orders" class="text-xs text-primary hover:underline">
+                Ver todas as OS →
               </NuxtLink>
             </template>
           </UPageCard>
 
-          <!-- OS in progress -->
-          <UPageCard title="OS em andamento" variant="subtle">
-            <div v-if="!openOrders" class="space-y-2">
-              <USkeleton v-for="i in 3" :key="i" class="h-10 w-full" />
+          <!-- Agenda de hoje -->
+          <UPageCard title="Agenda de Hoje" variant="subtle">
+            <div v-if="status === 'pending'" class="space-y-2">
+              <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
             </div>
-            <div v-else-if="!openOrders.items?.length" class="text-sm text-muted py-4 text-center">
-              Nenhuma OS em andamento.
+            <div v-else-if="!dashStats?.todaySchedule?.length" class="text-sm text-muted py-8 text-center flex flex-col items-center gap-2">
+              <UIcon name="i-lucide-calendar" class="text-2xl text-muted" />
+              Nenhum agendamento para hoje.
             </div>
             <ul v-else class="divide-y divide-default text-sm">
               <li
-                v-for="order in openOrders.items"
-                :key="order.id"
+                v-for="appt in dashStats!.todaySchedule"
+                :key="appt.id"
                 class="py-2 flex items-center justify-between gap-2"
               >
-                <div>
-                  <p class="font-medium">
-                    OS {{ order.number }} — {{ order._clientName ?? '—' }}
-                  </p>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="font-mono text-xs font-semibold">{{ appt.time }}</span>
+                    <p class="font-medium truncate">
+                      {{ appt.clientName }}
+                    </p>
+                  </div>
                   <p class="text-muted text-xs">
-                    {{ order._vehicleLabel ?? '' }}
+                    {{ appt.vehicleLabel }} — {{ appt.service_type }}
                   </p>
                 </div>
                 <UBadge
-                  :color="statusColorMap[order.status] ?? 'neutral'"
+                  :color="apptStatusColorMap[appt.status] ?? 'neutral'"
                   variant="subtle"
-                  :label="statusLabelMap[order.status] ?? order.status"
+                  :label="apptStatusLabelMap[appt.status] ?? appt.status"
                   size="sm"
                 />
               </li>
             </ul>
-            <template v-if="(openOrders?.total ?? 0) > 10" #footer>
-              <NuxtLink to="/app/service-orders" class="text-xs text-primary hover:underline">
-                Ver todas ({{ openOrders?.total }})
+            <template #footer>
+              <NuxtLink to="/app/appointments" class="text-xs text-primary hover:underline">
+                Ver todos os agendamentos →
               </NuxtLink>
             </template>
           </UPageCard>
         </div>
-
-        <!-- Top items -->
-        <UPageCard
-          v-if="overview?.topItems?.length"
-          title="Serviços/peças mais frequentes no período"
-          variant="subtle"
-        >
-          <ul class="divide-y divide-default text-sm">
-            <li
-              v-for="(item, i) in overview.topItems"
-              :key="i"
-              class="py-2 flex items-center justify-between"
-            >
-              <span>{{ item.name }}</span>
-              <UBadge color="neutral" variant="subtle" :label="`${item.count}×`" />
-            </li>
-          </ul>
-        </UPageCard>
       </div>
     </template>
   </UDashboardPanel>
 </template>
+

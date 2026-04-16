@@ -86,20 +86,11 @@ const links = computed<NavigationMenuItem[][]>(() => {
   if (workshop.can(ActionCode.PAYMENT_MACHINES_VIEW))
     financeChildren.push(item('Maquininhas', 'i-lucide-credit-card', '/app/financial/machines'))
 
+  if (workshop.can(ActionCode.SERVICE_INVOICE_READ))
+    financeChildren.push(item('Notas fiscais', 'i-lucide-receipt', '/app/fiscal/service-invoices'))
+
   const finance: NavigationMenuItem[] = financeChildren.length > 0
     ? [triggerItem('Financeiro', 'i-lucide-dollar-sign', '/app/financial', financeChildren)]
-    : []
-
-  const fiscalChildren: NavigationMenuItem[] = []
-
-  if (workshop.can(ActionCode.SERVICE_INVOICE_READ))
-    fiscalChildren.push(item('NFS-e serviço', 'i-lucide-receipt', '/app/fiscal/service-invoices'))
-
-  if (workshop.can(ActionCode.PRODUCT_INVOICE_READ))
-    fiscalChildren.push(item('NF-e produto', 'i-lucide-file-text', '/app/fiscal/product-invoices'))
-
-  const fiscal: NavigationMenuItem[] = fiscalChildren.length > 0
-    ? [triggerItem('Notas fiscais', 'i-lucide-file-text', '/app/fiscal/service-invoices', fiscalChildren)]
     : []
 
   const reportsChildren: NavigationMenuItem[] = [
@@ -166,21 +157,26 @@ const links = computed<NavigationMenuItem[][]>(() => {
     children: settingsChildren
   }]
 
+  const primaryLinks = [
+    ...operational,
+    ...catalog,
+    ...finance,
+    ...reports,
+    ...settings
+  ]
+
+  const secondaryLinks: NavigationMenuItem[] = [
+    item('Enviar feedback', 'i-lucide-message-circle', '/app/feedback'),
+    {
+      label: 'Ajuda',
+      icon: 'i-lucide-info',
+      to: '/docs'
+    }
+  ]
+
   return [
-    operational,
-    catalog,
-    finance,
-    fiscal,
-    reports,
-    settings,
-    [
-      item('Enviar feedback', 'i-lucide-message-circle', '/app/feedback'),
-      {
-        label: 'Ajuda',
-        icon: 'i-lucide-info',
-        to: '/docs'
-      }
-    ]
+    primaryLinks,
+    secondaryLinks
   ].filter(group => group.length > 0)
 })
 
