@@ -4,8 +4,13 @@ import { ActionCode } from '~/constants/action-codes'
 
 const open = ref(false)
 const sidebarCollapsed = ref(true)
-const isMobile = useMediaQuery('(max-width: 1023px)')
+const isMobile = ref(false)
 const workshop = useWorkshopPermissions()
+let mediaQuery: MediaQueryList | null = null
+
+function syncViewportMode() {
+  isMobile.value = mediaQuery?.matches ?? false
+}
 
 function closeSidebar() {
   open.value = false
@@ -191,7 +196,14 @@ const groups = computed(() => [
 const { load: loadPreferences } = useUserPreferences()
 
 onMounted(async () => {
+  mediaQuery = window.matchMedia('(max-width: 1023px)')
+  syncViewportMode()
+  mediaQuery.addEventListener?.('change', syncViewportMode)
   await loadPreferences()
+})
+
+onBeforeUnmount(() => {
+  mediaQuery?.removeEventListener?.('change', syncViewportMode)
 })
 
 watch(
