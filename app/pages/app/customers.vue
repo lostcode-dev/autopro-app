@@ -145,15 +145,6 @@ const { data, status, refresh } = await useAsyncData(
 const clientItems = computed(() => data.value?.items ?? [])
 const totalClients = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalClients.value / pageSize.value)))
-const hasActiveFilters = computed(() => Boolean(search.value || personTypeFilter.value !== ALL_PERSON_TYPES_VALUE))
-const resultLabel = computed(() => {
-  if (!totalClients.value)
-    return 'Nenhum cliente encontrado'
-
-  const from = (page.value - 1) * pageSize.value + 1
-  const to = Math.min(page.value * pageSize.value, totalClients.value)
-  return `Mostrando ${from}-${to} de ${totalClients.value} clientes`
-})
 
 function buildManagedQuery() {
   return {
