@@ -162,3 +162,19 @@ export interface EventsListResponse {
   page: number
   pageSize: number
 }
+
+// ─── Workshop Appointment ─────────────────────────────────────────────────────
+
+export type Appointment = {
+  id: string
+  client_id: string | null
+  vehicle_id: string | null
+  appointment_date: string
+  time: string
+  service_type: string | null
+  priority: string | null
+  status: string
+  notes: string | null
+  clients?: { id: string; name: string } | null
+  vehicles?: { id: string; brand: string | null; model: string | null; license_plate: string | null } | null
+}

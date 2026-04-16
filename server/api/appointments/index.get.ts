@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
 
   const page = Math.max(1, Number(query.page) || 1)
-  const pageSize = Math.max(1, Number(query.page_size) || 50)
+  const pageSize = Math.min(Math.max(1, Number(query.page_size) || 50), 500)
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
     dbQuery = dbQuery.lte('appointment_date', query.date_to as string)
   }
 
-  dbQuery = dbQuery.order('appointment_date', { ascending: false }).order('time', { ascending: false }).range(from, to)
+  dbQuery = dbQuery.order('appointment_date', { ascending: true }).order('time', { ascending: true }).range(from, to)
 
   const { data: items, count, error } = await dbQuery
 
