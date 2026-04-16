@@ -239,36 +239,39 @@ watch(sorting, async () => {
 
 // ─── Row selection ────────────────────────────────────────────────────────────
 
-const rowSelection = ref<RowSelectionState>({})
+const rowSelection = ref<RowSelectionState>({});
 const selectedIds = computed(() =>
   Object.entries(rowSelection.value)
     .filter(([, selected]) => selected)
     .map(([id]) => id),
-)
-const selectedCount = computed(() => selectedIds.value.length)
+);
+const selectedCount = computed(() => selectedIds.value.length);
 
 // ─── Bulk delete ───────────────────────────────────────────────────────────────
 
-const showBulkDeleteModal = ref(false)
-const isBulkDeleting = ref(false)
+const showBulkDeleteModal = ref(false);
+const isBulkDeleting = ref(false);
 
 async function confirmBulkDelete() {
-  if (!selectedIds.value.length || isBulkDeleting.value) return
-  isBulkDeleting.value = true
+  if (!selectedIds.value.length || isBulkDeleting.value) return;
+  isBulkDeleting.value = true;
   try {
     await Promise.all(
-      selectedIds.value.map((id) => $fetch(`/api/vehicles/${id}`, { method: 'DELETE' })),
-    )
-    toast.add({ title: `${selectedIds.value.length} veículo(s) removido(s)`, color: 'success' })
-    rowSelection.value = {}
-    showBulkDeleteModal.value = false
-    await refresh()
-  }
-  catch {
-    toast.add({ title: 'Erro ao excluir veículos', color: 'error' })
-  }
-  finally {
-    isBulkDeleting.value = false
+      selectedIds.value.map((id) =>
+        $fetch(`/api/vehicles/${id}`, { method: "DELETE" }),
+      ),
+    );
+    toast.add({
+      title: `${selectedIds.value.length} veículo(s) removido(s)`,
+      color: "success",
+    });
+    rowSelection.value = {};
+    showBulkDeleteModal.value = false;
+    await refresh();
+  } catch {
+    toast.add({ title: "Erro ao excluir veículos", color: "error" });
+  } finally {
+    isBulkDeleting.value = false;
   }
 }
 
@@ -317,9 +320,7 @@ const statusLabelMap: Record<string, string> = {
 function formatDate(value: string | null): string {
   if (!value) return "—";
   const d = new Date(value + "T00:00:00");
-  return Number.isNaN(d.getTime())
-    ? value
-    : d.toLocaleDateString("pt-BR");
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("pt-BR");
 }
 
 // ─── Modal (create / edit) ─────────────────────────────────────────────────────
@@ -462,7 +463,11 @@ const lineColumns = [
             <template #toolbar-right>
               <UTooltip
                 v-if="canDelete"
-                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+                :text="
+                  selectedCount > 0
+                    ? `Excluir ${selectedCount} selecionado(s)`
+                    : 'Excluir seleção'
+                "
               >
                 <UButton
                   icon="i-lucide-trash-2"
@@ -581,7 +586,9 @@ const lineColumns = [
                   <div class="min-w-0 flex-1 space-y-3">
                     <div class="flex items-start justify-between gap-3">
                       <div class="min-w-0 space-y-1">
-                        <h3 class="truncate text-base font-semibold text-highlighted">
+                        <h3
+                          class="truncate text-base font-semibold text-highlighted"
+                        >
                           {{ getVehicleTitle(vehicle as Vehicle) }}
                           <span
                             v-if="(vehicle as Vehicle).year"
@@ -599,10 +606,7 @@ const lineColumns = [
                         </span>
                       </div>
 
-                      <div
-                        class="flex shrink-0 items-center gap-1"
-                        @click.stop
-                      >
+                      <div class="flex shrink-0 items-center gap-1" @click.stop>
                         <UTooltip text="Ver detalhes">
                           <UButton
                             icon="i-lucide-eye"
@@ -662,10 +666,7 @@ const lineColumns = [
                         v-if="(vehicle as Vehicle).fuel_type"
                         class="flex items-center gap-2"
                       >
-                        <UIcon
-                          name="i-lucide-fuel"
-                          class="size-4 shrink-0"
-                        />
+                        <UIcon name="i-lucide-fuel" class="size-4 shrink-0" />
                         <span class="truncate">
                           {{ fuelLabel((vehicle as Vehicle).fuel_type) }}
                         </span>
@@ -708,13 +709,17 @@ const lineColumns = [
     confirm-color="error"
     :loading="isBulkDeleting"
     @confirm="confirmBulkDelete"
-    @update:open="(v) => { showBulkDeleteModal = v }"
+    @update:open="
+      (v) => {
+        showBulkDeleteModal = v;
+      }
+    "
   >
     <template #description>
       <p class="text-sm text-muted">
         Tem certeza que deseja excluir
-        <strong class="text-highlighted">{{ selectedCount }} veículo(s)</strong>?
-        Esta ação não pode ser desfeita.
+        <strong class="text-highlighted">{{ selectedCount }} veículo(s)</strong
+        >? Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>
@@ -745,8 +750,8 @@ const lineColumns = [
                   ? ` (${vehiclePendingDeletion.license_plate})`
                   : "")
               : "este veículo"
-          }}
-        </strong>? Esta ação não pode ser desfeita.
+          }} </strong
+        >? Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>
@@ -758,7 +763,10 @@ const lineColumns = [
     :ui="{ width: 'max-w-2xl' }"
   >
     <template #header>
-      <div v-if="selectedVehicle" class="flex min-w-0 flex-1 items-start justify-between gap-2">
+      <div
+        v-if="selectedVehicle"
+        class="flex min-w-0 flex-1 items-start justify-between gap-2"
+      >
         <div class="min-w-0">
           <h2 class="text-lg font-semibold text-highlighted">
             {{ getVehicleTitle(selectedVehicle) }}
@@ -837,7 +845,9 @@ const lineColumns = [
 
         <!-- Histórico de Manutenção -->
         <div>
-          <h3 class="mb-4 flex items-center gap-2 font-semibold text-highlighted">
+          <h3
+            class="mb-4 flex items-center gap-2 font-semibold text-highlighted"
+          >
             <UIcon name="i-lucide-wrench" class="size-4" />
             Histórico de Manutenção
             <span v-if="!isLoadingOrders" class="text-muted">
