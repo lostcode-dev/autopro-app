@@ -3,6 +3,7 @@ import { getRequestURL } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { getAllowedStripePriceIds, getStripe } from '../../utils/stripe'
+import { getOrCreateStripeCustomer } from '../../utils/stripe-customer'
 
 const schema = z.object({
   priceId: z.string().min(1),
@@ -53,30 +54,21 @@ export default eventHandler(async (event) => {
     })
   }
 
-  const { data: existingCustomer } = await supabase
-    .from('stripe_customers')
-    .select('stripe_customer_id')
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('id, display_name, stripe_customer_id')
     .eq('user_id', user.id)
-    .maybeSingle<{ stripe_customer_id: string }>()
+    .maybeSingle<{ id: string, display_name: string | null, stripe_customer_id: string | null }>()
 
-  let customerId = existingCustomer?.stripe_customer_id
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: user.email ?? undefined,
-      metadata: {
-        supabase_user_id: user.id
-      }
-    })
-
-    customerId = customer.id
-
-    await supabase
-      .from('stripe_customers')
-      .upsert({
-        user_id: user.id,
-        stripe_customer_id: customerId
-      }, { onConflict: 'user_id' })
-  }
+  const customerId = await getOrCreateStripeCustomer({
+    stripe,
+    supabase,
+    userId: user.id,
+    email: user.email,
+    displayName: profile?.display_name ?? null,
+    profileId: profile?.id ?? null,
+    knownCustomerId: profile?.stripe_customer_id ?? null
+  })
 
   const origin = getRequestURL(event).origin
   const session = await stripe.checkout.sessions.create({

@@ -2,6 +2,7 @@ import { getRequestHeader } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { getAllowedStripePriceIds, getStripe } from '../../utils/stripe'
+import { getOrCreateStripeCustomer } from '../../utils/stripe-customer'
 
 /**
  * POST /api/stripe/checkout
@@ -38,26 +39,15 @@ export default eventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Usuário não encontrado' })
   }
 
-  // Get or create Stripe customer — stored on user_profiles to avoid duplicates
-  let customerId = profile.stripe_customer_id as string | null
-
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: authUser.email ?? undefined,
-      name: (profile.display_name as string | null) ?? undefined,
-      metadata: {
-        user_id: authUser.id,
-        user_email: authUser.email ?? ''
-      }
-    })
-
-    customerId = customer.id
-
-    await supabase
-      .from('user_profiles')
-      .update({ stripe_customer_id: customerId })
-      .eq('id', profile.id)
-  }
+  const customerId = await getOrCreateStripeCustomer({
+    stripe,
+    supabase,
+    userId: authUser.id,
+    email: authUser.email,
+    displayName: profile.display_name as string | null,
+    profileId: profile.id as string,
+    knownCustomerId: profile.stripe_customer_id as string | null
+  })
 
   const origin = getRequestHeader(event, 'origin') || getRequestHeader(event, 'referer')?.replace(/\/$/, '') || 'http://localhost:3000'
 

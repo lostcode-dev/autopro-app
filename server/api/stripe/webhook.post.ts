@@ -3,6 +3,20 @@ import type Stripe from 'stripe'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { getStripe, getStripeWebhookSecret } from '../../utils/stripe'
 
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
+  const subscription = invoice.parent?.subscription_details?.subscription
+  if (!subscription)
+    return null
+
+  return typeof subscription === 'string'
+    ? subscription
+    : subscription.id
+}
+
+function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
+  return subscription.items.data[0]?.current_period_end ?? null
+}
+
 /**
  * POST /api/stripe/webhook
  * Receives and processes Stripe webhook events.
@@ -231,8 +245,9 @@ async function handleCheckoutCompleted(
         : null
 
       monthlyAmount = price?.unit_amount ? price.unit_amount / 100 : null
-      nextPaymentDate = sub.current_period_end
-        ? new Date(sub.current_period_end * 1000).toISOString()
+      const periodEnd = getSubscriptionPeriodEnd(sub)
+      nextPaymentDate = periodEnd
+        ? new Date(periodEnd * 1000).toISOString()
         : null
 
       if (!customerId) {
@@ -289,9 +304,7 @@ async function handleInvoicePaid(
   invoice: Stripe.Invoice,
   supabase: ReturnType<typeof getSupabaseAdminClient>
 ) {
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : null
+  const subscriptionId = getInvoiceSubscriptionId(invoice)
 
   if (!subscriptionId) return
 
@@ -323,9 +336,7 @@ async function handleInvoiceFailed(
   invoice: Stripe.Invoice,
   supabase: ReturnType<typeof getSupabaseAdminClient>
 ) {
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : null
+  const subscriptionId = getInvoiceSubscriptionId(invoice)
 
   if (!subscriptionId) return
 
@@ -378,8 +389,8 @@ async function handleSubscriptionUpdated(
       .from('subscriptions')
       .update({
         status: newStatus,
-        next_payment_date: subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
+        next_payment_date: getSubscriptionPeriodEnd(subscription)
+          ? new Date(getSubscriptionPeriodEnd(subscription)! * 1000).toISOString()
           : null,
         updated_by: 'stripe-webhook'
       })

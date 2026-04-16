@@ -1,32 +1,66 @@
 import Stripe from 'npm:stripe@20.4.0'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.48.1'
 
-// ---------------------------------------------------------------------------
-// stripe-webhook — Supabase Edge Function
-//
-// Single authoritative webhook handler. Runs independently of the Nuxt app
-// so payments are processed even during app deployments/restarts.
-//
-// Handles:
-//   checkout.session.completed       → create org + link user + subscription
-//   customer.subscription.*          → sync stripe_subscriptions table
-//   invoice.paid                     → sync stripe_invoices + activate org
-//   invoice.payment_failed           → sync stripe_invoices + suspend org
-//   invoice.*  (other)               → sync stripe_invoices table
-//
-// Env vars required (set in Supabase dashboard → Edge Functions → Secrets):
-//   SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY
-//   STRIPE_SECRET_KEY
-//   STRIPE_WEBHOOK_SECRET
-// ---------------------------------------------------------------------------
-
 type Env = {
   SUPABASE_URL: string
   SUPABASE_SERVICE_ROLE_KEY: string
   STRIPE_SECRET_KEY: string
   STRIPE_WEBHOOK_SECRET: string
 }
+
+type OrgSubscriptionRow = {
+  id: string
+  organization_id: string
+  user_email: string | null
+  stripe_customer_id: string | null
+}
+
+type StripeInvoicePaymentLike = {
+  id?: string
+  invoice?: string | { id?: string | null } | null
+}
+
+const SUBSCRIPTION_STATUS_MAP: Record<string, string> = {
+  active: 'active',
+  trialing: 'active',
+  past_due: 'suspended',
+  unpaid: 'suspended',
+  canceled: 'cancelled',
+  incomplete: 'suspended',
+  incomplete_expired: 'cancelled',
+  paused: 'suspended'
+}
+
+const INVOICE_STATUS_MAP: Record<string, string | null> = {
+  'invoice.created': 'draft',
+  'invoice.finalized': 'open',
+  'invoice.finalization_failed': 'finalization_failed',
+  'invoice.paid': 'paid',
+  'invoice.payment_succeeded': 'paid',
+  'invoice.payment_failed': 'failed',
+  'invoice.payment_action_required': 'action_required',
+  'invoice.payment_attempt_required': 'pending',
+  'invoice.overdue': 'overdue',
+  'invoice.overpaid': 'paid',
+  'invoice.marked_uncollectible': 'uncollectible',
+  'invoice.voided': 'voided',
+  'invoice.sent': 'open',
+  'invoice.updated': null,
+  'invoice.will_be_due': null
+}
+
+const STRIPE_INVOICE_STATUS_FALLBACK_MAP: Record<string, string> = {
+  draft: 'draft',
+  open: 'open',
+  paid: 'paid',
+  uncollectible: 'uncollectible',
+  void: 'voided'
+}
+
+const ORG_ACTIVATING_INVOICE_STATUSES = new Set(['paid'])
+const ORG_SUSPENDING_INVOICE_STATUSES = new Set(['failed', 'overdue', 'action_required'])
+const ORG_CANCELLING_INVOICE_STATUSES = new Set(['uncollectible'])
+const BILLING_LINK_PATH = '/app/settings/subscription'
 
 function getEnv(): Env {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
@@ -41,23 +75,75 @@ function getEnv(): Env {
 }
 
 function toIso(seconds: number | null | undefined): string | null {
-  if (!seconds) return null
+  if (!seconds)
+    return null
+
   return new Date(seconds * 1000).toISOString()
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+function toCurrencyAmount(amount: number | null | undefined): number | null {
+  if (amount === null || amount === undefined)
+    return null
+
+  return amount / 100
+}
+
+function resolveLocalSubscriptionStatus(status: string | null | undefined) {
+  if (!status)
+    return 'suspended'
+
+  return SUBSCRIPTION_STATUS_MAP[status] ?? 'suspended'
+}
+
+function resolveInvoiceLifecycleStatus(eventType: string, invoice: Stripe.Invoice) {
+  const explicitStatus = INVOICE_STATUS_MAP[eventType]
+  if (explicitStatus)
+    return explicitStatus
+
+  if (explicitStatus === null && invoice.status)
+    return STRIPE_INVOICE_STATUS_FALLBACK_MAP[invoice.status] ?? invoice.status
+
+  if (invoice.status)
+    return STRIPE_INVOICE_STATUS_FALLBACK_MAP[invoice.status] ?? invoice.status
+
+  return null
+}
+
+function getInvoiceIdFromPayment(payment: StripeInvoicePaymentLike) {
+  if (!payment.invoice)
+    return null
+
+  return typeof payment.invoice === 'string'
+    ? payment.invoice
+    : payment.invoice.id ?? null
+}
+
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
+  const subscription = invoice.parent?.subscription_details?.subscription
+  if (!subscription)
+    return null
+
+  return typeof subscription === 'string'
+    ? subscription
+    : subscription.id
+}
+
+function getSubscriptionPeriodStart(subscription: Stripe.Subscription) {
+  return subscription.items.data[0]?.current_period_start ?? null
+}
+
+function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
+  return subscription.items.data[0]?.current_period_end ?? null
+}
 
 async function resolveUserId(
   supabase: ReturnType<typeof createClient>,
   opts: { clientReferenceId?: string | null, userIdMeta?: string | null, stripeCustomerId?: string | null }
 ): Promise<string | null> {
-  // 1. Prefer explicit user_id from session metadata / client_reference_id
   const explicit = opts.clientReferenceId || opts.userIdMeta
-  if (explicit) return explicit
+  if (explicit)
+    return explicit
 
-  // 2. Fallback: look up by stripe_customer_id stored in user_profiles
   if (opts.stripeCustomerId) {
     const { data } = await supabase
       .from('user_profiles')
@@ -65,19 +151,167 @@ async function resolveUserId(
       .eq('stripe_customer_id', opts.stripeCustomerId)
       .maybeSingle<{ user_id: string }>()
 
-    if (data?.user_id) return data.user_id
+    if (data?.user_id)
+      return data.user_id
 
-    // 3. Fallback: legacy stripe_customers table (may exist from billing/checkout.post.ts)
     const { data: sc } = await supabase
       .from('stripe_customers')
       .select('user_id')
       .eq('stripe_customer_id', opts.stripeCustomerId)
       .maybeSingle<{ user_id: string }>()
 
-    if (sc?.user_id) return sc.user_id
+    if (sc?.user_id)
+      return sc.user_id
   }
 
   return null
+}
+
+async function resolveUserEmail(
+  supabase: ReturnType<typeof createClient>,
+  userId: string | null
+) {
+  if (!userId)
+    return null
+
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('email')
+    .eq('user_id', userId)
+    .maybeSingle<{ email: string | null }>()
+
+  return profile?.email ?? null
+}
+
+async function syncLegacyCustomerMapping(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  customerId: string
+) {
+  await supabase
+    .from('user_profiles')
+    .update({ stripe_customer_id: customerId })
+    .eq('user_id', userId)
+
+  await supabase
+    .from('stripe_customers')
+    .upsert({ user_id: userId, stripe_customer_id: customerId }, { onConflict: 'user_id' })
+    .then(() => {})
+    .catch(() => {})
+}
+
+async function findOrgSubscriptionByStripeRefs(
+  supabase: ReturnType<typeof createClient>,
+  opts: { stripeSubscriptionId?: string | null, stripeCustomerId?: string | null }
+) {
+  if (opts.stripeSubscriptionId) {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('id, organization_id, user_email, stripe_customer_id')
+      .eq('stripe_subscription_id', opts.stripeSubscriptionId)
+      .maybeSingle<OrgSubscriptionRow>()
+
+    if (data)
+      return data
+  }
+
+  if (opts.stripeCustomerId) {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('id, organization_id, user_email, stripe_customer_id')
+      .eq('stripe_customer_id', opts.stripeCustomerId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle<OrgSubscriptionRow>()
+
+    if (data)
+      return data
+  }
+
+  return null
+}
+
+async function setOrganizationStateFromInvoice(
+  supabase: ReturnType<typeof createClient>,
+  invoice: Stripe.Invoice,
+  localStatus: string | null
+) {
+  if (!localStatus)
+    return
+
+  const stripeSubscriptionId = getInvoiceSubscriptionId(invoice)
+  const stripeCustomerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id ?? null
+
+  const orgSub = await findOrgSubscriptionByStripeRefs(supabase, {
+    stripeSubscriptionId,
+    stripeCustomerId
+  })
+
+  if (!orgSub)
+    return
+
+  if (ORG_ACTIVATING_INVOICE_STATUSES.has(localStatus)) {
+    await Promise.all([
+      supabase
+        .from('subscriptions')
+        .update({
+          status: 'active',
+          cancellation_date: null,
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.id),
+      supabase
+        .from('organizations')
+        .update({
+          active: true,
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.organization_id)
+    ])
+    return
+  }
+
+  if (ORG_SUSPENDING_INVOICE_STATUSES.has(localStatus)) {
+    await Promise.all([
+      supabase
+        .from('subscriptions')
+        .update({
+          status: 'suspended',
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.id),
+      supabase
+        .from('organizations')
+        .update({
+          active: false,
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.organization_id)
+    ])
+    return
+  }
+
+  if (ORG_CANCELLING_INVOICE_STATUSES.has(localStatus)) {
+    await Promise.all([
+      supabase
+        .from('subscriptions')
+        .update({
+          status: 'cancelled',
+          cancellation_date: new Date().toISOString(),
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.id),
+      supabase
+        .from('organizations')
+        .update({
+          active: false,
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.organization_id)
+    ])
+  }
 }
 
 async function ensureOrganization(
@@ -85,7 +319,6 @@ async function ensureOrganization(
   userId: string,
   userEmail: string | null
 ): Promise<string | null> {
-  // Load current profile
   const { data: profile } = await supabase
     .from('user_profiles')
     .select('id, organization_id, role_id, display_name, email')
@@ -103,18 +336,16 @@ async function ensureOrganization(
     return null
   }
 
-  // Already has org — nothing to do
-  if (profile.organization_id) return profile.organization_id
+  if (profile.organization_id)
+    return profile.organization_id
 
-  // Create organization
   const email = profile.email || userEmail || null
   const displayName = profile.display_name || email?.split('@')[0] || 'Oficina'
-  const orgName = `${displayName}`
 
   const { data: org, error: orgErr } = await supabase
     .from('organizations')
     .insert({
-      name: orgName,
+      name: displayName,
       email,
       active: true,
       created_by: 'stripe-webhook'
@@ -127,8 +358,6 @@ async function ensureOrganization(
     return null
   }
 
-  // Ensure admin role exists for this organization
-  // roles.organization_id is NOT NULL, so every role must be org-scoped.
   let roleId = profile.role_id
 
   const { data: existingAdminRole } = await supabase
@@ -159,13 +388,12 @@ async function ensureOrganization(
     } else {
       roleId = newRole.id
 
-      // Grant all existing actions to the admin role
       const { data: allActions } = await supabase.from('actions').select('id')
       if (allActions?.length) {
         await supabase.from('role_actions').insert(
-          (allActions as { id: string }[]).map(a => ({
+          (allActions as { id: string }[]).map(action => ({
             role_id: roleId!,
-            action_id: a.id,
+            action_id: action.id,
             is_granted: true,
             created_by: 'stripe-webhook'
           }))
@@ -174,7 +402,6 @@ async function ensureOrganization(
     }
   }
 
-  // Link org + role to user profile
   await supabase
     .from('user_profiles')
     .update({
@@ -184,7 +411,7 @@ async function ensureOrganization(
     })
     .eq('id', profile.id)
 
-  console.log(`[stripe-webhook] Organization created and linked: ${org.id} → user ${userId}`)
+  console.log(`[stripe-webhook] Organization created and linked: ${org.id} -> user ${userId}`)
   return org.id
 }
 
@@ -200,6 +427,7 @@ async function upsertOrgSubscription(
     monthlyAmount: number | null
     startDate: string | null
     nextPaymentDate: string | null
+    cancellationDate?: string | null
   }
 ) {
   const { data: existing } = await supabase
@@ -217,7 +445,9 @@ async function upsertOrgSubscription(
         stripe_subscription_id: opts.stripeSubscriptionId,
         plan_name: opts.planName,
         monthly_amount: opts.monthlyAmount,
+        start_date: opts.startDate,
         next_payment_date: opts.nextPaymentDate,
+        cancellation_date: opts.cancellationDate ?? null,
         updated_by: 'stripe-webhook'
       })
       .eq('id', existing.id)
@@ -234,6 +464,7 @@ async function upsertOrgSubscription(
         monthly_amount: opts.monthlyAmount,
         start_date: opts.startDate,
         next_payment_date: opts.nextPaymentDate,
+        cancellation_date: opts.cancellationDate ?? null,
         created_by: 'stripe-webhook'
       })
   }
@@ -249,18 +480,15 @@ async function upsertStripeSubscription(
     : subscription.customer?.id ?? null
 
   const resolvedUserId = userId
-    || (subscription.metadata?.user_id ?? null)
-    || (subscription.metadata?.supabase_user_id ?? null)
+    || subscription.metadata?.user_id
+    || subscription.metadata?.supabase_user_id
+    || null
 
-  if (!resolvedUserId) return
+  if (!resolvedUserId)
+    return
 
-  if (customerId) {
-    // Best-effort: store in legacy stripe_customers table if it exists
-    await supabase
-      .from('stripe_customers')
-      .upsert({ user_id: resolvedUserId, stripe_customer_id: customerId }, { onConflict: 'user_id' })
-      .then(() => {/* ignore errors — table may not exist */})
-  }
+  if (customerId)
+    await syncLegacyCustomerMapping(supabase, resolvedUserId, customerId)
 
   const item = subscription.items.data?.[0]
 
@@ -274,8 +502,8 @@ async function upsertStripeSubscription(
       price_id: item?.price?.id ?? null,
       quantity: item?.quantity ?? null,
       cancel_at_period_end: subscription.cancel_at_period_end ?? false,
-      current_period_start: toIso(subscription.current_period_start),
-      current_period_end: toIso(subscription.current_period_end),
+      current_period_start: toIso(getSubscriptionPeriodStart(subscription)),
+      current_period_end: toIso(getSubscriptionPeriodEnd(subscription)),
       canceled_at: toIso(subscription.canceled_at),
       metadata: subscription.metadata ?? {}
     }, { onConflict: 'stripe_subscription_id' })
@@ -283,39 +511,21 @@ async function upsertStripeSubscription(
 
 async function upsertStripeInvoice(
   supabase: ReturnType<typeof createClient>,
-  invoice: Stripe.Invoice
+  invoice: Stripe.Invoice,
+  explicitStatus?: string | null
 ) {
   const customerId = typeof invoice.customer === 'string'
     ? invoice.customer
     : invoice.customer?.id ?? null
 
-  if (!customerId) return
+  if (!customerId)
+    return null
 
-  // Resolve user_id
-  const { data: profileRow } = await supabase
-    .from('user_profiles')
-    .select('user_id')
-    .eq('stripe_customer_id', customerId)
-    .maybeSingle<{ user_id: string }>()
+  const userId = await resolveUserId(supabase, { stripeCustomerId: customerId })
+  if (!userId)
+    return null
 
-  let userId = profileRow?.user_id ?? null
-
-  if (!userId) {
-    const { data: sc } = await supabase
-      .from('stripe_customers')
-      .select('user_id')
-      .eq('stripe_customer_id', customerId)
-      .maybeSingle<{ user_id: string }>()
-
-    userId = sc?.user_id ?? null
-  }
-
-  if (!userId) return
-
-  const subId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id ?? null
-
+  const subId = getInvoiceSubscriptionId(invoice)
   const line = invoice.lines?.data?.[0]
 
   await supabase
@@ -325,7 +535,7 @@ async function upsertStripeInvoice(
       stripe_customer_id: customerId,
       stripe_subscription_id: subId,
       stripe_invoice_id: invoice.id,
-      status: invoice.status ?? null,
+      status: explicitStatus ?? invoice.status ?? null,
       currency: invoice.currency ?? null,
       total: invoice.total ?? null,
       amount_due: invoice.amount_due ?? null,
@@ -338,10 +548,122 @@ async function upsertStripeInvoice(
       due_date: toIso(invoice.due_date),
       period_start: toIso(line?.period?.start),
       period_end: toIso(line?.period?.end),
-      paid: invoice.paid ?? null,
+      paid: explicitStatus === 'paid' ? true : invoice.paid ?? null,
       created: toIso(invoice.created),
       data: invoice as unknown as Record<string, unknown>
     }, { onConflict: 'stripe_invoice_id' })
+
+  return userId
+}
+
+async function upsertBillingInvoice(
+  supabase: ReturnType<typeof createClient>,
+  invoice: Stripe.Invoice,
+  eventType: string,
+  localStatus: string | null,
+  userId: string | null
+) {
+  if (!invoice.id)
+    return
+
+  const stripeSubscriptionId = getInvoiceSubscriptionId(invoice)
+  const stripeCustomerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id ?? null
+
+  const orgSub = await findOrgSubscriptionByStripeRefs(supabase, {
+    stripeSubscriptionId,
+    stripeCustomerId
+  })
+
+  if (!orgSub)
+    return
+
+  const resolvedUserEmail = orgSub.user_email
+    || invoice.customer_email
+    || await resolveUserEmail(supabase, userId)
+
+  if (!resolvedUserEmail)
+    return
+
+  const line = invoice.lines?.data?.[0]
+  const now = new Date().toISOString()
+  const payload: Record<string, unknown> = {
+    organization_id: orgSub.organization_id,
+    user_email: resolvedUserEmail,
+    stripe_invoice_id: invoice.id,
+    amount: toCurrencyAmount(invoice.total) ?? 0,
+    status: localStatus ?? 'pending',
+    subscription_id: orgSub.id,
+    stripe_subscription_id: stripeSubscriptionId,
+    stripe_customer_id: stripeCustomerId,
+    invoice_number: invoice.number ?? null,
+    issue_date: toIso(invoice.status_transitions?.finalized_at) ?? toIso(invoice.created),
+    due_date: toIso(invoice.due_date),
+    payment_date: toIso(invoice.status_transitions?.paid_at) ?? (localStatus === 'paid' ? now : null),
+    pdf_url: invoice.invoice_pdf ?? null,
+    description: line?.description ?? null,
+    amount_overpaid: toCurrencyAmount(invoice.amount_overpaid),
+    collection_method: invoice.collection_method ?? null,
+    period_start: toIso(line?.period?.start),
+    period_end: toIso(line?.period?.end),
+    attempt_count: invoice.attempt_count ?? 0,
+    next_payment_attempt: toIso(invoice.next_payment_attempt),
+    hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+    raw_data: invoice as unknown as Record<string, unknown>,
+    updated_by: 'stripe-webhook',
+    created_by: 'stripe-webhook'
+  }
+
+  if (eventType === 'invoice.sent')
+    payload.sent_at = now
+
+  const { data: existing, error: existingError } = await supabase
+    .from('billing_invoices')
+    .select('id')
+    .eq('stripe_invoice_id', invoice.id)
+    .maybeSingle<{ id: string }>()
+
+  if (existingError) {
+    console.warn('[stripe-webhook] Failed to look up billing_invoices row:', existingError.message)
+    return
+  }
+
+  if (existing) {
+    const { error } = await supabase
+      .from('billing_invoices')
+      .update(payload)
+      .eq('id', existing.id)
+
+    if (error)
+      console.warn('[stripe-webhook] Failed to update billing_invoices row:', error.message)
+
+    return
+  }
+
+  const { error } = await supabase
+    .from('billing_invoices')
+    .insert(payload)
+
+  if (error)
+    console.warn('[stripe-webhook] Failed to insert billing_invoices row:', error.message)
+}
+
+async function softDeleteBillingInvoice(
+  supabase: ReturnType<typeof createClient>,
+  stripeInvoiceId: string
+) {
+  const { error } = await supabase
+    .from('billing_invoices')
+    .update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: 'stripe-webhook',
+      updated_by: 'stripe-webhook'
+    })
+    .eq('stripe_invoice_id', stripeInvoiceId)
+
+  if (error)
+    console.warn('[stripe-webhook] Failed to soft-delete billing invoice:', error.message)
 }
 
 async function sendNotification(
@@ -363,25 +685,76 @@ async function sendNotification(
         metadata
       })
   } catch {
-    // best-effort — notifications are non-critical
+    // Best effort only.
   }
 }
 
-// ---------------------------------------------------------------------------
-// Event handlers
-// ---------------------------------------------------------------------------
+async function sendInvoiceEventNotification(
+  supabase: ReturnType<typeof createClient>,
+  eventType: string,
+  invoice: Stripe.Invoice,
+  userId: string | null
+) {
+  if (!userId)
+    return
+
+  let body: string | null = null
+
+  switch (eventType) {
+    case 'invoice.paid':
+      body = 'Pagamento confirmado. Sua fatura esta disponivel.'
+      break
+    case 'invoice.payment_failed':
+      body = 'Falha no pagamento. Atualize sua forma de pagamento.'
+      break
+    case 'invoice.payment_action_required':
+      body = 'Sua cobranca exige autenticacao adicional para continuar.'
+      break
+    case 'invoice.payment_attempt_required':
+      body = 'A cobranca precisa de uma nova tentativa. Revise seu metodo de pagamento.'
+      break
+    case 'invoice.upcoming':
+      body = 'Sua proxima fatura sera gerada em breve.'
+      break
+    case 'invoice.will_be_due':
+      body = 'Sua fatura vence em breve.'
+      break
+    case 'invoice.overdue':
+      body = 'Sua fatura esta vencida. Regularize o pagamento para evitar bloqueio.'
+      break
+    case 'invoice.marked_uncollectible':
+      body = 'Sua fatura foi marcada como incobravel. Fale com o suporte para regularizar.'
+      break
+    default:
+      break
+  }
+
+  if (!body)
+    return
+
+  await sendNotification(supabase, userId, body, BILLING_LINK_PATH, {
+    event_type: eventType,
+    stripe_invoice_id: invoice.id,
+    stripe_customer_id: typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null,
+    stripe_subscription_id: getInvoiceSubscriptionId(invoice)
+  })
+}
 
 async function onCheckoutCompleted(
   session: Stripe.Checkout.Session,
   supabase: ReturnType<typeof createClient>,
   stripe: Stripe
 ) {
-  const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id ?? null
-  const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id ?? null
+  const customerId = typeof session.customer === 'string'
+    ? session.customer
+    : session.customer?.id ?? null
+  const subId = typeof session.subscription === 'string'
+    ? session.subscription
+    : session.subscription?.id ?? null
 
   const userId = await resolveUserId(supabase, {
     clientReferenceId: session.client_reference_id,
-    userIdMeta: session.metadata?.user_id,
+    userIdMeta: session.metadata?.user_id || session.metadata?.supabase_user_id,
     stripeCustomerId: customerId
   })
 
@@ -392,20 +765,21 @@ async function onCheckoutCompleted(
 
   const userEmail = session.metadata?.user_email ?? session.customer_email ?? null
 
-  // Store stripe_customer_id on user_profiles for future lookups
-  if (customerId) {
-    await supabase
-      .from('user_profiles')
-      .update({ stripe_customer_id: customerId })
-      .eq('user_id', userId)
-      .is('stripe_customer_id', null)
-  }
+  if (customerId)
+    await syncLegacyCustomerMapping(supabase, userId, customerId)
 
-  // Create organization if needed
   const organizationId = await ensureOrganization(supabase, userId, userEmail)
-  if (!organizationId) return
+  if (!organizationId)
+    return
 
-  // Sync stripe_subscriptions table
+  await supabase
+    .from('organizations')
+    .update({
+      active: true,
+      updated_by: 'stripe-webhook'
+    })
+    .eq('id', organizationId)
+
   if (subId) {
     try {
       const sub = await stripe.subscriptions.retrieve(subId, {
@@ -414,7 +788,6 @@ async function onCheckoutCompleted(
 
       await upsertStripeSubscription(supabase, sub, userId)
 
-      // Upsert workshop subscriptions table
       const item = sub.items.data[0]
       const price = item?.price
       const product = price?.product
@@ -430,15 +803,16 @@ async function onCheckoutCompleted(
         stripeSubscriptionId: subId,
         planName,
         monthlyAmount: price?.unit_amount ? price.unit_amount / 100 : null,
-        startDate: toIso(sub.current_period_start),
-        nextPaymentDate: toIso(sub.current_period_end)
+        startDate: toIso(getSubscriptionPeriodStart(sub)),
+        nextPaymentDate: toIso(getSubscriptionPeriodEnd(sub)),
+        cancellationDate: null
       })
     } catch (err) {
       console.warn('[stripe-webhook] Could not retrieve subscription details:', err)
     }
   }
 
-  await sendNotification(supabase, userId, 'Sua assinatura foi ativada. Bem-vindo!', '/app/settings/subscription', {
+  await sendNotification(supabase, userId, 'Sua assinatura foi ativada. Bem-vindo!', BILLING_LINK_PATH, {
     stripe_subscription_id: subId,
     stripe_customer_id: customerId
   })
@@ -460,124 +834,161 @@ async function onSubscriptionEvent(
 
   await upsertStripeSubscription(supabase, subscription, userId)
 
-  // Sync org subscription status
-  const { data: orgSub } = await supabase
-    .from('subscriptions')
-    .select('id, organization_id')
-    .eq('stripe_subscription_id', subscription.id)
-    .maybeSingle<{ id: string, organization_id: string }>()
+  const orgSub = await findOrgSubscriptionByStripeRefs(supabase, {
+    stripeSubscriptionId: subscription.id,
+    stripeCustomerId: customerId
+  })
 
   if (orgSub) {
-    const statusMap: Record<string, string> = {
-      active: 'active', trialing: 'active',
-      past_due: 'suspended', unpaid: 'suspended',
-      canceled: 'cancelled', incomplete: 'suspended',
-      incomplete_expired: 'cancelled', paused: 'suspended'
-    }
-
-    const newStatus = statusMap[subscription.status] ?? 'suspended'
+    const newStatus = resolveLocalSubscriptionStatus(subscription.status)
     const isActive = newStatus === 'active'
 
     await Promise.all([
-      supabase.from('subscriptions').update({
-        status: newStatus,
-        next_payment_date: toIso(subscription.current_period_end),
-        updated_by: 'stripe-webhook'
-      }).eq('id', orgSub.id),
-      supabase.from('organizations').update({
-        active: isActive,
-        updated_by: 'stripe-webhook'
-      }).eq('id', orgSub.organization_id)
+      supabase
+        .from('subscriptions')
+        .update({
+          status: newStatus,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscription.id,
+          next_payment_date: toIso(getSubscriptionPeriodEnd(subscription)),
+          cancellation_date: newStatus === 'cancelled' ? toIso(subscription.canceled_at) ?? new Date().toISOString() : null,
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.id),
+      supabase
+        .from('organizations')
+        .update({
+          active: isActive,
+          updated_by: 'stripe-webhook'
+        })
+        .eq('id', orgSub.organization_id)
     ])
   }
 
-  if (userId) {
-    if (eventType === 'customer.subscription.deleted') {
-      await sendNotification(supabase, userId, 'Sua assinatura foi cancelada.', '/app/settings/subscription', {
-        stripe_subscription_id: subscription.id
-      })
-    }
-    if (eventType === 'customer.subscription.updated' && subscription.cancel_at_period_end) {
-      await sendNotification(supabase, userId, 'Cancelamento agendado para o fim do período de cobrança.', '/app/settings/subscription', {
-        stripe_subscription_id: subscription.id
-      })
-    }
+  if (!userId)
+    return
+
+  if (eventType === 'customer.subscription.deleted') {
+    await sendNotification(supabase, userId, 'Sua assinatura foi cancelada.', BILLING_LINK_PATH, {
+      stripe_subscription_id: subscription.id
+    })
+  }
+
+  if (eventType === 'customer.subscription.updated' && subscription.cancel_at_period_end) {
+    await sendNotification(supabase, userId, 'Cancelamento agendado para o fim do periodo de cobranca.', BILLING_LINK_PATH, {
+      stripe_subscription_id: subscription.id
+    })
+  }
+
+  if (eventType === 'customer.subscription.pending_update_expired') {
+    await sendNotification(supabase, userId, 'Uma alteracao pendente da assinatura expirou antes da confirmacao.', BILLING_LINK_PATH, {
+      stripe_subscription_id: subscription.id
+    })
   }
 }
 
-async function onInvoicePaid(
+async function onInvoiceEvent(
   invoice: Stripe.Invoice,
+  eventType: string,
   supabase: ReturnType<typeof createClient>,
   stripe: Stripe
 ) {
-  await upsertStripeInvoice(supabase, invoice)
-
-  const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id ?? null
-  if (subId) {
-    const sub = await stripe.subscriptions.retrieve(subId)
-    const userId = await resolveUserId(supabase, {
-      userIdMeta: sub.metadata?.user_id || sub.metadata?.supabase_user_id,
-      stripeCustomerId: typeof sub.customer === 'string' ? sub.customer : sub.customer?.id ?? null
-    })
-    await upsertStripeSubscription(supabase, sub, userId)
-  }
-
-  // Ensure org stays active
-  const { data: orgSub } = await supabase
-    .from('subscriptions')
-    .select('id, organization_id')
-    .eq('stripe_subscription_id', subId ?? '')
-    .maybeSingle<{ id: string, organization_id: string }>()
-
-  if (orgSub) {
-    await Promise.all([
-      supabase.from('subscriptions').update({ status: 'active', updated_by: 'stripe-webhook' }).eq('id', orgSub.id),
-      supabase.from('organizations').update({ active: true, updated_by: 'stripe-webhook' }).eq('id', orgSub.organization_id)
-    ])
-  }
-
-  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null
+  const customerId = typeof invoice.customer === 'string'
+    ? invoice.customer
+    : invoice.customer?.id ?? null
   const userId = await resolveUserId(supabase, { stripeCustomerId: customerId })
-  if (userId) {
-    await sendNotification(supabase, userId, 'Pagamento confirmado. Sua fatura está disponível.', '/app/settings/subscription', {
-      stripe_invoice_id: invoice.id
-    })
+
+  if (eventType === 'invoice.upcoming') {
+    await sendInvoiceEventNotification(supabase, eventType, invoice, userId)
+    return
   }
+
+  if (eventType === 'invoice.deleted') {
+    await softDeleteBillingInvoice(supabase, invoice.id)
+    return
+  }
+
+  const localStatus = resolveInvoiceLifecycleStatus(eventType, invoice)
+  const resolvedUserId = await upsertStripeInvoice(supabase, invoice, localStatus) ?? userId
+
+  await upsertBillingInvoice(supabase, invoice, eventType, localStatus, resolvedUserId)
+
+  const subId = getInvoiceSubscriptionId(invoice)
+
+  if (subId && (eventType === 'invoice.paid' || eventType === 'invoice.payment_succeeded')) {
+    try {
+      const subscription = await stripe.subscriptions.retrieve(subId)
+      const subscriptionUserId = await resolveUserId(supabase, {
+        userIdMeta: subscription.metadata?.user_id || subscription.metadata?.supabase_user_id,
+        stripeCustomerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer?.id ?? null
+      })
+      await upsertStripeSubscription(supabase, subscription, subscriptionUserId)
+    } catch (err) {
+      console.warn('[stripe-webhook] Could not refresh subscription after invoice payment:', err)
+    }
+  }
+
+  await setOrganizationStateFromInvoice(supabase, invoice, localStatus)
+  await sendInvoiceEventNotification(supabase, eventType, invoice, resolvedUserId)
 }
 
-async function onInvoicePaymentFailed(
-  invoice: Stripe.Invoice,
-  supabase: ReturnType<typeof createClient>
+async function confirmInvoicePayment(
+  supabase: ReturnType<typeof createClient>,
+  payment: StripeInvoicePaymentLike
 ) {
-  await upsertStripeInvoice(supabase, invoice)
+  const invoiceId = getInvoiceIdFromPayment(payment)
+  if (!invoiceId)
+    return
 
-  const subId = typeof invoice.subscription === 'string' ? invoice.subscription : invoice.subscription?.id ?? null
-
-  const { data: orgSub } = await supabase
-    .from('subscriptions')
-    .select('id, organization_id')
-    .eq('stripe_subscription_id', subId ?? '')
-    .maybeSingle<{ id: string, organization_id: string }>()
-
-  if (orgSub) {
-    await supabase
-      .from('subscriptions')
-      .update({ status: 'suspended', updated_by: 'stripe-webhook' })
-      .eq('id', orgSub.id)
-  }
-
-  const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id ?? null
-  const userId = await resolveUserId(supabase, { stripeCustomerId: customerId })
-  if (userId) {
-    await sendNotification(supabase, userId, 'Falha no pagamento. Atualize sua forma de pagamento.', '/app/settings/subscription', {
-      stripe_invoice_id: invoice.id
+  await supabase
+    .from('stripe_invoices')
+    .update({
+      status: 'paid',
+      paid: true
     })
-  }
-}
+    .eq('stripe_invoice_id', invoiceId)
 
-// ---------------------------------------------------------------------------
-// Entry point
-// ---------------------------------------------------------------------------
+  await supabase
+    .from('billing_invoices')
+    .update({
+      status: 'paid',
+      payment_date: new Date().toISOString(),
+      updated_by: 'stripe-webhook'
+    })
+    .eq('stripe_invoice_id', invoiceId)
+
+  const { data: invoiceRow } = await supabase
+    .from('stripe_invoices')
+    .select('stripe_subscription_id, stripe_customer_id')
+    .eq('stripe_invoice_id', invoiceId)
+    .maybeSingle<{ stripe_subscription_id: string | null, stripe_customer_id: string | null }>()
+
+  const orgSub = await findOrgSubscriptionByStripeRefs(supabase, {
+    stripeSubscriptionId: invoiceRow?.stripe_subscription_id,
+    stripeCustomerId: invoiceRow?.stripe_customer_id
+  })
+
+  if (!orgSub)
+    return
+
+  await Promise.all([
+    supabase
+      .from('subscriptions')
+      .update({
+        status: 'active',
+        cancellation_date: null,
+        updated_by: 'stripe-webhook'
+      })
+      .eq('id', orgSub.id),
+    supabase
+      .from('organizations')
+      .update({
+        active: true,
+        updated_by: 'stripe-webhook'
+      })
+      .eq('id', orgSub.organization_id)
+  ])
+}
 
 Deno.serve(async (req) => {
   try {
@@ -613,22 +1024,42 @@ Deno.serve(async (req) => {
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
+      case 'customer.subscription.pending_update_expired':
         await onSubscriptionEvent(event.data.object as Stripe.Subscription, event.type, supabase)
         break
 
+      case 'invoice.created':
+      case 'invoice.finalized':
+      case 'invoice.finalization_failed':
       case 'invoice.paid':
       case 'invoice.payment_succeeded':
-        await onInvoicePaid(event.data.object as Stripe.Invoice, supabase, stripe)
+      case 'invoice.payment_failed':
+      case 'invoice.payment_action_required':
+      case 'invoice.payment_attempt_required':
+      case 'invoice.upcoming':
+      case 'invoice.will_be_due':
+      case 'invoice.overdue':
+      case 'invoice.overpaid':
+      case 'invoice.marked_uncollectible':
+      case 'invoice.voided':
+      case 'invoice.deleted':
+      case 'invoice.sent':
+      case 'invoice.updated':
+        await onInvoiceEvent(event.data.object as Stripe.Invoice, event.type, supabase, stripe)
         break
 
-      case 'invoice.payment_failed':
-        await onInvoicePaymentFailed(event.data.object as Stripe.Invoice, supabase)
+      case 'invoice_payment.paid':
+        await confirmInvoicePayment(supabase, event.data.object as StripeInvoicePaymentLike)
+        break
+
+      case 'invoiceitem.created':
+      case 'invoiceitem.deleted':
+        console.log(`[stripe-webhook] Audit event: ${event.type}`)
         break
 
       default:
-        if (event.type.startsWith('invoice.')) {
-          await upsertStripeInvoice(supabase, event.data.object as Stripe.Invoice)
-        }
+        if (event.type.startsWith('invoice.'))
+          await onInvoiceEvent(event.data.object as Stripe.Invoice, event.type, supabase, stripe)
         break
     }
 
