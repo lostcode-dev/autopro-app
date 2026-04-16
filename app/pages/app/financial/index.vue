@@ -275,156 +275,158 @@ const columns = [
       </AppPageHeader>
     </template>
 
-    <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar lançamentos financeiros.
-      </p>
-    </div>
-
-    <template v-else>
-      <!-- Totals strip -->
-      <div v-if="data" class="grid grid-cols-3 divide-x divide-default border-b border-default text-center text-sm py-3">
-        <div>
-          <p class="text-muted text-xs">
-            Receitas
-          </p>
-          <p class="font-bold text-green-600">
-            {{ formatCurrency(totals.income) }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Despesas
-          </p>
-          <p class="font-bold text-red-500">
-            {{ formatCurrency(totals.expense) }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Saldo
-          </p>
-          <p
-            class="font-bold"
-            :class="totals.balance >= 0 ? 'text-green-600' : 'text-red-500'"
-          >
-            {{ formatCurrency(totals.balance) }}
-          </p>
-        </div>
+    <template #body>
+      <div v-if="!canRead" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar lançamentos financeiros.
+        </p>
       </div>
 
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput
-          v-model="search"
-          placeholder="Buscar por descrição..."
-          icon="i-lucide-search"
-          class="w-64"
-          @update:model-value="page = 1"
-        />
-        <USelectMenu
-          v-model="typeFilter"
-          :items="typeFilterOptions"
-          value-key="value"
-          class="w-36"
-          @update:model-value="page = 1"
-        />
-        <USelectMenu
-          v-model="statusFilter"
-          :items="statusFilterOptions"
-          value-key="value"
-          class="w-36"
-          @update:model-value="page = 1"
-        />
-        <UInput
-          v-model="dateFrom"
-          type="date"
-          size="sm"
-          class="w-36"
-          @update:model-value="page = 1"
-        />
-        <span class="self-center text-sm text-muted">até</span>
-        <UInput
-          v-model="dateTo"
-          type="date"
-          size="sm"
-          class="w-36"
-          @update:model-value="page = 1"
-        />
-      </div>
-
-      <!-- Table -->
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="data?.items || []"
-        class="min-h-0 flex-1"
-      >
-        <template #due_date-cell="{ row }">
-          {{ formatDate(String(row.original.due_date ?? '')) }}
-        </template>
-        <template #type-cell="{ row }">
-          <UBadge
-            :color="typeBadgeColor[String(row.original.type)] ?? 'neutral'"
-            variant="subtle"
-            :label="typeBadgeLabel[String(row.original.type)] ?? String(row.original.type)"
-            size="sm"
-          />
-        </template>
-        <template #status_col-cell="{ row }">
-          <UBadge
-            :color="statusBadgeColor[String(row.original.status)] ?? 'neutral'"
-            variant="subtle"
-            :label="statusBadgeLabel[String(row.original.status)] ?? String(row.original.status)"
-            size="sm"
-          />
-        </template>
-        <template #amount_col-cell="{ row }">
-          <span :class="row.original.type === 'income' ? 'text-green-600 font-medium' : 'text-red-500 font-medium'">
-            {{ formatCurrency(row.original.amount as string | number) }}
-          </span>
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex items-center gap-1 justify-end">
-            <UButton
-              v-if="canUpdate && row.original.status !== 'pago'"
-              icon="i-lucide-check-circle"
-              color="success"
-              variant="ghost"
-              size="xs"
-              title="Marcar como pago"
-              :loading="isPaying"
-              @click="pay(row.original)"
-            />
-            <UButton
-              v-if="canUpdate"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="openEdit(row.original)"
-            />
-            <UButton
-              v-if="canDelete"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="remove(row.original)"
-            />
+      <template v-else>
+        <!-- Totals strip -->
+        <div v-if="data" class="grid grid-cols-3 divide-x divide-default border-b border-default text-center text-sm py-3">
+          <div>
+            <p class="text-muted text-xs">
+              Receitas
+            </p>
+            <p class="font-bold text-green-600">
+              {{ formatCurrency(totals.income) }}
+            </p>
           </div>
-        </template>
-      </UTable>
+          <div>
+            <p class="text-muted text-xs">
+              Despesas
+            </p>
+            <p class="font-bold text-red-500">
+              {{ formatCurrency(totals.expense) }}
+            </p>
+          </div>
+          <div>
+            <p class="text-muted text-xs">
+              Saldo
+            </p>
+            <p
+              class="font-bold"
+              :class="totals.balance >= 0 ? 'text-green-600' : 'text-red-500'"
+            >
+              {{ formatCurrency(totals.balance) }}
+            </p>
+          </div>
+        </div>
 
-      <!-- Pagination -->
-      <div v-if="(data?.total || 0) > pageSize" class="flex justify-center p-4 border-t border-default">
-        <UPagination v-model="page" :page-count="pageSize" :total="data?.total || 0" />
-      </div>
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 p-4 border-b border-default">
+          <UInput
+            v-model="search"
+            placeholder="Buscar por descrição..."
+            icon="i-lucide-search"
+            class="w-64"
+            @update:model-value="page = 1"
+          />
+          <USelectMenu
+            v-model="typeFilter"
+            :items="typeFilterOptions"
+            value-key="value"
+            class="w-36"
+            @update:model-value="page = 1"
+          />
+          <USelectMenu
+            v-model="statusFilter"
+            :items="statusFilterOptions"
+            value-key="value"
+            class="w-36"
+            @update:model-value="page = 1"
+          />
+          <UInput
+            v-model="dateFrom"
+            type="date"
+            size="sm"
+            class="w-36"
+            @update:model-value="page = 1"
+          />
+          <span class="self-center text-sm text-muted">até</span>
+          <UInput
+            v-model="dateTo"
+            type="date"
+            size="sm"
+            class="w-36"
+            @update:model-value="page = 1"
+          />
+        </div>
+
+        <!-- Table -->
+        <div v-if="status === 'pending'" class="p-4 space-y-3">
+          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="data?.items || []"
+          class="min-h-0 flex-1"
+        >
+          <template #due_date-cell="{ row }">
+            {{ formatDate(String(row.original.due_date ?? '')) }}
+          </template>
+          <template #type-cell="{ row }">
+            <UBadge
+              :color="typeBadgeColor[String(row.original.type)] ?? 'neutral'"
+              variant="subtle"
+              :label="typeBadgeLabel[String(row.original.type)] ?? String(row.original.type)"
+              size="sm"
+            />
+          </template>
+          <template #status_col-cell="{ row }">
+            <UBadge
+              :color="statusBadgeColor[String(row.original.status)] ?? 'neutral'"
+              variant="subtle"
+              :label="statusBadgeLabel[String(row.original.status)] ?? String(row.original.status)"
+              size="sm"
+            />
+          </template>
+          <template #amount_col-cell="{ row }">
+            <span :class="row.original.type === 'income' ? 'text-green-600 font-medium' : 'text-red-500 font-medium'">
+              {{ formatCurrency(row.original.amount as string | number) }}
+            </span>
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex items-center gap-1 justify-end">
+              <UButton
+                v-if="canUpdate && row.original.status !== 'pago'"
+                icon="i-lucide-check-circle"
+                color="success"
+                variant="ghost"
+                size="xs"
+                title="Marcar como pago"
+                :loading="isPaying"
+                @click="pay(row.original)"
+              />
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openEdit(row.original)"
+              />
+              <UButton
+                v-if="canDelete"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="remove(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+
+        <!-- Pagination -->
+        <div v-if="(data?.total || 0) > pageSize" class="flex justify-center p-4 border-t border-default">
+          <UPagination v-model="page" :page-count="pageSize" :total="data?.total || 0" />
+        </div>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -507,5 +509,3 @@ const columns = [
     </template>
   </UModal>
 </template>
-
-

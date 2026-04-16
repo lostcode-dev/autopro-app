@@ -146,45 +146,47 @@ const columns = [
       </AppPageHeader>
     </template>
 
-    <div v-if="!canView" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar maquininhas.
-      </p>
-    </div>
-
-    <template v-else>
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 5" :key="i" class="h-10 w-full" />
+    <template #body>
+      <div v-if="!canView" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar maquininhas.
+        </p>
       </div>
 
-      <UTable
-        v-else
-        :columns="columns"
-        :data="data || []"
-        class="min-h-0 flex-1"
-      >
-        <template #actions-cell="{ row }">
-          <div class="flex items-center gap-2 justify-end">
-            <UButton
-              v-if="canUpdate"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="openEdit(row.original)"
-            />
-            <UButton
-              v-if="canUpdate"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="remove(row.original)"
-            />
-          </div>
-        </template>
-      </UTable>
+      <template v-else>
+        <div v-if="status === 'pending'" class="p-4 space-y-3">
+          <USkeleton v-for="i in 5" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="data || []"
+          class="min-h-0 flex-1"
+        >
+          <template #actions-cell="{ row }">
+            <div class="flex items-center gap-2 justify-end">
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openEdit(row.original)"
+              />
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="remove(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -241,5 +243,3 @@ const columns = [
     </template>
   </UModal>
 </template>
-
-

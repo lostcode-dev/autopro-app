@@ -392,239 +392,241 @@ const lineColumns = [
       </AppPageHeader>
     </template>
 
-    <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar clientes.
-      </p>
-    </div>
-
-    <template v-else>
-      <div class="flex flex-wrap items-center gap-3 border-b border-default p-4">
-        <UInput
-          v-model="search"
-          placeholder="Buscar por nome, e-mail ou CPF/CNPJ..."
-          icon="i-lucide-search"
-          class="w-full sm:w-80"
-        />
-
-        <USelectMenu
-          v-model="personTypeFilter"
-          :items="personTypeFilterOptions"
-          value-key="value"
-          class="w-full sm:w-52"
-        />
-
-        <UButtonGroup class="sm:ml-auto">
-          <UButton
-            label="Linha"
-            icon="i-lucide-list"
-            color="neutral"
-            :variant="viewMode === 'line' ? 'solid' : 'outline'"
-            @click="viewMode = 'line'"
-          />
-          <UButton
-            label="Cards"
-            icon="i-lucide-layout-grid"
-            color="neutral"
-            :variant="viewMode === 'card' ? 'solid' : 'outline'"
-            @click="viewMode = 'card'"
-          />
-        </UButtonGroup>
-
-        <UButton
-          v-if="hasActiveFilters"
-          label="Limpar"
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          @click="clearFilters"
-        />
-
-        <p class="w-full text-xs text-muted sm:w-auto sm:ml-auto">
-          {{ resultLabel }}
+    <template #body>
+      <div v-if="!canRead" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar clientes.
         </p>
       </div>
 
-      <AppDataTable
-        v-if="viewMode === 'line'"
-        v-model:page="page"
-        :columns="lineColumns"
-        :data="clientItems"
-        :loading="status === 'pending'"
-        :page="page"
-        :page-size="PAGE_SIZE"
-        :total="totalClients"
-        empty-title="Nenhum cliente encontrado"
-        empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
-      >
-        <template #name-cell="{ row }">
-          <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/12 text-sm font-semibold text-primary">
-              {{ getClientInitial(row.original.name) }}
-            </div>
-            <div class="min-w-0">
-              <p class="truncate font-semibold text-highlighted">
-                {{ row.original.name }}
-              </p>
-              <p class="truncate text-xs text-muted">
-                {{ row.original.email || 'E-mail não informado' }}
-              </p>
-            </div>
-          </div>
-        </template>
-
-        <template #person_type-cell="{ row }">
-          <UBadge
-            :label="getPersonTypeLabel(row.original.person_type)"
-            color="neutral"
-            variant="subtle"
-            size="xs"
+      <template v-else>
+        <div class="flex flex-wrap items-center gap-3 border-b border-default p-4">
+          <UInput
+            v-model="search"
+            placeholder="Buscar por nome, e-mail ou CPF/CNPJ..."
+            icon="i-lucide-search"
+            class="w-full sm:w-80"
           />
-        </template>
 
-        <template #tax_id-cell="{ row }">
-          <span class="text-sm text-muted">
-            {{ row.original.tax_id || '-' }}
-          </span>
-        </template>
+          <USelectMenu
+            v-model="personTypeFilter"
+            :items="personTypeFilterOptions"
+            value-key="value"
+            class="w-full sm:w-52"
+          />
 
-        <template #phone-cell="{ row }">
-          <span class="text-sm text-muted">
-            {{ formatContact(row.original) }}
-          </span>
-        </template>
-
-        <template #email-cell="{ row }">
-          <span class="text-sm text-muted">
-            {{ row.original.email || '-' }}
-          </span>
-        </template>
-
-        <template #actions-cell="{ row }">
-          <div class="flex items-center justify-end gap-2">
+          <UButtonGroup class="sm:ml-auto">
             <UButton
-              v-if="canUpdate"
-              icon="i-lucide-pencil"
+              label="Linha"
+              icon="i-lucide-list"
               color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="openEdit(row.original)"
+              :variant="viewMode === 'line' ? 'solid' : 'outline'"
+              @click="viewMode = 'line'"
             />
             <UButton
-              v-if="canDelete"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="remove(row.original)"
+              label="Cards"
+              icon="i-lucide-layout-grid"
+              color="neutral"
+              :variant="viewMode === 'card' ? 'solid' : 'outline'"
+              @click="viewMode = 'card'"
             />
-          </div>
-        </template>
-      </AppDataTable>
+          </UButtonGroup>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col">
-        <div v-if="status === 'pending'" class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2">
-          <USkeleton v-for="index in 6" :key="index" class="h-44 w-full rounded-2xl" />
+          <UButton
+            v-if="hasActiveFilters"
+            label="Limpar"
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            @click="clearFilters"
+          />
+
+          <p class="w-full text-xs text-muted sm:w-auto sm:ml-auto">
+            {{ resultLabel }}
+          </p>
         </div>
 
-        <div
-          v-else-if="clientItems.length"
-          class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+        <AppDataTable
+          v-if="viewMode === 'line'"
+          v-model:page="page"
+          :columns="lineColumns"
+          :data="clientItems"
+          :loading="status === 'pending'"
+          :page="page"
+          :page-size="PAGE_SIZE"
+          :total="totalClients"
+          empty-title="Nenhum cliente encontrado"
+          empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
         >
-          <UCard
-            v-for="client in clientItems"
-            :key="client.id"
-            class="border border-default/80 shadow-sm"
-          >
-            <div class="flex items-start gap-4">
-              <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-base font-semibold text-primary">
-                {{ getClientInitial(client.name) }}
+          <template #name-cell="{ row }">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/12 text-sm font-semibold text-primary">
+                {{ getClientInitial(row.original.name) }}
               </div>
-
-              <div class="min-w-0 flex-1 space-y-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h3 class="truncate text-base font-semibold text-highlighted">
-                    {{ client.name }}
-                  </h3>
-                  <UBadge
-                    :label="getPersonTypeLabel(client.person_type)"
-                    color="neutral"
-                    variant="subtle"
-                    size="xs"
-                  />
-                </div>
-
-                <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
-                    <span class="truncate">{{ formatContact(client) }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
-                    <span class="truncate">{{ client.email || 'E-mail não informado' }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
-                    <span class="truncate">{{ client.tax_id || 'CPF/CNPJ não informado' }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
-                    <span class="truncate">{{ [client.city, client.state].filter(Boolean).join(' / ') || 'Localização não informada' }}</span>
-                  </div>
-                </div>
-
-                <div class="flex items-center justify-end gap-2 border-t border-default pt-3">
-                  <UButton
-                    v-if="canUpdate"
-                    label="Editar"
-                    icon="i-lucide-pencil"
-                    color="neutral"
-                    variant="ghost"
-                    size="sm"
-                    @click="openEdit(client)"
-                  />
-                  <UButton
-                    v-if="canDelete"
-                    label="Excluir"
-                    icon="i-lucide-trash-2"
-                    color="error"
-                    variant="ghost"
-                    size="sm"
-                    :loading="isDeleting"
-                    @click="remove(client)"
-                  />
-                </div>
+              <div class="min-w-0">
+                <p class="truncate font-semibold text-highlighted">
+                  {{ row.original.name }}
+                </p>
+                <p class="truncate text-xs text-muted">
+                  {{ row.original.email || 'E-mail não informado' }}
+                </p>
               </div>
             </div>
-          </UCard>
-        </div>
+          </template>
 
-        <div
-          v-else
-          class="flex flex-1 items-center justify-center p-10 text-center"
-        >
-          <div class="max-w-sm space-y-2">
-            <p class="text-sm font-semibold text-highlighted">
-              Nenhum cliente encontrado
-            </p>
-            <p class="text-sm text-muted">
-              Cadastre um cliente ou ajuste os filtros para continuar.
-            </p>
+          <template #person_type-cell="{ row }">
+            <UBadge
+              :label="getPersonTypeLabel(row.original.person_type)"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            />
+          </template>
+
+          <template #tax_id-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ row.original.tax_id || '-' }}
+            </span>
+          </template>
+
+          <template #phone-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatContact(row.original) }}
+            </span>
+          </template>
+
+          <template #email-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ row.original.email || '-' }}
+            </span>
+          </template>
+
+          <template #actions-cell="{ row }">
+            <div class="flex items-center justify-end gap-2">
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openEdit(row.original)"
+              />
+              <UButton
+                v-if="canDelete"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="remove(row.original)"
+              />
+            </div>
+          </template>
+        </AppDataTable>
+
+        <div v-else class="flex min-h-0 flex-1 flex-col">
+          <div v-if="status === 'pending'" class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2">
+            <USkeleton v-for="index in 6" :key="index" class="h-44 w-full rounded-2xl" />
+          </div>
+
+          <div
+            v-else-if="clientItems.length"
+            class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+          >
+            <UCard
+              v-for="client in clientItems"
+              :key="client.id"
+              class="border border-default/80 shadow-sm"
+            >
+              <div class="flex items-start gap-4">
+                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-base font-semibold text-primary">
+                  {{ getClientInitial(client.name) }}
+                </div>
+
+                <div class="min-w-0 flex-1 space-y-3">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="truncate text-base font-semibold text-highlighted">
+                      {{ client.name }}
+                    </h3>
+                    <UBadge
+                      :label="getPersonTypeLabel(client.person_type)"
+                      color="neutral"
+                      variant="subtle"
+                      size="xs"
+                    />
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
+                      <span class="truncate">{{ formatContact(client) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
+                      <span class="truncate">{{ client.email || 'E-mail não informado' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
+                      <span class="truncate">{{ client.tax_id || 'CPF/CNPJ não informado' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
+                      <span class="truncate">{{ [client.city, client.state].filter(Boolean).join(' / ') || 'Localização não informada' }}</span>
+                    </div>
+                  </div>
+
+                  <div class="flex items-center justify-end gap-2 border-t border-default pt-3">
+                    <UButton
+                      v-if="canUpdate"
+                      label="Editar"
+                      icon="i-lucide-pencil"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      @click="openEdit(client)"
+                    />
+                    <UButton
+                      v-if="canDelete"
+                      label="Excluir"
+                      icon="i-lucide-trash-2"
+                      color="error"
+                      variant="ghost"
+                      size="sm"
+                      :loading="isDeleting"
+                      @click="remove(client)"
+                    />
+                  </div>
+                </div>
+              </div>
+            </UCard>
+          </div>
+
+          <div
+            v-else
+            class="flex flex-1 items-center justify-center p-10 text-center"
+          >
+            <div class="max-w-sm space-y-2">
+              <p class="text-sm font-semibold text-highlighted">
+                Nenhum cliente encontrado
+              </p>
+              <p class="text-sm text-muted">
+                Cadastre um cliente ou ajuste os filtros para continuar.
+              </p>
+            </div>
+          </div>
+
+          <div
+            v-if="totalClients > PAGE_SIZE"
+            class="flex justify-center border-t border-default p-4"
+          >
+            <UPagination
+              v-model="page"
+              :page-count="PAGE_SIZE"
+              :total="totalClients"
+            />
           </div>
         </div>
-
-        <div
-          v-if="totalClients > PAGE_SIZE"
-          class="flex justify-center border-t border-default p-4"
-        >
-          <UPagination
-            v-model="page"
-            :page-count="PAGE_SIZE"
-            :total="totalClients"
-          />
-        </div>
-      </div>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -737,5 +739,3 @@ const lineColumns = [
     </template>
   </UModal>
 </template>
-
-

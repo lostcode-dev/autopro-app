@@ -242,103 +242,105 @@ const columns = [
       </AppPageHeader>
     </template>
 
-    <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar compras.
-      </p>
-    </div>
-
-    <template v-else>
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput
-          v-model="search"
-          placeholder="Buscar por nota fiscal..."
-          icon="i-lucide-search"
-          class="w-64"
-          @update:model-value="page = 1"
-        />
-        <USelectMenu
-          v-model="statusFilter"
-          :items="paymentStatusOptions"
-          value-key="value"
-          class="w-40"
-          placeholder="Todos"
-          @update:model-value="page = 1"
-        />
-        <UInput
-          v-model="dateFrom"
-          type="date"
-          class="w-40"
-          @update:model-value="page = 1"
-        />
-        <UInput
-          v-model="dateTo"
-          type="date"
-          class="w-40"
-          @update:model-value="page = 1"
-        />
+    <template #body>
+      <div v-if="!canRead" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar compras.
+        </p>
       </div>
 
-      <!-- Table -->
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="data?.items || []"
-        class="min-h-0 flex-1"
-      >
-        <template #supplier-cell="{ row }">
-          {{ row.original.suppliers?.name ?? '—' }}
-        </template>
-        <template #total_amount-cell="{ row }">
-          {{ formatCurrency(row.original.total_amount) }}
-        </template>
-        <template #payment_status-cell="{ row }">
-          <UBadge
-            :color="statusColorMap[row.original.payment_status] ?? 'neutral'"
-            variant="subtle"
-            :label="statusLabelMap[row.original.payment_status] ?? row.original.payment_status"
+      <template v-else>
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 p-4 border-b border-default">
+          <UInput
+            v-model="search"
+            placeholder="Buscar por nota fiscal..."
+            icon="i-lucide-search"
+            class="w-64"
+            @update:model-value="page = 1"
           />
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex items-center gap-2 justify-end">
-            <UButton
-              v-if="canUpdate && row.original.payment_status === 'pending'"
-              icon="i-lucide-check-circle"
-              color="success"
-              variant="ghost"
-              size="xs"
-              @click="openPayModal(row.original)"
-            />
-            <UButton
-              v-if="canUpdate"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="openEdit(row.original)"
-            />
-            <UButton
-              v-if="canDelete"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="remove(row.original)"
-            />
-          </div>
-        </template>
-      </UTable>
+          <USelectMenu
+            v-model="statusFilter"
+            :items="paymentStatusOptions"
+            value-key="value"
+            class="w-40"
+            placeholder="Todos"
+            @update:model-value="page = 1"
+          />
+          <UInput
+            v-model="dateFrom"
+            type="date"
+            class="w-40"
+            @update:model-value="page = 1"
+          />
+          <UInput
+            v-model="dateTo"
+            type="date"
+            class="w-40"
+            @update:model-value="page = 1"
+          />
+        </div>
 
-      <!-- Pagination -->
-      <div v-if="(data?.total || 0) > pageSize" class="flex justify-center p-4 border-t border-default">
-        <UPagination v-model="page" :page-count="pageSize" :total="data?.total || 0" />
-      </div>
+        <!-- Table -->
+        <div v-if="status === 'pending'" class="p-4 space-y-3">
+          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="data?.items || []"
+          class="min-h-0 flex-1"
+        >
+          <template #supplier-cell="{ row }">
+            {{ row.original.suppliers?.name ?? '—' }}
+          </template>
+          <template #total_amount-cell="{ row }">
+            {{ formatCurrency(row.original.total_amount) }}
+          </template>
+          <template #payment_status-cell="{ row }">
+            <UBadge
+              :color="statusColorMap[row.original.payment_status] ?? 'neutral'"
+              variant="subtle"
+              :label="statusLabelMap[row.original.payment_status] ?? row.original.payment_status"
+            />
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex items-center gap-2 justify-end">
+              <UButton
+                v-if="canUpdate && row.original.payment_status === 'pending'"
+                icon="i-lucide-check-circle"
+                color="success"
+                variant="ghost"
+                size="xs"
+                @click="openPayModal(row.original)"
+              />
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openEdit(row.original)"
+              />
+              <UButton
+                v-if="canDelete"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="remove(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+
+        <!-- Pagination -->
+        <div v-if="(data?.total || 0) > pageSize" class="flex justify-center p-4 border-t border-default">
+          <UPagination v-model="page" :page-count="pageSize" :total="data?.total || 0" />
+        </div>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -452,5 +454,3 @@ const columns = [
     </template>
   </UModal>
 </template>
-
-

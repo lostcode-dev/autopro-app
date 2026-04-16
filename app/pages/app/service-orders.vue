@@ -175,129 +175,131 @@ const columns = [
       <AppPageHeader title="Ordens de Serviço" />
     </template>
 
-    <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar ordens de serviço.
-      </p>
-    </div>
-
-    <template v-else>
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput
-          v-model="searchTerm"
-          placeholder="Buscar por número ou cliente..."
-          icon="i-lucide-search"
-          class="w-72"
-          @update:model-value="cursor = 0"
-        />
-        <USelectMenu
-          v-model="statusFilter"
-          :items="statusFilterOptions"
-          value-key="value"
-          class="w-44"
-          @update:model-value="cursor = 0"
-        />
+    <template #body>
+      <div v-if="!canRead" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar ordens de serviço.
+        </p>
       </div>
 
-      <!-- Table -->
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="data?.items || []"
-        class="min-h-0 flex-1"
-      >
-        <template #client-cell="{ row }">
-          {{ row.original._clientName ?? '—' }}
-        </template>
-        <template #vehicle-cell="{ row }">
-          {{ row.original._vehicleLabel ?? '—' }}
-        </template>
-        <template #entry_date-cell="{ row }">
-          {{ formatDate(row.original.entry_date) }}
-        </template>
-        <template #status-cell="{ row }">
-          <UBadge
-            :color="statusColorMap[row.original.status] ?? 'neutral'"
-            variant="subtle"
-            :label="statusLabelMap[row.original.status] ?? row.original.status"
-            size="sm"
+      <template v-else>
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 p-4 border-b border-default">
+          <UInput
+            v-model="searchTerm"
+            placeholder="Buscar por número ou cliente..."
+            icon="i-lucide-search"
+            class="w-72"
+            @update:model-value="cursor = 0"
           />
-        </template>
-        <template #payment_status-cell="{ row }">
-          <UBadge
-            v-if="row.original.payment_status"
-            :color="paymentStatusColorMap[row.original.payment_status] ?? 'neutral'"
-            variant="soft"
-            :label="paymentStatusLabelMap[row.original.payment_status] ?? row.original.payment_status"
-            size="sm"
-          />
-        </template>
-        <template #total_amount-cell="{ row }">
-          {{ formatCurrency(row.original.total_amount) }}
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex items-center gap-1 justify-end">
-            <UButton
-              icon="i-lucide-eye"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              title="Ver detalhes"
-              @click="openDetail(row.original)"
-            />
-            <UButton
-              v-if="canCancel && !['cancelled', 'delivered'].includes(row.original.status)"
-              icon="i-lucide-ban"
-              color="warning"
-              variant="ghost"
-              size="xs"
-              :loading="isCancelling"
-              title="Cancelar"
-              @click="cancelOrder(row.original)"
-            />
-            <UButton
-              v-if="canDelete"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="deleteOrder(row.original)"
-            />
-          </div>
-        </template>
-      </UTable>
-
-      <!-- Cursor pagination -->
-      <div class="flex items-center justify-between p-4 border-t border-default">
-        <span class="text-sm text-muted">Total: {{ data?.total ?? 0 }}</span>
-        <div class="flex gap-2">
-          <UButton
-            label="Anterior"
-            icon="i-lucide-chevron-left"
-            color="neutral"
-            variant="outline"
-            size="sm"
-            :disabled="cursor === 0"
-            @click="cursor = Math.max(0, cursor - limit)"
-          />
-          <UButton
-            label="Próximo"
-            icon="i-lucide-chevron-right"
-            trailing
-            color="neutral"
-            variant="outline"
-            size="sm"
-            :disabled="!data?.hasMore"
-            @click="cursor = (data?.nextCursor ?? cursor + limit)"
+          <USelectMenu
+            v-model="statusFilter"
+            :items="statusFilterOptions"
+            value-key="value"
+            class="w-44"
+            @update:model-value="cursor = 0"
           />
         </div>
-      </div>
+
+        <!-- Table -->
+        <div v-if="status === 'pending'" class="p-4 space-y-3">
+          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="data?.items || []"
+          class="min-h-0 flex-1"
+        >
+          <template #client-cell="{ row }">
+            {{ row.original._clientName ?? '—' }}
+          </template>
+          <template #vehicle-cell="{ row }">
+            {{ row.original._vehicleLabel ?? '—' }}
+          </template>
+          <template #entry_date-cell="{ row }">
+            {{ formatDate(row.original.entry_date) }}
+          </template>
+          <template #status-cell="{ row }">
+            <UBadge
+              :color="statusColorMap[row.original.status] ?? 'neutral'"
+              variant="subtle"
+              :label="statusLabelMap[row.original.status] ?? row.original.status"
+              size="sm"
+            />
+          </template>
+          <template #payment_status-cell="{ row }">
+            <UBadge
+              v-if="row.original.payment_status"
+              :color="paymentStatusColorMap[row.original.payment_status] ?? 'neutral'"
+              variant="soft"
+              :label="paymentStatusLabelMap[row.original.payment_status] ?? row.original.payment_status"
+              size="sm"
+            />
+          </template>
+          <template #total_amount-cell="{ row }">
+            {{ formatCurrency(row.original.total_amount) }}
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex items-center gap-1 justify-end">
+              <UButton
+                icon="i-lucide-eye"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                title="Ver detalhes"
+                @click="openDetail(row.original)"
+              />
+              <UButton
+                v-if="canCancel && !['cancelled', 'delivered'].includes(row.original.status)"
+                icon="i-lucide-ban"
+                color="warning"
+                variant="ghost"
+                size="xs"
+                :loading="isCancelling"
+                title="Cancelar"
+                @click="cancelOrder(row.original)"
+              />
+              <UButton
+                v-if="canDelete"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="deleteOrder(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+
+        <!-- Cursor pagination -->
+        <div class="flex items-center justify-between p-4 border-t border-default">
+          <span class="text-sm text-muted">Total: {{ data?.total ?? 0 }}</span>
+          <div class="flex gap-2">
+            <UButton
+              label="Anterior"
+              icon="i-lucide-chevron-left"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :disabled="cursor === 0"
+              @click="cursor = Math.max(0, cursor - limit)"
+            />
+            <UButton
+              label="Próximo"
+              icon="i-lucide-chevron-right"
+              trailing
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :disabled="!data?.hasMore"
+              @click="cursor = (data?.nextCursor ?? cursor + limit)"
+            />
+          </div>
+        </div>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -466,4 +468,3 @@ const columns = [
     </template>
   </USlideover>
 </template>
-

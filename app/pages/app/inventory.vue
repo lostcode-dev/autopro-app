@@ -191,62 +191,64 @@ const columns = [
       </AppPageHeader>
     </template>
 
-    <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar estoque.
-      </p>
-    </div>
-
-    <template v-else>
-      <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput
-          v-model="search"
-          placeholder="Buscar por nome ou SKU..."
-          icon="i-lucide-search"
-          class="w-72"
-        />
-        <UCheckbox v-model="lowStockOnly" label="Somente estoque baixo" />
+    <template #body>
+      <div v-if="!canRead" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar estoque.
+        </p>
       </div>
 
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="data || []"
-        class="min-h-0 flex-1"
-      >
-        <template #stock_status-cell="{ row }">
-          <UBadge
-            :color="(row.original.min_quantity != null && (row.original.quantity ?? 0) <= row.original.min_quantity) ? 'warning' : 'success'"
-            variant="subtle"
-            :label="(row.original.min_quantity != null && (row.original.quantity ?? 0) <= row.original.min_quantity) ? 'Estoque baixo' : 'Normal'"
+      <template v-else>
+        <div class="flex flex-wrap gap-3 p-4 border-b border-default">
+          <UInput
+            v-model="search"
+            placeholder="Buscar por nome ou SKU..."
+            icon="i-lucide-search"
+            class="w-72"
           />
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex items-center gap-2 justify-end">
-            <UButton
-              v-if="canUpdate"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="openEdit(row.original)"
+          <UCheckbox v-model="lowStockOnly" label="Somente estoque baixo" />
+        </div>
+
+        <div v-if="status === 'pending'" class="p-4 space-y-3">
+          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="data || []"
+          class="min-h-0 flex-1"
+        >
+          <template #stock_status-cell="{ row }">
+            <UBadge
+              :color="(row.original.min_quantity != null && (row.original.quantity ?? 0) <= row.original.min_quantity) ? 'warning' : 'success'"
+              variant="subtle"
+              :label="(row.original.min_quantity != null && (row.original.quantity ?? 0) <= row.original.min_quantity) ? 'Estoque baixo' : 'Normal'"
             />
-            <UButton
-              v-if="canDelete"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="remove(row.original)"
-            />
-          </div>
-        </template>
-      </UTable>
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex items-center gap-2 justify-end">
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openEdit(row.original)"
+              />
+              <UButton
+                v-if="canDelete"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="remove(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -340,5 +342,3 @@ const columns = [
     </template>
   </UModal>
 </template>
-
-

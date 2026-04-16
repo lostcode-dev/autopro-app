@@ -193,60 +193,62 @@ const columns = [
       </AppPageHeader>
     </template>
 
-    <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar produtos.
-      </p>
-    </div>
-
-    <template v-else>
-      <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput
-          v-model="search"
-          placeholder="Buscar por nome ou SKU..."
-          icon="i-lucide-search"
-          class="w-72"
-        />
-        <USelectMenu
-          v-model="isServiceFilter"
-          :items="typeFilterOptions"
-          value-key="value"
-          class="w-36"
-        />
+    <template #body>
+      <div v-if="!canRead" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar produtos.
+        </p>
       </div>
 
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
+      <template v-else>
+        <div class="flex flex-wrap gap-3 p-4 border-b border-default">
+          <UInput
+            v-model="search"
+            placeholder="Buscar por nome ou SKU..."
+            icon="i-lucide-search"
+            class="w-72"
+          />
+          <USelectMenu
+            v-model="isServiceFilter"
+            :items="typeFilterOptions"
+            value-key="value"
+            class="w-36"
+          />
+        </div>
 
-      <UTable
-        v-else
-        :columns="columns"
-        :data="data || []"
-        class="min-h-0 flex-1"
-      >
-        <template #actions-cell="{ row }">
-          <div class="flex items-center gap-2 justify-end">
-            <UButton
-              v-if="canUpdate"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="openEdit(row.original)"
-            />
-            <UButton
-              v-if="canDelete"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="remove(row.original)"
-            />
-          </div>
-        </template>
-      </UTable>
+        <div v-if="status === 'pending'" class="p-4 space-y-3">
+          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="data || []"
+          class="min-h-0 flex-1"
+        >
+          <template #actions-cell="{ row }">
+            <div class="flex items-center gap-2 justify-end">
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openEdit(row.original)"
+              />
+              <UButton
+                v-if="canDelete"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="remove(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -325,5 +327,3 @@ const columns = [
     </template>
   </UModal>
 </template>
-
-

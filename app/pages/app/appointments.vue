@@ -217,95 +217,97 @@ const columns = [
       </AppPageHeader>
     </template>
 
-    <div v-if="!canRead" class="p-6">
-      <p class="text-sm text-muted">
-        Você não tem permissão para visualizar agendamentos.
-      </p>
-    </div>
-
-    <template v-else>
-      <!-- Filters -->
-      <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-        <UInput
-          v-model="search"
-          placeholder="Buscar por serviço..."
-          icon="i-lucide-search"
-          class="w-72"
-          @update:model-value="page = 1"
-        />
-        <USelectMenu
-          v-model="statusFilter"
-          :items="statusOptions"
-          value-key="value"
-          class="w-44"
-          placeholder="Todos os status"
-          @update:model-value="page = 1"
-        />
+    <template #body>
+      <div v-if="!canRead" class="p-6">
+        <p class="text-sm text-muted">
+          Você não tem permissão para visualizar agendamentos.
+        </p>
       </div>
 
-      <!-- Table -->
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="data?.items || []"
-        class="min-h-0 flex-1"
-      >
-        <template #client-cell="{ row }">
-          {{ row.original.clients?.name ?? '—' }}
-        </template>
-        <template #vehicle-cell="{ row }">
-          <span v-if="row.original.vehicles">
-            {{ [row.original.vehicles.brand, row.original.vehicles.model, row.original.vehicles.license_plate].filter(Boolean).join(' ') }}
-          </span>
-          <span v-else>—</span>
-        </template>
-        <template #priority-cell="{ row }">
-          <UBadge
-            v-if="row.original.priority"
-            :color="priorityColorMap[row.original.priority] ?? 'neutral'"
-            variant="subtle"
-            :label="priorityLabelMap[row.original.priority] ?? row.original.priority"
+      <template v-else>
+        <!-- Filters -->
+        <div class="flex flex-wrap gap-3 p-4 border-b border-default">
+          <UInput
+            v-model="search"
+            placeholder="Buscar por serviço..."
+            icon="i-lucide-search"
+            class="w-72"
+            @update:model-value="page = 1"
           />
-          <span v-else class="text-muted text-xs">—</span>
-        </template>
-        <template #status-cell="{ row }">
-          <UBadge
-            :color="statusColorMap[row.original.status] ?? 'neutral'"
-            variant="subtle"
-            :label="statusLabelMap[row.original.status] ?? row.original.status"
+          <USelectMenu
+            v-model="statusFilter"
+            :items="statusOptions"
+            value-key="value"
+            class="w-44"
+            placeholder="Todos os status"
+            @update:model-value="page = 1"
           />
-        </template>
-        <template #actions-cell="{ row }">
-          <div class="flex items-center gap-2 justify-end">
-            <UButton
-              v-if="canUpdate"
-              icon="i-lucide-pencil"
-              color="neutral"
-              variant="ghost"
-              size="xs"
-              @click="openEdit(row.original)"
-            />
-            <UButton
-              v-if="canDelete"
-              icon="i-lucide-trash-2"
-              color="error"
-              variant="ghost"
-              size="xs"
-              :loading="isDeleting"
-              @click="remove(row.original)"
-            />
-          </div>
-        </template>
-      </UTable>
+        </div>
 
-      <!-- Pagination -->
-      <div v-if="(data?.total || 0) > pageSize" class="flex justify-center p-4 border-t border-default">
-        <UPagination v-model="page" :page-count="pageSize" :total="data?.total || 0" />
-      </div>
+        <!-- Table -->
+        <div v-if="status === 'pending'" class="p-4 space-y-3">
+          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="data?.items || []"
+          class="min-h-0 flex-1"
+        >
+          <template #client-cell="{ row }">
+            {{ row.original.clients?.name ?? '—' }}
+          </template>
+          <template #vehicle-cell="{ row }">
+            <span v-if="row.original.vehicles">
+              {{ [row.original.vehicles.brand, row.original.vehicles.model, row.original.vehicles.license_plate].filter(Boolean).join(' ') }}
+            </span>
+            <span v-else>—</span>
+          </template>
+          <template #priority-cell="{ row }">
+            <UBadge
+              v-if="row.original.priority"
+              :color="priorityColorMap[row.original.priority] ?? 'neutral'"
+              variant="subtle"
+              :label="priorityLabelMap[row.original.priority] ?? row.original.priority"
+            />
+            <span v-else class="text-muted text-xs">—</span>
+          </template>
+          <template #status-cell="{ row }">
+            <UBadge
+              :color="statusColorMap[row.original.status] ?? 'neutral'"
+              variant="subtle"
+              :label="statusLabelMap[row.original.status] ?? row.original.status"
+            />
+          </template>
+          <template #actions-cell="{ row }">
+            <div class="flex items-center gap-2 justify-end">
+              <UButton
+                v-if="canUpdate"
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openEdit(row.original)"
+              />
+              <UButton
+                v-if="canDelete"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :loading="isDeleting"
+                @click="remove(row.original)"
+              />
+            </div>
+          </template>
+        </UTable>
+
+        <!-- Pagination -->
+        <div v-if="(data?.total || 0) > pageSize" class="flex justify-center p-4 border-t border-default">
+          <UPagination v-model="page" :page-count="pageSize" :total="data?.total || 0" />
+        </div>
+      </template>
     </template>
   </UDashboardPanel>
 
@@ -386,5 +388,3 @@ const columns = [
     </template>
   </UModal>
 </template>
-
-
