@@ -120,10 +120,13 @@ const apptStatusLabelMap: Record<string, string> = {
             class="text-center"
           >
             <div class="flex flex-col items-center gap-1">
-              <UIcon :name="card.icon" :class="['text-2xl', card.color]" />
-              <p class="text-xl font-bold">
-                {{ card.value }}
-              </p>
+              <span class="grid gap-2 text-highlighted">
+                <UIcon :name="card.icon" :class="['text-2xl', card.color]" />
+                <p class="text-xl font-bold">
+                  {{ card.value }}
+                </p>
+              </span>
+
               <p class="text-xs text-muted">
                 {{ card.label }}
               </p>

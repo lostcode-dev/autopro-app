@@ -69,12 +69,21 @@ async function onOpen(notificationId: number) {
     </template>
 
     <template #body>
-      <div v-if="notifications.pending" class="space-y-3">
+      <div v-if="notifications.pending.value" class="space-y-3">
         <USkeleton class="h-12 w-full" />
         <USkeleton class="h-12 w-full" />
         <USkeleton class="h-12 w-full" />
       </div>
       <template v-else>
+        <div
+          v-if="!notificationsList.length"
+          class="flex flex-col items-center justify-center gap-3 py-16 text-center"
+        >
+          <UIcon name="i-lucide-bell-off" class="text-4xl text-muted" />
+          <p class="text-sm text-muted">
+            Nenhuma notificação por aqui.
+          </p>
+        </div>
         <NuxtLink
           v-for="notification in notificationsList"
           :key="notification.id"

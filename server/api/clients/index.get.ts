@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
 
   const page = Math.max(1, Number(query.page) || 1)
-  const pageSize = Math.max(1, Number(query.page_size) || 50)
+  const pageSize = Math.min(100, Math.max(1, Number(query.page_size) || 50))
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
   if (query.search) {
     const search = query.search as string
-    dbQuery = dbQuery.or(`name.ilike.%${search}%,tax_id.ilike.%${search}%,phone.ilike.%${search}%`)
+    dbQuery = dbQuery.or(`name.ilike.%${search}%,tax_id.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`)
   }
 
   if (query.person_type) {

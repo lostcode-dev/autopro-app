@@ -41,6 +41,7 @@ export default defineEventHandler(async (event) => {
 
   const updatableFields = [
     'name', 'phone', 'person_type', 'tax_id', 'email',
+    'mobile_phone', 'birth_date',
     'zip_code', 'street', 'address_number', 'address_complement',
     'neighborhood', 'city', 'state', 'responsible_employees', 'notes'
   ]
