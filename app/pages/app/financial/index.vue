@@ -28,6 +28,7 @@ interface Entry {
   [key: string]: unknown
 }
 type BadgeColor = 'success' | 'error' | 'warning' | 'primary' | 'secondary' | 'info' | 'neutral'
+const NO_RECURRENCE_VALUE = 'none'
 
 // ─── Filters ─────────────────────────────────────────────────────────────────
 const search = ref('')
@@ -130,7 +131,7 @@ const emptyForm = () => ({
   category: '',
   bank_account_id: '',
   notes: '',
-  recurrence: ''
+  recurrence: NO_RECURRENCE_VALUE
 })
 
 const form = reactive(emptyForm())
@@ -152,7 +153,7 @@ function openEdit(entry: Entry) {
     category: String(entry.category ?? ''),
     bank_account_id: String(entry.bank_account_id ?? ''),
     notes: String(entry.notes ?? ''),
-    recurrence: String(entry.recurrence ?? '')
+    recurrence: String(entry.recurrence ?? NO_RECURRENCE_VALUE)
   })
   isEditing.value = true
   selectedId.value = String(entry.id)
@@ -189,7 +190,7 @@ async function save() {
       category: form.category,
       bank_account_id: form.bank_account_id || null,
       notes: form.notes || null,
-      recurrence: form.recurrence || null
+      recurrence: form.recurrence !== NO_RECURRENCE_VALUE ? form.recurrence : null
     }
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/financial/${selectedId.value}`, { method: 'PUT' as const, body })
@@ -237,7 +238,7 @@ const statusOptions = [
   { label: 'Pago', value: 'pago' }
 ]
 const recurrenceOptions = [
-  { label: 'Sem recorrência', value: '' },
+  { label: 'Sem recorrência', value: NO_RECURRENCE_VALUE },
   { label: 'Semanal', value: 'weekly' },
   { label: 'Mensal', value: 'monthly' },
   { label: 'Anual', value: 'yearly' }

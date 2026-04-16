@@ -16,9 +16,10 @@ const canDelete = computed(() => workshop.can(ActionCode.PRODUCTS_DELETE))
 
 type Product = Record<string, any>
 type Category = { id: string, name: string }
+const ALL_PRODUCT_TYPES_VALUE = 'all'
 
 const search = ref('')
-const isServiceFilter = ref('')
+const isServiceFilter = ref(ALL_PRODUCT_TYPES_VALUE)
 
 const { data, status, refresh } = await useAsyncData(
   () => `products-${search.value}-${isServiceFilter.value}`,
@@ -26,7 +27,7 @@ const { data, status, refresh } = await useAsyncData(
     headers: requestHeaders,
     query: {
       search: search.value || undefined,
-      is_service: isServiceFilter.value !== '' ? isServiceFilter.value === 'true' : undefined
+      is_service: isServiceFilter.value !== ALL_PRODUCT_TYPES_VALUE ? isServiceFilter.value === 'true' : undefined
     }
   }),
   { watch: [search, isServiceFilter] }
@@ -135,7 +136,7 @@ async function remove(p: Product) {
 }
 
 const typeFilterOptions = [
-  { label: 'Todos', value: '' },
+  { label: 'Todos', value: ALL_PRODUCT_TYPES_VALUE },
   { label: 'Produto', value: 'false' },
   { label: 'Serviço', value: 'true' }
 ]

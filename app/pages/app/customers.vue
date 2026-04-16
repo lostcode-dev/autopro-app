@@ -7,6 +7,7 @@ useSeoMeta({ title: 'Clientes' })
 
 type PersonType = 'pf' | 'pj'
 type ViewMode = 'line' | 'card'
+const ALL_PERSON_TYPES_VALUE = 'all'
 
 type Client = {
   id: string
@@ -58,19 +59,19 @@ function parseView(value: unknown): ViewMode {
   return value === 'card' ? 'card' : 'line'
 }
 
-function parsePersonType(value: unknown): PersonType | '' {
-  return value === 'pf' || value === 'pj' ? value : ''
+function parsePersonType(value: unknown): PersonType | typeof ALL_PERSON_TYPES_VALUE {
+  return value === 'pf' || value === 'pj' ? value : ALL_PERSON_TYPES_VALUE
 }
 
 const search = ref(typeof route.query.search === 'string' ? route.query.search : '')
-const personTypeFilter = ref<PersonType | ''>(parsePersonType(route.query.personType))
+const personTypeFilter = ref<PersonType | typeof ALL_PERSON_TYPES_VALUE>(parsePersonType(route.query.personType))
 const page = ref(parsePage(route.query.page))
 const viewMode = ref<ViewMode>(parseView(route.query.view))
 const isLoadingCep = ref(false)
 
 const requestQuery = computed(() => ({
   search: search.value || undefined,
-  person_type: personTypeFilter.value || undefined,
+  person_type: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
   page: page.value,
   page_size: PAGE_SIZE
 }))
@@ -106,7 +107,7 @@ const { data, status, refresh } = await useAsyncData(
 const clientItems = computed(() => data.value?.items ?? [])
 const totalClients = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalClients.value / PAGE_SIZE)))
-const hasActiveFilters = computed(() => Boolean(search.value || personTypeFilter.value))
+const hasActiveFilters = computed(() => Boolean(search.value || personTypeFilter.value !== ALL_PERSON_TYPES_VALUE))
 const resultLabel = computed(() => {
   if (!totalClients.value)
     return 'Nenhum cliente encontrado'
@@ -119,7 +120,7 @@ const resultLabel = computed(() => {
 function buildManagedQuery() {
   return {
     search: search.value || undefined,
-    personType: personTypeFilter.value || undefined,
+    personType: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
     page: page.value > 1 ? String(page.value) : undefined,
     view: viewMode.value !== 'line' ? viewMode.value : undefined
   }
@@ -177,7 +178,7 @@ watch(viewMode, syncQuery)
 
 function clearFilters() {
   search.value = ''
-  personTypeFilter.value = ''
+  personTypeFilter.value = ALL_PERSON_TYPES_VALUE
   page.value = 1
 }
 
@@ -361,7 +362,7 @@ const personTypeOptions = [
 ]
 
 const personTypeFilterOptions = [
-  { label: 'Todos os tipos', value: '' },
+  { label: 'Todos os tipos', value: ALL_PERSON_TYPES_VALUE },
   { label: 'Pessoa Física', value: 'pf' },
   { label: 'Pessoa Jurídica', value: 'pj' }
 ]

@@ -15,10 +15,12 @@ const canUpdate = computed(() => workshop.can(ActionCode.RETURNS_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.RETURNS_DELETE))
 
 type PurchaseReturn = Record<string, any>
+const ALL_STATUS_VALUE = 'all'
+const ALL_REASONS_VALUE = 'all'
 
 const search = ref('')
-const statusFilter = ref('')
-const reasonFilter = ref('')
+const statusFilter = ref(ALL_STATUS_VALUE)
+const reasonFilter = ref(ALL_REASONS_VALUE)
 const page = ref(1)
 const pageSize = 30
 
@@ -29,8 +31,8 @@ const { data, status, refresh } = await useAsyncData(
     {
       headers: requestHeaders,
       query: {
-        status: statusFilter.value || undefined,
-        reason: reasonFilter.value || undefined,
+        status: statusFilter.value !== ALL_STATUS_VALUE ? statusFilter.value : undefined,
+        reason: reasonFilter.value !== ALL_REASONS_VALUE ? reasonFilter.value : undefined,
         page: page.value,
         page_size: pageSize
       }
@@ -160,7 +162,7 @@ function formatCurrency(value: number | string) {
 }
 
 const statusFilterOptions = [
-  { label: 'Todos', value: '' },
+  { label: 'Todos', value: ALL_STATUS_VALUE },
   { label: 'Pendente', value: 'pending' },
   { label: 'Concluída', value: 'completed' }
 ]
@@ -169,7 +171,7 @@ const statusFormOptions = [
   { label: 'Concluída', value: 'completed' }
 ]
 const reasonFilterOptions = [
-  { label: 'Todos os motivos', value: '' },
+  { label: 'Todos os motivos', value: ALL_REASONS_VALUE },
   { label: 'Garantia', value: 'warranty' },
   { label: 'Peça errada', value: 'wrong_part' },
   { label: 'Defeito de fabricação', value: 'manufacturing_defect' },

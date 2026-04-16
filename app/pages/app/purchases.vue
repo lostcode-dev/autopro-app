@@ -15,9 +15,10 @@ const canUpdate = computed(() => workshop.can(ActionCode.PURCHASES_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.PURCHASES_DELETE))
 
 type Purchase = Record<string, any>
+const ALL_PAYMENT_STATUS_VALUE = 'all'
 
 const search = ref('')
-const statusFilter = ref('')
+const statusFilter = ref(ALL_PAYMENT_STATUS_VALUE)
 const page = ref(1)
 const pageSize = 30
 
@@ -38,7 +39,7 @@ const { data, status, refresh } = await useAsyncData(
       headers: requestHeaders,
       query: {
         search: search.value || undefined,
-        payment_status: statusFilter.value || undefined,
+        payment_status: statusFilter.value !== ALL_PAYMENT_STATUS_VALUE ? statusFilter.value : undefined,
         date_from: dateFrom.value || undefined,
         date_to: dateTo.value || undefined,
         page: page.value,
@@ -203,7 +204,7 @@ function formatCurrency(value: number | string) {
 }
 
 const paymentStatusOptions = [
-  { label: 'Todos', value: '' },
+  { label: 'Todos', value: ALL_PAYMENT_STATUS_VALUE },
   { label: 'Pendente', value: 'pending' },
   { label: 'Pago', value: 'paid' }
 ]

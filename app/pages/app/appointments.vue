@@ -15,9 +15,11 @@ const canUpdate = computed(() => workshop.can(ActionCode.APPOINTMENTS_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.APPOINTMENTS_DELETE))
 
 type Appointment = Record<string, any>
+const ALL_STATUS_VALUE = 'all'
+const NO_PRIORITY_VALUE = 'none'
 
 const search = ref('')
-const statusFilter = ref('')
+const statusFilter = ref(ALL_STATUS_VALUE)
 const page = ref(1)
 const pageSize = 30
 
@@ -29,7 +31,7 @@ const { data, status, refresh } = await useAsyncData(
       headers: requestHeaders,
       query: {
         search: search.value || undefined,
-        status: statusFilter.value || undefined,
+        status: statusFilter.value !== ALL_STATUS_VALUE ? statusFilter.value : undefined,
         page: page.value,
         page_size: pageSize
       }
@@ -70,7 +72,7 @@ const emptyForm = () => ({
   appointment_date: '',
   time: '',
   service_type: '',
-  priority: '' as string,
+  priority: NO_PRIORITY_VALUE,
   status: 'scheduled' as string,
   notes: ''
 })
@@ -91,7 +93,7 @@ function openEdit(appt: Appointment) {
     appointment_date: appt.appointment_date ?? '',
     time: appt.time ?? '',
     service_type: appt.service_type ?? '',
-    priority: appt.priority ?? '',
+    priority: appt.priority || NO_PRIORITY_VALUE,
     status: appt.status ?? 'scheduled',
     notes: appt.notes ?? ''
   })
@@ -116,7 +118,7 @@ async function save() {
       appointment_date: form.appointment_date,
       time: form.time,
       service_type: form.service_type,
-      priority: form.priority || null,
+      priority: form.priority !== NO_PRIORITY_VALUE ? form.priority : null,
       status: form.status,
       notes: form.notes || null
     }
@@ -153,7 +155,7 @@ async function remove(appt: Appointment) {
 }
 
 const statusOptions = [
-  { label: 'Todos', value: '' },
+  { label: 'Todos', value: ALL_STATUS_VALUE },
   { label: 'Agendado', value: 'scheduled' },
   { label: 'Confirmado', value: 'confirmed' },
   { label: 'Concluído', value: 'completed' },
@@ -168,7 +170,7 @@ const statusFormOptions = [
 ]
 
 const priorityOptions = [
-  { label: 'Sem prioridade', value: '' },
+  { label: 'Sem prioridade', value: NO_PRIORITY_VALUE },
   { label: 'Baixa', value: 'low' },
   { label: 'Média', value: 'medium' },
   { label: 'Alta', value: 'high' }

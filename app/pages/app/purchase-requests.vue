@@ -16,9 +16,10 @@ const canDelete = computed(() => workshop.can(ActionCode.AUTHORIZATIONS_DELETE))
 const canApprove = computed(() => workshop.can(ActionCode.AUTHORIZATIONS_APPROVE))
 
 type PurchaseRequest = Record<string, any>
+const ALL_STATUS_VALUE = 'all'
 
 const search = ref('')
-const statusFilter = ref('')
+const statusFilter = ref(ALL_STATUS_VALUE)
 const page = ref(1)
 const pageSize = 30
 
@@ -30,7 +31,7 @@ const { data, status, refresh } = await useAsyncData(
       headers: requestHeaders,
       query: {
         search: search.value || undefined,
-        status: statusFilter.value || undefined,
+        status: statusFilter.value !== ALL_STATUS_VALUE ? statusFilter.value : undefined,
         page: page.value,
         page_size: pageSize
       }
@@ -190,7 +191,7 @@ function formatCurrency(value: number | string) {
 }
 
 const statusFilterOptions = [
-  { label: 'Todos', value: '' },
+  { label: 'Todos', value: ALL_STATUS_VALUE },
   { label: 'Aguardando', value: 'waiting' },
   { label: 'Autorizado', value: 'authorized' },
   { label: 'Recusado', value: 'rejected' },
