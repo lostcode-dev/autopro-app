@@ -53,10 +53,7 @@ const evolutionColumns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Relatório de Lucro">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
+      <AppPageHeader title="Relatório de Lucro">
         <template #right>
           <div class="flex items-center gap-2">
             <UInput
@@ -74,7 +71,7 @@ const evolutionColumns = [
             />
           </div>
         </template>
-      </UDashboardNavbar>
+      </AppPageHeader>
     </template>
 
     <template #body>
@@ -157,3 +154,5 @@ const evolutionColumns = [
     </template>
   </UDashboardPanel>
 </template>
+
+

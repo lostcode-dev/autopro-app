@@ -174,15 +174,11 @@ function onAdminPageUpdate(page: number) {
 <template>
   <UDashboardPanel id="feedback">
     <template #header>
-      <UDashboardNavbar title="Feedback">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
+      <AppPageHeader title="Feedback">
         <template #right>
-          <NotificationsButton />
           <UButton label="Novo feedback" icon="i-lucide-plus" @click="createModalOpen = true" />
         </template>
-      </UDashboardNavbar>
+      </AppPageHeader>
     </template>
 
     <template #body>
@@ -300,3 +296,5 @@ function onAdminPageUpdate(page: number) {
     @link-entity="onAdminLinkEntity"
   />
 </template>
+
+

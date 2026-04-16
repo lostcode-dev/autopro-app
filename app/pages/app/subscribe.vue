@@ -20,15 +20,7 @@ const { data: page, status } = await useAsyncData(
 <template>
   <UDashboardPanel id="subscribe">
     <template #header>
-      <UDashboardNavbar title="Assinatura">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-
-        <template #right>
-          <NotificationsButton />
-        </template>
-      </UDashboardNavbar>
+      <AppPageHeader title="Assinatura" />
     </template>
 
     <template #body>
@@ -62,3 +54,4 @@ const { data: page, status } = await useAsyncData(
     </template>
   </UDashboardPanel>
 </template>
+

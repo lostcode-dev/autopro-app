@@ -379,11 +379,7 @@ const lineColumns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Clientes">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-
+      <AppPageHeader title="Clientes">
         <template #right>
           <UButton
             v-if="canCreate"
@@ -393,7 +389,7 @@ const lineColumns = [
             @click="openCreate"
           />
         </template>
-      </UDashboardNavbar>
+      </AppPageHeader>
     </template>
 
     <div v-if="!canRead" class="p-6">
@@ -741,3 +737,5 @@ const lineColumns = [
     </template>
   </UModal>
 </template>
+
+

@@ -64,11 +64,7 @@ const reports = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Relatórios">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
+      <AppPageHeader title="Relatórios" />
     </template>
 
     <template #body>
@@ -98,3 +94,4 @@ const reports = [
     </template>
   </UDashboardPanel>
 </template>
+

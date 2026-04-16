@@ -172,14 +172,7 @@ const columns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Ordens de Serviço">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-        <template #right>
-          <NotificationsButton />
-        </template>
-      </UDashboardNavbar>
+      <AppPageHeader title="Ordens de Serviço" />
     </template>
 
     <div v-if="!canRead" class="p-6">
@@ -473,3 +466,4 @@ const columns = [
     </template>
   </USlideover>
 </template>
+

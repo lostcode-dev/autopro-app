@@ -51,10 +51,7 @@ const columns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Relatório de Compras">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
+      <AppPageHeader title="Relatório de Compras">
         <template #right>
           <div class="flex items-center gap-2">
             <UInput
@@ -72,7 +69,7 @@ const columns = [
             />
           </div>
         </template>
-      </UDashboardNavbar>
+      </AppPageHeader>
     </template>
 
     <template #body>
@@ -138,3 +135,5 @@ const columns = [
     </template>
   </UDashboardPanel>
 </template>
+
+

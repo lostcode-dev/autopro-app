@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { isNotificationsSlideoverOpen } = useDashboard()
+const { openNotifications } = useNotification()
 const notifications = useNotifications()
 const unreadCount = notifications.unreadCount
 
@@ -14,7 +14,7 @@ onMounted(() => {
       color="neutral"
       variant="ghost"
       square
-      @click="isNotificationsSlideoverOpen = true"
+      @click="openNotifications"
     >
       <UChip
         color="error"

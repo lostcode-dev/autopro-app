@@ -18,15 +18,7 @@ useSeoMeta({
 <template>
   <UDashboardPanel v-if="!nested" id="workshop-placeholder">
     <template #header>
-      <UDashboardNavbar :title="title">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-
-        <template #right>
-          <NotificationsButton />
-        </template>
-      </UDashboardNavbar>
+      <AppPageHeader :title="title" />
     </template>
 
     <template #body>

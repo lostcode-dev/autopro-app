@@ -224,10 +224,7 @@ const columns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Autorizações de Compra">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
+      <AppPageHeader title="Autorizações de Compra">
         <template #right>
           <UButton
             v-if="canCreate"
@@ -237,7 +234,7 @@ const columns = [
             @click="openCreate"
           />
         </template>
-      </UDashboardNavbar>
+      </AppPageHeader>
     </template>
 
     <div v-if="!canRead" class="p-6">
@@ -478,3 +475,5 @@ const columns = [
     </template>
   </UModal>
 </template>
+
+

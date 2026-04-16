@@ -64,14 +64,7 @@ const apptStatusLabelMap: Record<string, string> = {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Dashboard">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-        <template #right>
-          <NotificationsButton />
-        </template>
-      </UDashboardNavbar>
+      <AppPageHeader title="Dashboard" />
     </template>
 
     <template #body>
@@ -278,4 +271,3 @@ const apptStatusLabelMap: Record<string, string> = {
     </template>
   </UDashboardPanel>
 </template>
-

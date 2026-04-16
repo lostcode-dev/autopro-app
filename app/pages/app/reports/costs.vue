@@ -35,10 +35,7 @@ function formatPercent(v: number) {
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Custos e Lucro">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
+      <AppPageHeader title="Custos e Lucro">
         <template #right>
           <div class="flex items-center gap-2">
             <UInput
@@ -56,7 +53,7 @@ function formatPercent(v: number) {
             />
           </div>
         </template>
-      </UDashboardNavbar>
+      </AppPageHeader>
     </template>
 
     <template #body>
@@ -121,3 +118,5 @@ function formatPercent(v: number) {
     </template>
   </UDashboardPanel>
 </template>
+
+

@@ -65,15 +65,7 @@ const links = computed<NavigationMenuItem[][]>(() => [[
 <template>
   <UDashboardPanel id="settings" :ui="{ body: 'lg:py-12' }">
     <template #header>
-      <UDashboardNavbar title="Configuracoes">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-
-        <template #right>
-          <NotificationsButton />
-        </template>
-      </UDashboardNavbar>
+      <AppPageHeader title="Configuracoes" />
 
       <UDashboardToolbar>
         <UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />
@@ -89,3 +81,4 @@ const links = computed<NavigationMenuItem[][]>(() => [[
     </template>
   </UDashboardPanel>
 </template>
+

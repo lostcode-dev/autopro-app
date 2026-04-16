@@ -5,7 +5,7 @@ import { useNotifications, type AppNotification } from '~/composables/useNotific
 
 import { computed } from 'vue'
 
-const { isNotificationsSlideoverOpen } = useDashboard()
+const { isNotificationsSlideoverOpen } = useNotification()
 
 const toast = useToast()
 const notifications = useNotifications() as {

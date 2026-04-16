@@ -43,11 +43,7 @@ const columns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Inadimplentes">
-        <template #leading>
-          <AppSidebarCollapse />
-        </template>
-      </UDashboardNavbar>
+      <AppPageHeader title="Inadimplentes" />
     </template>
 
     <template #body>
@@ -104,3 +100,4 @@ const columns = [
     </template>
   </UDashboardPanel>
 </template>
+

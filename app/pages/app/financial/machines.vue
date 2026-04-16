@@ -133,7 +133,7 @@ const columns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <UDashboardNavbar title="Maquininhas">
+      <AppPageHeader title="Maquininhas">
         <template #right>
           <UButton
             v-if="canUpdate"
@@ -143,7 +143,7 @@ const columns = [
             @click="openCreate"
           />
         </template>
-      </UDashboardNavbar>
+      </AppPageHeader>
     </template>
 
     <div v-if="!canView" class="p-6">
@@ -241,3 +241,5 @@ const columns = [
     </template>
   </UModal>
 </template>
+
+
