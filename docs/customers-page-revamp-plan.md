@@ -263,83 +263,477 @@ function clearFilters() {
 
 ## Parte 5: Modal de Veículos do Cliente
 
-**Quando abrir**: ao clicar no ícone 🚗 na linha do cliente.
+**Quando abrir**: ao clicar no botão `i-lucide-car` na linha do cliente.
 
-**Dados mostrados**:
+**Funcionalidades**:
+- Listar veículos do cliente
+- Criar novo veículo pré-vinculado ao cliente (sem precisar ir à página de veículos)
+- Editar veículo existente
+- Excluir veículo
 
-```
-Veículos de [Nome do Cliente]
-─────────────────────────────
-[Marca] [Modelo]               [Ano]
-Placa: ABC-1234 · Cor: Prata · Combustível: Flex
-                                          [Ver →]
-─────────────────────────────
-Nenhum veículo cadastrado.
-[+ Cadastrar primeiro veículo]
-```
+**API disponível**: `GET /api/vehicles?client_id={id}` já existe e filtra por cliente.
 
-**API**: `GET /api/vehicles?client_id={id}` (verificar se endpoint existe; se não, criar)
+### Estado no `<script setup>`
 
 ```typescript
-const vehiclesModal = ref(false)
-const vehiclesModalClient = ref<Client | null>(null)
-const vehiclesModalData = ref<Vehicle[]>([])
+type Vehicle = {
+  id: string
+  client_id: string
+  license_plate: string | null
+  brand: string | null
+  model: string | null
+  year: number | null
+  color: string | null
+  engine: string | null
+  fuel_type: string | null
+  mileage: number | null
+  notes: string | null
+}
+
+// ─── Modal veículos ───────────────────────────────
+const showVehiclesModal = ref(false)
+const vehiclesClient = ref<Client | null>(null)
+const vehiclesList = ref<Vehicle[]>([])
+const isLoadingVehicles = ref(false)
+
+// ─── Form de veículo (dentro do modal) ───────────
+const showVehicleForm = ref(false)
+const isEditingVehicle = ref(false)
+const isSavingVehicle = ref(false)
+const isDeletingVehicle = ref(false)
+const editingVehicleId = ref<string | null>(null)
+
+const emptyVehicleForm = () => ({
+  license_plate: '',
+  brand: '',
+  model: '',
+  year: '' as string | number,
+  color: '',
+  engine: '',
+  fuel_type: '' as string,
+  mileage: '' as string | number,
+  notes: '',
+})
+const vehicleForm = reactive(emptyVehicleForm())
+
+const fuelTypeOptions = [
+  { label: 'Gasolina',  value: 'gasoline' },
+  { label: 'Etanol',    value: 'ethanol' },
+  { label: 'Flex',      value: 'flex' },
+  { label: 'Diesel',    value: 'diesel' },
+  { label: 'GNV',       value: 'cng' },     // valor correto no banco é 'cng'
+  { label: 'Elétrico',  value: 'electric' },
+  { label: 'Híbrido',   value: 'hybrid' },
+]
 
 async function openVehiclesModal(client: Client) {
-  vehiclesModalClient.value = client
-  vehiclesModal.value = true
-  const result = await $fetch<{ items: Vehicle[] }>('/api/vehicles', {
-    query: { client_id: client.id, page_size: 50 }
+  vehiclesClient.value = client
+  showVehiclesModal.value = true
+  showVehicleForm.value = false
+  await loadVehicles(client.id)
+}
+
+async function loadVehicles(clientId: string) {
+  isLoadingVehicles.value = true
+  try {
+    const result = await $fetch<{ items: Vehicle[] }>('/api/vehicles', {
+      query: { client_id: clientId, page_size: 100 }
+    })
+    vehiclesList.value = result.items ?? []
+  } catch {
+    toast.add({ title: 'Erro ao carregar veículos', color: 'error' })
+  } finally {
+    isLoadingVehicles.value = false
+  }
+}
+
+function openNewVehicle() {
+  Object.assign(vehicleForm, emptyVehicleForm())
+  isEditingVehicle.value = false
+  editingVehicleId.value = null
+  showVehicleForm.value = true
+}
+
+function openEditVehicle(v: Vehicle) {
+  Object.assign(vehicleForm, {
+    license_plate: v.license_plate ?? '',
+    brand: v.brand ?? '',
+    model: v.model ?? '',
+    year: v.year ?? '',
+    color: v.color ?? '',
+    engine: v.engine ?? '',
+    fuel_type: v.fuel_type ?? '',
+    mileage: v.mileage ?? '',
+    notes: v.notes ?? '',
   })
-  vehiclesModalData.value = result.items
+  isEditingVehicle.value = true
+  editingVehicleId.value = v.id
+  showVehicleForm.value = true
+}
+
+async function saveVehicle() {
+  if (isSavingVehicle.value) return
+  isSavingVehicle.value = true
+  try {
+    const body = {
+      client_id: vehiclesClient.value!.id,
+      license_plate: vehicleForm.license_plate || null,
+      brand: vehicleForm.brand || null,
+      model: vehicleForm.model || null,
+      year: vehicleForm.year !== '' ? Number(vehicleForm.year) : null,
+      color: vehicleForm.color || null,
+      engine: vehicleForm.engine || null,          // campo correto: engine (não chassis)
+      fuel_type: vehicleForm.fuel_type || null,
+      mileage: vehicleForm.mileage !== '' ? Number(vehicleForm.mileage) : null,
+      notes: vehicleForm.notes || null,
+    }
+    if (isEditingVehicle.value && editingVehicleId.value) {
+      await $fetch(`/api/vehicles/${editingVehicleId.value}`, { method: 'PUT', body })
+      toast.add({ title: 'Veículo atualizado', color: 'success' })
+    } else {
+      await $fetch('/api/vehicles', { method: 'POST', body })
+      toast.add({ title: 'Veículo cadastrado', color: 'success' })
+    }
+    showVehicleForm.value = false
+    await loadVehicles(vehiclesClient.value!.id)
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string } }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível salvar', color: 'error' })
+  } finally {
+    isSavingVehicle.value = false
+  }
+}
+
+async function deleteVehicle(v: Vehicle) {
+  if (isDeletingVehicle.value) return
+  isDeletingVehicle.value = true
+  try {
+    await $fetch(`/api/vehicles/${v.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Veículo removido', color: 'success' })
+    await loadVehicles(vehiclesClient.value!.id)
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string } }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || 'Não foi possível remover', color: 'error' })
+  } finally {
+    isDeletingVehicle.value = false
+  }
+}
+
+function vehicleLabel(v: Vehicle): string {
+  return [v.brand, v.model].filter(Boolean).join(' ') || 'Veículo sem nome'
+}
+
+const fuelLabelMap: Record<string, string> = {
+  gasoline: 'Gasolina', ethanol: 'Etanol', flex: 'Flex',
+  diesel: 'Diesel', cng: 'GNV', electric: 'Elétrico', hybrid: 'Híbrido',
 }
 ```
+
+### Template do modal de veículos
+
+```vue
+<UModal
+  v-model:open="showVehiclesModal"
+  :title="showVehicleForm
+    ? (isEditingVehicle ? 'Editar veículo' : 'Novo veículo')
+    : `Veículos de ${vehiclesClient?.name ?? ''}`"
+  :ui="{ body: 'overflow-y-auto max-h-[70vh]' }"
+>
+  <template #body>
+    <!-- ── Lista de veículos ── -->
+    <template v-if="!showVehicleForm">
+      <div v-if="isLoadingVehicles" class="space-y-2">
+        <USkeleton v-for="i in 3" :key="i" class="h-16 w-full rounded-lg" />
+      </div>
+
+      <div v-else-if="vehiclesList.length > 0" class="space-y-2">
+        <div
+          v-for="v in vehiclesList"
+          :key="v.id"
+          class="flex items-center justify-between gap-4 rounded-lg border border-default p-3 hover:bg-elevated transition-colors"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold text-highlighted truncate">
+              {{ vehicleLabel(v) }}
+              <span v-if="v.year" class="text-muted font-normal text-sm ml-1">· {{ v.year }}</span>
+            </p>
+            <div class="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted mt-0.5">
+              <span v-if="v.license_plate">Placa: <strong>{{ v.license_plate }}</strong></span>
+              <span v-if="v.color">Cor: {{ v.color }}</span>
+              <span v-if="v.fuel_type">{{ fuelLabelMap[v.fuel_type] ?? v.fuel_type }}</span>
+              <span v-if="v.mileage">{{ v.mileage.toLocaleString('pt-BR') }} km</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 shrink-0">
+            <UButton
+              icon="i-lucide-pencil"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openEditVehicle(v)"
+            />
+            <UButton
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="xs"
+              :loading="isDeletingVehicle"
+              @click="deleteVehicle(v)"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="py-10 text-center text-muted space-y-3">
+        <UIcon name="i-lucide-car" class="size-12 mx-auto opacity-30" />
+        <p class="text-sm">Nenhum veículo cadastrado para este cliente</p>
+      </div>
+    </template>
+
+    <!-- ── Formulário de veículo ── -->
+    <template v-else>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <UFormField label="Placa">
+          <UInput v-model="vehicleForm.license_plate" class="w-full uppercase" placeholder="ABC1D23" />
+        </UFormField>
+        <UFormField label="Combustível">
+          <USelectMenu
+            v-model="vehicleForm.fuel_type"
+            :items="fuelTypeOptions"
+            value-key="value"
+            class="w-full"
+            placeholder="Selecionar..."
+          />
+        </UFormField>
+        <UFormField label="Marca">
+          <UInput v-model="vehicleForm.brand" class="w-full" />
+        </UFormField>
+        <UFormField label="Modelo">
+          <UInput v-model="vehicleForm.model" class="w-full" />
+        </UFormField>
+        <UFormField label="Ano">
+          <UInput v-model="vehicleForm.year" type="number" min="1900" max="2100" class="w-full" />
+        </UFormField>
+        <UFormField label="Cor">
+          <UInput v-model="vehicleForm.color" class="w-full" />
+        </UFormField>
+        <UFormField label="Quilometragem">
+          <UInput v-model="vehicleForm.mileage" type="number" min="0" class="w-full" />
+        </UFormField>
+        <UFormField label="Motor">
+          <!-- campo correto no banco é 'engine', não 'chassis' -->
+          <UInput v-model="vehicleForm.engine" class="w-full" placeholder="Ex: 1.0 Turbo" />
+        </UFormField>
+        <UFormField label="Observações" class="sm:col-span-2">
+          <UTextarea v-model="vehicleForm.notes" class="w-full" :rows="2" />
+        </UFormField>
+      </div>
+    </template>
+  </template>
+
+  <template #footer>
+    <!-- Footer: lista -->
+    <div v-if="!showVehicleForm" class="flex justify-between items-center w-full">
+      <span class="text-xs text-muted">{{ vehiclesList.length }} veículo(s)</span>
+      <UButton
+        label="Adicionar veículo"
+        icon="i-lucide-plus"
+        color="neutral"
+        @click="openNewVehicle"
+      />
+    </div>
+    <!-- Footer: formulário -->
+    <div v-else class="flex justify-end gap-2 w-full">
+      <UButton label="Cancelar" color="neutral" variant="ghost" @click="showVehicleForm = false" />
+      <UButton
+        label="Salvar"
+        color="neutral"
+        :loading="isSavingVehicle"
+        :disabled="isSavingVehicle"
+        @click="saveVehicle"
+      />
+    </div>
+  </template>
+</UModal>
+```
+
+> **Nota sobre campos**: O banco de dados usa `license_plate` (não `plate`) e `engine` (não `chassis`). O form de `/app/vehicles` tem esses nomes errados — ao implementar aqui, usar os nomes corretos da API.
 
 ---
 
 ## Parte 6: Modal de Histórico Financeiro
 
-**Quando abrir**: ao clicar no ícone 💰 na linha do cliente.
+**Quando abrir**: ao clicar no botão `i-lucide-dollar-sign` na linha do cliente.
 
-**Layout**:
+**Layout** (conforme o sistema antigo):
 ```
-Histórico Financeiro — [Nome do Cliente]
-─────────────────────────────────────────
-  [Total de OS: 12]  [Total Faturado: R$ 4.800]  [Ticket Médio: R$ 400]
-─────────────────────────────────────────
+Histórico Financeiro — MARCELO TC
+─────────────────────────────────
+  Total de OS     Total Faturado    Ticket Médio
+     12              R$ 4.800,00      R$ 400,00
+─────────────────────────────────
 Ordens de Serviço
-  OS #1042 · Troca de óleo · 12/03/2025 ............... R$ 350  [Concluída]
-  OS #1039 · Revisão completa · 01/02/2025 ............. R$ 980  [Entregue]
+  OS #OS4462  15/04/2026  R$ 5.845,00  [orcamento]
+  OS #OS4439  01/03/2026  R$ 980,00    [concluída]
   ...
 ```
 
-**API**: `GET /api/service-orders?client_id={id}&page_size=10`
+**API**: `GET /api/service-orders?clientId={id}&limit=50`
+
+> A resposta da API service-orders é encapsulada: `{ data: { items, totalFiltered, ... } }`. Usar `result.data.items`.
+
+### Estado no `<script setup>`
 
 ```typescript
-const historyModal = ref(false)
-const historyModalClient = ref<Client | null>(null)
-const historyModalOrders = ref<ServiceOrder[]>([])
-
-async function openHistoryModal(client: Client) {
-  historyModalClient.value = client
-  historyModal.value = true
-  const result = await $fetch<{ items: ServiceOrder[] }>('/api/service-orders', {
-    query: { client_id: client.id, page_size: 10 }
-  })
-  historyModalOrders.value = result.items
+type HistoryOrder = {
+  id: string
+  number: string
+  status: string
+  payment_status: string | null
+  entry_date: string
+  total_amount: number | null
+  reported_defect: string | null
 }
 
+// ─── Modal histórico ──────────────────────────────
+const showHistoryModal = ref(false)
+const historyClient = ref<Client | null>(null)
+const historyOrders = ref<HistoryOrder[]>([])
+const isLoadingHistory = ref(false)
+
+async function openHistoryModal(client: Client) {
+  historyClient.value = client
+  showHistoryModal.value = true
+  historyOrders.value = []
+  isLoadingHistory.value = true
+  try {
+    const result = await $fetch<{ data: { items: HistoryOrder[] } }>('/api/service-orders', {
+      query: { clientId: client.id, limit: 50 }
+    })
+    historyOrders.value = result.data?.items ?? []
+  } catch {
+    toast.add({ title: 'Erro ao carregar histórico', color: 'error' })
+  } finally {
+    isLoadingHistory.value = false
+  }
+}
+
+// ─── Estatísticas calculadas ─────────────────────
 const historyStats = computed(() => {
-  const orders = historyModalOrders.value
-  const completed = orders.filter(o => ['completed', 'delivered'].includes(o.status))
-  const total = completed.reduce((sum, o) => sum + (o.total_amount ?? 0), 0)
+  const orders = historyOrders.value
+  const billed = orders.filter(o => ['completed', 'delivered'].includes(o.status))
+  const totalRevenue = billed.reduce((sum, o) => sum + (o.total_amount ?? 0), 0)
   return {
-    count: orders.length,
-    revenue: total,
-    avgTicket: completed.length > 0 ? total / completed.length : 0
+    totalOrders: orders.length,
+    totalRevenue,
+    avgTicket: billed.length > 0 ? totalRevenue / billed.length : 0,
   }
 })
+
+function formatCurrency(value: number) {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function formatDate(date: string) {
+  if (!date) return '—'
+  const [y, m, d] = date.split('-')
+  return `${d}/${m}/${y}`
+}
 ```
+
+### Template do modal de histórico
+
+```vue
+<UModal
+  v-model:open="showHistoryModal"
+  :title="`Histórico Financeiro — ${historyClient?.name ?? ''}`"
+  :ui="{ body: 'overflow-y-auto max-h-[70vh]' }"
+>
+  <template #body>
+    <div v-if="isLoadingHistory" class="space-y-3">
+      <div class="grid grid-cols-3 gap-3">
+        <USkeleton v-for="i in 3" :key="i" class="h-20 rounded-xl" />
+      </div>
+      <USkeleton v-for="i in 4" :key="i" class="h-14 w-full" />
+    </div>
+
+    <template v-else>
+      <!-- ── Cards de resumo ── -->
+      <div class="grid grid-cols-3 gap-3 mb-5">
+        <div class="rounded-xl border border-info-200 bg-info-50 p-4">
+          <p class="text-xs font-medium text-info-600 mb-1">Total de OS</p>
+          <p class="text-2xl font-bold text-info-900">{{ historyStats.totalOrders }}</p>
+        </div>
+        <div class="rounded-xl border border-success-200 bg-success-50 p-4">
+          <p class="text-xs font-medium text-success-600 mb-1">Total Faturado</p>
+          <p class="text-2xl font-bold text-success-900">{{ formatCurrency(historyStats.totalRevenue) }}</p>
+        </div>
+        <div class="rounded-xl border border-primary-200 bg-primary-50 p-4">
+          <p class="text-xs font-medium text-primary-600 mb-1">Ticket Médio</p>
+          <p class="text-2xl font-bold text-primary-900">{{ formatCurrency(historyStats.avgTicket) }}</p>
+        </div>
+      </div>
+
+      <!-- ── Lista de OS ── -->
+      <h4 class="text-sm font-semibold text-highlighted mb-2">Ordens de Serviço</h4>
+
+      <div v-if="historyOrders.length > 0" class="space-y-2">
+        <div
+          v-for="order in historyOrders"
+          :key="order.id"
+          class="flex items-start justify-between gap-4 rounded-lg border border-default p-3 hover:bg-elevated transition-colors cursor-pointer"
+          @click="navigateTo(`/app/service-orders?id=${order.id}`)"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="font-semibold text-highlighted text-sm">OS #{{ order.number }}</p>
+            <p v-if="order.reported_defect" class="text-xs text-muted truncate mt-0.5">
+              {{ order.reported_defect }}
+            </p>
+            <p class="text-xs text-muted mt-0.5">{{ formatDate(order.entry_date) }}</p>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="font-bold text-success-600 text-sm">{{ formatCurrency(order.total_amount ?? 0) }}</p>
+            <UBadge
+              :color="statusColorMap[order.status] ?? 'neutral'"
+              variant="subtle"
+              :label="statusLabelMap[order.status] ?? order.status"
+              size="xs"
+              class="mt-1"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="py-10 text-center text-muted space-y-2">
+        <UIcon name="i-lucide-history" class="size-12 mx-auto opacity-30" />
+        <p class="text-sm">Nenhuma ordem de serviço encontrada</p>
+      </div>
+    </template>
+  </template>
+
+  <template #footer>
+    <div class="flex justify-between items-center w-full">
+      <span class="text-xs text-muted">
+        {{ historyOrders.length }} OS encontrada(s)
+      </span>
+      <UButton
+        label="Ver todas as OSs"
+        icon="i-lucide-external-link"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        :to="`/app/service-orders?clientId=${historyClient?.id}`"
+      />
+    </div>
+  </template>
+</UModal>
+```
+
+> Os `statusColorMap` e `statusLabelMap` são os mesmos da página de service-orders:
+> ```typescript
+> const statusColorMap = { estimate: 'neutral', open: 'info', in_progress: 'warning', waiting_for_part: 'orange', completed: 'success', delivered: 'success', cancelled: 'error' }
+> const statusLabelMap = { estimate: 'Orçamento', open: 'Aberta', in_progress: 'Em andamento', waiting_for_part: 'Aguard. peça', completed: 'Concluída', delivered: 'Entregue', cancelled: 'Cancelada' }
+> ```
 
 ---
 
@@ -493,9 +887,23 @@ const employeeOptions = computed(() => [
 - [ ] Implementar exportação CSV (client-side)
 - [ ] Criar endpoint `POST /api/clients/import` para importação em lote
 - [ ] Criar componente `ImportModal.vue` com preview de resultado
-- [ ] Implementar Modal de Veículos do cliente
-- [ ] Implementar Modal de Histórico Financeiro do cliente
 - [ ] Adicionar botões "Importar" e "Exportar" no header
+
+#### Modal de Veículos (Parte 5)
+- [ ] Adicionar botão `i-lucide-car` nas ações de cada cliente (tabela e card)
+- [ ] Implementar `openVehiclesModal()`, `loadVehicles()`, `openNewVehicle()`, `openEditVehicle()`, `saveVehicle()`, `deleteVehicle()`
+- [ ] Criar formulário inline com campos corretos: `license_plate`, `brand`, `model`, `year`, `color`, `engine`, `fuel_type`, `mileage`, `notes`
+- [ ] Usar `value: 'cng'` para GNV (não `'gnv'`) — verificar `VALID_FUEL_TYPES` na API
+- [ ] Usar `engine` como nome do campo (não `chassis`) — bug existente na página de veículos
+- [ ] Modo dual no footer: lista → botão "Adicionar veículo"; form → botões Cancelar/Salvar
+
+#### Modal de Histórico Financeiro (Parte 6)
+- [ ] Adicionar botão `i-lucide-dollar-sign` nas ações de cada cliente (tabela e card)
+- [ ] Implementar `openHistoryModal()` com fetch para `GET /api/service-orders?clientId={id}&limit=50`
+- [ ] Usar `result.data.items` (resposta encapsulada em `data.data`)
+- [ ] Cards de resumo: Total de OS, Total Faturado (apenas concluídas/entregues), Ticket Médio
+- [ ] Lista de OS: número, data entrada, defeito relatado, valor, badge de status
+- [ ] Botão "Ver todas as OSs" no footer → link para `/app/service-orders?clientId={id}`
 
 ### API
 - [ ] Adicionar filtros `tax_id` e `employee_id` em `GET /api/clients`

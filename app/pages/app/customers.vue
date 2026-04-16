@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced } from "@vueuse/core";
-import type { SortingState } from "@tanstack/vue-table";
+import type { SortingState } from "@tanstack/table-core";
 import { ActionCode } from "~/constants/action-codes";
 import type { Client, PersonType } from "~/types/clients";
 
@@ -345,12 +345,32 @@ const personTypeFilterOptions = [
 ];
 
 const lineColumns = [
-  { accessorKey: "name", header: "Cliente", enableSorting: true },
-  { accessorKey: "person_type", header: "Tipo", enableSorting: true },
-  { accessorKey: "tax_id", header: "CPF/CNPJ", enableSorting: true },
-  { accessorKey: "phone", header: "Telefone", enableSorting: false },
-  { id: "actions", header: "Ações", enableSorting: false },
-];
+  { accessorKey: 'name', header: 'Cliente', enableSorting: true },
+  { accessorKey: 'person_type', header: 'Tipo', enableSorting: true },
+  { accessorKey: 'tax_id', header: 'CPF/CNPJ', enableSorting: true },
+  { accessorKey: 'phone', header: 'Telefone', enableSorting: false },
+  { id: 'actions', header: 'Ações', enableSorting: false },
+]
+
+// ─── Veículos ────────────────────────────────────────────────────────────────
+
+const showVehiclesModal = ref(false)
+const vehiclesClient = ref<Client | null>(null)
+
+function openVehiclesModal(client: Client) {
+  vehiclesClient.value = client
+  showVehiclesModal.value = true
+}
+
+// ─── Histórico Financeiro ─────────────────────────────────────────────────────
+
+const showHistoryModal = ref(false)
+const historyClient = ref<Client | null>(null)
+
+function openHistoryModal(client: Client) {
+  historyClient.value = client
+  showHistoryModal.value = true
+}
 </script>
 
 <template>
@@ -466,6 +486,24 @@ const lineColumns = [
                   size="xs"
                   @click="openEdit(row.original as Client)"
                 />
+                <UTooltip text="Veículos">
+                  <UButton
+                    icon="i-lucide-car"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="openVehiclesModal(row.original as Client)"
+                  />
+                </UTooltip>
+                <UTooltip text="Histórico financeiro">
+                  <UButton
+                    icon="i-lucide-dollar-sign"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="openHistoryModal(row.original as Client)"
+                  />
+                </UTooltip>
                 <UButton
                   v-if="canDelete"
                   icon="i-lucide-trash-2"
@@ -515,6 +553,24 @@ const lineColumns = [
                             variant="ghost"
                             size="xs"
                             @click="openEdit(client as Client)"
+                          />
+                        </UTooltip>
+                        <UTooltip text="Veículos">
+                          <UButton
+                            icon="i-lucide-car"
+                            color="neutral"
+                            variant="ghost"
+                            size="xs"
+                            @click="openVehiclesModal(client as Client)"
+                          />
+                        </UTooltip>
+                        <UTooltip text="Histórico financeiro">
+                          <UButton
+                            icon="i-lucide-dollar-sign"
+                            color="neutral"
+                            variant="ghost"
+                            size="xs"
+                            @click="openHistoryModal(client as Client)"
                           />
                         </UTooltip>
                         <UTooltip v-if="canDelete" text="Excluir cliente">
@@ -593,7 +649,7 @@ const lineColumns = [
     :loading="isDeleting"
     @confirm="confirmRemove"
     @update:open="
-      (value) => {
+      (value: boolean) => {
         showDeleteModal = value;
         if (!value && !isDeleting) clientPendingDeletion = null;
       }
@@ -609,4 +665,14 @@ const lineColumns = [
       </p>
     </template>
   </AppConfirmModal>
+
+  <CustomersVehiclesModal
+    v-model:open="showVehiclesModal"
+    :client="vehiclesClient"
+  />
+
+  <CustomersHistoryModal
+    v-model:open="showHistoryModal"
+    :client="historyClient"
+  />
 </template>

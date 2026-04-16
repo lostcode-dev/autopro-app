@@ -31,17 +31,26 @@ export default defineEventHandler(async (event) => {
 
   if (query.search) {
     const search = query.search as string
-    dbQuery = dbQuery.or(`license_plate.ilike.%${search}%,brand.ilike.%${search}%,model.ilike.%${search}%`)
+    dbQuery = dbQuery.or(`license_plate.ilike.%${search}%,brand.ilike.%${search}%,model.ilike.%${search}%,engine.ilike.%${search}%`)
   }
 
   if (query.client_id) {
     dbQuery = dbQuery.eq('client_id', query.client_id as string)
   }
 
-  dbQuery = dbQuery
-    .order('brand', { ascending: true })
-    .order('model', { ascending: true })
-    .range(from, to)
+  const sortBy = query.sort_by as string | undefined
+  const sortOrder = query.sort_order as string | undefined
+  const sortableColumns = ['license_plate', 'brand', 'model', 'year', 'color']
+
+  if (sortBy && sortableColumns.includes(sortBy)) {
+    dbQuery = dbQuery.order(sortBy, { ascending: sortOrder !== 'desc' })
+  } else {
+    dbQuery = dbQuery
+      .order('brand', { ascending: true })
+      .order('model', { ascending: true })
+  }
+
+  dbQuery = dbQuery.range(from, to)
 
   const { data: items, count, error } = await dbQuery
 
