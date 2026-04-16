@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced } from "@vueuse/core";
-import type { SortingState } from "@tanstack/vue-table";
+import type { RowSelectionState, SortingState } from "@tanstack/table-core";
 import { ActionCode } from "~/constants/action-codes";
 
 type Vehicle = {
@@ -33,19 +33,6 @@ type VehiclesResponse = {
   page: number;
   page_size: number;
 };
-
-function formatPlate(value: string): string {
-  const clean = value.replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 7);
-  if (/^[A-Z]{3}[0-9][A-Z][0-9]{2}$/.test(clean))
-    return clean.replace(/^([A-Z]{3})([0-9][A-Z][0-9]{2})$/, "$1-$2");
-  if (/^[A-Z]{3}[0-9]{4}$/.test(clean))
-    return clean.replace(/^([A-Z]{3})([0-9]{4})$/, "$1-$2");
-  return clean;
-}
-
-function onPlateInput(e: Event) {
-  form.license_plate = formatPlate((e.target as HTMLInputElement).value);
-}
 
 definePageMeta({ layout: "app" });
 useSeoMeta({ title: "Veículos" });
@@ -146,22 +133,6 @@ const { data, status, refresh } = await useAsyncData(
       page_size: pageSize.value,
     }),
   },
-);
-
-const { data: clientsData } = await useAsyncData(
-  "vehicles-clients",
-  () =>
-    requestFetch<{ items: { id: string; name: string }[] }>("/api/clients", {
-      headers: requestHeaders,
-      query: { page_size: 500 },
-    }),
-);
-
-const clientOptions = computed(() =>
-  (clientsData.value?.items ?? []).map((c) => ({
-    label: c.name,
-    value: c.id,
-  })),
 );
 
 const vehicleItems = computed(() => data.value?.items ?? []);
@@ -266,6 +237,41 @@ watch(sorting, async () => {
   await syncQuery();
 });
 
+// ─── Row selection ────────────────────────────────────────────────────────────
+
+const rowSelection = ref<RowSelectionState>({})
+const selectedIds = computed(() =>
+  Object.entries(rowSelection.value)
+    .filter(([, selected]) => selected)
+    .map(([id]) => id),
+)
+const selectedCount = computed(() => selectedIds.value.length)
+
+// ─── Bulk delete ───────────────────────────────────────────────────────────────
+
+const showBulkDeleteModal = ref(false)
+const isBulkDeleting = ref(false)
+
+async function confirmBulkDelete() {
+  if (!selectedIds.value.length || isBulkDeleting.value) return
+  isBulkDeleting.value = true
+  try {
+    await Promise.all(
+      selectedIds.value.map((id) => $fetch(`/api/vehicles/${id}`, { method: 'DELETE' })),
+    )
+    toast.add({ title: `${selectedIds.value.length} veículo(s) removido(s)`, color: 'success' })
+    rowSelection.value = {}
+    showBulkDeleteModal.value = false
+    await refresh()
+  }
+  catch {
+    toast.add({ title: 'Erro ao excluir veículos', color: 'error' })
+  }
+  finally {
+    isBulkDeleting.value = false
+  }
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getVehicleInitial(vehicle: Vehicle): string {
@@ -318,101 +324,17 @@ function formatDate(value: string | null): string {
 
 // ─── Modal (create / edit) ─────────────────────────────────────────────────────
 
-const showModal = ref(false);
-const isEditing = ref(false);
-const isSaving = ref(false);
-const selectedId = ref<string | null>(null);
-
-const emptyForm = () => ({
-  client_id: "",
-  license_plate: "",
-  brand: "",
-  model: "",
-  year: "" as string | number,
-  color: "",
-  mileage: "" as string | number,
-  engine: "",
-  fuel_type: "flex" as string,
-  notes: "",
-});
-
-const form = reactive(emptyForm());
+const showFormModal = ref(false);
+const editingVehicle = ref<Vehicle | null>(null);
 
 function openCreate() {
-  Object.assign(form, emptyForm());
-  isEditing.value = false;
-  selectedId.value = null;
-  showModal.value = true;
+  editingVehicle.value = null;
+  showFormModal.value = true;
 }
 
 function openEdit(v: Vehicle) {
-  Object.assign(form, {
-    client_id: v.client_id ?? "",
-    license_plate: v.license_plate ?? "",
-    brand: v.brand ?? "",
-    model: v.model ?? "",
-    year: v.year ?? "",
-    color: v.color ?? "",
-    mileage: v.mileage ?? "",
-    engine: v.engine ?? "",
-    fuel_type: v.fuel_type ?? "flex",
-    notes: v.notes ?? "",
-  });
-  isEditing.value = true;
-  selectedId.value = v.id;
-  showModal.value = true;
-}
-
-async function save() {
-  if (isSaving.value) return;
-  if (!form.client_id) {
-    toast.add({ title: "Selecione o cliente proprietário", color: "warning" });
-    return;
-  }
-  isSaving.value = true;
-  try {
-    const body: Record<string, unknown> = {
-      client_id: form.client_id,
-      license_plate: form.license_plate || null,
-      brand: form.brand || null,
-      model: form.model || null,
-      year: form.year !== "" ? Number(form.year) : null,
-      color: form.color || null,
-      mileage: form.mileage !== "" ? Number(form.mileage) : null,
-      engine: form.engine || null,
-      fuel_type: form.fuel_type || null,
-      notes: form.notes || null,
-    };
-
-    if (isEditing.value && selectedId.value) {
-      await $fetch(`/api/vehicles/${selectedId.value}`, {
-        method: "PUT",
-        body,
-      });
-      toast.add({ title: "Veículo atualizado", color: "success" });
-    } else {
-      await $fetch("/api/vehicles", { method: "POST", body });
-      toast.add({ title: "Veículo cadastrado", color: "success" });
-    }
-
-    showModal.value = false;
-    await refresh();
-  } catch (error: unknown) {
-    const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
-    toast.add({
-      title: "Erro",
-      description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível salvar.",
-      color: "error",
-    });
-  } finally {
-    isSaving.value = false;
-  }
+  editingVehicle.value = v;
+  showFormModal.value = true;
 }
 
 // ─── Delete ────────────────────────────────────────────────────────────────────
@@ -500,17 +422,7 @@ const lineColumns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Veículos">
-        <template #right>
-          <UButton
-            v-if="canCreate"
-            label="Novo veículo"
-            icon="i-lucide-plus"
-            color="neutral"
-            @click="openCreate"
-          />
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Veículos" />
     </template>
 
     <template #body>
@@ -528,6 +440,7 @@ const lineColumns = [
             v-model:page="page"
             v-model:page-size="pageSize"
             v-model:sorting="sorting"
+            v-model:row-selection="rowSelection"
             :columns="lineColumns"
             :data="vehicleItems"
             :loading-variant="viewMode === 'card' ? 'card' : 'row'"
@@ -545,6 +458,30 @@ const lineColumns = [
             empty-title="Nenhum veículo encontrado"
             empty-description="Cadastre um veículo ou ajuste os filtros para continuar."
           >
+            <!-- Toolbar direita -->
+            <template #toolbar-right>
+              <UTooltip
+                v-if="canDelete"
+                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+              >
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="outline"
+                  size="sm"
+                  :disabled="selectedCount === 0"
+                  @click="showBulkDeleteModal = true"
+                />
+              </UTooltip>
+              <UButton
+                v-if="canCreate"
+                label="Novo veículo"
+                icon="i-lucide-plus"
+                size="sm"
+                @click="openCreate"
+              />
+            </template>
+
             <!-- Coluna Veículo -->
             <template #brand-cell="{ row }">
               <div class="flex items-center gap-3">
@@ -756,122 +693,33 @@ const lineColumns = [
     </template>
   </UDashboardPanel>
 
-  <!-- Modal de criação/edição -->
-  <UModal
-    v-model:open="showModal"
-    :title="isEditing ? 'Editar veículo' : 'Novo veículo'"
-    :ui="{ body: 'overflow-y-auto max-h-[70vh]' }"
+  <!-- FormModal -->
+  <VehiclesFormModal
+    v-model:open="showFormModal"
+    :vehicle="editingVehicle"
+    @saved="refresh"
+  />
+
+  <!-- Confirm bulk delete -->
+  <AppConfirmModal
+    v-model:open="showBulkDeleteModal"
+    title="Confirmar exclusão em massa"
+    confirm-label="Excluir veículos"
+    confirm-color="error"
+    :loading="isBulkDeleting"
+    @confirm="confirmBulkDelete"
+    @update:open="(v) => { showBulkDeleteModal = v }"
   >
-    <template #body>
-      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <UFormField label="Cliente" required class="sm:col-span-2">
-          <USelectMenu
-            v-model="form.client_id"
-            :items="clientOptions"
-            value-key="value"
-            searchable
-            class="w-full"
-            placeholder="Selecionar cliente..."
-          />
-        </UFormField>
-
-        <UFormField label="Placa">
-          <UInput
-            :model-value="form.license_plate"
-            class="w-full font-mono"
-            placeholder="Ex: ABC-1234 ou ABC1D23"
-            @input="onPlateInput"
-          />
-          <template #hint>
-            <span class="text-xs text-muted">Formato antigo ou Mercosul</span>
-          </template>
-        </UFormField>
-
-        <UFormField label="Combustível">
-          <USelectMenu
-            v-model="form.fuel_type"
-            :items="fuelTypeOptions"
-            value-key="value"
-            class="w-full"
-            placeholder="Selecionar..."
-          />
-        </UFormField>
-
-        <UFormField label="Marca">
-          <UInput v-model="form.brand" class="w-full" placeholder="Ex: Toyota" />
-        </UFormField>
-
-        <UFormField label="Modelo">
-          <UInput
-            v-model="form.model"
-            class="w-full"
-            placeholder="Ex: Corolla"
-          />
-        </UFormField>
-
-        <UFormField label="Ano">
-          <UInput
-            v-model="form.year"
-            type="number"
-            min="1900"
-            max="2100"
-            class="w-full"
-            placeholder="Ex: 2021"
-          />
-        </UFormField>
-
-        <UFormField label="Cor">
-          <UInput
-            v-model="form.color"
-            class="w-full"
-            placeholder="Ex: Prata"
-          />
-        </UFormField>
-
-        <UFormField label="Motor">
-          <UInput
-            v-model="form.engine"
-            class="w-full uppercase"
-            placeholder="Ex: 1.0 16V, 2.0 TURBO"
-          />
-        </UFormField>
-
-        <UFormField label="Quilometragem">
-          <UInput
-            v-model="form.mileage"
-            type="number"
-            min="0"
-            class="w-full"
-            placeholder="Ex: 45000"
-          />
-        </UFormField>
-
-        <UFormField label="Observações" class="sm:col-span-2">
-          <UTextarea v-model="form.notes" class="w-full" :rows="3" />
-        </UFormField>
-      </div>
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir
+        <strong class="text-highlighted">{{ selectedCount }} veículo(s)</strong>?
+        Esta ação não pode ser desfeita.
+      </p>
     </template>
+  </AppConfirmModal>
 
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          label="Cancelar"
-          color="neutral"
-          variant="ghost"
-          @click="showModal = false"
-        />
-        <UButton
-          label="Salvar"
-          color="neutral"
-          :loading="isSaving"
-          :disabled="isSaving"
-          @click="save"
-        />
-      </div>
-    </template>
-  </UModal>
-
-  <!-- Confirm delete -->
+  <!-- Confirm single delete -->
   <AppConfirmModal
     v-model:open="showDeleteModal"
     title="Confirmar exclusão"
@@ -910,23 +758,32 @@ const lineColumns = [
     :ui="{ width: 'max-w-2xl' }"
   >
     <template #header>
-      <div v-if="selectedVehicle">
-        <h2 class="text-lg font-semibold text-highlighted">
-          {{ getVehicleTitle(selectedVehicle) }}
-        </h2>
-        <div class="mt-1 flex flex-wrap items-center gap-2">
-          <UBadge
-            :label="selectedVehicle.license_plate || 'Sem placa'"
-            color="neutral"
-            variant="subtle"
-          />
-          <UBadge
-            v-if="selectedVehicle.engine"
-            :label="selectedVehicle.engine"
-            color="primary"
-            variant="subtle"
-          />
+      <div v-if="selectedVehicle" class="flex min-w-0 flex-1 items-start justify-between gap-2">
+        <div class="min-w-0">
+          <h2 class="text-lg font-semibold text-highlighted">
+            {{ getVehicleTitle(selectedVehicle) }}
+          </h2>
+          <div class="mt-1 flex flex-wrap items-center gap-2">
+            <UBadge
+              :label="selectedVehicle.license_plate || 'Sem placa'"
+              color="neutral"
+              variant="subtle"
+            />
+            <UBadge
+              v-if="selectedVehicle.engine"
+              :label="selectedVehicle.engine"
+              color="primary"
+              variant="subtle"
+            />
+          </div>
         </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          @click="showDetails = false"
+        />
       </div>
     </template>
 
