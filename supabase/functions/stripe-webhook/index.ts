@@ -265,7 +265,7 @@ async function setOrganizationStateFromInvoice(
       supabase
         .from('organizations')
         .update({
-          active: true,
+          is_active: true,
           updated_by: 'stripe-webhook'
         })
         .eq('id', orgSub.organization_id)
@@ -285,7 +285,7 @@ async function setOrganizationStateFromInvoice(
       supabase
         .from('organizations')
         .update({
-          active: false,
+          is_active: false,
           updated_by: 'stripe-webhook'
         })
         .eq('id', orgSub.organization_id)
@@ -306,7 +306,7 @@ async function setOrganizationStateFromInvoice(
       supabase
         .from('organizations')
         .update({
-          active: false,
+          is_active: false,
           updated_by: 'stripe-webhook'
         })
         .eq('id', orgSub.organization_id)
@@ -347,7 +347,7 @@ async function ensureOrganization(
     .insert({
       name: displayName,
       email,
-      active: true,
+      is_active: true,
       created_by: 'stripe-webhook'
     })
     .select('id')
@@ -775,7 +775,7 @@ async function onCheckoutCompleted(
   await supabase
     .from('organizations')
     .update({
-      active: true,
+      is_active: true,
       updated_by: 'stripe-webhook'
     })
     .eq('id', organizationId)
@@ -834,10 +834,44 @@ async function onSubscriptionEvent(
 
   await upsertStripeSubscription(supabase, subscription, userId)
 
-  const orgSub = await findOrgSubscriptionByStripeRefs(supabase, {
+  let orgSub = await findOrgSubscriptionByStripeRefs(supabase, {
     stripeSubscriptionId: subscription.id,
     stripeCustomerId: customerId
   })
+
+  if (!orgSub && userId && eventType === 'customer.subscription.created') {
+    const userEmail = await resolveUserEmail(supabase, userId)
+    const organizationId = await ensureOrganization(supabase, userId, userEmail)
+
+    if (organizationId) {
+      const item = subscription.items.data?.[0]
+      const price = item?.price
+      const product = price?.product
+      const planName = typeof product === 'object' && product !== null && 'name' in product
+        ? (product as { name: string }).name
+        : null
+
+      await upsertOrgSubscription(supabase, {
+        organizationId,
+        userEmail,
+        status: resolveLocalSubscriptionStatus(subscription.status),
+        stripeCustomerId: customerId,
+        stripeSubscriptionId: subscription.id,
+        planName,
+        monthlyAmount: price?.unit_amount ? price.unit_amount / 100 : null,
+        startDate: toIso(getSubscriptionPeriodStart(subscription)),
+        nextPaymentDate: toIso(getSubscriptionPeriodEnd(subscription)),
+        cancellationDate: subscription.status === 'canceled'
+          ? toIso(subscription.canceled_at) ?? new Date().toISOString()
+          : null
+      })
+
+      orgSub = await findOrgSubscriptionByStripeRefs(supabase, {
+        stripeSubscriptionId: subscription.id,
+        stripeCustomerId: customerId
+      })
+    }
+  }
 
   if (orgSub) {
     const newStatus = resolveLocalSubscriptionStatus(subscription.status)
@@ -858,7 +892,7 @@ async function onSubscriptionEvent(
       supabase
         .from('organizations')
         .update({
-          active: isActive,
+          is_active: isActive,
           updated_by: 'stripe-webhook'
         })
         .eq('id', orgSub.organization_id)
@@ -983,7 +1017,7 @@ async function confirmInvoicePayment(
     supabase
       .from('organizations')
       .update({
-        active: true,
+        is_active: true,
         updated_by: 'stripe-webhook'
       })
       .eq('id', orgSub.organization_id)
@@ -993,10 +1027,10 @@ async function confirmInvoicePayment(
 Deno.serve(async (req) => {
   try {
     const env = getEnv()
+    const cryptoProvider = Stripe.createSubtleCryptoProvider()
 
     const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-      httpClient: Stripe.createFetchHttpClient(),
-      cryptoProvider: Stripe.createSubtleCryptoProvider()
+      httpClient: Stripe.createFetchHttpClient()
     })
 
     const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
@@ -1009,7 +1043,13 @@ Deno.serve(async (req) => {
     let event: Stripe.Event
 
     try {
-      event = await stripe.webhooks.constructEventAsync(payload, signature, env.STRIPE_WEBHOOK_SECRET)
+      event = await stripe.webhooks.constructEventAsync(
+        payload,
+        signature,
+        env.STRIPE_WEBHOOK_SECRET,
+        undefined,
+        cryptoProvider
+      )
     } catch {
       return new Response('Invalid signature', { status: 400 })
     }

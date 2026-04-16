@@ -135,13 +135,13 @@ async function handleCheckoutCompleted(
     const orgName = `${(profile.display_name as string | null) || (profile.email as string | null) || userEmail || 'Oficina'}`
 
     const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .insert({
-        name: orgName,
-        email: (profile.email as string | null) || userEmail || null,
-        active: true,
-        created_by: (profile.email as string | null) || userEmail || 'webhook'
-      })
+    .from('organizations')
+    .insert({
+      name: orgName,
+      email: (profile.email as string | null) || userEmail || null,
+      is_active: true,
+      created_by: (profile.email as string | null) || userEmail || 'webhook'
+    })
       .select('id')
       .single()
 
@@ -214,7 +214,7 @@ async function handleCheckoutCompleted(
   // ── Activate organization ────────────────────────────────────────────────
   await supabase
     .from('organizations')
-    .update({ active: true })
+    .update({ is_active: true })
     .eq('id', organizationId)
 
   // ── Resolve subscription details from Stripe ─────────────────────────────
@@ -323,7 +323,7 @@ async function handleInvoicePaid(
       .eq('id', sub.id),
     supabase
       .from('organizations')
-      .update({ active: true, updated_by: 'stripe-webhook' })
+      .update({ is_active: true, updated_by: 'stripe-webhook' })
       .eq('id', sub.organization_id)
   ])
 }
@@ -397,7 +397,7 @@ async function handleSubscriptionUpdated(
       .eq('id', sub.id),
     supabase
       .from('organizations')
-      .update({ active: isActive, updated_by: 'stripe-webhook' })
+      .update({ is_active: isActive, updated_by: 'stripe-webhook' })
       .eq('id', sub.organization_id)
   ])
 }
@@ -429,7 +429,7 @@ async function handleSubscriptionDeleted(
       .eq('id', sub.id),
     supabase
       .from('organizations')
-      .update({ active: false, updated_by: 'stripe-webhook' })
+      .update({ is_active: false, updated_by: 'stripe-webhook' })
       .eq('id', sub.organization_id)
   ])
 }

@@ -82,10 +82,12 @@ export default defineNuxtConfig({
   compatibilityDate: '2024-07-11',
 
   nitro: {
-    prerender: {
-      routes: ['/'],
-      crawlLinks: true
-    }
+    // prerender is disabled in dev — it caused the "Dev server is unavailable" error
+    // by making Nitro crawl links during startup before Vite was ready
+    // prerender: {
+    //   routes: ['/'],
+    //   crawlLinks: true
+    // }
   },
 
   eslint: {

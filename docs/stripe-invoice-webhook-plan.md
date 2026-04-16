@@ -11,6 +11,7 @@ O sistema possui **duas implementações paralelas** de webhook:
 1. **Clientes duplicados no Stripe**: Ao cancelar e assinar novamente, pode ser criado um novo `customer` no Stripe em vez de reutilizar o existente.
 2. **Eventos de invoice não cobertos**: Apenas `invoice.paid`, `invoice.payment_succeeded` e `invoice.payment_failed` são tratados. Os demais 18 eventos são ignorados ou caem em um fallback genérico.
 3. **Sincronização de status inconsistente**: Não há garantia que `billing_invoices` reflita todos os estados possíveis de uma fatura.
+4. **Plano/licença não rastreável**: A coluna `plan_name` armazena texto livre vindo do Stripe (`"Pro Plan"`, `"Starter"`). Não há `price_id` nem identificador normalizado (`starter | pro`) na tabela `subscriptions`, tornando a verificação de licença frágil e dependente de string matching.
 
 ---
 
@@ -80,7 +81,132 @@ async function getOrCreateStripeCustomer(
 
 ---
 
-## Parte 2: Mapa Completo de Eventos de Invoice
+## Parte 2: Armazenar Plano/Licença da Assinatura
+
+### Estado atual
+
+A tabela `subscriptions` tem `plan_name varchar(100)` — texto livre (nome do produto no Stripe).
+A tabela `stripe_subscriptions` tem `price_id` — mas ela é legada/separada.
+**Nenhuma das duas** tem um campo normalizado para verificação de licença.
+
+### O que precisa existir
+
+Para verificar licença de forma confiável, a tabela `subscriptions` precisa de:
+
+| Campo | Tipo | Exemplo | Finalidade |
+|-------|------|---------|------------|
+| `price_id` | `varchar(100)` | `price_abc123` | Identificador exato do Stripe para auditoria e mapeamento |
+| `plan_slug` | `varchar(50)` | `starter` ou `pro` | Identificador normalizado para verificação de licença no código |
+| `plan_name` | `varchar(100)` | `"Pro Plan"` | Já existe — exibição amigável para o usuário |
+
+### Migração necessária
+
+```sql
+-- Nova migração: add_plan_fields_to_subscriptions
+ALTER TABLE public.subscriptions
+  ADD COLUMN IF NOT EXISTS price_id  varchar(100),
+  ADD COLUMN IF NOT EXISTS plan_slug varchar(50)
+    CONSTRAINT subscriptions_plan_slug_check
+    CHECK (plan_slug IN ('starter', 'pro'));
+
+COMMENT ON COLUMN public.subscriptions.price_id  IS 'Stripe Price ID (price_...) do item ativo na subscription.';
+COMMENT ON COLUMN public.subscriptions.plan_slug IS 'Identificador normalizado do plano: starter | pro. Usado para verificação de licença.';
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_plan_slug
+  ON public.subscriptions (plan_slug)
+  WHERE deleted_at IS NULL;
+```
+
+> **Nota**: O `CHECK` em `plan_slug` deve listar todos os planos comercializados. Ao adicionar um novo plano no futuro, criar uma migration adicionando o valor ao constraint.
+
+### Como derivar o `plan_slug` a partir do `price_id`
+
+Na Edge Function (`supabase/functions/stripe-webhook/index.ts`), usar as variáveis de ambiente:
+
+```typescript
+function resolvePlanSlug(priceId: string | null | undefined): string | null {
+  if (!priceId) return null
+
+  const PRICE_STARTER = Deno.env.get('STRIPE_PRICE_ID_STARTER') // sem NUXT_PUBLIC_ na Edge Function
+  const PRICE_PRO     = Deno.env.get('STRIPE_PRICE_ID_PRO')
+
+  if (priceId === PRICE_STARTER) return 'starter'
+  if (priceId === PRICE_PRO)     return 'pro'
+
+  // Fallback: tentar inferir pelo nome do produto (menos confiável)
+  return null
+}
+```
+
+> As variáveis `NUXT_PUBLIC_STRIPE_PRICE_ID_STARTER` e `NUXT_PUBLIC_STRIPE_PRICE_ID_PRO` existem no `.env`.
+> Na Edge Function do Supabase, expor também como `STRIPE_PRICE_ID_STARTER` e `STRIPE_PRICE_ID_PRO` nos Supabase Secrets.
+
+### Onde popular `price_id` e `plan_slug`
+
+**1. `onCheckoutCompleted` (checkout.session.completed)**
+
+Já recupera a subscription com `expand: ['items.data.price.product']`. Extrair o `price_id` do item e derivar o `plan_slug`:
+
+```typescript
+const item = sub.items.data[0]
+const priceId   = item?.price?.id ?? null
+const planSlug  = resolvePlanSlug(priceId)
+const planName  = typeof item?.price?.product === 'object'
+  ? (item.price.product as { name: string }).name
+  : null
+
+await upsertOrgSubscription(supabase, {
+  // ... campos existentes ...
+  priceId,
+  planSlug,
+  planName,
+})
+```
+
+**2. `onSubscriptionEvent` (customer.subscription.updated/created/deleted)**
+
+Atualmente **não atualiza** `plan_name`, `price_id` nem `plan_slug`. Isso é um bug: se o usuário fizer upgrade de Starter → Pro, a licença local não seria atualizada.
+
+Adicionar ao update de `subscriptions`:
+
+```typescript
+// Em onSubscriptionEvent → update block
+const item = subscription.items.data[0]
+const priceId  = item?.price?.id ?? null
+const planSlug = resolvePlanSlug(priceId)
+// plan_name requer expand: ['items.data.price.product'] — adicionar no retrieve
+
+await supabase
+  .from('subscriptions')
+  .update({
+    status: newStatus,
+    price_id:  priceId,
+    plan_slug: planSlug,
+    // plan_name: planName,  // adicionar se expand for usado
+    // ... restante ...
+  })
+  .eq('id', orgSub.id)
+```
+
+### Como verificar licença no código (uso futuro)
+
+```typescript
+// Consulta simples e segura — sem string matching em plan_name
+const { data: sub } = await supabase
+  .from('subscriptions')
+  .select('plan_slug, status')
+  .eq('organization_id', orgId)
+  .eq('status', 'active')
+  .maybeSingle()
+
+const isPro     = sub?.plan_slug === 'pro'
+const isStarter = sub?.plan_slug === 'starter'
+const hasAccess = isPro || isStarter  // qualquer plano pago ativo
+```
+
+---
+
+## Parte 3: Mapa Completo de Eventos de Invoice
 
 ### Eventos selecionados e o que cada um significa para o negócio
 
@@ -110,7 +236,7 @@ async function getOrCreateStripeCustomer(
 
 ---
 
-## Parte 3: Schema da Tabela `billing_invoices` (revisão)
+## Parte 4: Schema da Tabela `billing_invoices` (revisão)
 
 ### Campos a adicionar na migração
 
@@ -150,7 +276,7 @@ CREATE INDEX IF NOT EXISTS billing_invoices_stripe_customer_id_idx
 
 ---
 
-## Parte 4: Handler Unificado de Invoice (Supabase Edge Function)
+## Parte 5: Handler Unificado de Invoice (Supabase Edge Function)
 
 ### Estrutura proposta em `supabase/functions/stripe-webhook/index.ts`
 
@@ -259,7 +385,7 @@ case 'customer.subscription.pending_update_expired':
 
 ---
 
-## Parte 5: Fluxo de Reativação (Cancel → Re-subscribe)
+## Parte 6: Fluxo de Reativação (Cancel → Re-subscribe)
 
 ### Sequência garantida
 
@@ -311,36 +437,44 @@ if (existingOrg?.status === 'cancelled') {
 
 ---
 
-## Parte 6: Checklist de Implementação
+## Parte 7: Checklist de Implementação
 
 ### Fase 1 — Customer deduplication (crítico)
 - [ ] Refatorar `getOrCreateStripeCustomer()` com fallback na API do Stripe
 - [ ] Garantir que `stripe_customer_id` nunca seja apagado no cancelamento
 - [ ] Testar fluxo: criar conta → cancelar → assinar novamente → verificar 1 customer no Stripe
 
-### Fase 2 — Schema da tabela
+### Fase 2 — Plano/licença na tabela `subscriptions`
+- [ ] Criar migração: adicionar `price_id varchar(100)` e `plan_slug varchar(50) CHECK (IN ('starter','pro'))` em `subscriptions`
+- [ ] Implementar `resolvePlanSlug(priceId)` na Edge Function usando Supabase Secrets
+- [ ] Expor `STRIPE_PRICE_ID_STARTER` e `STRIPE_PRICE_ID_PRO` como Supabase Secrets
+- [ ] Atualizar `upsertOrgSubscription` para aceitar e persistir `priceId` e `planSlug`
+- [ ] Atualizar `onCheckoutCompleted` para extrair `price_id` do item e derivar `plan_slug`
+- [ ] Corrigir `onSubscriptionEvent` para também atualizar `price_id`, `plan_slug` e `plan_name` no update (adicionar `expand: ['items.data.price.product']` ao retrieve)
+
+### Fase 3 — Schema da tabela `billing_invoices`
 - [ ] Criar migração para novos campos em `billing_invoices`
 - [ ] Expandir constraint de status
 - [ ] Adicionar índice em `stripe_customer_id`
 
-### Fase 3 — Handler unificado de invoice
+### Fase 4 — Handler unificado de invoice
 - [ ] Implementar `handleInvoiceEvent()` na Edge Function
 - [ ] Implementar `INVOICE_STATUS_MAP`
 - [ ] Implementar lógica de ativação/suspensão/cancelamento de org por status
 - [ ] Adicionar todos os casos no switch da Edge Function
 
-### Fase 4 — Reativação de org existente
+### Fase 5 — Reativação de org existente
 - [ ] Implementar `reactivateOrganization()` 
 - [ ] Ajustar `checkout.session.completed` para detectar reativação vs. novo cadastro
 
-### Fase 5 — Notificações
+### Fase 6 — Notificações
 - [ ] Notificação: pagamento confirmado (invoice.paid)
 - [ ] Notificação: falha no pagamento com link para atualizar cartão (invoice.payment_failed)
 - [ ] Notificação: fatura próxima (invoice.upcoming)
 - [ ] Notificação: ação necessária — autenticação 3DS (invoice.payment_action_required)
 - [ ] Notificação: fatura vencida (invoice.overdue)
 
-### Fase 6 — Webhook dashboard
+### Fase 7 — Webhook dashboard
 - [ ] Configurar todos os 21 eventos no painel do Stripe (conforme lista fornecida)
 - [ ] Remover handler duplicado em `server/api/stripe/webhook.post.ts` ou alinhar com a Edge Function
 
@@ -354,5 +488,6 @@ if (existingOrg?.status === 'cancelled') {
 | `server/api/stripe/checkout.post.ts` | Criação de checkout — get-or-create customer |
 | `server/api/stripe/webhook.post.ts` | Handler legado — avaliar remoção ou manutenção |
 | `supabase/migrations/...create_billing_invoices.sql` | Schema atual da tabela de faturas |
-| `supabase/migrations/NEW_expand_invoice_status.sql` | Nova migração a criar |
+| `supabase/migrations/NEW_expand_invoice_status.sql` | Nova migração a criar (billing_invoices) |
+| `supabase/migrations/NEW_add_plan_fields_to_subscriptions.sql` | Nova migração a criar (price_id + plan_slug) |
 | `server/utils/stripe.ts` | Utilitários do SDK Stripe |

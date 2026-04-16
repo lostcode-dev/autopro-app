@@ -50,14 +50,14 @@ export default eventHandler(async (event) => {
   // Deactivate organization
   const { data: org } = await supabase
     .from('organizations')
-    .select('active')
+    .select('is_active')
     .eq('id', organizationId)
     .maybeSingle()
 
-  if (org?.active) {
+  if (org?.is_active) {
     await supabase
       .from('organizations')
-      .update({ active: false, updated_by: authUser.email })
+      .update({ is_active: false, updated_by: authUser.email })
       .eq('id', organizationId)
   }
 
