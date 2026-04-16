@@ -205,7 +205,7 @@ Suggested canonical route structure in Nuxt:
 
 | Legacy page/module | Suggested Nuxt route | Notes |
 |---|---|---|
-| `Dashboard` | `/app/dashboard` | Main authenticated home for workshop |
+| `Dashboard` | `/app/` | Main authenticated home for workshop |
 | `service-orders` | `/app/service-orders` | Core operational module |
 | `Agendamentos` | `/app/appointments` | Appointments |
 | `Clientes` | `/app/customers` | Customers |

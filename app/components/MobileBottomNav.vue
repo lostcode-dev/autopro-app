@@ -6,7 +6,7 @@ const router = useRouter()
 const workshop = useWorkshopPermissions()
 
 const items = computed(() => [
-  { label: 'Inicio', icon: 'i-lucide-house', to: '/app/dashboard' },
+  { label: 'Inicio', icon: 'i-lucide-house', to: '/app/' },
   workshop.can(ActionCode.ORDERS_READ) ? { label: 'OS', icon: 'i-lucide-clipboard-list', to: '/app/service-orders' } : null,
   workshop.can(ActionCode.APPOINTMENTS_READ) ? { label: 'Agenda', icon: 'i-lucide-calendar-days', to: '/app/appointments' } : null,
   workshop.can(ActionCode.FINANCIAL_READ) ? { label: 'Financeiro', icon: 'i-lucide-wallet', to: '/app/financial' } : null,
@@ -26,7 +26,7 @@ const moreItems = computed(() => [
 
 function isActive(to: string): boolean {
   if (!to) return false
-  if (to === '/app/dashboard') return route.path === '/app' || route.path === '/app/dashboard'
+  if (to === '/app/') return route.path === '/app' || route.path === '/app/'
   return route.path.startsWith(to)
 }
 

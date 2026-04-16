@@ -28,7 +28,7 @@ const links = computed<NavigationMenuItem[][]>(() => [[
   {
     label: 'Voltar ao app',
     icon: 'i-lucide-arrow-left-right',
-    to: '/app/dashboard'
+    to: '/app/'
   },
   {
     label: 'Ajuda',

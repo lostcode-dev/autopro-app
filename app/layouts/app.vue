@@ -2,8 +2,6 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 import { ActionCode } from '~/constants/action-codes'
 
-const toast = useToast()
-
 const open = ref(false)
 const sidebarCollapsed = ref(true)
 const isMobile = useMediaQuery('(max-width: 1023px)')
@@ -35,7 +33,7 @@ function triggerItem(label: string, icon: string, to: string, children: Navigati
 
 const links = computed<NavigationMenuItem[][]>(() => {
   const operational: NavigationMenuItem[] = [
-    item('Dashboard', 'i-lucide-house', '/app/dashboard')
+    item('Dashboard', 'i-lucide-house', '/app/')
   ]
 
   if (workshop.can(ActionCode.ORDERS_READ))
@@ -198,32 +196,6 @@ const { load: loadPreferences } = useUserPreferences()
 
 onMounted(async () => {
   await loadPreferences()
-
-  const cookie = useCookie('cookie-consent')
-  if (cookie.value === 'accepted') {
-    return
-  }
-
-  toast.add({
-    title: 'Usamos cookies essenciais para melhorar sua experiencia no AutoPro.',
-    duration: 0,
-    close: false,
-    actions: [
-      {
-        label: 'Aceitar',
-        color: 'neutral',
-        variant: 'outline',
-        onClick: () => {
-          cookie.value = 'accepted'
-        }
-      },
-      {
-        label: 'Recusar',
-        color: 'neutral',
-        variant: 'ghost'
-      }
-    ]
-  })
 })
 
 watch(

@@ -6,7 +6,7 @@ defineProps<{
 
 <template>
   <NuxtLink
-    to="/app/dashboard"
+    to="/app/"
     class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
   >
     <AppLogo size="sm" />
