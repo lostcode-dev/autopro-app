@@ -60,6 +60,9 @@ Substituir a tabela (`UTable`) + paginação atual por uma **interface estilo Go
 ```
            Seg 13  Ter 14  Qua 15  Qui 16  Sex 17  Sáb 18  Dom 19
            ──────  ──────  ──────  ──────  ──────  ──────  ──────
+00:00  │         │        │        │        │        │        │
+00:30  │         │        │        │        │        │        │
+...
 07:00  │         │        │[Troca ]│        │        │        │
 07:30  │         │        │[de    ]│        │        │        │
 08:00  │         │[Revis.]│[óleo  ]│        │[Alin.]│        │
@@ -67,11 +70,13 @@ Substituir a tabela (`UTable`) + paginação atual por uma **interface estilo Go
 09:00  │[Freios ]│        │        │[Revisão│        │        │
 09:30  │[João   ]│        │        │ Anual ]│        │        │
 ...
-20:00  │         │        │        │        │        │        │
+22:00  │         │        │        │        │        │        │
+23:30  │         │        │        │        │        │        │
 ```
 
 - Colunas = dias da semana (Seg–Dom)
-- Linhas = slots de 30 minutos, das 07:00 às 20:00
+- Linhas = slots de 30 minutos, das 00:00 às 23:30 (48 slots — grid completo de 24h)
+- Grid é **scrollável verticalmente**; ao abrir, faz scroll automático para o horário atual (ou 07:00 como fallback)
 - Eventos posicionados com `top` e `height` proporcionais à duração estimada (padrão: 1h = 2 slots)
 - Click em slot vazio → abre modal com data + hora pré-preenchidos
 - Click em evento → abre modal de edição
@@ -179,10 +184,14 @@ function buildMonthGrid(d: Date): Date[] {
   })
 }
 
-// Monta os slots de tempo para semana/dia
-const HOUR_START = 7    // 07:00
-const HOUR_END   = 20   // 20:00
+// Monta os slots de tempo para semana/dia — 24h completas
+const HOUR_START = 0    // 00:00
+const HOUR_END   = 24   // 23:30 (último slot)
 const SLOT_MINUTES = 30
+const TOTAL_SLOTS = (HOUR_END - HOUR_START) * (60 / SLOT_MINUTES)  // 48 slots
+
+// Altura fixa por slot em pixels — 48px por slot = 2304px de altura total (scrollável)
+const SLOT_HEIGHT_PX = 48
 
 function buildTimeSlots(): string[] {
   const slots: string[] = []
@@ -190,21 +199,38 @@ function buildTimeSlots(): string[] {
     slots.push(`${String(h).padStart(2, '0')}:00`)
     slots.push(`${String(h).padStart(2, '0')}:30`)
   }
-  return slots
+  return slots  // ['00:00', '00:30', ..., '23:00', '23:30'] — 48 itens
 }
 
-// Calcula posição vertical de um evento no grid semana/dia
-function getEventStyle(time: string): { top: string; height: string } {
+// Calcula posição e altura em px (não %, evita erros de sub-pixel em grid alto)
+function getEventStyle(time: string, durationMinutes = 60): { top: string; height: string } {
   const [hh, mm] = time.split(':').map(Number)
-  const totalMinutes = (hh - HOUR_START) * 60 + mm
-  const totalSlotMinutes = (HOUR_END - HOUR_START) * 60
-  const topPercent = (totalMinutes / totalSlotMinutes) * 100
-  const heightPercent = (60 / totalSlotMinutes) * 100  // 1h padrão
+  const startMinutes = hh * 60 + mm
+  const topPx = (startMinutes / SLOT_MINUTES) * SLOT_HEIGHT_PX
+  const heightPx = (durationMinutes / SLOT_MINUTES) * SLOT_HEIGHT_PX
   return {
-    top: `${topPercent.toFixed(2)}%`,
-    height: `${heightPercent.toFixed(2)}%`
+    top:    `${topPx}px`,
+    height: `${Math.max(heightPx, SLOT_HEIGHT_PX)}px`  // mínimo 1 slot de altura
   }
 }
+
+// Altura total do grid (usada no :style do container)
+const GRID_HEIGHT_PX = TOTAL_SLOTS * SLOT_HEIGHT_PX  // 2304px
+
+// Scroll automático para o horário atual ao montar a view semana/dia
+function scrollToCurrentTime(containerEl: HTMLElement) {
+  const now = new Date()
+  const minutes = now.getHours() * 60 + now.getMinutes()
+  const scrollTop = (minutes / SLOT_MINUTES) * SLOT_HEIGHT_PX - 200  // 200px acima
+  containerEl.scrollTop = Math.max(0, scrollTop)
+}
+
+// Linha do horário atual — posição em px
+const currentTimePx = computed(() => {
+  const now = new Date()
+  const minutes = now.getHours() * 60 + now.getMinutes()
+  return (minutes / SLOT_MINUTES) * SLOT_HEIGHT_PX
+})
 ```
 
 ---
@@ -333,8 +359,11 @@ function getEventsForDay(day: Date): Appointment[] {
 
 ```
 ┌──────────┬──────────────────────────────────────────────────┐
-│  07:00   │  Seg 13  │  Ter 14  │  Qua 15  │  ...  │  Dom 19 │
-│  07:30   │          │          │          │        │          │
+│  00:00   │  Seg 13  │  Ter 14  │  Qua 15  │  ...  │  Dom 19 │
+│  00:30   │          │          │          │        │          │
+│  ...     │          │          │          │        │          │  ← scroll
+│  07:00   │          │          │ [Troca ] │        │          │
+│  07:30   │          │          │ [de óleo]│        │          │
 │  08:00   │          │ [evento] │          │        │          │
 │  ...     │          │          │          │        │          │
 │  19:30   │          │          │          │        │          │
@@ -343,32 +372,73 @@ function getEventsForDay(day: Date): Appointment[] {
 
 ### Implementação
 
+A estrutura do WeekView usa **altura fixa em px** (não `%`) para posicionar os eventos, com scroll vertical. Isso garante que todos os 48 slots (00:00–23:30) fiquem acessíveis.
+
+```typescript
+// Helper: converte slot "HH:MM" em posição topo em px
+function getSlotTopPx(slot: string): number {
+  const [hh, mm] = slot.split(':').map(Number)
+  return ((hh * 60 + mm) / SLOT_MINUTES) * SLOT_HEIGHT_PX
+}
+```
+
 ```html
 <template>
-  <div class="flex flex-1 overflow-hidden">
-    <!-- Coluna de horários -->
-    <div class="w-14 shrink-0 border-r border-default">
+  <!--
+    Layout:
+    ┌────────────────────────────────────────────────┐
+    │ [Header dias fixo — não scrolla]               │
+    ├──────┬─────────────────────────────────────────┤
+    │ 00:00│            ← área scrollável            │
+    │ 00:30│                                         │
+    │  ... │  (GRID_HEIGHT_PX = 2304px total)        │
+    │ 23:30│                                         │
+    └──────┴─────────────────────────────────────────┘
+  -->
+  <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <!-- Header dos dias (sticky, não scrolla) -->
+    <div class="flex shrink-0 border-b border-default">
+      <div class="w-16 shrink-0" />  <!-- espaço da coluna de horas -->
+      <div
+        v-for="day in weekDays"
+        :key="toISO(day)"
+        class="flex-1 min-w-24 border-l border-default py-2 text-center cursor-pointer hover:bg-elevated"
+        :class="{ 'text-primary font-semibold': isToday(day) }"
+        @click="$emit('day-click', day)"
+      >
+        <span class="block text-xs text-muted">{{ formatDayName(day) }}</span>
+        <span
+          class="mx-auto flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold"
+          :class="isToday(day) ? 'bg-primary text-white' : ''"
+        >{{ day.getDate() }}</span>
+      </div>
+    </div>
+
+    <!-- Área scrollável (horas + eventos) -->
+    <div ref="scrollContainerRef" class="flex flex-1 overflow-y-auto overflow-x-auto">
+      <!-- Coluna de horários -->
+      <div class="w-16 shrink-0 border-r border-default">
       <!-- Espaço do header -->
       <div class="h-10 border-b border-default" />
-      <!-- Slots de horário -->
-      <div class="relative" :style="{ height: gridHeight + 'px' }">
+      <!-- Slots de horário — 48 linhas, cada uma com SLOT_HEIGHT_PX de altura -->
+      <div class="relative" :style="{ height: GRID_HEIGHT_PX + 'px' }">
         <div
           v-for="slot in timeSlots"
           :key="slot"
           class="absolute w-full border-t border-default/40 pr-1"
-          :style="{ top: slotToPercent(slot) + '%' }"
+          :style="{ top: getSlotTopPx(slot) + 'px', height: SLOT_HEIGHT_PX + 'px' }"
         >
           <span class="text-[10px] text-muted leading-none block text-right">{{ slot }}</span>
         </div>
       </div>
     </div>
 
-    <!-- Colunas dos dias -->
-    <div class="flex flex-1 overflow-x-auto">
+    <!-- Colunas dos dias (sem header — já está fixo acima) -->
+    <div class="flex flex-1">
       <div
         v-for="day in weekDays"
         :key="toISO(day)"
-        class="flex-1 min-w-24 border-r border-default last:border-r-0"
+        class="flex-1 min-w-24 border-l border-default"
       >
         <!-- Header do dia -->
         <div
@@ -385,10 +455,10 @@ function getEventsForDay(day: Date): Appointment[] {
           </span>
         </div>
 
-        <!-- Área de eventos (posicionamento absoluto) -->
+        <!-- Área de eventos (posicionamento absoluto, altura fixa = 24h × 48px) -->
         <div
           class="relative"
-          :style="{ height: gridHeight + 'px' }"
+          :style="{ height: GRID_HEIGHT_PX + 'px' }"
           @click="onGridClick(day, $event)"
         >
           <!-- Linhas de slot (fundo) -->
@@ -397,14 +467,14 @@ function getEventsForDay(day: Date): Appointment[] {
             :key="slot"
             class="absolute w-full border-t"
             :class="slot.endsWith(':00') ? 'border-default/60' : 'border-default/20'"
-            :style="{ top: slotToPercent(slot) + '%' }"
+            :style="{ top: getSlotTopPx(slot) + 'px', height: SLOT_HEIGHT_PX + 'px' }"
           />
 
-          <!-- Linha do horário atual -->
+          <!-- Linha do horário atual (sempre visível pois o grid é 24h) -->
           <div
-            v-if="isToday(day) && isCurrentTimeVisible"
+            v-if="isToday(day)"
             class="absolute w-full border-t-2 border-primary z-10"
-            :style="{ top: currentTimePercent + '%' }"
+            :style="{ top: currentTimePx + 'px' }"
           >
             <div class="absolute -left-1 -top-1.5 h-3 w-3 rounded-full bg-primary" />
           </div>
@@ -426,18 +496,53 @@ function getEventsForDay(day: Date): Appointment[] {
 </template>
 ```
 
-**Lógica de click no grid (pré-preenche horário):**
+**Script do WeekView (props, emits, scroll automático, click no grid):**
 ```typescript
+const props = defineProps<{
+  currentDate: Date
+  weekDays: Date[]
+  appointments: Appointment[]
+}>()
+const emit = defineEmits<{
+  'cell-click': [payload: { date: Date; time: string }]
+  'event-click': [appt: Appointment]
+  'day-click': [date: Date]
+}>()
+
+const scrollContainerRef = ref<HTMLElement | null>(null)
+
+// Ao montar (ou ao mudar de view), rola para o horário atual
+onMounted(() => {
+  if (scrollContainerRef.value)
+    scrollToCurrentTime(scrollContainerRef.value)
+})
+
+watch(() => props.currentDate, () => {
+  if (scrollContainerRef.value)
+    scrollToCurrentTime(scrollContainerRef.value)
+})
+
+// Click em slot vazio → calcula hora a partir da posição Y no container scrollável
 function onGridClick(day: Date, event: MouseEvent) {
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
-  const relY = event.clientY - rect.top
-  const percent = relY / rect.height
-  const totalMinutes = percent * (HOUR_END - HOUR_START) * 60
+  const container = event.currentTarget as HTMLElement
+  // offsetY já considera o scroll interno do container
+  const relY = event.offsetY
+  const totalMinutes = (relY / SLOT_HEIGHT_PX) * SLOT_MINUTES
   const roundedMinutes = Math.round(totalMinutes / 30) * 30
-  const h = Math.floor(roundedMinutes / 60) + HOUR_START
-  const m = roundedMinutes % 60
-  const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  emit('cell-click', { date: day, time })
+  const clamped = Math.min(Math.max(roundedMinutes, 0), 23 * 60 + 30)
+  const h = Math.floor(clamped / 60)
+  const m = clamped % 60
+  emit('cell-click', {
+    date: day,
+    time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  })
+}
+
+function getEventsForDay(day: Date): Appointment[] {
+  const iso = toISO(day)
+  return props.appointments
+    .filter(a => a.appointment_date === iso)
+    .sort((a, b) => a.time.localeCompare(b.time))
 }
 ```
 
@@ -663,10 +768,13 @@ const pageSize = Math.min(Math.max(1, Number(query.page_size) || 50), 500)
 
 ### Fase 2 — View Semana (prioridade)
 - [ ] Criar `app/components/appointments/CalendarWeekView.vue`
-- [ ] Grid com CSS posicionamento absoluto de eventos
-- [ ] Click em slot → pré-preenche data + hora no modal
-- [ ] Linha do horário atual
-- [ ] Responsividade (scroll horizontal em telas pequenas)
+- [ ] Grid 24h com altura fixa em px (`SLOT_HEIGHT_PX = 48`, `GRID_HEIGHT_PX = 2304`)
+- [ ] Scroll vertical automático para o horário atual ao montar (`scrollToCurrentTime`)
+- [ ] Posicionamento de eventos com `top` e `height` em px (não %)
+- [ ] Click em slot → calcula hora via `offsetY` e pré-preenche data + hora no modal
+- [ ] Linha do horário atual sempre visível (grid é 24h completo)
+- [ ] Header dos dias fixo (sticky), área de slots scrollável separada
+- [ ] Responsividade (scroll horizontal em telas pequenas, `min-w-24` por coluna)
 
 ### Fase 3 — View Mês
 - [ ] Criar `app/components/appointments/CalendarMonthView.vue`

@@ -49,7 +49,7 @@ const statusColorMap: Record<string, string> = {
   estimate: "neutral",
   open: "info",
   in_progress: "warning",
-  waiting_for_part: "orange",
+  waiting_for_part: "warning",
   completed: "success",
   delivered: "success",
   cancelled: "error",
@@ -207,7 +207,7 @@ const apptStatusLabelMap: Record<string, string> = {
             <ul v-else class="divide-y divide-default text-sm">
               <li v-for="order in dashStats!.recentOrders" :key="order.id">
                 <NuxtLink
-                  :to="`/app/service-orders/${order.id}`"
+                  to="/app/service-orders"
                   class="py-2 flex items-start justify-between gap-2 hover:bg-elevated/50 rounded-md px-1 -mx-1 transition"
                 >
                   <div class="min-w-0 flex-1">
@@ -265,8 +265,8 @@ const apptStatusLabelMap: Record<string, string> = {
             <ul v-else class="divide-y divide-default text-sm">
               <li v-for="appt in dashStats!.todaySchedule" :key="appt.id">
                 <NuxtLink
-                  :to="`/app/appointments/${appt.id}`"
-                  class="py-2 flex items-center justify-between gap-2 hover:bg-elevated/50 rounded-md px-1 -mx-1 transition"
+                  to="/app/appointments"
+                  class="py-2 flex items-start justify-between gap-2 hover:bg-elevated/50 rounded-md px-1 -mx-1 transition"
                 >
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2 flex-wrap">

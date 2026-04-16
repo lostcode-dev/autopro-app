@@ -123,7 +123,7 @@ const statusOptions = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Agendamentos"/>
+      <AppPageHeader title="Agendamentos" />
     </template>
 
     <template #body>
