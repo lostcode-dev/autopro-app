@@ -44,36 +44,6 @@ function formatDate(value: string) {
   return `${d}/${m}/${y}`
 }
 
-const statsCards = computed(() => {
-  if (!dashStats.value) return []
-  return [
-    {
-      label: 'OS em Andamento',
-      value: dashStats.value.openOrdersCount,
-      icon: 'i-lucide-wrench',
-      color: 'text-blue-500'
-    },
-    {
-      label: 'Faturamento do Mês',
-      value: formatCurrency(dashStats.value.grossRevenue),
-      icon: 'i-lucide-trending-up',
-      color: 'text-green-500'
-    },
-    {
-      label: 'Total de Clientes',
-      value: dashStats.value.totalClients,
-      icon: 'i-lucide-users',
-      color: 'text-purple-500'
-    },
-    {
-      label: 'Agendamentos Hoje',
-      value: dashStats.value.todayAppointmentsCount,
-      icon: 'i-lucide-calendar',
-      color: 'text-orange-500'
-    }
-  ]
-})
-
 const statusColorMap: Record<string, string> = {
   estimate: 'neutral', open: 'info', in_progress: 'warning',
   waiting_for_part: 'orange', completed: 'success', delivered: 'success', cancelled: 'error'
@@ -114,21 +84,65 @@ const apptStatusLabelMap: Record<string, string> = {
         <!-- Stats cards -->
         <div v-else class="grid grid-cols-2 xl:grid-cols-4 gap-4">
           <UPageCard
-            v-for="card in statsCards"
-            :key="card.label"
+            to="/app/service-orders?status=open,in_progress,waiting_for_part"
             variant="subtle"
             class="text-center"
           >
             <div class="flex flex-col items-center gap-1">
-              <span class="grid gap-2 text-highlighted">
-                <UIcon :name="card.icon" :class="['text-2xl', card.color]" />
-                <p class="text-xl font-bold">
-                  {{ card.value }}
-                </p>
-              </span>
-
+              <UIcon name="i-lucide-wrench" class="text-2xl text-blue-500" />
+              <p class="text-xl font-bold">
+                {{ dashStats!.openOrdersCount }}
+              </p>
               <p class="text-xs text-muted">
-                {{ card.label }}
+                OS em Andamento
+              </p>
+            </div>
+          </UPageCard>
+
+          <UPageCard
+            to="/app/reports"
+            variant="subtle"
+            class="text-center"
+          >
+            <div class="flex flex-col items-center gap-1">
+              <UIcon name="i-lucide-trending-up" class="text-2xl text-green-500" />
+              <p class="text-xl font-bold">
+                {{ formatCurrency(dashStats!.grossRevenue) }}
+              </p>
+              <p class="text-xs text-muted">
+                Faturamento do Mês
+              </p>
+            </div>
+          </UPageCard>
+
+          <UPageCard
+            to="/app/customers"
+            variant="subtle"
+            class="text-center"
+          >
+            <div class="flex flex-col items-center gap-1">
+              <UIcon name="i-lucide-users" class="text-2xl text-purple-500" />
+              <p class="text-xl font-bold">
+                {{ dashStats!.totalClients }}
+              </p>
+              <p class="text-xs text-muted">
+                Total de Clientes
+              </p>
+            </div>
+          </UPageCard>
+
+          <UPageCard
+            to="/app/appointments"
+            variant="subtle"
+            class="text-center"
+          >
+            <div class="flex flex-col items-center gap-1">
+              <UIcon name="i-lucide-calendar" class="text-2xl text-orange-500" />
+              <p class="text-xl font-bold">
+                {{ dashStats!.todayAppointmentsCount }}
+              </p>
+              <p class="text-xs text-muted">
+                Agendamentos Hoje
               </p>
             </div>
           </UPageCard>
@@ -155,7 +169,15 @@ const apptStatusLabelMap: Record<string, string> = {
 
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <!-- Ordens recentes -->
-          <UPageCard title="Ordens Recentes" variant="subtle">
+          <UPageCard
+            icon="i-lucide-clipboard-list"
+            variant="subtle"
+          >
+            <template #title>
+              <NuxtLink to="/app/service-orders" class="hover:underline">
+                Ordens Recentes
+              </NuxtLink>
+            </template>
             <div v-if="status === 'pending'" class="space-y-2">
               <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
             </div>
@@ -166,46 +188,53 @@ const apptStatusLabelMap: Record<string, string> = {
               <li
                 v-for="order in dashStats!.recentOrders"
                 :key="order.id"
-                class="py-2 flex items-start justify-between gap-2"
               >
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <p class="font-medium">
-                      OS {{ order.number }} — {{ order.clientName }}
+                <NuxtLink
+                  :to="`/app/service-orders/${order.id}`"
+                  class="py-2 flex items-start justify-between gap-2 hover:bg-elevated/50 rounded-md px-1 -mx-1 transition"
+                >
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <p class="font-medium">
+                        OS {{ order.number }} — {{ order.clientName }}
+                      </p>
+                      <UBadge
+                        :color="statusColorMap[order.status] ?? 'neutral'"
+                        variant="subtle"
+                        :label="statusLabelMap[order.status] ?? order.status"
+                        size="xs"
+                      />
+                    </div>
+                    <p class="text-muted text-xs truncate">
+                      {{ order.vehicleLabel }}
                     </p>
-                    <UBadge
-                      :color="statusColorMap[order.status] ?? 'neutral'"
-                      variant="subtle"
-                      :label="statusLabelMap[order.status] ?? order.status"
-                      size="xs"
-                    />
+                    <p v-if="order.reported_defect" class="text-muted text-xs truncate">
+                      {{ order.reported_defect }}
+                    </p>
                   </div>
-                  <p class="text-muted text-xs truncate">
-                    {{ order.vehicleLabel }}
-                  </p>
-                  <p v-if="order.reported_defect" class="text-muted text-xs truncate">
-                    {{ order.reported_defect }}
-                  </p>
-                </div>
-                <div class="text-right shrink-0">
-                  <p class="text-xs font-medium">
-                    {{ formatCurrency(order.total_amount) }}
-                  </p>
-                  <p class="text-muted text-xs">
-                    {{ formatDate(order.entry_date) }}
-                  </p>
-                </div>
+                  <div class="text-right shrink-0">
+                    <p class="text-xs font-medium">
+                      {{ formatCurrency(order.total_amount) }}
+                    </p>
+                    <p class="text-muted text-xs">
+                      {{ formatDate(order.entry_date) }}
+                    </p>
+                  </div>
+                </NuxtLink>
               </li>
             </ul>
-            <template #footer>
-              <NuxtLink to="/app/service-orders" class="text-xs text-primary hover:underline">
-                Ver todas as OS →
-              </NuxtLink>
-            </template>
           </UPageCard>
 
           <!-- Agenda de hoje -->
-          <UPageCard title="Agenda de Hoje" variant="subtle">
+          <UPageCard
+            icon="i-lucide-calendar-days"
+            variant="subtle"
+          >
+            <template #title>
+              <NuxtLink to="/app/appointments" class="hover:underline">
+                Agenda de Hoje
+              </NuxtLink>
+            </template>
             <div v-if="status === 'pending'" class="space-y-2">
               <USkeleton v-for="i in 3" :key="i" class="h-12 w-full" />
             </div>
@@ -217,32 +246,31 @@ const apptStatusLabelMap: Record<string, string> = {
               <li
                 v-for="appt in dashStats!.todaySchedule"
                 :key="appt.id"
-                class="py-2 flex items-center justify-between gap-2"
               >
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-2 flex-wrap">
-                    <span class="font-mono text-xs font-semibold">{{ appt.time }}</span>
-                    <p class="font-medium truncate">
-                      {{ appt.clientName }}
+                <NuxtLink
+                  :to="`/app/appointments/${appt.id}`"
+                  class="py-2 flex items-center justify-between gap-2 hover:bg-elevated/50 rounded-md px-1 -mx-1 transition"
+                >
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-mono text-xs font-semibold">{{ appt.time }}</span>
+                      <p class="font-medium truncate">
+                        {{ appt.clientName }}
+                      </p>
+                    </div>
+                    <p class="text-muted text-xs">
+                      {{ appt.vehicleLabel }} — {{ appt.service_type }}
                     </p>
                   </div>
-                  <p class="text-muted text-xs">
-                    {{ appt.vehicleLabel }} — {{ appt.service_type }}
-                  </p>
-                </div>
-                <UBadge
-                  :color="apptStatusColorMap[appt.status] ?? 'neutral'"
-                  variant="subtle"
-                  :label="apptStatusLabelMap[appt.status] ?? appt.status"
-                  size="sm"
-                />
+                  <UBadge
+                    :color="apptStatusColorMap[appt.status] ?? 'neutral'"
+                    variant="subtle"
+                    :label="apptStatusLabelMap[appt.status] ?? appt.status"
+                    size="sm"
+                  />
+                </NuxtLink>
               </li>
             </ul>
-            <template #footer>
-              <NuxtLink to="/app/appointments" class="text-xs text-primary hover:underline">
-                Ver todos os agendamentos →
-              </NuxtLink>
-            </template>
           </UPageCard>
         </div>
       </div>
