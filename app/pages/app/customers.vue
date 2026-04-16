@@ -452,10 +452,13 @@ const lineColumns = [
           v-model:page="page"
           :columns="lineColumns"
           :data="clientItems"
+          selectable
+          :get-row-id="row => String(row.id ?? '')"
           :loading="status === 'pending'"
           :page="page"
           :page-size="PAGE_SIZE"
           :total="totalClients"
+          empty-icon="i-lucide-users"
           empty-title="Nenhum cliente encontrado"
           empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
         >
