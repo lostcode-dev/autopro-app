@@ -498,7 +498,7 @@ const emptyHeaderTableClass = 'shrink-0'
 
     <div
       v-else
-      class="min-h-0 flex-1 overflow-hidden"
+      class="flex min-h-0 flex-1 flex-col overflow-hidden"
     >
       <div
         v-if="!loading && !hasItems"
@@ -657,7 +657,7 @@ const emptyHeaderTableClass = 'shrink-0'
 
       <UPagination
         v-if="showPagination"
-        v-model="currentPage"
+        v-model:page="currentPage"
         :items-per-page="pageSize"
         :total="totalItems"
         :show-edges="false"
