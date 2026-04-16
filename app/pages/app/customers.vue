@@ -2,6 +2,7 @@
 import { watchDebounced } from '@vueuse/core'
 import type { SortingState } from '@tanstack/vue-table'
 import { ActionCode } from '~/constants/action-codes'
+import type { Client, PersonType } from '~/types/clients'
 
 function formatTaxId(taxId: string | null, personType: PersonType): string {
   if (!taxId)
@@ -28,28 +29,8 @@ function formatPhone(phone: string | null): string {
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Clientes' })
 
-type PersonType = 'pf' | 'pj'
 type ViewMode = 'line' | 'card'
 const ALL_PERSON_TYPES_VALUE = 'all'
-
-type Client = {
-  id: string
-  name: string
-  person_type: PersonType
-  tax_id: string | null
-  email: string | null
-  phone: string | null
-  mobile_phone: string | null
-  birth_date: string | null
-  zip_code: string | null
-  street: string | null
-  address_number: string | null
-  address_complement: string | null
-  neighborhood: string | null
-  city: string | null
-  state: string | null
-  notes: string | null
-}
 
 type ClientsResponse = {
   items: Client[]
@@ -97,7 +78,6 @@ const personTypeFilter = ref<PersonType | typeof ALL_PERSON_TYPES_VALUE>(parsePe
 const page = ref(parsePage(route.query.page))
 const pageSize = ref(parsePageSize(route.query.pageSize))
 const viewMode = ref<ViewMode>(parseView(route.query.view))
-const isLoadingCep = ref(false)
 
 const sorting = ref<SortingState>(
   typeof route.query.sortBy === 'string' && route.query.sortBy
@@ -231,7 +211,7 @@ watch(sorting, async () => {
   await syncQuery()
 })
 
-function clearFilters() {
+function _clearFilters() {
   search.value = ''
   personTypeFilter.value = ALL_PERSON_TYPES_VALUE
   page.value = 1
@@ -252,115 +232,17 @@ function formatContact(client: Client): string {
 
 // Modal
 const showModal = ref(false)
-const isEditing = ref(false)
-const isSaving = ref(false)
+const selectedClient = ref<Client | null>(null)
 const isDeleting = ref(false)
-const selectedId = ref<string | null>(null)
-
-const emptyForm = () => ({
-  name: '',
-  person_type: 'pf' as PersonType,
-  tax_id: '',
-  email: '',
-  phone: '',
-  mobile_phone: '',
-  birth_date: '',
-  zip_code: '',
-  street: '',
-  address_number: '',
-  address_complement: '',
-  neighborhood: '',
-  city: '',
-  state: '',
-  notes: ''
-})
-
-const form = reactive(emptyForm())
 
 function openCreate() {
-  Object.assign(form, emptyForm())
-  isEditing.value = false
-  selectedId.value = null
+  selectedClient.value = null
   showModal.value = true
 }
 
 function openEdit(client: Client) {
-  Object.assign(form, {
-    name: client.name ?? '',
-    person_type: client.person_type ?? 'pf',
-    tax_id: client.tax_id ?? '',
-    email: client.email ?? '',
-    phone: client.phone ?? '',
-    mobile_phone: client.mobile_phone ?? '',
-    birth_date: client.birth_date ? client.birth_date.split('T')[0] : '',
-    zip_code: client.zip_code ?? '',
-    street: client.street ?? '',
-    address_number: client.address_number ?? '',
-    address_complement: client.address_complement ?? '',
-    neighborhood: client.neighborhood ?? '',
-    city: client.city ?? '',
-    state: client.state ?? '',
-    notes: client.notes ?? ''
-  })
-  isEditing.value = true
-  selectedId.value = client.id
+  selectedClient.value = client
   showModal.value = true
-}
-
-async function save() {
-  if (isSaving.value)
-    return
-
-  if (!form.name.trim()) {
-    toast.add({ title: 'Nome obrigatório', color: 'warning' })
-    return
-  }
-
-  if (!form.phone.trim()) {
-    toast.add({ title: 'Telefone obrigatório', color: 'warning' })
-    return
-  }
-
-  isSaving.value = true
-  try {
-    const body = {
-      name: form.name,
-      person_type: form.person_type,
-      tax_id: form.tax_id || null,
-      email: form.email || null,
-      phone: form.phone || null,
-      mobile_phone: form.mobile_phone || null,
-      birth_date: form.birth_date || null,
-      zip_code: form.zip_code || null,
-      street: form.street || null,
-      address_number: form.address_number || null,
-      address_complement: form.address_complement || null,
-      neighborhood: form.neighborhood || null,
-      city: form.city || null,
-      state: form.state || null,
-      notes: form.notes || null
-    }
-
-    if (isEditing.value && selectedId.value) {
-      await $fetch(`/api/clients/${selectedId.value}`, { method: 'PUT', body })
-      toast.add({ title: 'Cliente atualizado', color: 'success' })
-    } else {
-      await $fetch('/api/clients', { method: 'POST', body })
-      toast.add({ title: 'Cliente criado', color: 'success' })
-    }
-
-    showModal.value = false
-    await refresh()
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({
-      title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar.',
-      color: 'error'
-    })
-  } finally {
-    isSaving.value = false
-  }
 }
 
 async function remove(client: Client) {
@@ -387,35 +269,6 @@ async function remove(client: Client) {
     isDeleting.value = false
   }
 }
-
-async function lookupCep() {
-  const cep = form.zip_code.replace(/\D/g, '')
-  if (cep.length !== 8)
-    return
-
-  isLoadingCep.value = true
-  try {
-    const res = await $fetch<Record<string, string | boolean>>(`https://viacep.com.br/ws/${cep}/json/`)
-    if (res.erro) {
-      toast.add({ title: 'CEP não encontrado', color: 'warning' })
-      return
-    }
-
-    form.street = String(res.logradouro || form.street)
-    form.neighborhood = String(res.bairro || form.neighborhood)
-    form.city = String(res.localidade || form.city)
-    form.state = String(res.uf || form.state)
-  } catch {
-    toast.add({ title: 'Erro ao buscar CEP', color: 'error' })
-  } finally {
-    isLoadingCep.value = false
-  }
-}
-
-const personTypeOptions = [
-  { label: 'Pessoa Física', value: 'pf' },
-  { label: 'Pessoa Jurídica', value: 'pj' }
-]
 
 const personTypeFilterOptions = [
   { label: 'Todos os tipos', value: ALL_PERSON_TYPES_VALUE },
@@ -456,8 +309,8 @@ const lineColumns = [
         </p>
       </div>
 
-      <template v-else>
-        <div class="flex flex-wrap items-center gap-3 border-b border-default p-4">
+      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div class="shrink-0 flex flex-wrap items-center gap-3 border-b border-default p-4">
           <UInput
             v-model="search"
             placeholder="Buscar por nome, e-mail ou CPF/CNPJ..."
@@ -490,89 +343,88 @@ const lineColumns = [
           </UButtonGroup>
         </div>
 
-        <AppDataTable
-          v-if="viewMode === 'line'"
-          v-model:page="page"
-          v-model:page-size="pageSize"
-          v-model:sorting="sorting"
-          :columns="lineColumns"
-          :data="clientItems"
-          selectable
-          :get-row-id="row => String(row.id ?? '')"
-          :loading="status === 'pending'"
-          :page-size-options="PAGE_SIZE_OPTIONS"
-          :page="page"
-          :page-size="pageSize"
-          :total="totalClients"
-          empty-icon="i-lucide-users"
-          empty-title="Nenhum cliente encontrado"
-          empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
-        >
-          <template #name-cell="{ row }">
-            <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/12 text-sm font-semibold text-primary">
-                {{ getClientInitial(row.original.name) }}
+        <div v-if="viewMode === 'line'" class="min-h-0 flex-1 flex flex-col p-4">
+          <AppDataTable
+            v-model:page="page"
+            v-model:page-size="pageSize"
+            v-model:sorting="sorting"
+            :columns="lineColumns"
+            :data="clientItems"
+            selectable
+            :get-row-id="row => String(row.id ?? '')"
+            :loading="status === 'pending'"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            :total="totalClients"
+            empty-icon="i-lucide-users"
+            empty-title="Nenhum cliente encontrado"
+            empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
+          >
+            <template #name-cell="{ row }">
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/12 text-sm font-semibold text-primary">
+                  {{ getClientInitial(row.original.name as string) }}
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate font-semibold text-highlighted">
+                    {{ row.original.name }}
+                  </p>
+                  <p class="truncate text-xs text-muted">
+                    {{ row.original.email || 'E-mail não informado' }}
+                  </p>
+                </div>
               </div>
-              <div class="min-w-0">
-                <p class="truncate font-semibold text-highlighted">
-                  {{ row.original.name }}
-                </p>
-                <p class="truncate text-xs text-muted">
-                  {{ row.original.email || 'E-mail não informado' }}
-                </p>
-              </div>
-            </div>
-          </template>
+            </template>
 
-          <template #person_type-cell="{ row }">
-            <UBadge
-              :label="getPersonTypeLabel(row.original.person_type)"
-              color="neutral"
-              variant="subtle"
-              size="xs"
-            />
-          </template>
-
-          <template #tax_id-cell="{ row }">
-            <span class="text-sm text-muted">
-              {{ formatTaxId(row.original.tax_id as string | null, row.original.person_type as PersonType) }}
-            </span>
-          </template>
-
-          <template #phone-cell="{ row }">
-            <span class="text-sm text-muted">
-              {{ formatContact(row.original as Client) }}
-            </span>
-          </template>
-
-          <template #email-cell="{ row }">
-            <span class="text-sm text-muted">
-              {{ row.original.email || '-' }}
-            </span>
-          </template>
-
-          <template #actions-cell="{ row }">
-            <div class="flex items-center justify-end gap-2">
-              <UButton
-                v-if="canUpdate"
-                icon="i-lucide-pencil"
+            <template #person_type-cell="{ row }">
+              <UBadge
+                :label="getPersonTypeLabel(row.original.person_type as PersonType)"
                 color="neutral"
-                variant="ghost"
+                variant="subtle"
                 size="xs"
-                @click="openEdit(row.original)"
               />
-              <UButton
-                v-if="canDelete"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                :loading="isDeleting"
-                @click="remove(row.original)"
-              />
-            </div>
-          </template>
-        </AppDataTable>
+            </template>
+
+            <template #tax_id-cell="{ row }">
+              <span class="text-sm text-muted">
+                {{ formatTaxId(row.original.tax_id as string | null, row.original.person_type as PersonType) }}
+              </span>
+            </template>
+
+            <template #phone-cell="{ row }">
+              <span class="text-sm text-muted">
+                {{ formatContact(row.original as Client) }}
+              </span>
+            </template>
+
+            <template #email-cell="{ row }">
+              <span class="text-sm text-muted">
+                {{ row.original.email || '-' }}
+              </span>
+            </template>
+
+            <template #actions-cell="{ row }">
+              <div class="flex items-center justify-end gap-2">
+                <UButton
+                  v-if="canUpdate"
+                  icon="i-lucide-pencil"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="openEdit(row.original as Client)"
+                />
+                <UButton
+                  v-if="canDelete"
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  :loading="isDeleting"
+                  @click="remove(row.original as Client)"
+                />
+              </div>
+            </template>
+          </AppDataTable>
+        </div>
 
         <div v-else class="flex min-h-0 flex-1 flex-col">
           <div v-if="status === 'pending'" class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2">
@@ -676,116 +528,13 @@ const lineColumns = [
             />
           </div>
         </div>
-      </template>
+      </div>
     </template>
   </UDashboardPanel>
 
-  <UModal
+  <CustomersFormModal
     v-model:open="showModal"
-    :title="isEditing ? 'Editar cliente' : 'Novo cliente'"
-    :ui="{ body: 'overflow-y-auto max-h-[70vh]' }"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <UFormField label="Nome" required class="sm:col-span-2">
-            <UInput v-model="form.name" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Tipo de pessoa">
-            <USelectMenu
-              v-model="form.person_type"
-              :items="personTypeOptions"
-              value-key="value"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField label="CPF / CNPJ">
-            <UInput v-model="form.tax_id" class="w-full" />
-          </UFormField>
-
-          <UFormField label="E-mail">
-            <UInput v-model="form.email" type="email" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Telefone" required>
-            <UInput v-model="form.phone" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Celular">
-            <UInput v-model="form.mobile_phone" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Data de nascimento">
-            <UInput v-model="form.birth_date" type="date" class="w-full" />
-          </UFormField>
-        </div>
-
-        <USeparator label="Endereço" />
-
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <UFormField label="CEP" class="sm:col-span-2">
-            <div class="flex gap-2">
-              <UInput v-model="form.zip_code" placeholder="00000-000" class="flex-1" />
-              <UButton
-                label="Buscar"
-                color="neutral"
-                variant="outline"
-                :loading="isLoadingCep"
-                :disabled="isLoadingCep"
-                @click="lookupCep"
-              />
-            </div>
-          </UFormField>
-
-          <UFormField label="Logradouro" class="sm:col-span-2">
-            <UInput v-model="form.street" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Número">
-            <UInput v-model="form.address_number" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Complemento">
-            <UInput v-model="form.address_complement" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Bairro">
-            <UInput v-model="form.neighborhood" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Cidade">
-            <UInput v-model="form.city" class="w-full" />
-          </UFormField>
-
-          <UFormField label="UF">
-            <UInput v-model="form.state" maxlength="2" class="w-full uppercase" />
-          </UFormField>
-        </div>
-
-        <UFormField label="Observações">
-          <UTextarea v-model="form.notes" class="w-full" :rows="3" />
-        </UFormField>
-      </div>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          label="Cancelar"
-          color="neutral"
-          variant="ghost"
-          @click="showModal = false"
-        />
-        <UButton
-          label="Salvar"
-          color="neutral"
-          :loading="isSaving"
-          :disabled="isSaving"
-          @click="save"
-        />
-      </div>
-    </template>
-  </UModal>
+    :client="selectedClient"
+    @saved="refresh"
+  />
 </template>

@@ -6,6 +6,7 @@ const open = ref(false)
 const sidebarCollapsed = ref(true)
 const isMobile = ref(false)
 const workshop = useWorkshopPermissions()
+const route = useRoute()
 let mediaQuery: MediaQueryList | null = null
 
 function syncViewportMode() {
@@ -25,12 +26,30 @@ function item(label: string, icon: string, to: string): NavigationMenuItem {
   }
 }
 
+function normalizePath(path: string) {
+  if (path === '/')
+    return path
+
+  return path.replace(/\/+$/, '') || '/'
+}
+
+function isRouteMatch(target: string) {
+  const currentPath = normalizePath(route.path)
+  const targetPath = normalizePath(target)
+
+  return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`)
+}
+
+function shouldOpenGroup(to: string, children: NavigationMenuItem[]) {
+  return isRouteMatch(to) || children.some(child => child.to ? isRouteMatch(String(child.to)) : false)
+}
+
 function triggerItem(label: string, icon: string, to: string, children: NavigationMenuItem[]): NavigationMenuItem {
   return {
     label,
     icon,
     to,
-    defaultOpen: true,
+    open: shouldOpenGroup(to, children),
     type: 'trigger',
     children
   }
@@ -131,7 +150,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
         label: 'Relatórios',
         icon: 'i-lucide-bar-chart-3',
         to: '/app/reports',
-        defaultOpen: true,
+        open: shouldOpenGroup('/app/reports', reportsChildren),
         type: 'trigger',
         children: reportsChildren
       }]
@@ -157,7 +176,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     label: 'Configurações',
     to: '/app/settings',
     icon: 'i-lucide-settings',
-    defaultOpen: true,
+    open: shouldOpenGroup('/app/settings', settingsChildren),
     type: 'trigger',
     children: settingsChildren
   }]
