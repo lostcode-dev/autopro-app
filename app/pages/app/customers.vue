@@ -35,8 +35,9 @@ type ClientsResponse = {
   page_size: number
 }
 
-const PAGE_SIZE = 20
-const MANAGED_QUERY_KEYS = ['search', 'personType', 'page', 'view'] as const
+const DEFAULT_PAGE_SIZE = 10
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+const MANAGED_QUERY_KEYS = ['search', 'personType', 'page', 'pageSize', 'view'] as const
 
 const toast = useToast()
 const workshop = useWorkshopPermissions()
@@ -55,6 +56,11 @@ function parsePage(value: unknown) {
   return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1
 }
 
+function parsePageSize(value: unknown) {
+  const parsed = Number(value)
+  return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_PAGE_SIZE
+}
+
 function parseView(value: unknown): ViewMode {
   return value === 'card' ? 'card' : 'line'
 }
@@ -66,6 +72,7 @@ function parsePersonType(value: unknown): PersonType | typeof ALL_PERSON_TYPES_V
 const search = ref(typeof route.query.search === 'string' ? route.query.search : '')
 const personTypeFilter = ref<PersonType | typeof ALL_PERSON_TYPES_VALUE>(parsePersonType(route.query.personType))
 const page = ref(parsePage(route.query.page))
+const pageSize = ref(parsePageSize(route.query.pageSize))
 const viewMode = ref<ViewMode>(parseView(route.query.view))
 const isLoadingCep = ref(false)
 
@@ -73,18 +80,18 @@ const requestQuery = computed(() => ({
   search: search.value || undefined,
   person_type: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
   page: page.value,
-  page_size: PAGE_SIZE
+  page_size: pageSize.value
 }))
 
 const { data, status, refresh } = await useAsyncData(
-  () => `clients-${search.value}-${personTypeFilter.value}-${page.value}`,
+  () => `clients-${search.value}-${personTypeFilter.value}-${page.value}-${pageSize.value}`,
   async () => {
     if (!canRead.value) {
       return {
         items: [],
         total: 0,
         page: 1,
-        page_size: PAGE_SIZE
+        page_size: pageSize.value
       } satisfies ClientsResponse
     }
 
@@ -99,21 +106,21 @@ const { data, status, refresh } = await useAsyncData(
       items: [],
       total: 0,
       page: 1,
-      page_size: PAGE_SIZE
+      page_size: pageSize.value
     })
   }
 )
 
 const clientItems = computed(() => data.value?.items ?? [])
 const totalClients = computed(() => data.value?.total ?? 0)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalClients.value / PAGE_SIZE)))
+const totalPages = computed(() => Math.max(1, Math.ceil(totalClients.value / pageSize.value)))
 const hasActiveFilters = computed(() => Boolean(search.value || personTypeFilter.value !== ALL_PERSON_TYPES_VALUE))
 const resultLabel = computed(() => {
   if (!totalClients.value)
     return 'Nenhum cliente encontrado'
 
-  const from = (page.value - 1) * PAGE_SIZE + 1
-  const to = Math.min(page.value * PAGE_SIZE, totalClients.value)
+  const from = (page.value - 1) * pageSize.value + 1
+  const to = Math.min(page.value * pageSize.value, totalClients.value)
   return `Mostrando ${from}-${to} de ${totalClients.value} clientes`
 })
 
@@ -122,6 +129,7 @@ function buildManagedQuery() {
     search: search.value || undefined,
     personType: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
     page: page.value > 1 ? String(page.value) : undefined,
+    pageSize: pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
     view: viewMode.value !== 'line' ? viewMode.value : undefined
   }
 }
@@ -145,6 +153,7 @@ watch(() => route.query, (query) => {
   const nextSearch = typeof query.search === 'string' ? query.search : ''
   const nextPersonType = parsePersonType(query.personType)
   const nextPage = parsePage(query.page)
+  const nextPageSize = parsePageSize(query.pageSize)
   const nextView = parseView(query.view)
 
   if (search.value !== nextSearch)
@@ -153,6 +162,8 @@ watch(() => route.query, (query) => {
     personTypeFilter.value = nextPersonType
   if (page.value !== nextPage)
     page.value = nextPage
+  if (pageSize.value !== nextPageSize)
+    pageSize.value = nextPageSize
   if (viewMode.value !== nextView)
     viewMode.value = nextView
 })
@@ -171,6 +182,11 @@ watch(page, async () => {
   if (page.value > totalPages.value && totalPages.value > 0)
     page.value = totalPages.value
 
+  await syncQuery()
+})
+
+watch(pageSize, async () => {
+  page.value = 1
   await syncQuery()
 })
 
@@ -432,31 +448,20 @@ const lineColumns = [
               @click="viewMode = 'card'"
             />
           </UButtonGroup>
-
-          <UButton
-            v-if="hasActiveFilters"
-            label="Limpar"
-            icon="i-lucide-x"
-            color="neutral"
-            variant="ghost"
-            @click="clearFilters"
-          />
-
-          <p class="w-full text-xs text-muted sm:w-auto sm:ml-auto">
-            {{ resultLabel }}
-          </p>
         </div>
 
         <AppDataTable
           v-if="viewMode === 'line'"
           v-model:page="page"
+          v-model:page-size="pageSize"
           :columns="lineColumns"
           :data="clientItems"
           selectable
           :get-row-id="row => String(row.id ?? '')"
           :loading="status === 'pending'"
+          :page-size-options="PAGE_SIZE_OPTIONS"
           :page="page"
-          :page-size="PAGE_SIZE"
+          :page-size="pageSize"
           :total="totalClients"
           empty-icon="i-lucide-users"
           empty-title="Nenhum cliente encontrado"
@@ -620,12 +625,12 @@ const lineColumns = [
           </div>
 
           <div
-            v-if="totalClients > PAGE_SIZE"
+            v-if="totalClients > pageSize"
             class="flex justify-center border-t border-default p-4"
           >
             <UPagination
               v-model="page"
-              :page-count="PAGE_SIZE"
+              :items-per-page="pageSize"
               :total="totalClients"
             />
           </div>

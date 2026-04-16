@@ -13,6 +13,7 @@ const props = withDefaults(defineProps<{
   loadingVariant?: 'row' | 'card'
   page?: number
   pageSize?: number
+  pageSizeOptions?: number[]
   total?: number
   emptyIcon?: string
   emptyTitle?: string
@@ -21,6 +22,7 @@ const props = withDefaults(defineProps<{
   selectable?: boolean
   stickyHeader?: boolean
   showFooter?: boolean
+  showPageSizeSelector?: boolean
   actionsColumnKey?: string
   sorting?: SortingState
   rowSelection?: RowSelectionState
@@ -35,6 +37,7 @@ const props = withDefaults(defineProps<{
   loadingVariant: 'row',
   page: 1,
   pageSize: 20,
+  pageSizeOptions: () => [10, 20, 50, 100],
   total: 0,
   emptyIcon: 'i-lucide-inbox',
   emptyTitle: 'Nada por aqui ainda',
@@ -43,6 +46,7 @@ const props = withDefaults(defineProps<{
   selectable: false,
   stickyHeader: true,
   showFooter: true,
+  showPageSizeSelector: true,
   actionsColumnKey: 'actions',
   sorting: () => [],
   rowSelection: () => ({}),
@@ -54,6 +58,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:page': [value: number]
+  'update:pageSize': [value: number]
   'update:sorting': [value: SortingState]
   'update:rowSelection': [value: RowSelectionState]
 }>()
@@ -68,6 +73,18 @@ const internalRowSelection = ref<RowSelectionState>(props.rowSelection)
 const currentPage = computed({
   get: () => props.page,
   set: value => emit('update:page', value)
+})
+
+const currentPageSizeOption = computed({
+  get: () => String(props.pageSize),
+  set: (value: string) => {
+    const nextPageSize = Number.parseInt(value, 10)
+    if (!Number.isFinite(nextPageSize) || nextPageSize <= 0 || nextPageSize === props.pageSize)
+      return
+
+    emit('update:pageSize', nextPageSize)
+    emit('update:page', 1)
+  }
 })
 
 const currentSorting = computed({
@@ -94,8 +111,11 @@ const totalItems = computed(() => props.total > 0 ? props.total : props.data.len
 const hasItems = computed(() => props.data.length > 0)
 const showPagination = computed(() => totalItems.value > props.pageSize)
 const showCardLoading = computed(() => props.loading && props.loadingVariant === 'card')
-const selectedCount = computed(() =>
-  Object.values(currentRowSelection.value).filter(Boolean).length
+const pageSizeSelectItems = computed(() =>
+  props.pageSizeOptions.map(option => ({
+    label: `${option} por página`,
+    value: String(option)
+  }))
 )
 const pageStart = computed(() => {
   if (!totalItems.value || !hasItems.value)
@@ -168,9 +188,9 @@ function createSortableHeader(
   return (context: HeaderContext<TableRowData, unknown>) => {
     const sorted = context.column.getIsSorted()
     const icon = sorted === 'asc'
-      ? 'i-lucide-arrow-up-narrow-wide'
+      ? 'i-lucide-arrow-up'
       : sorted === 'desc'
-        ? 'i-lucide-arrow-down-wide-narrow'
+        ? 'i-lucide-arrow-down'
         : 'i-lucide-arrow-up-down'
 
     return h(
@@ -185,8 +205,10 @@ function createSortableHeader(
         h(UIcon as never, {
           name: icon,
           class: joinClasses(
-            'h-4 w-4 shrink-0 transition-colors',
-            sorted ? 'text-primary' : 'text-muted group-hover:text-highlighted'
+            'h-4 w-4 shrink-0 transition-all duration-150',
+            sorted
+              ? 'text-primary opacity-100'
+              : 'text-muted opacity-35 group-hover:opacity-70 group-hover:text-highlighted'
           )
         })
       ]
@@ -299,6 +321,8 @@ const paginationUi = {
   first: '',
   last: ''
 } as const
+
+const emptyHeaderTableClass = 'shrink-0'
 </script>
 
 <template>
@@ -324,7 +348,44 @@ const paginationUi = {
       v-else
       class="min-h-0 flex-1 overflow-hidden"
     >
+      <div
+        v-if="!loading && !hasItems"
+        class="flex min-h-0 flex-1 flex-col"
+      >
+        <UTable
+          :columns="normalizedColumns"
+          :data="[]"
+          :class="emptyHeaderTableClass"
+          :sticky="stickyHeader ? 'header' : false"
+          :get-row-id="getRowId"
+          :ui="tableUi"
+        >
+          <template #empty>
+            <div class="hidden" />
+          </template>
+        </UTable>
+
+        <slot name="empty">
+          <div class="flex flex-1 items-center justify-center bg-gradient-to-b from-default to-elevated/20 p-10 text-center">
+            <div class="max-w-sm space-y-3">
+              <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-default/80 bg-elevated/60 text-primary">
+                <UIcon :name="emptyIcon" class="h-5 w-5" />
+              </div>
+              <div class="space-y-1.5">
+                <p class="text-sm font-semibold text-highlighted">
+                  {{ emptyTitle }}
+                </p>
+                <p class="text-sm text-muted">
+                  {{ emptyDescription }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </slot>
+      </div>
+
       <UTable
+        v-else
         v-model:sorting="currentSorting"
         v-model:row-selection="currentRowSelection"
         :columns="normalizedColumns"
@@ -350,26 +411,6 @@ const paginationUi = {
           </slot>
         </template>
 
-        <template #empty>
-          <slot name="empty">
-            <div class="flex min-h-[260px] items-center justify-center bg-gradient-to-b from-default to-elevated/20 p-10 text-center">
-              <div class="max-w-sm space-y-3">
-                <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-default/80 bg-elevated/60 text-primary">
-                  <UIcon :name="emptyIcon" class="h-5 w-5" />
-                </div>
-                <div class="space-y-1.5">
-                  <p class="text-sm font-semibold text-highlighted">
-                    {{ emptyTitle }}
-                  </p>
-                  <p class="text-sm text-muted">
-                    {{ emptyDescription }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </slot>
-        </template>
-
         <template
           v-for="slotName in forwardedSlotNames"
           :key="slotName"
@@ -385,19 +426,25 @@ const paginationUi = {
       class="flex flex-col gap-3 border-t border-default/80 bg-elevated/20 px-4 py-3 md:flex-row md:items-center md:justify-between"
     >
       <div class="flex flex-wrap items-center gap-3 text-sm text-muted">
-        <span
-          v-if="selectable"
-          class="font-medium text-highlighted"
-        >
-          {{ selectedCount }} selecionado(s)
-        </span>
-        <span v-if="selectable" class="hidden h-1 w-1 rounded-full bg-default md:block" />
         <span class="font-medium text-toned">
           {{ pageStart }}-{{ pageEnd }}
         </span>
         <span>de {{ totalItems }} registro(s)</span>
         <span class="hidden h-1 w-1 rounded-full bg-default md:block" />
-        <span class="text-xs uppercase tracking-[0.08em] text-muted">
+        <USelectMenu
+          v-if="showPageSizeSelector && pageSizeOptions.length > 1"
+          v-model="currentPageSizeOption"
+          :items="pageSizeSelectItems"
+          value-key="value"
+          class="w-[148px]"
+          size="sm"
+          color="neutral"
+          variant="ghost"
+        />
+        <span
+          v-else
+          class="text-xs uppercase tracking-[0.08em] text-muted"
+        >
           {{ pageSize }} por página
         </span>
       </div>
