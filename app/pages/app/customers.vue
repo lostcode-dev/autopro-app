@@ -29,7 +29,7 @@ function formatPhone(phone: string | null): string {
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Clientes' })
 
-type ViewMode = 'line' | 'card'
+type ViewMode = 'table' | 'card'
 const ALL_PERSON_TYPES_VALUE = 'all'
 
 type ClientsResponse = {
@@ -66,7 +66,7 @@ function parsePageSize(value: unknown) {
 }
 
 function parseView(value: unknown): ViewMode {
-  return value === 'card' ? 'card' : 'line'
+  return value === 'card' ? 'card' : 'table'
 }
 
 function parsePersonType(value: unknown): PersonType | typeof ALL_PERSON_TYPES_VALUE {
@@ -132,7 +132,7 @@ function buildManagedQuery() {
     personType: personTypeFilter.value !== ALL_PERSON_TYPES_VALUE ? personTypeFilter.value : undefined,
     page: page.value > 1 ? String(page.value) : undefined,
     pageSize: pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
-    view: viewMode.value !== 'line' ? viewMode.value : undefined,
+    view: viewMode.value !== 'table' ? viewMode.value : undefined,
     sortBy: sorting.value[0]?.id || undefined,
     sortOrder: sorting.value[0]?.desc ? 'desc' : undefined
   }
@@ -211,12 +211,6 @@ watch(sorting, async () => {
   await syncQuery()
 })
 
-function _clearFilters() {
-  search.value = ''
-  personTypeFilter.value = ALL_PERSON_TYPES_VALUE
-  page.value = 1
-}
-
 function getClientInitial(name: string) {
   return name.trim().charAt(0).toUpperCase() || 'C'
 }
@@ -227,13 +221,15 @@ function getPersonTypeLabel(personType: PersonType) {
 
 function formatContact(client: Client): string {
   const raw = client.phone || client.mobile_phone
-  return raw ? formatPhone(raw) : 'Telefone não informado'
+  return raw ? formatPhone(raw) : 'Telefone nao informado'
 }
 
 // Modal
 const showModal = ref(false)
 const selectedClient = ref<Client | null>(null)
 const isDeleting = ref(false)
+const showDeleteModal = ref(false)
+const clientPendingDeletion = ref<Client | null>(null)
 
 function openCreate() {
   selectedClient.value = null
@@ -245,6 +241,22 @@ function openEdit(client: Client) {
   showModal.value = true
 }
 
+function requestRemove(client: Client) {
+  if (isDeleting.value)
+    return
+
+  clientPendingDeletion.value = client
+  showDeleteModal.value = true
+}
+
+function closeDeleteModal() {
+  if (isDeleting.value)
+    return
+
+  showDeleteModal.value = false
+  clientPendingDeletion.value = null
+}
+
 async function remove(client: Client) {
   if (isDeleting.value)
     return
@@ -253,6 +265,8 @@ async function remove(client: Client) {
   try {
     await $fetch(`/api/clients/${client.id}`, { method: 'DELETE' })
     toast.add({ title: 'Cliente removido', color: 'success' })
+    showDeleteModal.value = false
+    clientPendingDeletion.value = null
 
     if (clientItems.value.length === 1 && page.value > 1)
       page.value -= 1
@@ -262,7 +276,7 @@ async function remove(client: Client) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover.',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel remover.',
       color: 'error'
     })
   } finally {
@@ -270,10 +284,17 @@ async function remove(client: Client) {
   }
 }
 
+async function confirmRemove() {
+  if (!clientPendingDeletion.value)
+    return
+
+  await remove(clientPendingDeletion.value)
+}
+
 const personTypeFilterOptions = [
   { label: 'Todos os tipos', value: ALL_PERSON_TYPES_VALUE },
-  { label: 'Pessoa Física', value: 'pf' },
-  { label: 'Pessoa Jurídica', value: 'pj' }
+  { label: 'Pessoa Fisica', value: 'pf' },
+  { label: 'Pessoa Juridica', value: 'pj' }
 ]
 
 const lineColumns = [
@@ -281,8 +302,7 @@ const lineColumns = [
   { accessorKey: 'person_type', header: 'Tipo', enableSorting: true },
   { accessorKey: 'tax_id', header: 'CPF/CNPJ', enableSorting: true },
   { accessorKey: 'phone', header: 'Telefone', enableSorting: false },
-  { accessorKey: 'email', header: 'E-mail', enableSorting: true },
-  { id: 'actions', header: '', enableSorting: false }
+  { id: 'actions', header: 'Acoes', enableSorting: false }
 ]
 </script>
 
@@ -305,60 +325,44 @@ const lineColumns = [
     <template #body>
       <div v-if="!canRead" class="p-6">
         <p class="text-sm text-muted">
-          Você não tem permissão para visualizar clientes.
+          Voce nao tem permissao para visualizar clientes.
         </p>
       </div>
 
       <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="shrink-0 flex flex-wrap items-center gap-3 border-b border-default p-4">
-          <UInput
-            v-model="search"
-            placeholder="Buscar por nome, e-mail ou CPF/CNPJ..."
-            icon="i-lucide-search"
-            class="w-full sm:w-80"
-          />
-
-          <USelectMenu
-            v-model="personTypeFilter"
-            :items="personTypeFilterOptions"
-            value-key="value"
-            class="w-full sm:w-52"
-          />
-
-          <UButtonGroup class="sm:ml-auto">
-            <UButton
-              label="Linha"
-              icon="i-lucide-list"
-              color="neutral"
-              :variant="viewMode === 'line' ? 'solid' : 'outline'"
-              @click="viewMode = 'line'"
-            />
-            <UButton
-              label="Cards"
-              icon="i-lucide-layout-grid"
-              color="neutral"
-              :variant="viewMode === 'card' ? 'solid' : 'outline'"
-              @click="viewMode = 'card'"
-            />
-          </UButtonGroup>
-        </div>
-
-        <div v-if="viewMode === 'line'" class="min-h-0 flex-1 flex flex-col p-4">
+        <div class="flex min-h-0 flex-1 flex-col p-4">
           <AppDataTable
+            v-model:display-mode="viewMode"
+            v-model:search-term="search"
             v-model:page="page"
             v-model:page-size="pageSize"
             v-model:sorting="sorting"
             :columns="lineColumns"
             :data="clientItems"
-            selectable
+            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+            :selectable="viewMode === 'table'"
+            :sticky-header="viewMode === 'table'"
             :get-row-id="row => String(row.id ?? '')"
             :loading="status === 'pending'"
             :page-size-options="PAGE_SIZE_OPTIONS"
             :total="totalClients"
+            search-placeholder="Buscar por nome, e-mail ou CPF/CNPJ..."
+            :show-search="true"
+            :show-view-mode-toggle="true"
+            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
             empty-icon="i-lucide-users"
             empty-title="Nenhum cliente encontrado"
             empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
           >
+            <template #filters>
+              <USelectMenu
+                v-model="personTypeFilter"
+                :items="personTypeFilterOptions"
+                value-key="value"
+                class="w-full sm:w-52"
+              />
+            </template>
+
             <template #name-cell="{ row }">
               <div class="flex items-center gap-3">
                 <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/12 text-sm font-semibold text-primary">
@@ -369,7 +373,7 @@ const lineColumns = [
                     {{ row.original.name }}
                   </p>
                   <p class="truncate text-xs text-muted">
-                    {{ row.original.email || 'E-mail não informado' }}
+                    {{ row.original.email || 'E-mail nao informado' }}
                   </p>
                 </div>
               </div>
@@ -396,12 +400,6 @@ const lineColumns = [
               </span>
             </template>
 
-            <template #email-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ row.original.email || '-' }}
-              </span>
-            </template>
-
             <template #actions-cell="{ row }">
               <div class="flex items-center justify-end gap-2">
                 <UButton
@@ -419,114 +417,78 @@ const lineColumns = [
                   variant="ghost"
                   size="xs"
                   :loading="isDeleting"
-                  @click="remove(row.original as Client)"
+                  @click="requestRemove(row.original as Client)"
                 />
               </div>
             </template>
+
+            <template #card="{ item: client }">
+              <UCard class="border border-default/80 shadow-sm">
+                <div class="flex items-start gap-4">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-base font-semibold text-primary">
+                    {{ getClientInitial(client.name as string) }}
+                  </div>
+
+                  <div class="min-w-0 flex-1 space-y-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0 space-y-2">
+                        <h3 class="truncate text-base font-semibold text-highlighted">
+                          {{ client.name }}
+                        </h3>
+                        <UBadge
+                          :label="getPersonTypeLabel(client.person_type as PersonType)"
+                          color="neutral"
+                          variant="subtle"
+                          size="xs"
+                        />
+                      </div>
+
+                      <div class="flex shrink-0 items-center gap-1">
+                        <UTooltip v-if="canUpdate" text="Editar cliente">
+                          <UButton
+                            icon="i-lucide-pencil"
+                            color="neutral"
+                            variant="ghost"
+                            size="xs"
+                            @click="openEdit(client as Client)"
+                          />
+                        </UTooltip>
+                        <UTooltip v-if="canDelete" text="Excluir cliente">
+                          <UButton
+                            icon="i-lucide-trash-2"
+                            color="error"
+                            variant="ghost"
+                            size="xs"
+                            :loading="isDeleting"
+                            @click="requestRemove(client as Client)"
+                          />
+                        </UTooltip>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
+                        <span class="truncate">{{ formatContact(client as Client) }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
+                        <span class="truncate">{{ client.email || 'E-mail nao informado' }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
+                        <span class="truncate">{{ formatTaxId(client.tax_id as string | null, client.person_type as PersonType) || 'CPF/CNPJ nao informado' }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
+                        <span class="truncate">{{ [client.city, client.state].filter(Boolean).join(' / ') || 'Localizacao nao informada' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </UCard>
+            </template>
           </AppDataTable>
-        </div>
-
-        <div v-else class="flex min-h-0 flex-1 flex-col">
-          <div v-if="status === 'pending'" class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2">
-            <USkeleton v-for="index in 6" :key="index" class="h-44 w-full rounded-2xl" />
-          </div>
-
-          <div
-            v-else-if="clientItems.length"
-            class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
-          >
-            <UCard
-              v-for="client in clientItems"
-              :key="client.id"
-              class="border border-default/80 shadow-sm"
-            >
-              <div class="flex items-start gap-4">
-                <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12 text-base font-semibold text-primary">
-                  {{ getClientInitial(client.name) }}
-                </div>
-
-                <div class="min-w-0 flex-1 space-y-3">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <h3 class="truncate text-base font-semibold text-highlighted">
-                      {{ client.name }}
-                    </h3>
-                    <UBadge
-                      :label="getPersonTypeLabel(client.person_type)"
-                      color="neutral"
-                      variant="subtle"
-                      size="xs"
-                    />
-                  </div>
-
-                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
-                      <span class="truncate">{{ formatContact(client) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
-                      <span class="truncate">{{ client.email || 'E-mail não informado' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
-                      <span class="truncate">{{ formatTaxId(client.tax_id, client.person_type) || 'CPF/CNPJ não informado' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
-                      <span class="truncate">{{ [client.city, client.state].filter(Boolean).join(' / ') || 'Localização não informada' }}</span>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center justify-end gap-2 border-t border-default pt-3">
-                    <UButton
-                      v-if="canUpdate"
-                      label="Editar"
-                      icon="i-lucide-pencil"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      @click="openEdit(client)"
-                    />
-                    <UButton
-                      v-if="canDelete"
-                      label="Excluir"
-                      icon="i-lucide-trash-2"
-                      color="error"
-                      variant="ghost"
-                      size="sm"
-                      :loading="isDeleting"
-                      @click="remove(client)"
-                    />
-                  </div>
-                </div>
-              </div>
-            </UCard>
-          </div>
-
-          <div
-            v-else
-            class="flex flex-1 items-center justify-center p-10 text-center"
-          >
-            <div class="max-w-sm space-y-2">
-              <p class="text-sm font-semibold text-highlighted">
-                Nenhum cliente encontrado
-              </p>
-              <p class="text-sm text-muted">
-                Cadastre um cliente ou ajuste os filtros para continuar.
-              </p>
-            </div>
-          </div>
-
-          <div
-            v-if="totalClients > pageSize"
-            class="flex justify-center border-t border-default p-4"
-          >
-            <UPagination
-              v-model="page"
-              :items-per-page="pageSize"
-              :total="totalClients"
-            />
-          </div>
         </div>
       </div>
     </template>
@@ -537,4 +499,36 @@ const lineColumns = [
     :client="selectedClient"
     @saved="refresh"
   />
+
+  <UModal
+    :open="showDeleteModal"
+    title="Confirmar exclusão"
+    @update:open="value => !value && closeDeleteModal()"
+  >
+    <template #body>
+      <div class="space-y-4">
+        <p class="text-sm text-muted">
+          Tem certeza que deseja excluir
+          <strong class="text-highlighted">{{ clientPendingDeletion?.name || 'este cliente' }}</strong>?
+          Esta acao nao pode ser desfeita.
+        </p>
+
+        <div class="flex justify-end gap-3">
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="ghost"
+            :disabled="isDeleting"
+            @click="closeDeleteModal"
+          />
+          <UButton
+            label="Excluir cliente"
+            color="error"
+            :loading="isDeleting"
+            @click="confirmRemove"
+          />
+        </div>
+      </div>
+    </template>
+  </UModal>
 </template>
