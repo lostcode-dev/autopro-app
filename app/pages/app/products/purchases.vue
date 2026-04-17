@@ -368,6 +368,16 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(`${value}T00:00:00`))
 }
 
+function isoToDisplayDate(value: string | null | undefined) {
+  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : ''
+}
+
+function displayToIsoDate(value: string) {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  return match ? `${match[3]}-${match[2]}-${match[1]}` : ''
+}
+
 const paymentStatusOptions = [
   { label: 'Todos os status', value: 'all' },
   { label: 'Pendentes', value: 'pending' },
@@ -393,16 +403,41 @@ const showPayModal = ref(false)
 const isPaying = ref(false)
 const selectedPurchaseForPay = ref<PurchaseItem | null>(null)
 const payDate = ref('')
+const payDateDisplay = ref('')
+
+function handlePayDateInput(value: string | number) {
+  const raw = String(value).replace(/\D/g, '').slice(0, 8)
+  let formatted = ''
+
+  if (raw.length > 0)
+    formatted = raw.slice(0, 2)
+  if (raw.length > 2)
+    formatted += `/${raw.slice(2, 4)}`
+  if (raw.length > 4)
+    formatted += `/${raw.slice(4, 8)}`
+
+  payDateDisplay.value = formatted
+  payDate.value = displayToIsoDate(formatted)
+}
 
 function openPayModal(purchase: PurchaseItem) {
   selectedPurchaseForPay.value = purchase
   payDate.value = new Date().toISOString().split('T')[0] || ''
+  payDateDisplay.value = isoToDisplayDate(payDate.value)
   showPayModal.value = true
 }
 
 async function confirmPayment() {
   if (isPaying.value || !selectedPurchaseForPay.value)
     return
+
+  if (!payDate.value) {
+    toast.add({
+      title: 'Informe uma data de pagamento válida',
+      color: 'warning'
+    })
+    return
+  }
 
   isPaying.value = true
 
@@ -992,7 +1027,13 @@ const lineColumns = [
         </p>
 
         <UFormField label="Data de pagamento">
-          <UInput v-model="payDate" type="date" class="w-full" />
+          <UInput
+            :model-value="payDateDisplay"
+            class="w-full"
+            inputmode="numeric"
+            placeholder="dd/mm/aaaa"
+            @update:model-value="handlePayDateInput"
+          />
         </UFormField>
       </div>
     </template>
