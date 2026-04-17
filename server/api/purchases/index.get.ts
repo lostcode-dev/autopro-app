@@ -18,9 +18,14 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
 
   const page = Math.max(1, Number(query.page) || 1)
-  const pageSize = Math.max(1, Number(query.page_size) || 30)
+  const pageSize = Math.min(100, Math.max(1, Number(query.page_size) || 30))
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
+  const ALLOWED_SORT_COLUMNS = ['purchase_date', 'invoice_number', 'total_amount', 'payment_status', 'created_at'] as const
+  const sortBy = ALLOWED_SORT_COLUMNS.includes(query.sort_by as typeof ALLOWED_SORT_COLUMNS[number])
+    ? String(query.sort_by)
+    : 'purchase_date'
+  const sortAscending = String(query.sort_order || 'desc') !== 'desc'
 
   let dbQuery = supabase
     .from('purchases')
@@ -49,7 +54,9 @@ export default defineEventHandler(async (event) => {
     dbQuery = dbQuery.lte('purchase_date', query.date_to as string)
   }
 
-  dbQuery = dbQuery.order('purchase_date', { ascending: false }).range(from, to)
+  dbQuery = dbQuery
+    .order(sortBy, { ascending: sortAscending, nullsFirst: false })
+    .range(from, to)
 
   const { data: items, count, error } = await dbQuery
 

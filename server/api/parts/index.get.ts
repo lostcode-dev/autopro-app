@@ -15,13 +15,33 @@ export default defineEventHandler(async (event) => {
   const organizationId = profile.organization_id as string
 
   const query = getQuery(event)
-  const search = query.search as string | undefined
-  const category = query.category as string | undefined
-  const lowStock = query.low_stock as string | undefined
+  const search = query.search ? String(query.search).trim() : ''
+  const category = query.category ? String(query.category).trim() : ''
+  const lowStock = query.low_stock === 'true'
+  const page = Math.max(1, Number(query.page) || 1)
+  const pageSize = Math.min(100, Math.max(1, Number(query.page_size) || 20))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize
+
+  const ALLOWED_SORT_COLUMNS = [
+    'description',
+    'code',
+    'stock_quantity',
+    'minimum_quantity',
+    'sale_price',
+    'cost_price',
+    'brand',
+    'category',
+    'created_at'
+  ] as const
+  const sortBy = ALLOWED_SORT_COLUMNS.includes(query.sort_by as typeof ALLOWED_SORT_COLUMNS[number])
+    ? String(query.sort_by)
+    : 'description'
+  const sortAscending = String(query.sort_order || 'asc') !== 'desc'
 
   let dbQuery = supabase
     .from('parts')
-    .select('*')
+    .select('*, products(id, name, code)')
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
 
@@ -38,14 +58,19 @@ export default defineEventHandler(async (event) => {
   // PostgREST interprets as a literal value — not a column. The correct approach is to
   // use a Postgres function/view, or fetch all and filter in JS. We filter in JS here for
   // simplicity and to avoid a stored procedure dependency.
-  const { data: allItems, error } = await dbQuery.order('description', { ascending: true })
+  const { data: allItems, error } = await dbQuery.order(sortBy, { ascending: sortAscending, nullsFirst: false })
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
 
-  const items = lowStock === 'true'
+  const filteredItems = lowStock
     ? allItems?.filter(p => p.stock_quantity <= p.minimum_quantity) ?? []
     : allItems ?? []
 
-  return { items }
+  return {
+    items: filteredItems.slice(from, to),
+    total: filteredItems.length,
+    page,
+    page_size: pageSize
+  }
 })

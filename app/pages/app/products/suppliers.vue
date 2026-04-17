@@ -1,190 +1,665 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core'
+import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Fornecedores' })
 
+type ViewMode = 'table' | 'card'
+type SupplierPersonType = 'all' | 'pf' | 'pj'
+type SupplierStatusFilter = 'all' | 'active' | 'inactive'
+
+type SupplierItem = {
+  id: string
+  name: string
+  person_type: 'pf' | 'pj'
+  trade_name: string | null
+  tax_id: string | null
+  phone: string
+  whatsapp: string | null
+  email: string | null
+  website: string | null
+  zip_code: string | null
+  street: string | null
+  address_number: string | null
+  address_complement: string | null
+  neighborhood: string | null
+  city: string | null
+  state: string | null
+  category: string | null
+  is_active: boolean
+  notes: string | null
+}
+
+type SuppliersResponse = {
+  items: SupplierItem[]
+  total: number
+  page: number
+  page_size: number
+}
+
+const DEFAULT_PAGE_SIZE = 10
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+const MANAGED_QUERY_KEYS = [
+  'search',
+  'personType',
+  'status',
+  'page',
+  'pageSize',
+  'view',
+  'sortBy',
+  'sortOrder'
+] as const
+
+const SUPPLIER_CATEGORY_OPTIONS = [
+  { label: 'Sem categoria', value: '' },
+  { label: 'Autopeças', value: 'auto_parts' },
+  { label: 'Ferramentas', value: 'tools' },
+  { label: 'Equipamentos', value: 'equipment' },
+  { label: 'Serviços', value: 'services' },
+  { label: 'Consumíveis', value: 'consumables' },
+  { label: 'Outros', value: 'other' }
+]
+
 const toast = useToast()
 const workshop = useWorkshopPermissions()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const route = useRoute()
+const router = useRouter()
 
 const canRead = computed(() => workshop.can(ActionCode.SUPPLIERS_READ))
 const canCreate = computed(() => workshop.can(ActionCode.SUPPLIERS_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.SUPPLIERS_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.SUPPLIERS_DELETE))
 
-type Supplier = Record<string, any>
+function parsePage(value: unknown) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1
+}
 
-const search = ref('')
-const isLoadingCep = ref(false)
+function parsePageSize(value: unknown) {
+  const parsed = Number(value)
+  return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_PAGE_SIZE
+}
 
-const { data, status, refresh } = await useAsyncData(
-  () => `suppliers-${search.value}`,
-  () => requestFetch<Supplier[]>('/api/suppliers', {
-    headers: requestHeaders,
-    query: { search: search.value || undefined }
-  }),
-  { watch: [search] }
+function parseView(value: unknown): ViewMode {
+  return value === 'card' ? 'card' : 'table'
+}
+
+function parsePersonType(value: unknown): SupplierPersonType {
+  return value === 'pf' || value === 'pj' ? value : 'all'
+}
+
+function parseStatus(value: unknown): SupplierStatusFilter {
+  return value === 'active' || value === 'inactive' ? value : 'all'
+}
+
+const search = ref(typeof route.query.search === 'string' ? route.query.search : '')
+const debouncedSearch = ref(search.value)
+const personTypeFilter = ref<SupplierPersonType>(parsePersonType(route.query.personType))
+const statusFilter = ref<SupplierStatusFilter>(parseStatus(route.query.status))
+const page = ref(parsePage(route.query.page))
+const pageSize = ref(parsePageSize(route.query.pageSize))
+const viewMode = ref<ViewMode>(parseView(route.query.view))
+
+const DEFAULT_SORT = { id: 'name', desc: false }
+const sorting = ref<SortingState>(
+  typeof route.query.sortBy === 'string' && route.query.sortBy
+    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
+    : [DEFAULT_SORT]
 )
 
-// ─── Modal ────────────────────────────────────────
+const requestQuery = computed(() => ({
+  search: debouncedSearch.value || undefined,
+  person_type: personTypeFilter.value !== 'all' ? personTypeFilter.value : undefined,
+  is_active:
+    statusFilter.value === 'active'
+      ? 'true'
+      : statusFilter.value === 'inactive'
+        ? 'false'
+        : undefined,
+  page: page.value,
+  page_size: pageSize.value,
+  sort_by: sorting.value[0]?.id || undefined,
+  sort_order: sorting.value[0]?.desc ? 'desc' : 'asc'
+}))
+
+const { data, status, refresh } = await useAsyncData(
+  () => `suppliers-${debouncedSearch.value}-${personTypeFilter.value}-${statusFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
+  async () => {
+    if (!canRead.value) {
+      return {
+        items: [],
+        total: 0,
+        page: 1,
+        page_size: pageSize.value
+      } satisfies SuppliersResponse
+    }
+
+    return requestFetch<SuppliersResponse>('/api/suppliers', {
+      headers: requestHeaders,
+      query: requestQuery.value
+    })
+  },
+  {
+    watch: [requestQuery],
+    default: () => ({
+      items: [],
+      total: 0,
+      page: 1,
+      page_size: pageSize.value
+    })
+  }
+)
+
+const supplierItems = computed(() => data.value?.items ?? [])
+const totalSuppliers = computed(() => data.value?.total ?? 0)
+const totalPages = computed(() => Math.max(1, Math.ceil(totalSuppliers.value / pageSize.value)))
+
+function buildManagedQuery() {
+  return {
+    search: search.value || undefined,
+    personType: personTypeFilter.value !== 'all' ? personTypeFilter.value : undefined,
+    status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
+    page: page.value > 1 ? String(page.value) : undefined,
+    pageSize: pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
+    view: viewMode.value !== 'table' ? viewMode.value : undefined,
+    sortBy: sorting.value[0]?.id || undefined,
+    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined
+  }
+}
+
+async function syncQuery() {
+  const nextQuery = Object.fromEntries(
+    Object.entries(route.query).filter(
+      ([key]) => !MANAGED_QUERY_KEYS.includes(key as (typeof MANAGED_QUERY_KEYS)[number])
+    )
+  ) as Record<string, string | string[] | undefined>
+
+  Object.assign(nextQuery, buildManagedQuery())
+
+  if (JSON.stringify(route.query) === JSON.stringify(nextQuery))
+    return
+
+  await router.replace({ query: nextQuery })
+}
+
+watch(
+  () => route.query,
+  (query) => {
+    const nextSearch = typeof query.search === 'string' ? query.search : ''
+    const nextPersonType = parsePersonType(query.personType)
+    const nextStatus = parseStatus(query.status)
+    const nextPage = parsePage(query.page)
+    const nextPageSize = parsePageSize(query.pageSize)
+    const nextView = parseView(query.view)
+
+    if (search.value !== nextSearch) {
+      search.value = nextSearch
+      debouncedSearch.value = nextSearch
+    }
+
+    if (personTypeFilter.value !== nextPersonType)
+      personTypeFilter.value = nextPersonType
+
+    if (statusFilter.value !== nextStatus)
+      statusFilter.value = nextStatus
+
+    if (page.value !== nextPage)
+      page.value = nextPage
+
+    if (pageSize.value !== nextPageSize)
+      pageSize.value = nextPageSize
+
+    if (viewMode.value !== nextView)
+      viewMode.value = nextView
+
+    const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : ''
+    const nextSortDesc = query.sortOrder === 'desc'
+    const currentSort = sorting.value[0]
+
+    if (nextSortBy) {
+      if (!currentSort || currentSort.id !== nextSortBy || currentSort.desc !== nextSortDesc)
+        sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
+    } else if (!currentSort || currentSort.id !== DEFAULT_SORT.id || currentSort.desc !== DEFAULT_SORT.desc) {
+      sorting.value = [DEFAULT_SORT]
+    }
+  }
+)
+
+watchDebounced(
+  search,
+  async (value) => {
+    debouncedSearch.value = value
+    page.value = 1
+    await syncQuery()
+  },
+  { debounce: 300, maxWait: 800 }
+)
+
+watch(personTypeFilter, async () => {
+  page.value = 1
+  await syncQuery()
+})
+
+watch(statusFilter, async () => {
+  page.value = 1
+  await syncQuery()
+})
+
+watch(page, async () => {
+  if (page.value > totalPages.value && totalPages.value > 0)
+    page.value = totalPages.value
+
+  await syncQuery()
+})
+
+watch(pageSize, async () => {
+  page.value = 1
+  await syncQuery()
+})
+
+watch(viewMode, syncQuery)
+
+watch(sorting, async () => {
+  page.value = 1
+  await syncQuery()
+})
+
+function formatTaxId(value: string | null, personType: 'pf' | 'pj') {
+  if (!value)
+    return '-'
+
+  const digits = value.replace(/\D/g, '')
+
+  if (personType === 'pf' && digits.length === 11)
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+
+  if (personType === 'pj' && digits.length === 14)
+    return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+
+  return value
+}
+
+function formatPhone(value: string | null) {
+  if (!value)
+    return '-'
+
+  const digits = value.replace(/\D/g, '')
+
+  if (digits.length === 10)
+    return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+
+  if (digits.length === 11)
+    return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+
+  return value
+}
+
+function getLocationSummary(supplier: SupplierItem) {
+  return [supplier.city, supplier.state].filter(Boolean).join(' / ') || 'Localização não informada'
+}
+
 const showModal = ref(false)
-const isEditing = ref(false)
+const selectedSupplier = ref<SupplierItem | null>(null)
 const isSaving = ref(false)
 const isDeleting = ref(false)
-const selectedId = ref<string | null>(null)
+const showDeleteModal = ref(false)
+const showBulkDeleteModal = ref(false)
+const supplierPendingDeletion = ref<SupplierItem | null>(null)
+const isBulkDeleting = ref(false)
+const isLoadingCep = ref(false)
 
-const emptyForm = () => ({
+const form = reactive({
   name: '',
   trade_name: '',
-  person_type: 'PJ' as string,
+  person_type: 'pj' as 'pf' | 'pj',
   tax_id: '',
-  email: '',
   phone: '',
-  mobile_phone: '',
+  whatsapp: '',
+  email: '',
   website: '',
-  address_zip_code: '',
-  address_street: '',
+  zip_code: '',
+  street: '',
   address_number: '',
   address_complement: '',
-  address_neighborhood: '',
-  address_city: '',
-  address_state: '',
+  neighborhood: '',
+  city: '',
+  state: '',
+  category: '',
+  is_active: true,
   notes: ''
 })
 
-const form = reactive(emptyForm())
+function resetForm() {
+  Object.assign(form, {
+    name: '',
+    trade_name: '',
+    person_type: 'pj',
+    tax_id: '',
+    phone: '',
+    whatsapp: '',
+    email: '',
+    website: '',
+    zip_code: '',
+    street: '',
+    address_number: '',
+    address_complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    category: '',
+    is_active: true,
+    notes: ''
+  })
+}
 
 function openCreate() {
-  Object.assign(form, emptyForm())
-  isEditing.value = false
-  selectedId.value = null
+  selectedSupplier.value = null
+  resetForm()
   showModal.value = true
 }
 
-function openEdit(s: Supplier) {
+function openEdit(supplier: SupplierItem) {
+  selectedSupplier.value = supplier
   Object.assign(form, {
-    name: s.name ?? '',
-    trade_name: s.trade_name ?? '',
-    person_type: s.person_type ?? 'PJ',
-    tax_id: s.tax_id ?? '',
-    email: s.email ?? '',
-    phone: s.phone ?? '',
-    mobile_phone: s.mobile_phone ?? '',
-    website: s.website ?? '',
-    address_zip_code: s.address_zip_code ?? '',
-    address_street: s.address_street ?? '',
-    address_number: s.address_number ?? '',
-    address_complement: s.address_complement ?? '',
-    address_neighborhood: s.address_neighborhood ?? '',
-    address_city: s.address_city ?? '',
-    address_state: s.address_state ?? '',
-    notes: s.notes ?? ''
+    name: supplier.name ?? '',
+    trade_name: supplier.trade_name ?? '',
+    person_type: supplier.person_type ?? 'pj',
+    tax_id: supplier.tax_id ?? '',
+    phone: supplier.phone ?? '',
+    whatsapp: supplier.whatsapp ?? '',
+    email: supplier.email ?? '',
+    website: supplier.website ?? '',
+    zip_code: supplier.zip_code ?? '',
+    street: supplier.street ?? '',
+    address_number: supplier.address_number ?? '',
+    address_complement: supplier.address_complement ?? '',
+    neighborhood: supplier.neighborhood ?? '',
+    city: supplier.city ?? '',
+    state: supplier.state ?? '',
+    category: supplier.category ?? '',
+    is_active: supplier.is_active ?? true,
+    notes: supplier.notes ?? ''
   })
-  isEditing.value = true
-  selectedId.value = s.id
   showModal.value = true
 }
 
 async function save() {
-  if (isSaving.value) return
-  if (!form.name) { toast.add({ title: 'Nome obrigatório', color: 'warning' }); return }
+  if (isSaving.value)
+    return
+
+  if (!form.name.trim() || !form.phone.trim()) {
+    toast.add({
+      title: 'Preencha nome e telefone do fornecedor',
+      color: 'warning'
+    })
+    return
+  }
+
   isSaving.value = true
+
   try {
-    const body: Record<string, any> = {
-      name: form.name,
+    const body = {
+      name: form.name.trim(),
       trade_name: form.trade_name || null,
       person_type: form.person_type,
       tax_id: form.tax_id || null,
+      phone: form.phone.trim(),
+      whatsapp: form.whatsapp || null,
       email: form.email || null,
-      phone: form.phone || null,
-      mobile_phone: form.mobile_phone || null,
       website: form.website || null,
-      address_zip_code: form.address_zip_code || null,
-      address_street: form.address_street || null,
+      zip_code: form.zip_code || null,
+      street: form.street || null,
       address_number: form.address_number || null,
       address_complement: form.address_complement || null,
-      address_neighborhood: form.address_neighborhood || null,
-      address_city: form.address_city || null,
-      address_state: form.address_state || null,
+      neighborhood: form.neighborhood || null,
+      city: form.city || null,
+      state: form.state || null,
+      category: form.category || null,
+      is_active: form.is_active,
       notes: form.notes || null
     }
-    if (isEditing.value && selectedId.value) {
-      await $fetch(`/api/suppliers/${selectedId.value}`, { method: 'PUT', body })
+
+    if (selectedSupplier.value?.id) {
+      await $fetch(`/api/suppliers/${selectedSupplier.value.id}`, {
+        method: 'PUT',
+        body
+      })
       toast.add({ title: 'Fornecedor atualizado', color: 'success' })
     } else {
-      await $fetch('/api/suppliers', { method: 'POST', body })
+      await $fetch('/api/suppliers', {
+        method: 'POST',
+        body
+      })
       toast.add({ title: 'Fornecedor criado', color: 'success' })
     }
+
     showModal.value = false
     await refresh()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
+    toast.add({
+      title: 'Erro ao salvar fornecedor',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
   } finally {
     isSaving.value = false
   }
 }
 
-async function remove(s: Supplier) {
-  if (isDeleting.value) return
-  isDeleting.value = true
+async function lookupCep() {
+  const cep = form.zip_code.replace(/\D/g, '')
+  if (cep.length !== 8 || isLoadingCep.value)
+    return
+
+  isLoadingCep.value = true
+
   try {
-    await $fetch(`/api/suppliers/${s.id}`, { method: 'DELETE' })
+    const response = await $fetch<{ erro?: boolean, logradouro?: string, bairro?: string, localidade?: string, uf?: string }>(
+      `https://viacep.com.br/ws/${cep}/json/`
+    )
+
+    if (response.erro) {
+      toast.add({ title: 'CEP não encontrado', color: 'warning' })
+      return
+    }
+
+    form.street = response.logradouro || form.street
+    form.neighborhood = response.bairro || form.neighborhood
+    form.city = response.localidade || form.city
+    form.state = response.uf || form.state
+  } catch {
+    toast.add({ title: 'Erro ao consultar CEP', color: 'error' })
+  } finally {
+    isLoadingCep.value = false
+  }
+}
+
+function requestRemove(supplier: SupplierItem) {
+  if (isDeleting.value)
+    return
+
+  supplierPendingDeletion.value = supplier
+  showDeleteModal.value = true
+}
+
+async function remove(supplier: SupplierItem) {
+  if (isDeleting.value)
+    return
+
+  isDeleting.value = true
+
+  try {
+    await $fetch(`/api/suppliers/${supplier.id}`, { method: 'DELETE' })
     toast.add({ title: 'Fornecedor removido', color: 'success' })
+    showDeleteModal.value = false
+    supplierPendingDeletion.value = null
+
+    if (supplierItems.value.length === 1 && page.value > 1)
+      page.value -= 1
+
     await refresh()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover', color: 'error' })
+    toast.add({
+      title: 'Erro ao remover fornecedor',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
   } finally {
     isDeleting.value = false
   }
 }
 
-async function lookupCep() {
-  const cep = form.address_zip_code.replace(/\D/g, '')
-  if (cep.length !== 8) return
-  isLoadingCep.value = true
-  try {
-    const res = await $fetch<any>(`https://viacep.com.br/ws/${cep}/json/`)
-    if (res.erro) { toast.add({ title: 'CEP não encontrado', color: 'warning' }); return }
-    form.address_street = res.logradouro || form.address_street
-    form.address_neighborhood = res.bairro || form.address_neighborhood
-    form.address_city = res.localidade || form.address_city
-    form.address_state = res.uf || form.address_state
-  } catch { toast.add({ title: 'Erro ao buscar CEP', color: 'error' }) } finally { isLoadingCep.value = false }
+async function confirmRemove() {
+  if (!supplierPendingDeletion.value)
+    return
+
+  await remove(supplierPendingDeletion.value)
 }
 
-const personTypeOptions = [
-  { label: 'Pessoa Jurídica', value: 'PJ' },
-  { label: 'Pessoa Física', value: 'PF' }
+const rowSelection = ref<RowSelectionState>({})
+const selectedIds = computed(() =>
+  Object.entries(rowSelection.value)
+    .filter(([, value]) => value)
+    .map(([id]) => id)
+)
+const selectedCount = computed(() => selectedIds.value.length)
+
+watch(viewMode, () => {
+  rowSelection.value = {}
+})
+
+async function confirmBulkDelete() {
+  if (!selectedIds.value.length || isBulkDeleting.value)
+    return
+
+  isBulkDeleting.value = true
+
+  try {
+    await Promise.all(
+      selectedIds.value.map(id => $fetch(`/api/suppliers/${id}`, { method: 'DELETE' }))
+    )
+
+    toast.add({
+      title: `${selectedIds.value.length} fornecedor(es) removido(s)`,
+      color: 'success'
+    })
+
+    rowSelection.value = {}
+    showBulkDeleteModal.value = false
+    await refresh()
+  } catch {
+    toast.add({
+      title: 'Erro ao excluir fornecedores',
+      color: 'error'
+    })
+  } finally {
+    isBulkDeleting.value = false
+  }
+}
+
+async function exportCsv() {
+  try {
+    const all = await $fetch<SuppliersResponse>('/api/suppliers', {
+      query: {
+        search: debouncedSearch.value || undefined,
+        person_type: personTypeFilter.value !== 'all' ? personTypeFilter.value : undefined,
+        is_active:
+          statusFilter.value === 'active'
+            ? 'true'
+            : statusFilter.value === 'inactive'
+              ? 'false'
+              : undefined,
+        page: 1,
+        page_size: 2000,
+        sort_by: sorting.value[0]?.id || undefined,
+        sort_order: sorting.value[0]?.desc ? 'desc' : 'asc'
+      }
+    })
+
+    if (!all.items.length) {
+      toast.add({ title: 'Nenhum fornecedor para exportar', color: 'warning' })
+      return
+    }
+
+    const headers = [
+      'nome',
+      'tipo_pessoa',
+      'nome_fantasia',
+      'cpf_cnpj',
+      'telefone',
+      'whatsapp',
+      'email',
+      'cidade',
+      'estado',
+      'categoria',
+      'ativo'
+    ]
+
+    const rows = all.items.map(item => [
+      item.name,
+      item.person_type,
+      item.trade_name ?? '',
+      item.tax_id ?? '',
+      item.phone ?? '',
+      item.whatsapp ?? '',
+      item.email ?? '',
+      item.city ?? '',
+      item.state ?? '',
+      item.category ?? '',
+      item.is_active ? 'sim' : 'nao'
+    ].map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
+
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `fornecedores_${new Date().toISOString().slice(0, 10)}.csv`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  } catch {
+    toast.add({ title: 'Erro ao exportar fornecedores', color: 'error' })
+  }
+}
+
+const personTypeFilterOptions = [
+  { label: 'Todos os tipos', value: 'all' },
+  { label: 'Pessoa Física', value: 'pf' },
+  { label: 'Pessoa Jurídica', value: 'pj' }
 ]
 
-const columns = [
-  { accessorKey: 'name', header: 'Nome' },
-  { accessorKey: 'trade_name', header: 'Nome fantasia' },
-  { accessorKey: 'tax_id', header: 'CNPJ/CPF' },
-  { accessorKey: 'phone', header: 'Telefone' },
-  { accessorKey: 'email', header: 'E-mail' },
-  { id: 'actions', header: '' }
+const statusFilterOptions = [
+  { label: 'Todos os status', value: 'all' },
+  { label: 'Ativos', value: 'active' },
+  { label: 'Inativos', value: 'inactive' }
+]
+
+const personTypeFormOptions = [
+  { label: 'Pessoa Física', value: 'pf' },
+  { label: 'Pessoa Jurídica', value: 'pj' }
+]
+
+const lineColumns = [
+  { accessorKey: 'name', header: 'Fornecedor', enableSorting: true },
+  { accessorKey: 'person_type', header: 'Tipo', enableSorting: true },
+  { accessorKey: 'tax_id', header: 'CPF/CNPJ', enableSorting: true },
+  { accessorKey: 'phone', header: 'Telefone', enableSorting: true },
+  { accessorKey: 'email', header: 'E-mail', enableSorting: true },
+  { accessorKey: 'is_active', header: 'Status', enableSorting: true },
+  { id: 'actions', header: 'Ações', enableSorting: false }
 ]
 </script>
 
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Fornecedores">
-        <template #right>
-          <UButton
-            v-if="canCreate"
-            label="Novo fornecedor"
-            icon="i-lucide-plus"
-            color="neutral"
-            @click="openCreate"
-          />
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Fornecedores" />
     </template>
 
     <template #body>
@@ -194,93 +669,288 @@ const columns = [
         </p>
       </div>
 
-      <template v-else>
-        <div class="flex flex-wrap gap-3 p-4 border-b border-default">
-          <UInput
-            v-model="search"
-            placeholder="Buscar por nome ou CNPJ..."
-            icon="i-lucide-search"
-            class="w-72"
-          />
-        </div>
+      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div class="flex min-h-0 flex-1 flex-col p-4">
+          <AppDataTable
+            v-model:display-mode="viewMode"
+            v-model:search-term="search"
+            v-model:page="page"
+            v-model:page-size="pageSize"
+            v-model:sorting="sorting"
+            v-model:row-selection="rowSelection"
+            :columns="lineColumns"
+            :data="supplierItems"
+            :loading="status === 'pending'"
+            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+            :selectable="viewMode === 'table'"
+            :sticky-header="viewMode === 'table'"
+            :get-row-id="(row) => String(row.id ?? '')"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            :total="totalSuppliers"
+            search-placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
+            :show-search="true"
+            :show-view-mode-toggle="true"
+            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+            empty-icon="i-lucide-truck"
+            empty-title="Nenhum fornecedor encontrado"
+            empty-description="Cadastre fornecedores ou ajuste os filtros para continuar."
+          >
+            <template #toolbar-right>
+              <UTooltip text="Exportar fornecedores">
+                <UButton
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="exportCsv"
+                />
+              </UTooltip>
 
-        <div v-if="status === 'pending'" class="p-4 space-y-3">
-          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-        </div>
-
-        <UTable
-          v-else
-          :columns="columns"
-          :data="data || []"
-          class="min-h-0 flex-1"
-        >
-          <template #actions-cell="{ row }">
-            <div class="flex items-center gap-2 justify-end">
-              <UButton
-                v-if="canUpdate"
-                icon="i-lucide-pencil"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                @click="openEdit(row.original)"
-              />
-              <UButton
+              <UTooltip
                 v-if="canDelete"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                :loading="isDeleting"
-                @click="remove(row.original)"
+                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+              >
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="outline"
+                  size="sm"
+                  :disabled="selectedCount === 0"
+                  @click="showBulkDeleteModal = true"
+                />
+              </UTooltip>
+
+              <UButton
+                v-if="canCreate"
+                label="Novo fornecedor"
+                icon="i-lucide-plus"
+                size="sm"
+                @click="openCreate"
               />
-            </div>
-          </template>
-        </UTable>
-      </template>
+            </template>
+
+            <template #filters>
+              <USelectMenu
+                v-model="personTypeFilter"
+                :items="personTypeFilterOptions"
+                value-key="value"
+                class="w-full sm:w-48"
+                :search-input="false"
+              />
+
+              <USelectMenu
+                v-model="statusFilter"
+                :items="statusFilterOptions"
+                value-key="value"
+                class="w-full sm:w-44"
+                :search-input="false"
+              />
+            </template>
+
+            <template #name-cell="{ row }">
+              <div class="min-w-0 space-y-1">
+                <p class="truncate font-semibold text-highlighted">
+                  {{ row.original.name }}
+                </p>
+                <p class="truncate text-xs text-muted">
+                  {{ row.original.trade_name || getLocationSummary(row.original as SupplierItem) }}
+                </p>
+              </div>
+            </template>
+
+            <template #person_type-cell="{ row }">
+              <UBadge
+                :label="row.original.person_type === 'pf' ? 'PF' : 'PJ'"
+                color="neutral"
+                variant="subtle"
+                size="xs"
+              />
+            </template>
+
+            <template #tax_id-cell="{ row }">
+              <span class="text-sm text-muted">
+                {{ formatTaxId(row.original.tax_id, row.original.person_type) }}
+              </span>
+            </template>
+
+            <template #phone-cell="{ row }">
+              <span class="text-sm text-muted">
+                {{ formatPhone(row.original.phone) }}
+              </span>
+            </template>
+
+            <template #is_active-cell="{ row }">
+              <UBadge
+                :label="row.original.is_active ? 'Ativo' : 'Inativo'"
+                :color="row.original.is_active ? 'success' : 'neutral'"
+                variant="subtle"
+                size="xs"
+              />
+            </template>
+
+            <template #actions-cell="{ row }">
+              <div class="flex items-center justify-end gap-2">
+                <UButton
+                  v-if="canUpdate"
+                  icon="i-lucide-pencil"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="openEdit(row.original as SupplierItem)"
+                />
+
+                <UButton
+                  v-if="canDelete"
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  :loading="isDeleting"
+                  @click="requestRemove(row.original as SupplierItem)"
+                />
+              </div>
+            </template>
+
+            <template #card="{ item: supplier }">
+              <UCard class="border border-default/80 shadow-sm">
+                <div class="space-y-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 space-y-2">
+                      <h3 class="truncate text-base font-semibold text-highlighted">
+                        {{ supplier.name }}
+                      </h3>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <UBadge
+                          :label="supplier.person_type === 'pf' ? 'Pessoa Física' : 'Pessoa Jurídica'"
+                          color="neutral"
+                          variant="subtle"
+                          size="xs"
+                        />
+                        <UBadge
+                          :label="supplier.is_active ? 'Ativo' : 'Inativo'"
+                          :color="supplier.is_active ? 'success' : 'neutral'"
+                          variant="subtle"
+                          size="xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="flex shrink-0 items-center gap-1">
+                      <UTooltip v-if="canUpdate" text="Editar fornecedor">
+                        <UButton
+                          icon="i-lucide-pencil"
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
+                          @click="openEdit(supplier as SupplierItem)"
+                        />
+                      </UTooltip>
+
+                      <UTooltip v-if="canDelete" text="Excluir fornecedor">
+                        <UButton
+                          icon="i-lucide-trash-2"
+                          color="error"
+                          variant="ghost"
+                          size="xs"
+                          :loading="isDeleting"
+                          @click="requestRemove(supplier as SupplierItem)"
+                        />
+                      </UTooltip>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
+                      <span class="truncate">{{ formatTaxId(supplier.tax_id, supplier.person_type) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
+                      <span class="truncate">{{ formatPhone(supplier.phone) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
+                      <span class="truncate">{{ supplier.email || 'E-mail não informado' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
+                      <span class="truncate">{{ getLocationSummary(supplier as SupplierItem) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </UCard>
+            </template>
+          </AppDataTable>
+        </div>
+      </div>
     </template>
   </UDashboardPanel>
 
-  <UModal v-model:open="showModal" :title="isEditing ? 'Editar fornecedor' : 'Novo fornecedor'" :ui="{ body: 'overflow-y-auto max-h-[70vh]' }">
+  <UModal
+    v-model:open="showModal"
+    :title="selectedSupplier ? 'Editar fornecedor' : 'Novo fornecedor'"
+    :ui="{ body: 'overflow-y-auto max-h-[80vh]' }"
+  >
     <template #body>
       <div class="space-y-4">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <UFormField label="Razão social / Nome" required class="sm:col-span-2">
             <UInput v-model="form.name" class="w-full" />
           </UFormField>
+
           <UFormField label="Nome fantasia">
             <UInput v-model="form.trade_name" class="w-full" />
           </UFormField>
+
           <UFormField label="Tipo de pessoa">
             <USelectMenu
               v-model="form.person_type"
-              :items="personTypeOptions"
+              :items="personTypeFormOptions"
               value-key="value"
               class="w-full"
             />
           </UFormField>
-          <UFormField label="CNPJ / CPF">
+
+          <UFormField label="CPF / CNPJ">
             <UInput v-model="form.tax_id" class="w-full" />
           </UFormField>
+
+          <UFormField label="Telefone" required>
+            <UInput v-model="form.phone" class="w-full" />
+          </UFormField>
+
+          <UFormField label="WhatsApp">
+            <UInput v-model="form.whatsapp" class="w-full" />
+          </UFormField>
+
           <UFormField label="E-mail">
             <UInput v-model="form.email" type="email" class="w-full" />
           </UFormField>
-          <UFormField label="Telefone">
-            <UInput v-model="form.phone" class="w-full" />
-          </UFormField>
-          <UFormField label="Celular">
-            <UInput v-model="form.mobile_phone" class="w-full" />
-          </UFormField>
-          <UFormField label="Website" class="sm:col-span-2">
+
+          <UFormField label="Website">
             <UInput v-model="form.website" class="w-full" placeholder="https://" />
           </UFormField>
+
+          <UFormField label="Categoria">
+            <USelectMenu
+              v-model="form.category"
+              :items="SUPPLIER_CATEGORY_OPTIONS"
+              value-key="value"
+              class="w-full"
+            />
+          </UFormField>
+
+          <div class="flex items-center gap-3 pt-6">
+            <UCheckbox v-model="form.is_active" label="Fornecedor ativo" />
+          </div>
         </div>
 
         <USeparator label="Endereço" />
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <UFormField label="CEP" class="sm:col-span-2">
             <div class="flex gap-2">
-              <UInput v-model="form.address_zip_code" placeholder="00000-000" class="flex-1" />
+              <UInput v-model="form.zip_code" class="flex-1" placeholder="00000-000" />
               <UButton
                 label="Buscar"
                 color="neutral"
@@ -291,23 +961,29 @@ const columns = [
               />
             </div>
           </UFormField>
+
           <UFormField label="Logradouro" class="sm:col-span-2">
-            <UInput v-model="form.address_street" class="w-full" />
+            <UInput v-model="form.street" class="w-full" />
           </UFormField>
+
           <UFormField label="Número">
             <UInput v-model="form.address_number" class="w-full" />
           </UFormField>
+
           <UFormField label="Complemento">
             <UInput v-model="form.address_complement" class="w-full" />
           </UFormField>
+
           <UFormField label="Bairro">
-            <UInput v-model="form.address_neighborhood" class="w-full" />
+            <UInput v-model="form.neighborhood" class="w-full" />
           </UFormField>
+
           <UFormField label="Cidade">
-            <UInput v-model="form.address_city" class="w-full" />
+            <UInput v-model="form.city" class="w-full" />
           </UFormField>
+
           <UFormField label="UF">
-            <UInput v-model="form.address_state" maxlength="2" class="w-full uppercase" />
+            <UInput v-model="form.state" maxlength="2" class="w-full uppercase" />
           </UFormField>
         </div>
 
@@ -316,6 +992,7 @@ const columns = [
         </UFormField>
       </div>
     </template>
+
     <template #footer>
       <div class="flex justify-end gap-2">
         <UButton
@@ -326,7 +1003,6 @@ const columns = [
         />
         <UButton
           label="Salvar"
-          color="neutral"
           :loading="isSaving"
           :disabled="isSaving"
           @click="save"
@@ -334,4 +1010,46 @@ const columns = [
       </div>
     </template>
   </UModal>
+
+  <AppConfirmModal
+    v-model:open="showDeleteModal"
+    title="Confirmar exclusão"
+    confirm-label="Excluir fornecedor"
+    confirm-color="error"
+    :loading="isDeleting"
+    @confirm="confirmRemove"
+    @update:open="
+      (value: boolean) => {
+        showDeleteModal = value
+        if (!value && !isDeleting) supplierPendingDeletion = null
+      }
+    "
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir
+        <strong class="text-highlighted">
+          {{ supplierPendingDeletion?.name || 'este fornecedor' }}
+        </strong>?
+        Esta ação não pode ser desfeita.
+      </p>
+    </template>
+  </AppConfirmModal>
+
+  <AppConfirmModal
+    v-model:open="showBulkDeleteModal"
+    title="Excluir fornecedores selecionados"
+    confirm-label="Excluir todos"
+    confirm-color="error"
+    :loading="isBulkDeleting"
+    @confirm="confirmBulkDelete"
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir
+        <strong class="text-highlighted">{{ selectedCount }} fornecedor(es)</strong>?
+        Esta ação não pode ser desfeita.
+      </p>
+    </template>
+  </AppConfirmModal>
 </template>
