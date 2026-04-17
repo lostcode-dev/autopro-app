@@ -41,16 +41,12 @@ export default defineEventHandler(async (event) => {
 
   let dbQuery = supabase
     .from('parts')
-    .select('*, products(id, name, code)')
+    .select('*, products(id, name, code, category_id, product_categories(id, name))')
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
 
   if (search) {
     dbQuery = dbQuery.or(`description.ilike.%${search}%,code.ilike.%${search}%,brand.ilike.%${search}%`)
-  }
-
-  if (category) {
-    dbQuery = dbQuery.eq('category', category)
   }
 
   // PostgREST column-to-column comparison via the generic .filter() with 'lte' and a column ref.
@@ -63,9 +59,13 @@ export default defineEventHandler(async (event) => {
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
 
-  const filteredItems = lowStock
+  let filteredItems = lowStock
     ? allItems?.filter(p => p.stock_quantity <= p.minimum_quantity) ?? []
     : allItems ?? []
+
+  if (category) {
+    filteredItems = filteredItems.filter((item) => item.products?.category_id === category)
+  }
 
   return {
     items: filteredItems.slice(from, to),

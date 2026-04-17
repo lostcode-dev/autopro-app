@@ -651,6 +651,7 @@ const stockFilterOptions = [
 const lineColumns = [
   { accessorKey: 'description', header: 'Peça', enableSorting: true },
   { accessorKey: 'code', header: 'Código', enableSorting: true },
+  { accessorKey: 'location', header: 'Localização', enableSorting: false },
   { accessorKey: 'stock_quantity', header: 'Estoque', enableSorting: true },
   { accessorKey: 'minimum_quantity', header: 'Mínimo', enableSorting: true },
   { accessorKey: 'sale_price', header: 'Venda', enableSorting: true },
@@ -723,6 +724,15 @@ const lineColumns = [
               </UTooltip>
 
               <UButton
+                label="Categorias"
+                icon="i-lucide-tag"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="showCategoriesModal = true"
+              />
+
+              <UButton
                 v-if="canCreate"
                 label="Nova peça"
                 icon="i-lucide-plus"
@@ -745,10 +755,10 @@ const lineColumns = [
                     <UFormField label="Categoria">
                       <USelectMenu
                         v-model="categoryFilter"
-                        :items="PART_CATEGORY_OPTIONS"
+                        :items="categoryOptions"
                         value-key="value"
                         class="w-full"
-                        :search-input="false"
+                        searchable
                       />
                     </UFormField>
                     <UFormField label="Estoque">
@@ -771,9 +781,15 @@ const lineColumns = [
                   {{ row.original.description }}
                 </p>
                 <p class="truncate text-xs text-muted">
-                  {{ row.original.products?.name || row.original.brand || 'Sem vínculo de catálogo' }}
+                  {{ row.original.products?.product_categories?.name || row.original.products?.name || row.original.brand || 'Sem vínculo de catálogo' }}
                 </p>
               </div>
+            </template>
+
+            <template #location-cell="{ row }">
+              <span class="text-sm text-muted">
+                {{ row.original.location || '-' }}
+              </span>
             </template>
 
             <template #sale_price-cell="{ row }">
@@ -834,7 +850,7 @@ const lineColumns = [
                           size="xs"
                         />
                         <UBadge
-                          :label="part.category || 'Sem categoria'"
+                          :label="part.products?.product_categories?.name || 'Sem categoria do catálogo'"
                           color="neutral"
                           variant="subtle"
                           size="xs"
@@ -880,6 +896,10 @@ const lineColumns = [
                       <span class="truncate">{{ part.supplier_name || 'Sem fornecedor' }}</span>
                     </div>
                     <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
+                      <span class="truncate">{{ part.location || 'Localização não informada' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
                       <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
                       <span class="truncate">{{ formatCurrency(part.sale_price) }}</span>
                     </div>
@@ -917,10 +937,23 @@ const lineColumns = [
           />
         </UFormField>
 
-        <UFormField label="Categoria">
+        <UFormField label="Categoria do produto" class="sm:col-span-2">
+          <div class="flex items-center gap-2">
+            <UInput :model-value="selectedProductCategoryName" class="w-full" readonly />
+            <UButton
+              label="Gerenciar"
+              icon="i-lucide-tag"
+              color="neutral"
+              variant="outline"
+              @click="showCategoriesModal = true"
+            />
+          </div>
+        </UFormField>
+
+        <UFormField label="Categoria técnica">
           <USelectMenu
             v-model="form.category"
-            :items="PART_CATEGORY_OPTIONS.filter(option => option.value !== 'all')"
+            :items="PART_TECHNICAL_CATEGORY_OPTIONS.filter(option => option.value !== 'all')"
             value-key="value"
             class="w-full"
           />
@@ -941,7 +974,11 @@ const lineColumns = [
         </UFormField>
 
         <UFormField label="Localização">
-          <UInput v-model="form.location" class="w-full" />
+          <UInput
+            v-model="form.location"
+            class="w-full"
+            placeholder="Ex: Prateleira A2, Gaveta C1, Estoque Fundo"
+          />
         </UFormField>
 
         <UFormField label="Estoque atual">
@@ -1049,4 +1086,10 @@ const lineColumns = [
       </p>
     </template>
   </AppConfirmModal>
+
+  <ProductCategoriesModal
+    v-model:open="showCategoriesModal"
+    :categories="categoriesList"
+    @updated="refreshCategories"
+  />
 </template>
