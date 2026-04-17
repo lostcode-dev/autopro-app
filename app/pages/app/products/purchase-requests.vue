@@ -291,7 +291,12 @@ const statusLabelMap: Record<string, string> = {
   rejected: 'Recusado',
   purchased: 'Comprado'
 }
-
+const statusIconMap: Record<string, string> = {
+  waiting: 'i-lucide-clock',
+  authorized: 'i-lucide-circle-check',
+  rejected: 'i-lucide-circle-x',
+  purchased: 'i-lucide-shopping-cart'
+}
 const showRejectModal = ref(false)
 const isRejecting = ref(false)
 const selectedForAction = ref<PurchaseRequestItem | null>(null)
@@ -590,9 +595,8 @@ const lineColumns = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 flex-1 flex-col p-4">
-          <AppDataTable
+      <div v-else class="p-4">
+        <AppDataTable
             v-model:display-mode="viewMode"
             v-model:search-term="search"
             v-model:page="page"
@@ -674,6 +678,7 @@ const lineColumns = [
               <UBadge
                 :label="statusLabelMap[row.original.status] || row.original.status"
                 :color="statusColorMap[row.original.status] || 'neutral'"
+                :leading-icon="statusIconMap[row.original.status]"
                 variant="subtle"
                 size="xs"
               />
@@ -682,44 +687,49 @@ const lineColumns = [
             <template #actions-cell="{ row }">
               <div class="flex items-center justify-end gap-2">
                 <template v-if="canApprove && row.original.status === 'waiting'">
+                  <UTooltip text="Autorizar solicitação">
+                    <UButton
+                      icon="i-lucide-check"
+                      color="success"
+                      variant="ghost"
+                      size="xs"
+                      @click="authorize(row.original as PurchaseRequestItem)"
+                    />
+                  </UTooltip>
+                  <UTooltip text="Recusar solicitação">
+                    <UButton
+                      icon="i-lucide-x"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      @click="openReject(row.original as PurchaseRequestItem)"
+                    />
+                  </UTooltip>
+                </template>
+
+                <UTooltip v-if="canUpdate && row.original.status === 'waiting'" text="Editar solicitação">
                   <UButton
-                    icon="i-lucide-check"
-                    color="success"
+                    icon="i-lucide-pencil"
+                    color="neutral"
                     variant="ghost"
                     size="xs"
-                    @click="authorize(row.original as PurchaseRequestItem)"
+                    @click="openEdit(row.original as PurchaseRequestItem)"
                   />
+                </UTooltip>
+
+                <UTooltip v-if="canDelete" text="Excluir solicitação">
                   <UButton
-                    icon="i-lucide-x"
+                    icon="i-lucide-trash-2"
                     color="error"
                     variant="ghost"
                     size="xs"
-                    @click="openReject(row.original as PurchaseRequestItem)"
+                    :loading="isDeleting"
+                    @click="requestRemove(row.original as PurchaseRequestItem)"
                   />
-                </template>
-
-                <UButton
-                  v-if="canUpdate && row.original.status === 'waiting'"
-                  icon="i-lucide-pencil"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  @click="openEdit(row.original as PurchaseRequestItem)"
-                />
-
-                <UButton
-                  v-if="canDelete"
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  :loading="isDeleting"
-                  @click="requestRemove(row.original as PurchaseRequestItem)"
-                />
+                </UTooltip>
               </div>
             </template>
           </AppDataTable>
-        </div>
       </div>
     </template>
   </UDashboardPanel>

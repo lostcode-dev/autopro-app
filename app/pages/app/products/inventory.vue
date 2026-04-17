@@ -191,6 +191,13 @@ const partItems = computed(() => data.value?.items ?? [])
 const totalParts = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalParts.value / pageSize.value)))
 
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (categoryFilter.value !== 'all') count++
+  if (stockFilter.value !== 'all') count++
+  return count
+})
+
 const productOptions = computed(() => [
   { label: 'Sem vínculo com produto', value: '' },
   ...(productsData.value.items ?? []).map(product => ({
@@ -331,12 +338,12 @@ function getStockStatus(item: PartItem) {
   const minimum = item.minimum_quantity ?? 0
 
   if (item.stock_quantity <= 0)
-    return { label: 'Sem estoque', color: 'error' as const }
+    return { label: 'Sem estoque', color: 'error' as const, icon: 'i-lucide-circle-x' }
 
   if (item.stock_quantity <= minimum)
-    return { label: 'Estoque baixo', color: 'warning' as const }
+    return { label: 'Estoque baixo', color: 'warning' as const, icon: 'i-lucide-triangle-alert' }
 
-  return { label: 'Disponível', color: 'success' as const }
+  return { label: 'Disponível', color: 'success' as const, icon: 'i-lucide-circle-check' }
 }
 
 const showModal = ref(false)
@@ -637,9 +644,8 @@ const lineColumns = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 flex-1 flex-col p-4">
-          <AppDataTable
+      <div v-else class="p-4">
+        <AppDataTable
             v-model:display-mode="viewMode"
             v-model:search-term="search"
             v-model:page="page"
@@ -698,21 +704,37 @@ const lineColumns = [
             </template>
 
             <template #filters>
-              <USelectMenu
-                v-model="categoryFilter"
-                :items="PART_CATEGORY_OPTIONS"
-                value-key="value"
-                class="w-full sm:w-48"
-                :search-input="false"
-              />
-
-              <USelectMenu
-                v-model="stockFilter"
-                :items="stockFilterOptions"
-                value-key="value"
-                class="w-full sm:w-52"
-                :search-input="false"
-              />
+              <UPopover>
+                <UButton
+                  icon="i-lucide-sliders-horizontal"
+                  :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                />
+                <template #content>
+                  <div class="w-64 space-y-3 p-3">
+                    <UFormField label="Categoria">
+                      <USelectMenu
+                        v-model="categoryFilter"
+                        :items="PART_CATEGORY_OPTIONS"
+                        value-key="value"
+                        class="w-full"
+                        :search-input="false"
+                      />
+                    </UFormField>
+                    <UFormField label="Estoque">
+                      <USelectMenu
+                        v-model="stockFilter"
+                        :items="stockFilterOptions"
+                        value-key="value"
+                        class="w-full"
+                        :search-input="false"
+                      />
+                    </UFormField>
+                  </div>
+                </template>
+              </UPopover>
             </template>
 
             <template #description-cell="{ row }">
@@ -736,6 +758,7 @@ const lineColumns = [
               <UBadge
                 :label="getStockStatus(row.original as PartItem).label"
                 :color="getStockStatus(row.original as PartItem).color"
+                :leading-icon="getStockStatus(row.original as PartItem).icon"
                 variant="subtle"
                 size="xs"
               />
@@ -743,24 +766,26 @@ const lineColumns = [
 
             <template #actions-cell="{ row }">
               <div class="flex items-center justify-end gap-2">
-                <UButton
-                  v-if="canUpdate"
-                  icon="i-lucide-pencil"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  @click="openEdit(row.original as PartItem)"
-                />
+                <UTooltip v-if="canUpdate" text="Editar peça">
+                  <UButton
+                    icon="i-lucide-pencil"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="openEdit(row.original as PartItem)"
+                  />
+                </UTooltip>
 
-                <UButton
-                  v-if="canDelete"
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  :loading="isDeleting"
-                  @click="requestRemove(row.original as PartItem)"
-                />
+                <UTooltip v-if="canDelete" text="Excluir peça">
+                  <UButton
+                    icon="i-lucide-trash-2"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    :loading="isDeleting"
+                    @click="requestRemove(row.original as PartItem)"
+                  />
+                </UTooltip>
               </div>
             </template>
 
@@ -834,7 +859,6 @@ const lineColumns = [
               </UCard>
             </template>
           </AppDataTable>
-        </div>
       </div>
     </template>
   </UDashboardPanel>

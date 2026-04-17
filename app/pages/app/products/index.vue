@@ -146,17 +146,25 @@ const { data, status, refresh } = await useAsyncData(
 
 const { data: categoriesData } = await useAsyncData(
   'products-categories-options',
-  () => requestFetch<ProductCategory[]>('/api/product-categories', { headers: requestHeaders }),
-  { default: () => [] }
+  () => requestFetch<{ items: ProductCategory[] }>('/api/product-categories', { headers: requestHeaders }),
+  { default: () => ({ items: [] }) }
 )
 
 const productItems = computed(() => data.value?.items ?? [])
 const totalProducts = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalProducts.value / pageSize.value)))
 
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (typeFilter.value !== 'all') count++
+  if (inventoryFilter.value !== 'all') count++
+  if (categoryFilter.value !== 'all') count++
+  return count
+})
+
 const categoryOptions = computed(() => [
   { label: 'Todas as categorias', value: 'all' },
-  ...(categoriesData.value ?? []).map(category => ({
+  ...(categoriesData.value?.items ?? []).map(category => ({
     label: category.name,
     value: category.id
   }))
@@ -603,145 +611,162 @@ const lineColumns = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 flex-1 flex-col p-4">
-          <AppDataTable
-            v-model:display-mode="viewMode"
-            v-model:search-term="search"
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            v-model:sorting="sorting"
-            v-model:row-selection="rowSelection"
-            :columns="lineColumns"
-            :data="productItems"
-            :loading="status === 'pending'"
-            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
-            :selectable="viewMode === 'table'"
-            :sticky-header="viewMode === 'table'"
-            :get-row-id="(row) => String(row.id ?? '')"
-            :page-size-options="PAGE_SIZE_OPTIONS"
-            :total="totalProducts"
-            search-placeholder="Buscar por nome ou código..."
-            :show-search="true"
-            :show-view-mode-toggle="true"
-            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
-            empty-icon="i-lucide-package-search"
-            empty-title="Nenhum produto encontrado"
-            empty-description="Cadastre um produto ou ajuste os filtros para continuar."
-          >
-            <template #toolbar-right>
-              <UTooltip text="Exportar produtos">
-                <UButton
-                  icon="i-lucide-download"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                  @click="exportCsv"
-                />
-              </UTooltip>
-
-              <UTooltip
-                v-if="canDelete"
-                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
-              >
-                <UButton
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="outline"
-                  size="sm"
-                  :disabled="selectedCount === 0"
-                  @click="showBulkDeleteModal = true"
-                />
-              </UTooltip>
-
+      <div v-else class="p-4">
+        <AppDataTable
+          v-model:display-mode="viewMode"
+          v-model:search-term="search"
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          v-model:sorting="sorting"
+          v-model:row-selection="rowSelection"
+          :columns="lineColumns"
+          :data="productItems"
+          :loading="status === 'pending'"
+          :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+          :selectable="viewMode === 'table'"
+          :sticky-header="viewMode === 'table'"
+          :get-row-id="(row) => String(row.id ?? '')"
+          :page-size-options="PAGE_SIZE_OPTIONS"
+          :total="totalProducts"
+          search-placeholder="Buscar por nome ou código..."
+          :show-search="true"
+          :show-view-mode-toggle="true"
+          card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+          empty-icon="i-lucide-package-search"
+          empty-title="Nenhum produto encontrado"
+          empty-description="Cadastre um produto ou ajuste os filtros para continuar."
+        >
+          <template #toolbar-right>
+            <UTooltip text="Exportar produtos">
               <UButton
-                v-if="canCreate"
-                label="Novo produto"
-                icon="i-lucide-plus"
-                size="sm"
-                @click="openCreate"
-              />
-            </template>
-
-            <template #filters>
-              <USelectMenu
-                v-model="typeFilter"
-                :items="typeFilterOptions"
-                value-key="value"
-                class="w-full sm:w-44"
-                :search-input="false"
-              />
-
-              <USelectMenu
-                v-model="inventoryFilter"
-                :items="inventoryFilterOptions"
-                value-key="value"
-                class="w-full sm:w-44"
-                :search-input="false"
-              />
-
-              <USelectMenu
-                v-model="categoryFilter"
-                :items="categoryOptions"
-                value-key="value"
-                class="w-full sm:w-56"
-                searchable
-              />
-            </template>
-
-            <template #name-cell="{ row }">
-              <div class="min-w-0 space-y-1">
-                <p class="truncate font-semibold text-highlighted">
-                  {{ row.original.name }}
-                </p>
-                <p class="truncate text-xs text-muted">
-                  {{ row.original.product_categories?.name || 'Sem categoria' }}
-                </p>
-              </div>
-            </template>
-
-            <template #type-cell="{ row }">
-              <UBadge
-                :label="getProductTypeLabel(row.original.type)"
+                icon="i-lucide-download"
                 color="neutral"
+                variant="outline"
+                size="sm"
+                @click="exportCsv"
+              />
+            </UTooltip>
+
+            <UTooltip
+              v-if="canDelete"
+              :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+            >
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="outline"
+                size="sm"
+                :disabled="selectedCount === 0"
+                @click="showBulkDeleteModal = true"
+              />
+            </UTooltip>
+
+            <UButton
+              v-if="canCreate"
+              label="Novo produto"
+              icon="i-lucide-plus"
+              size="sm"
+              @click="openCreate"
+            />
+          </template>
+
+          <template #filters>
+            <UPopover>
+              <UButton
+                icon="i-lucide-sliders-horizontal"
+                :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                color="neutral"
+                variant="outline"
+                size="sm"
+              />
+              <template #content>
+                <div class="w-64 space-y-3 p-3">
+                  <UFormField label="Tipo">
+                    <USelectMenu
+                      v-model="typeFilter"
+                      :items="typeFilterOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                  <UFormField label="Estoque">
+                    <USelectMenu
+                      v-model="inventoryFilter"
+                      :items="inventoryFilterOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                  <UFormField label="Categoria">
+                    <USelectMenu
+                      v-model="categoryFilter"
+                      :items="categoryOptions"
+                      value-key="value"
+                      class="w-full"
+                      searchable
+                    />
+                  </UFormField>
+                </div>
+              </template>
+            </UPopover>
+          </template>
+
+          <template #name-cell="{ row }">
+            <div class="min-w-0 space-y-1">
+              <p class="truncate font-semibold text-highlighted">
+                {{ row.original.name }}
+              </p>
+              <p class="truncate text-xs text-muted">
+                {{ (row.original as ProductItem).product_categories?.name || 'Sem categoria' }}
+              </p>
+            </div>
+          </template>
+
+          <template #type-cell="{ row }">
+            <UBadge
+              :label="getProductTypeLabel((row.original as ProductItem).type)"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            />
+          </template>
+
+          <template #track_inventory-cell="{ row }">
+            <div class="min-w-0 space-y-1">
+              <UBadge
+                :label="(row.original as ProductItem).track_inventory ? 'Controlado' : 'Livre'"
+                :color="(row.original as ProductItem).track_inventory ? 'success' : 'neutral'"
                 variant="subtle"
                 size="xs"
               />
-            </template>
+              <p class="text-xs text-muted">
+                {{ getStockSummary(row.original as ProductItem) }}
+              </p>
+            </div>
+          </template>
 
-            <template #track_inventory-cell="{ row }">
-              <div class="min-w-0 space-y-1">
-                <UBadge
-                  :label="row.original.track_inventory ? 'Controlado' : 'Livre'"
-                  :color="row.original.track_inventory ? 'success' : 'neutral'"
-                  variant="subtle"
-                  size="xs"
-                />
-                <p class="text-xs text-muted">
-                  {{ getStockSummary(row.original as ProductItem) }}
-                </p>
-              </div>
-            </template>
+          <template #unit_sale_price-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatCurrency((row.original as ProductItem).unit_sale_price) }}
+            </span>
+          </template>
 
-            <template #unit_sale_price-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatCurrency(row.original.unit_sale_price) }}
-              </span>
-            </template>
-
-            <template #actions-cell="{ row }">
-              <div class="flex items-center justify-end gap-2">
+          <template #actions-cell="{ row }">
+            <div class="flex items-center justify-end gap-2">
+              <UTooltip v-if="canUpdate" text="Editar produto">
                 <UButton
-                  v-if="canUpdate"
                   icon="i-lucide-pencil"
                   color="neutral"
                   variant="ghost"
                   size="xs"
                   @click="openEdit(row.original as ProductItem)"
                 />
+              </UTooltip>
 
+              <UTooltip v-if="canDelete" text="Excluir produto">
                 <UButton
-                  v-if="canDelete"
                   icon="i-lucide-trash-2"
                   color="error"
                   variant="ghost"
@@ -749,80 +774,80 @@ const lineColumns = [
                   :loading="isDeleting"
                   @click="requestRemove(row.original as ProductItem)"
                 />
-              </div>
-            </template>
+              </UTooltip>
+            </div>
+          </template>
 
-            <template #card="{ item: product }">
-              <UCard class="border border-default/80 shadow-sm">
-                <div class="space-y-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 space-y-2">
-                      <h3 class="truncate text-base font-semibold text-highlighted">
-                        {{ product.name }}
-                      </h3>
-                      <div class="flex flex-wrap items-center gap-2">
-                        <UBadge
-                          :label="getProductTypeLabel(product.type)"
-                          color="neutral"
-                          variant="subtle"
-                          size="xs"
-                        />
-                        <UBadge
-                          :label="product.track_inventory ? 'Estoque controlado' : 'Sem estoque'"
-                          :color="product.track_inventory ? 'success' : 'neutral'"
-                          variant="subtle"
-                          size="xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="flex shrink-0 items-center gap-1">
-                      <UTooltip v-if="canUpdate" text="Editar produto">
-                        <UButton
-                          icon="i-lucide-pencil"
-                          color="neutral"
-                          variant="ghost"
-                          size="xs"
-                          @click="openEdit(product as ProductItem)"
-                        />
-                      </UTooltip>
-
-                      <UTooltip v-if="canDelete" text="Excluir produto">
-                        <UButton
-                          icon="i-lucide-trash-2"
-                          color="error"
-                          variant="ghost"
-                          size="xs"
-                          :loading="isDeleting"
-                          @click="requestRemove(product as ProductItem)"
-                        />
-                      </UTooltip>
+          <template #card="{ item: product }">
+            <UCard class="border border-default/80 shadow-sm">
+              <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 space-y-2">
+                    <h3 class="truncate text-base font-semibold text-highlighted">
+                      {{ product.name }}
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <UBadge
+                        :label="getProductTypeLabel((product as ProductItem).type)"
+                        color="neutral"
+                        variant="subtle"
+                        size="xs"
+                      />
+                      <UBadge
+                        :label="(product as ProductItem).track_inventory ? 'Estoque controlado' : 'Sem estoque'"
+                        :color="(product as ProductItem).track_inventory ? 'success' : 'neutral'"
+                        variant="subtle"
+                        size="xs"
+                      />
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-scan-line" class="size-4 shrink-0" />
-                      <span class="truncate">{{ product.code }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-folder-tree" class="size-4 shrink-0" />
-                      <span class="truncate">{{ product.product_categories?.name || 'Sem categoria' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
-                      <span class="truncate">{{ formatCurrency(product.unit_sale_price) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-box" class="size-4 shrink-0" />
-                      <span class="truncate">{{ getStockSummary(product as ProductItem) }}</span>
-                    </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <UTooltip v-if="canUpdate" text="Editar produto">
+                      <UButton
+                        icon="i-lucide-pencil"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        @click="openEdit(product as ProductItem)"
+                      />
+                    </UTooltip>
+
+                    <UTooltip v-if="canDelete" text="Excluir produto">
+                      <UButton
+                        icon="i-lucide-trash-2"
+                        color="error"
+                        variant="ghost"
+                        size="xs"
+                        :loading="isDeleting"
+                        @click="requestRemove(product as ProductItem)"
+                      />
+                    </UTooltip>
                   </div>
                 </div>
-              </UCard>
-            </template>
-          </AppDataTable>
-        </div>
+
+                <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-scan-line" class="size-4 shrink-0" />
+                    <span class="truncate">{{ (product as ProductItem).code }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-folder-tree" class="size-4 shrink-0" />
+                    <span class="truncate">{{ (product as ProductItem).product_categories?.name || 'Sem categoria' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
+                    <span class="truncate">{{ formatCurrency((product as ProductItem).unit_sale_price) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-box" class="size-4 shrink-0" />
+                    <span class="truncate">{{ getStockSummary(product as ProductItem) }}</span>
+                  </div>
+                </div>
+              </div>
+            </UCard>
+          </template>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>

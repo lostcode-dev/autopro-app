@@ -158,6 +158,13 @@ const supplierItems = computed(() => data.value?.items ?? [])
 const totalSuppliers = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalSuppliers.value / pageSize.value)))
 
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (personTypeFilter.value !== 'all') count++
+  if (statusFilter.value !== 'all') count++
+  return count
+})
+
 function buildManagedQuery() {
   return {
     search: search.value || undefined,
@@ -669,9 +676,8 @@ const lineColumns = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 flex-1 flex-col p-4">
-          <AppDataTable
+      <div v-else class="p-4">
+        <AppDataTable
             v-model:display-mode="viewMode"
             v-model:search-term="search"
             v-model:page="page"
@@ -730,21 +736,37 @@ const lineColumns = [
             </template>
 
             <template #filters>
-              <USelectMenu
-                v-model="personTypeFilter"
-                :items="personTypeFilterOptions"
-                value-key="value"
-                class="w-full sm:w-48"
-                :search-input="false"
-              />
-
-              <USelectMenu
-                v-model="statusFilter"
-                :items="statusFilterOptions"
-                value-key="value"
-                class="w-full sm:w-44"
-                :search-input="false"
-              />
+              <UPopover>
+                <UButton
+                  icon="i-lucide-sliders-horizontal"
+                  :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                />
+                <template #content>
+                  <div class="w-64 space-y-3 p-3">
+                    <UFormField label="Tipo de pessoa">
+                      <USelectMenu
+                        v-model="personTypeFilter"
+                        :items="personTypeFilterOptions"
+                        value-key="value"
+                        class="w-full"
+                        :search-input="false"
+                      />
+                    </UFormField>
+                    <UFormField label="Status">
+                      <USelectMenu
+                        v-model="statusFilter"
+                        :items="statusFilterOptions"
+                        value-key="value"
+                        class="w-full"
+                        :search-input="false"
+                      />
+                    </UFormField>
+                  </div>
+                </template>
+              </UPopover>
             </template>
 
             <template #name-cell="{ row }">
@@ -783,6 +805,7 @@ const lineColumns = [
               <UBadge
                 :label="row.original.is_active ? 'Ativo' : 'Inativo'"
                 :color="row.original.is_active ? 'success' : 'neutral'"
+                :leading-icon="row.original.is_active ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
                 variant="subtle"
                 size="xs"
               />
@@ -790,24 +813,26 @@ const lineColumns = [
 
             <template #actions-cell="{ row }">
               <div class="flex items-center justify-end gap-2">
-                <UButton
-                  v-if="canUpdate"
-                  icon="i-lucide-pencil"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  @click="openEdit(row.original as SupplierItem)"
-                />
+                <UTooltip v-if="canUpdate" text="Editar fornecedor">
+                  <UButton
+                    icon="i-lucide-pencil"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="openEdit(row.original as SupplierItem)"
+                  />
+                </UTooltip>
 
-                <UButton
-                  v-if="canDelete"
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  :loading="isDeleting"
-                  @click="requestRemove(row.original as SupplierItem)"
-                />
+                <UTooltip v-if="canDelete" text="Excluir fornecedor">
+                  <UButton
+                    icon="i-lucide-trash-2"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    :loading="isDeleting"
+                    @click="requestRemove(row.original as SupplierItem)"
+                  />
+                </UTooltip>
               </div>
             </template>
 
@@ -881,7 +906,6 @@ const lineColumns = [
               </UCard>
             </template>
           </AppDataTable>
-        </div>
       </div>
     </template>
   </UDashboardPanel>

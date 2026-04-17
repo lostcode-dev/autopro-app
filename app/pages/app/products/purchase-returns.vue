@@ -145,6 +145,13 @@ const purchaseReturnItems = computed(() => data.value?.items ?? [])
 const totalReturns = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalReturns.value / pageSize.value)))
 
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (statusFilter.value !== 'all') count++
+  if (reasonFilter.value !== 'all') count++
+  return count
+})
+
 const purchaseOptions = computed(() =>
   (purchasesData.value.items ?? []).map(purchase => ({
     label: [
@@ -295,6 +302,11 @@ const statusColorMap: Record<string, 'warning' | 'success' | 'neutral'> = {
 const statusLabelMap: Record<string, string> = {
   pending: 'Pendente',
   completed: 'Concluída'
+}
+
+const statusIconMap: Record<string, string> = {
+  pending: 'i-lucide-clock',
+  completed: 'i-lucide-circle-check'
 }
 
 const reasonLabelMap: Record<string, string> = {
@@ -534,120 +546,137 @@ const lineColumns = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 flex-1 flex-col p-4">
-          <AppDataTable
-            v-model:display-mode="viewMode"
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            v-model:sorting="sorting"
-            v-model:row-selection="rowSelection"
-            :columns="lineColumns"
-            :data="purchaseReturnItems"
-            :loading="status === 'pending'"
-            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
-            :selectable="viewMode === 'table'"
-            :sticky-header="viewMode === 'table'"
-            :get-row-id="(row) => String(row.id ?? '')"
-            :page-size-options="PAGE_SIZE_OPTIONS"
-            :total="totalReturns"
-            :show-search="false"
-            :show-view-mode-toggle="true"
-            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
-            empty-icon="i-lucide-undo-2"
-            empty-title="Nenhuma devolução encontrada"
-            empty-description="Registre devoluções ou ajuste os filtros para continuar."
-          >
-            <template #toolbar-right>
-              <UTooltip
-                v-if="canDelete"
-                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
-              >
-                <UButton
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="outline"
-                  size="sm"
-                  :disabled="selectedCount === 0"
-                  @click="showBulkDeleteModal = true"
-                />
-              </UTooltip>
-
+      <div v-else class="p-4">
+        <AppDataTable
+          v-model:display-mode="viewMode"
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          v-model:sorting="sorting"
+          v-model:row-selection="rowSelection"
+          :columns="lineColumns"
+          :data="purchaseReturnItems"
+          :loading="status === 'pending'"
+          :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+          :selectable="viewMode === 'table'"
+          :sticky-header="viewMode === 'table'"
+          :get-row-id="(row) => String(row.id ?? '')"
+          :page-size-options="PAGE_SIZE_OPTIONS"
+          :total="totalReturns"
+          :show-search="false"
+          :show-view-mode-toggle="true"
+          card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+          empty-icon="i-lucide-undo-2"
+          empty-title="Nenhuma devolução encontrada"
+          empty-description="Registre devoluções ou ajuste os filtros para continuar."
+        >
+          <template #toolbar-right>
+            <UTooltip
+              v-if="canDelete"
+              :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+            >
               <UButton
-                v-if="canCreate"
-                label="Nova devolução"
-                icon="i-lucide-plus"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="outline"
                 size="sm"
-                @click="openCreate"
+                :disabled="selectedCount === 0"
+                @click="showBulkDeleteModal = true"
               />
-            </template>
+            </UTooltip>
 
-            <template #filters>
-              <USelectMenu
-                v-model="statusFilter"
-                :items="statusFilterOptions"
-                value-key="value"
-                class="w-full sm:w-44"
-                :search-input="false"
+            <UButton
+              v-if="canCreate"
+              label="Nova devolução"
+              icon="i-lucide-plus"
+              size="sm"
+              @click="openCreate"
+            />
+          </template>
+
+          <template #filters>
+            <UPopover>
+              <UButton
+                icon="i-lucide-sliders-horizontal"
+                :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                color="neutral"
+                variant="outline"
+                size="sm"
               />
+              <template #content>
+                <div class="w-64 space-y-3 p-3">
+                  <UFormField label="Status">
+                    <USelectMenu
+                      v-model="statusFilter"
+                      :items="statusFilterOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                  <UFormField label="Motivo">
+                    <USelectMenu
+                      v-model="reasonFilter"
+                      :items="reasonFilterOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                </div>
+              </template>
+            </UPopover>
+          </template>
 
-              <USelectMenu
-                v-model="reasonFilter"
-                :items="reasonFilterOptions"
-                value-key="value"
-                class="w-full sm:w-52"
-                :search-input="false"
-              />
-            </template>
+          <template #return_date-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatDate((row.original as PurchaseReturnItem).return_date) }}
+            </span>
+          </template>
 
-            <template #return_date-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatDate(row.original.return_date) }}
-              </span>
-            </template>
+          <template #supplier-cell="{ row }">
+            <div class="min-w-0">
+              <p class="truncate font-medium text-highlighted">
+                {{ (row.original as PurchaseReturnItem).suppliers?.name || 'Fornecedor não informado' }}
+              </p>
+            </div>
+          </template>
 
-            <template #supplier-cell="{ row }">
-              <div class="min-w-0">
-                <p class="truncate font-medium text-highlighted">
-                  {{ row.original.suppliers?.name || 'Fornecedor não informado' }}
-                </p>
-              </div>
-            </template>
+          <template #reason-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ reasonLabelMap[(row.original as PurchaseReturnItem).reason] || (row.original as PurchaseReturnItem).reason }}
+            </span>
+          </template>
 
-            <template #reason-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ reasonLabelMap[row.original.reason] || row.original.reason }}
-              </span>
-            </template>
+          <template #total_returned_amount-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatCurrency((row.original as PurchaseReturnItem).total_returned_amount) }}
+            </span>
+          </template>
 
-            <template #total_returned_amount-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatCurrency(row.original.total_returned_amount) }}
-              </span>
-            </template>
+          <template #status-cell="{ row }">
+            <UBadge
+              :label="statusLabelMap[(row.original as PurchaseReturnItem).status] || (row.original as PurchaseReturnItem).status"
+              :color="statusColorMap[(row.original as PurchaseReturnItem).status] || 'neutral'"
+              :leading-icon="statusIconMap[(row.original as PurchaseReturnItem).status]"
+              variant="subtle"
+              size="xs"
+            />
+          </template>
 
-            <template #status-cell="{ row }">
-              <UBadge
-                :label="statusLabelMap[row.original.status] || row.original.status"
-                :color="statusColorMap[row.original.status] || 'neutral'"
-                variant="subtle"
-                size="xs"
-              />
-            </template>
-
-            <template #actions-cell="{ row }">
-              <div class="flex items-center justify-end gap-2">
+          <template #actions-cell="{ row }">
+            <div class="flex items-center justify-end gap-2">
+              <UTooltip v-if="canUpdate" text="Editar devolução">
                 <UButton
-                  v-if="canUpdate"
                   icon="i-lucide-pencil"
                   color="neutral"
                   variant="ghost"
                   size="xs"
                   @click="openEdit(row.original as PurchaseReturnItem)"
                 />
+              </UTooltip>
 
+              <UTooltip v-if="canDelete" text="Excluir devolução">
                 <UButton
-                  v-if="canDelete"
                   icon="i-lucide-trash-2"
                   color="error"
                   variant="ghost"
@@ -655,10 +684,10 @@ const lineColumns = [
                   :loading="isDeleting"
                   @click="requestRemove(row.original as PurchaseReturnItem)"
                 />
-              </div>
-            </template>
-          </AppDataTable>
-        </div>
+              </UTooltip>
+            </div>
+          </template>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>

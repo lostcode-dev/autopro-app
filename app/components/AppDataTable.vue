@@ -444,7 +444,7 @@ const emptyHeaderTableClass = 'shrink-0'
 </script>
 
 <template>
-  <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[1.25rem] border border-default/90 bg-default shadow-sm">
+  <div class="flex flex-col overflow-hidden rounded-[1.25rem] border border-default/90 bg-default shadow-sm">
     <div
       v-if="hasToolbar"
       class="shrink-0 border-b border-default/90 bg-elevated/25 px-4 py-3"
@@ -464,20 +464,26 @@ const emptyHeaderTableClass = 'shrink-0'
           v-if="showViewModeToggle || $slots['toolbar-right']"
           class="ml-auto flex items-center gap-2"
         >
-          <UButtonGroup v-if="showViewModeToggle">
-            <UButton
-              icon="i-lucide-list"
-              color="neutral"
-              :variant="currentDisplayMode === 'table' ? 'solid' : 'outline'"
-              @click="currentDisplayMode = 'table'"
-            />
-            <UButton
-              icon="i-lucide-layout-grid"
-              color="neutral"
-              :variant="currentDisplayMode === 'card' ? 'solid' : 'outline'"
-              @click="currentDisplayMode = 'card'"
-            />
-          </UButtonGroup>
+          <div v-if="showViewModeToggle" class="inline-flex">
+            <UTooltip text="Visualização em lista">
+              <UButton
+                icon="i-lucide-list"
+                color="neutral"
+                class="rounded-r-none"
+                :variant="currentDisplayMode === 'table' ? 'solid' : 'outline'"
+                @click="currentDisplayMode = 'table'"
+              />
+            </UTooltip>
+            <UTooltip text="Visualização em cards">
+              <UButton
+                icon="i-lucide-layout-grid"
+                color="neutral"
+                class="-ml-px rounded-l-none"
+                :variant="currentDisplayMode === 'card' ? 'solid' : 'outline'"
+                @click="currentDisplayMode = 'card'"
+              />
+            </UTooltip>
+          </div>
           <template v-if="showViewModeToggle && $slots['toolbar-right']">
             <USeparator orientation="vertical" class="h-5" />
           </template>
@@ -488,7 +494,7 @@ const emptyHeaderTableClass = 'shrink-0'
 
     <div
       v-if="showCardLoading"
-      class="min-h-0 flex-1 overflow-auto"
+      class="overflow-auto max-h-[65vh]"
     >
       <slot name="loading-card">
         <div :class="cardSkeletonGridClass">
@@ -503,11 +509,11 @@ const emptyHeaderTableClass = 'shrink-0'
 
     <div
       v-else
-      class="flex min-h-0 flex-1 flex-col overflow-hidden"
+      class="flex flex-col overflow-hidden"
     >
       <div
         v-if="!loading && !hasItems"
-        class="flex min-h-0 flex-1 flex-col"
+        class="flex flex-col"
       >
         <UTable
           v-if="!isCardMode"
@@ -524,7 +530,7 @@ const emptyHeaderTableClass = 'shrink-0'
         </UTable>
 
         <slot name="empty">
-          <div class="flex flex-1 items-center justify-center bg-gradient-to-b from-default to-elevated/20 p-10 text-center">
+          <div class="flex min-h-48 items-center justify-center bg-gradient-to-b from-default to-elevated/20 p-10 text-center">
             <div class="max-w-sm space-y-3">
               <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-default/80 bg-elevated/60 text-primary">
                 <UIcon :name="emptyIcon" class="h-5 w-5" />
@@ -544,7 +550,7 @@ const emptyHeaderTableClass = 'shrink-0'
 
       <div
         v-else-if="isCardMode"
-        class="min-h-0 flex-1 overflow-auto"
+        class="overflow-auto max-h-[65vh]"
       >
         <div :class="cardGridClass">
           <template
@@ -593,7 +599,7 @@ const emptyHeaderTableClass = 'shrink-0'
 
       <div
         v-else
-        class="min-h-0 flex-1 overflow-auto"
+        class="overflow-auto max-h-[65vh]"
       >
         <div v-if="loading" class="space-y-3 p-4 md:p-5">
           <slot name="loading-row">

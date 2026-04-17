@@ -160,6 +160,19 @@ const purchaseItems = computed(() => data.value?.items ?? [])
 const totalPurchases = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalPurchases.value / pageSize.value)))
 
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (statusFilter.value !== 'all') count++
+  if (dateFrom.value !== defaultDateFrom) count++
+  if (dateTo.value !== defaultDateTo) count++
+  return count
+})
+
+const statusIconMap: Record<string, string> = {
+  pending: 'i-lucide-clock',
+  paid: 'i-lucide-circle-check'
+}
+
 const supplierOptions = computed(() =>
   (suppliersData.value.items ?? []).map(supplier => ({
     label: supplier.name,
@@ -592,9 +605,8 @@ const lineColumns = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 flex-1 flex-col p-4">
-          <AppDataTable
+      <div v-else class="p-4">
+        <AppDataTable
             v-model:display-mode="viewMode"
             v-model:search-term="search"
             v-model:page="page"
@@ -643,16 +655,34 @@ const lineColumns = [
             </template>
 
             <template #filters>
-              <USelectMenu
-                v-model="statusFilter"
-                :items="paymentStatusOptions"
-                value-key="value"
-                class="w-full sm:w-48"
-                :search-input="false"
-              />
-
-              <UInput v-model="dateFrom" type="date" class="w-full sm:w-40" />
-              <UInput v-model="dateTo" type="date" class="w-full sm:w-40" />
+              <UPopover>
+                <UButton
+                  icon="i-lucide-sliders-horizontal"
+                  :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                />
+                <template #content>
+                  <div class="w-64 space-y-3 p-3">
+                    <UFormField label="Status">
+                      <USelectMenu
+                        v-model="statusFilter"
+                        :items="paymentStatusOptions"
+                        value-key="value"
+                        class="w-full"
+                        :search-input="false"
+                      />
+                    </UFormField>
+                    <UFormField label="Data inicial">
+                      <UInput v-model="dateFrom" type="date" class="w-full" />
+                    </UFormField>
+                    <UFormField label="Data final">
+                      <UInput v-model="dateTo" type="date" class="w-full" />
+                    </UFormField>
+                  </div>
+                </template>
+              </UPopover>
             </template>
 
             <template #purchase_date-cell="{ row }">
@@ -679,6 +709,7 @@ const lineColumns = [
               <UBadge
                 :label="statusLabelMap[row.original.payment_status] || row.original.payment_status"
                 :color="statusColorMap[row.original.payment_status] || 'neutral'"
+                :leading-icon="statusIconMap[row.original.payment_status]"
                 variant="subtle"
                 size="xs"
               />
@@ -686,37 +717,42 @@ const lineColumns = [
 
             <template #actions-cell="{ row }">
               <div class="flex items-center justify-end gap-2">
-                <UButton
+                <UTooltip
                   v-if="canUpdate && row.original.payment_status === 'pending'"
-                  icon="i-lucide-check-circle"
-                  color="success"
-                  variant="ghost"
-                  size="xs"
-                  @click="openPayModal(row.original as PurchaseItem)"
-                />
+                  text="Confirmar pagamento"
+                >
+                  <UButton
+                    icon="i-lucide-check-circle"
+                    color="success"
+                    variant="ghost"
+                    size="xs"
+                    @click="openPayModal(row.original as PurchaseItem)"
+                  />
+                </UTooltip>
 
-                <UButton
-                  v-if="canUpdate"
-                  icon="i-lucide-pencil"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  @click="openEdit(row.original as PurchaseItem)"
-                />
+                <UTooltip v-if="canUpdate" text="Editar compra">
+                  <UButton
+                    icon="i-lucide-pencil"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    @click="openEdit(row.original as PurchaseItem)"
+                  />
+                </UTooltip>
 
-                <UButton
-                  v-if="canDelete"
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  size="xs"
-                  :loading="isDeleting"
-                  @click="requestRemove(row.original as PurchaseItem)"
-                />
+                <UTooltip v-if="canDelete" text="Excluir compra">
+                  <UButton
+                    icon="i-lucide-trash-2"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    :loading="isDeleting"
+                    @click="requestRemove(row.original as PurchaseItem)"
+                  />
+                </UTooltip>
               </div>
             </template>
           </AppDataTable>
-        </div>
       </div>
     </template>
   </UDashboardPanel>
