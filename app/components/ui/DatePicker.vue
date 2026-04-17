@@ -88,14 +88,7 @@ function clear() {
       :disabled="disabled"
     >
       <div class="flex min-w-0 items-center gap-3">
-        <div class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-elevated ring ring-default">
-          <UIcon name="i-lucide-calendar" class="size-4.5 text-primary" />
-        </div>
-
         <div class="min-w-0">
-          <p class="text-xs uppercase tracking-[0.12em] text-muted">
-            Data
-          </p>
           <p class="truncate text-sm font-medium" :class="displayValue ? 'text-highlighted' : 'text-muted'">
             {{ displayValue || placeholder }}
           </p>
