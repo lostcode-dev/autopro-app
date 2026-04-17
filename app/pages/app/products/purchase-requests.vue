@@ -991,12 +991,8 @@ const lineColumns = [
             </UFormField>
 
             <UFormField label="Preço unitário estimado">
-              <UInput
+              <UiCurrencyInput
                 v-model="item.estimated_unit_price"
-                type="number"
-                min="0"
-                step="0.01"
-                class="w-full"
                 @update:model-value="recalcItem(item)"
               />
             </UFormField>
