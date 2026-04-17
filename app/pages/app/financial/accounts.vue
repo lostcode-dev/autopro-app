@@ -1,114 +1,150 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core'
+import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Contas bancárias' })
 
+type BankAccount = Record<string, any>
+type AccountsResponse = { items: BankAccount[]; total: number; page: number; page_size: number }
+type ViewMode = 'table' | 'card'
+
+const DEFAULT_PAGE_SIZE = 10
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+const MANAGED_QUERY_KEYS = ['search', 'page', 'pageSize', 'view', 'sortBy', 'sortOrder'] as const
+
 const toast = useToast()
 const workshop = useWorkshopPermissions()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const route = useRoute()
+const router = useRouter()
 
 const canRead = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_READ))
 const canCreate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_DELETE))
 
-type BankAccount = Record<string, any>
+function parsePage(v: unknown) {
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
+}
+function parsePageSize(v: unknown) {
+  const n = Number(v)
+  return PAGE_SIZE_OPTIONS.includes(n) ? n : DEFAULT_PAGE_SIZE
+}
+function parseView(v: unknown): ViewMode {
+  return v === 'card' ? 'card' : 'table'
+}
 
-const { data, status, refresh } = await useAsyncData(
-  'bank-accounts-list',
-  () => requestFetch<BankAccount[]>('/api/bank-accounts', { headers: requestHeaders })
+const search = ref(typeof route.query.search === 'string' ? route.query.search : '')
+const debouncedSearch = ref(search.value)
+const page = ref(parsePage(route.query.page))
+const pageSize = ref(parsePageSize(route.query.pageSize))
+const viewMode = ref<ViewMode>(parseView(route.query.view))
+
+const DEFAULT_SORT = { id: 'account_name', desc: false }
+const sorting = ref<SortingState>(
+  typeof route.query.sortBy === 'string' && route.query.sortBy
+    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
+    : [DEFAULT_SORT],
 )
 
-// ─── Modal ────────────────────────────────────────
-const showModal = ref(false)
-const isEditing = ref(false)
-const isSaving = ref(false)
-const isDeleting = ref(false)
-const selectedId = ref<string | null>(null)
+const requestQuery = computed(() => ({
+  search: debouncedSearch.value || undefined,
+  page: page.value,
+  page_size: pageSize.value,
+  sort_by: sorting.value[0]?.id || undefined,
+  sort_order: sorting.value[0] ? (sorting.value[0].desc ? 'desc' : 'asc') : undefined,
+}))
 
-const emptyForm = () => ({
-  name: '',
-  bank_name: '',
-  bank_code: '',
-  agency_number: '',
-  agency_digit: '',
-  account_number: '',
-  account_digit: '',
-  account_type: 'checking' as string,
-  initial_balance: '' as string | number,
-  pix_key_type: '',
-  pix_key: '',
-  is_default: false,
-  is_active: true
+const { data, status, refresh } = await useAsyncData(
+  () => `bank-accounts-${debouncedSearch.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
+  async () => {
+    if (!canRead.value)
+      return { items: [], total: 0, page: 1, page_size: pageSize.value } satisfies AccountsResponse
+    return requestFetch<AccountsResponse>('/api/bank-accounts', { headers: requestHeaders, query: requestQuery.value })
+  },
+  {
+    watch: [requestQuery],
+    default: () => ({ items: [], total: 0, page: 1, page_size: pageSize.value }),
+  },
+)
+
+const items = computed(() => data.value?.items ?? [])
+const total = computed(() => data.value?.total ?? 0)
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+
+function buildManagedQuery() {
+  return {
+    search: search.value || undefined,
+    page: page.value > 1 ? String(page.value) : undefined,
+    pageSize: pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
+    view: viewMode.value !== 'table' ? viewMode.value : undefined,
+    sortBy: sorting.value[0]?.id || undefined,
+    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined,
+  }
+}
+
+async function syncQuery() {
+  const nextQuery = Object.fromEntries(
+    Object.entries(route.query).filter(([k]) => !MANAGED_QUERY_KEYS.includes(k as typeof MANAGED_QUERY_KEYS[number])),
+  ) as Record<string, string | string[] | undefined>
+  Object.assign(nextQuery, buildManagedQuery())
+  if (JSON.stringify(route.query) === JSON.stringify(nextQuery)) return
+  await router.replace({ query: nextQuery })
+}
+
+watch(() => route.query, (query) => {
+  const nextSearch = typeof query.search === 'string' ? query.search : ''
+  const nextPage = parsePage(query.page)
+  const nextPageSize = parsePageSize(query.pageSize)
+  const nextView = parseView(query.view)
+  if (search.value !== nextSearch) { search.value = nextSearch; debouncedSearch.value = nextSearch }
+  if (page.value !== nextPage) page.value = nextPage
+  if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize
+  if (viewMode.value !== nextView) viewMode.value = nextView
+  const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : ''
+  const nextSortDesc = query.sortOrder === 'desc'
+  const cur = sorting.value[0]
+  if (nextSortBy) {
+    if (!cur || cur.id !== nextSortBy || cur.desc !== nextSortDesc)
+      sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
+  }
+  else if (!cur || cur.id !== DEFAULT_SORT.id || cur.desc !== DEFAULT_SORT.desc) {
+    sorting.value = [DEFAULT_SORT]
+  }
 })
 
-const form = reactive(emptyForm())
+watchDebounced(search, async (val) => { debouncedSearch.value = val; page.value = 1; await syncQuery() }, { debounce: 300, maxWait: 800 })
+watch(page, async () => { if (page.value > totalPages.value && totalPages.value > 0) page.value = totalPages.value; await syncQuery() })
+watch(pageSize, async () => { page.value = 1; await syncQuery() })
+watch(viewMode, syncQuery)
+watch(sorting, async () => { page.value = 1; await syncQuery() })
 
-function openCreate() {
-  Object.assign(form, emptyForm())
-  isEditing.value = false
-  selectedId.value = null
-  showModal.value = true
-}
+// ─── Row selection ───────────────────────────────────────────────────────────
+const rowSelection = ref<RowSelectionState>({})
+const selectedIds = computed(() => Object.entries(rowSelection.value).filter(([, v]) => v).map(([id]) => id))
+const selectedCount = computed(() => selectedIds.value.length)
+watch(viewMode, () => { rowSelection.value = {} })
 
-function openEdit(a: BankAccount) {
-  Object.assign(form, {
-    name: a.name ?? '',
-    bank_name: a.bank_name ?? '',
-    bank_code: a.bank_code ?? '',
-    agency_number: a.agency_number ?? '',
-    agency_digit: a.agency_digit ?? '',
-    account_number: a.account_number ?? '',
-    account_digit: a.account_digit ?? '',
-    account_type: a.account_type ?? 'checking',
-    initial_balance: a.initial_balance ?? '',
-    pix_key_type: a.pix_key_type ?? '',
-    pix_key: a.pix_key ?? '',
-    is_default: a.is_default ?? false,
-    is_active: a.is_active ?? true
-  })
-  isEditing.value = true
-  selectedId.value = a.id
-  showModal.value = true
-}
+// ─── Modal / CRUD ─────────────────────────────────────────────────────────────
+const showModal = ref(false)
+const selectedAccount = ref<BankAccount | null>(null)
+const isDeleting = ref(false)
+const showDeleteModal = ref(false)
+const accountPendingDeletion = ref<BankAccount | null>(null)
+const showBulkDeleteModal = ref(false)
+const isBulkDeleting = ref(false)
 
-async function save() {
-  if (isSaving.value) return
-  if (!form.name) { toast.add({ title: 'Nome obrigatório', color: 'warning' }); return }
-  isSaving.value = true
-  try {
-    const body: Record<string, any> = {
-      name: form.name,
-      bank_name: form.bank_name || null,
-      bank_code: form.bank_code || null,
-      agency_number: form.agency_number || null,
-      agency_digit: form.agency_digit || null,
-      account_number: form.account_number || null,
-      account_digit: form.account_digit || null,
-      account_type: form.account_type || null,
-      initial_balance: form.initial_balance !== '' ? Number(form.initial_balance) : null,
-      pix_key_type: form.pix_key_type || null,
-      pix_key: form.pix_key || null,
-      is_default: form.is_default,
-      is_active: form.is_active
-    }
-    if (isEditing.value && selectedId.value) {
-      await $fetch(`/api/bank-accounts/${selectedId.value}`, { method: 'PUT', body })
-      toast.add({ title: 'Conta atualizada', color: 'success' })
-    } else {
-      await $fetch('/api/bank-accounts', { method: 'POST', body })
-      toast.add({ title: 'Conta criada', color: 'success' })
-    }
-    showModal.value = false
-    await refresh()
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
-  } finally {
-    isSaving.value = false
-  }
+function openCreate() { selectedAccount.value = null; showModal.value = true }
+function openEdit(a: BankAccount) { selectedAccount.value = a; showModal.value = true }
+
+function requestRemove(a: BankAccount) {
+  if (isDeleting.value) return
+  accountPendingDeletion.value = a
+  showDeleteModal.value = true
 }
 
 async function remove(a: BankAccount) {
@@ -117,71 +153,58 @@ async function remove(a: BankAccount) {
   try {
     await $fetch(`/api/bank-accounts/${a.id}`, { method: 'DELETE' })
     toast.add({ title: 'Conta removida', color: 'success' })
+    showDeleteModal.value = false
+    accountPendingDeletion.value = null
+    if (items.value.length === 1 && page.value > 1) page.value -= 1
     await refresh()
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+  }
+  catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover', color: 'error' })
-  } finally {
+  }
+  finally {
     isDeleting.value = false
   }
 }
 
-const accountTypeOptions = [
-  { label: 'Conta corrente', value: 'checking' },
-  { label: 'Poupança', value: 'savings' },
-  { label: 'Caixa', value: 'cash' },
-  { label: 'Outro', value: 'other' }
-]
+async function confirmBulkDelete() {
+  if (!selectedIds.value.length || isBulkDeleting.value) return
+  isBulkDeleting.value = true
+  try {
+    await Promise.all(selectedIds.value.map(id => $fetch(`/api/bank-accounts/${id}`, { method: 'DELETE' })))
+    toast.add({ title: `${selectedIds.value.length} conta(s) removida(s)`, color: 'success' })
+    rowSelection.value = {}
+    showBulkDeleteModal.value = false
+    await refresh()
+  }
+  catch {
+    toast.add({ title: 'Erro ao excluir contas', color: 'error' })
+  }
+  finally {
+    isBulkDeleting.value = false
+  }
+}
 
-const pixKeyTypeOptions = [
-  { label: 'CPF/CNPJ', value: 'cpf_cnpj' },
-  { label: 'E-mail', value: 'email' },
-  { label: 'Telefone', value: 'phone' },
-  { label: 'Chave aleatória', value: 'random' }
-]
+const accountTypeLabel = (type: string) =>
+  ({ checking: 'Corrente', savings: 'Poupança', cash: 'Caixa', other: 'Outro' }[type] ?? type)
 
 const formatCurrency = (val: number | null) =>
-  val != null
-    ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val)
-    : '-'
+  val != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val) : '-'
 
-const columns = [
-  { accessorKey: 'name', header: 'Nome' },
-  { accessorKey: 'bank_name', header: 'Banco' },
-  { accessorKey: 'account_type', header: 'Tipo' },
-  {
-    accessorKey: 'initial_balance',
-    header: 'Saldo inicial',
-    cell: ({ row }: { row: { original: BankAccount } }) => formatCurrency(row.original.initial_balance)
-  },
-  {
-    accessorKey: 'is_default',
-    header: 'Padrão',
-    cell: ({ row }: { row: { original: BankAccount } }) => row.original.is_default ? 'Sim' : 'Não'
-  },
-  {
-    accessorKey: 'is_active',
-    header: 'Status',
-    cell: ({ row }: { row: { original: BankAccount } }) => row.original.is_active ? 'Ativa' : 'Inativa'
-  },
-  { id: 'actions', header: '' }
+const lineColumns = [
+  { accessorKey: 'account_name', header: 'Nome', enableSorting: true },
+  { accessorKey: 'account_type', header: 'Tipo', enableSorting: true },
+  { accessorKey: 'bank_name', header: 'Banco', enableSorting: true },
+  { accessorKey: 'initial_balance', header: 'Saldo inicial', enableSorting: false },
+  { accessorKey: 'is_active', header: 'Status', enableSorting: false },
+  { id: 'actions', header: 'Ações', enableSorting: false },
 ]
 </script>
 
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Contas bancárias">
-        <template #right>
-          <UButton
-            v-if="canCreate"
-            label="Nova conta"
-            icon="i-lucide-plus"
-            color="neutral"
-            @click="openCreate"
-          />
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Contas bancárias" />
     </template>
 
     <template #body>
@@ -191,127 +214,208 @@ const columns = [
         </p>
       </div>
 
-      <template v-else>
-        <div v-if="status === 'pending'" class="p-4 space-y-3">
-          <USkeleton v-for="i in 5" :key="i" class="h-10 w-full" />
-        </div>
+      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div class="flex min-h-0 flex-1 flex-col p-4">
+          <AppDataTable
+            v-model:display-mode="viewMode"
+            v-model:search-term="search"
+            v-model:page="page"
+            v-model:page-size="pageSize"
+            v-model:sorting="sorting"
+            v-model:row-selection="rowSelection"
+            :columns="lineColumns"
+            :data="items"
+            :loading="status === 'pending'"
+            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+            :selectable="viewMode === 'table'"
+            :sticky-header="viewMode === 'table'"
+            :get-row-id="(row) => String(row.id ?? '')"
+            :page-size-options="PAGE_SIZE_OPTIONS"
+            :total="total"
+            search-placeholder="Buscar por nome ou banco..."
+            :show-search="true"
+            :show-view-mode-toggle="true"
+            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+            empty-icon="i-lucide-landmark"
+            empty-title="Nenhuma conta encontrada"
+            empty-description="Cadastre uma conta bancária para começar."
+          >
+            <template #toolbar-right>
+              <UTooltip v-if="canDelete" :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionada(s)` : 'Excluir seleção'">
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="outline"
+                  size="sm"
+                  :disabled="selectedCount === 0"
+                  @click="showBulkDeleteModal = true"
+                />
+              </UTooltip>
+              <UButton v-if="canCreate" label="Nova conta" icon="i-lucide-plus" size="sm" @click="openCreate" />
+            </template>
 
-        <UTable
-          v-else
-          :columns="columns"
-          :data="data || []"
-          class="min-h-0 flex-1"
-        >
-          <template #actions-cell="{ row }">
-            <div class="flex items-center gap-2 justify-end">
-              <UButton
-                v-if="canUpdate"
-                icon="i-lucide-pencil"
-                color="neutral"
-                variant="ghost"
+            <template #account_name-cell="{ row }">
+              <div class="flex items-center gap-3">
+                <div class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/12">
+                  <UIcon name="i-lucide-landmark" class="size-4 text-primary" />
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate font-semibold text-highlighted">
+                    {{ row.original.account_name }}
+                  </p>
+                  <p v-if="row.original.bank_name" class="truncate text-xs text-muted">
+                    {{ row.original.bank_name }}
+                  </p>
+                </div>
+              </div>
+            </template>
+
+            <template #account_type-cell="{ row }">
+              <UBadge :label="accountTypeLabel(row.original.account_type as string)" color="neutral" variant="subtle" size="xs" />
+            </template>
+
+            <template #initial_balance-cell="{ row }">
+              <span class="text-sm text-muted">{{ formatCurrency(row.original.initial_balance as number | null) }}</span>
+            </template>
+
+            <template #is_active-cell="{ row }">
+              <UBadge
+                :label="row.original.is_active ? 'Ativa' : 'Inativa'"
+                :color="row.original.is_active ? 'success' : 'neutral'"
+                variant="subtle"
                 size="xs"
-                @click="openEdit(row.original)"
               />
-              <UButton
-                v-if="canDelete"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                :loading="isDeleting"
-                @click="remove(row.original)"
-              />
-            </div>
-          </template>
-        </UTable>
-      </template>
+            </template>
+
+            <template #actions-cell="{ row }">
+              <div class="flex items-center justify-end gap-2">
+                <UButton
+                  v-if="canUpdate"
+                  icon="i-lucide-pencil"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="openEdit(row.original as BankAccount)"
+                />
+                <UButton
+                  v-if="canDelete"
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  :loading="isDeleting"
+                  @click="requestRemove(row.original as BankAccount)"
+                />
+              </div>
+            </template>
+
+            <template #card="{ item: account }">
+              <UCard class="border border-default/80 shadow-sm">
+                <div class="flex items-start gap-4">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12">
+                    <UIcon name="i-lucide-landmark" class="size-5 text-primary" />
+                  </div>
+                  <div class="min-w-0 flex-1 space-y-3">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0 space-y-1">
+                        <h3 class="truncate text-base font-semibold text-highlighted">
+                          {{ account.account_name }}
+                        </h3>
+                        <div class="flex items-center gap-2">
+                          <UBadge :label="accountTypeLabel(account.account_type as string)" color="neutral" variant="subtle" size="xs" />
+                          <UBadge
+                            :label="account.is_active ? 'Ativa' : 'Inativa'"
+                            :color="account.is_active ? 'success' : 'neutral'"
+                            variant="subtle"
+                            size="xs"
+                          />
+                        </div>
+                      </div>
+                      <div class="flex shrink-0 items-center gap-1">
+                        <UButton
+                          v-if="canUpdate"
+                          icon="i-lucide-pencil"
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
+                          @click="openEdit(account as BankAccount)"
+                        />
+                        <UButton
+                          v-if="canDelete"
+                          icon="i-lucide-trash-2"
+                          color="error"
+                          variant="ghost"
+                          size="xs"
+                          @click="requestRemove(account as BankAccount)"
+                        />
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-sm text-muted">
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-lucide-building-2" class="size-4 shrink-0" />
+                        <span class="truncate">{{ account.bank_name || 'Banco não informado' }}</span>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-lucide-wallet" class="size-4 shrink-0" />
+                        <span class="truncate">{{ formatCurrency(account.initial_balance as number | null) }}</span>
+                      </div>
+                      <div v-if="account.branch" class="flex items-center gap-2">
+                        <UIcon name="i-lucide-git-branch" class="size-4 shrink-0" />
+                        <span class="truncate">Ag. {{ account.branch }}</span>
+                      </div>
+                      <div v-if="account.account_number" class="flex items-center gap-2">
+                        <UIcon name="i-lucide-hash" class="size-4 shrink-0" />
+                        <span class="truncate">Cta. {{ account.account_number }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </UCard>
+            </template>
+          </AppDataTable>
+        </div>
+      </div>
     </template>
   </UDashboardPanel>
 
-  <UModal v-model:open="showModal" :title="isEditing ? 'Editar conta' : 'Nova conta'" :ui="{ body: 'overflow-y-auto max-h-[70vh]' }">
-    <template #body>
-      <div class="space-y-4">
-        <UFormField label="Nome da conta" required>
-          <UInput v-model="form.name" class="w-full" placeholder="Ex: Conta principal Bradesco" />
-        </UFormField>
+  <FinancialAccountsFormModal
+    v-model:open="showModal"
+    :account="selectedAccount"
+    @saved="refresh"
+  />
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <UFormField label="Banco">
-            <UInput v-model="form.bank_name" class="w-full" />
-          </UFormField>
-          <UFormField label="Código do banco">
-            <UInput v-model="form.bank_code" class="w-full" />
-          </UFormField>
-          <UFormField label="Agência">
-            <UInput v-model="form.agency_number" class="w-full" />
-          </UFormField>
-          <UFormField label="Dígito da agência">
-            <UInput v-model="form.agency_digit" class="w-full" maxlength="1" />
-          </UFormField>
-          <UFormField label="Conta">
-            <UInput v-model="form.account_number" class="w-full" />
-          </UFormField>
-          <UFormField label="Dígito da conta">
-            <UInput v-model="form.account_digit" class="w-full" maxlength="1" />
-          </UFormField>
-          <UFormField label="Tipo de conta">
-            <USelectMenu
-              v-model="form.account_type"
-              :items="accountTypeOptions"
-              value-key="value"
-              class="w-full"
-            />
-          </UFormField>
-          <UFormField label="Saldo inicial">
-            <UInput
-              v-model="form.initial_balance"
-              type="number"
-              min="0"
-              step="0.01"
-              class="w-full"
-            />
-          </UFormField>
-        </div>
-
-        <USeparator label="PIX" />
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <UFormField label="Tipo de chave PIX">
-            <USelectMenu
-              v-model="form.pix_key_type"
-              :items="pixKeyTypeOptions"
-              value-key="value"
-              class="w-full"
-              placeholder="Nenhum"
-            />
-          </UFormField>
-          <UFormField v-if="form.pix_key_type" label="Chave PIX">
-            <UInput v-model="form.pix_key" class="w-full" />
-          </UFormField>
-        </div>
-
-        <div class="flex gap-4">
-          <UCheckbox v-model="form.is_default" label="Conta padrão" />
-          <UCheckbox v-model="form.is_active" label="Ativa" />
-        </div>
-      </div>
+  <AppConfirmModal
+    v-model:open="showDeleteModal"
+    title="Confirmar exclusão"
+    confirm-label="Excluir conta"
+    confirm-color="error"
+    :loading="isDeleting"
+    @confirm="remove(accountPendingDeletion!)"
+    @update:open="(v: boolean) => { showDeleteModal = v; if (!v && !isDeleting) accountPendingDeletion = null }"
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir a conta
+        <strong class="text-highlighted">{{ accountPendingDeletion?.account_name || 'esta conta' }}</strong>?
+        Esta ação não pode ser desfeita.
+      </p>
     </template>
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          label="Cancelar"
-          color="neutral"
-          variant="ghost"
-          @click="showModal = false"
-        />
-        <UButton
-          label="Salvar"
-          color="neutral"
-          :loading="isSaving"
-          :disabled="isSaving"
-          @click="save"
-        />
-      </div>
+  </AppConfirmModal>
+
+  <AppConfirmModal
+    v-model:open="showBulkDeleteModal"
+    title="Excluir contas selecionadas"
+    confirm-label="Excluir todas"
+    confirm-color="error"
+    :loading="isBulkDeleting"
+    @confirm="confirmBulkDelete"
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir
+        <strong class="text-highlighted">{{ selectedCount }} conta(s)</strong>?
+        Esta ação não pode ser desfeita.
+      </p>
     </template>
-  </UModal>
+  </AppConfirmModal>
 </template>

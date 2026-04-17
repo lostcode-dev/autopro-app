@@ -743,6 +743,19 @@ const lineColumns = [
                 />
               </UTooltip>
 
+              <UTooltip text="Importar fornecedores">
+                <UButton
+                  v-if="canCreate"
+                  label="Importar"
+                  icon="i-lucide-upload"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="showImportModal = true"
+                />
+              </UTooltip>
+
+
               <UTooltip
                 v-if="canDelete"
                 :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
@@ -757,15 +770,7 @@ const lineColumns = [
                 />
               </UTooltip>
 
-              <UButton
-                v-if="canCreate"
-                label="Importar"
-                icon="i-lucide-upload"
-                color="neutral"
-                variant="outline"
-                size="sm"
-                @click="showImportModal = true"
-              />
+            
 
               <UButton
                 v-if="canCreate"

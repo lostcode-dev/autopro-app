@@ -14,15 +14,35 @@ export default defineEventHandler(async (event) => {
 
   const organizationId = profile.organization_id as string
 
-  const { data: items, error } = await supabase
+  const query = getQuery(event)
+  const page = Math.max(1, Number(query.page) || 1)
+  const pageSize = Math.min(100, Math.max(1, Number(query.page_size) || 20))
+  const from = (page - 1) * pageSize
+  const to = from + pageSize - 1
+
+  let dbQuery = supabase
     .from('payment_terminals')
-    .select('*')
+    .select('*', { count: 'exact' })
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
-    .order('terminal_name', { ascending: true })
+
+  if (query.search) {
+    const s = String(query.search)
+    dbQuery = dbQuery.or(`terminal_name.ilike.%${s}%,provider_company.ilike.%${s}%`)
+  }
+
+  const ALLOWED_SORT = ['terminal_name', 'provider_company', 'created_at'] as const
+  const sortBy = ALLOWED_SORT.includes(query.sort_by as typeof ALLOWED_SORT[number])
+    ? String(query.sort_by)
+    : 'terminal_name'
+  const ascending = String(query.sort_order) !== 'desc'
+
+  dbQuery = dbQuery.order(sortBy, { ascending }).range(from, to)
+
+  const { data: items, count, error } = await dbQuery
 
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
 
-  return { items }
+  return { items, total: count ?? 0, page, page_size: pageSize }
 })
