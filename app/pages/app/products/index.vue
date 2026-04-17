@@ -2,6 +2,7 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { ProductItem, ProductsResponse } from '~/types/products'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Produtos' })
@@ -9,43 +10,6 @@ useSeoMeta({ title: 'Produtos' })
 type ViewMode = 'table' | 'card'
 type ProductTypeFilter = 'all' | 'unit' | 'group'
 type InventoryFilter = 'all' | 'tracked' | 'not_tracked'
-
-type ProductCategory = {
-  id: string
-  name: string
-}
-
-type GroupItem = {
-  descricao: string
-  quantidade: number
-  unidade_medida: string
-  preco_custo: number
-  preco_venda: number
-  controlar_estoque: boolean
-  quantidade_inicial_estoque: number
-}
-
-type ProductItem = {
-  id: string
-  name: string
-  code: string
-  type: 'unit' | 'group'
-  category_id: string | null
-  track_inventory: boolean
-  initial_stock_quantity: number | null
-  unit_sale_price: number | null
-  unit_cost_price: number | null
-  notes: string | null
-  group_items?: GroupItem[] | null
-  product_categories?: ProductCategory | null
-}
-
-type ProductsResponse = {
-  items: ProductItem[]
-  total: number
-  page: number
-  page_size: number
-}
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
@@ -128,7 +92,8 @@ const requestQuery = computed(() => ({
 }))
 
 const { data, status, refresh } = await useAsyncData(
-  () => `products-${debouncedSearch.value}-${typeFilter.value}-${inventoryFilter.value}-${categoryFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
+  () =>
+    `products-${debouncedSearch.value}-${typeFilter.value}-${inventoryFilter.value}-${categoryFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
   async () => {
     if (!canRead.value) {
       return {
@@ -157,29 +122,17 @@ const { data, status, refresh } = await useAsyncData(
 
 const { data: categoriesData, refresh: refreshCategories } = await useAsyncData(
   'products-categories-options',
-  () => requestFetch<{ items: ProductCategory[] }>('/api/product-categories', { headers: requestHeaders }),
+  () =>
+    requestFetch<{ items: import('~/types/products').ProductCategory[] }>('/api/product-categories', {
+      headers: requestHeaders
+    }),
   { default: () => ({ items: [] }) }
 )
 
 const productItems = computed(() => data.value?.items ?? [])
 const totalProducts = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalProducts.value / pageSize.value)))
-
-const activeFiltersCount = computed(() => {
-  let count = 0
-  if (typeFilter.value !== 'all') count++
-  if (inventoryFilter.value !== 'all') count++
-  if (categoryFilter.value !== 'all') count++
-  return count
-})
-
-const categoryOptions = computed(() => [
-  { label: 'Todas as categorias', value: 'all' },
-  ...(categoriesData.value?.items ?? []).map(category => ({
-    label: category.name,
-    value: category.id
-  }))
-])
+const categoriesList = computed(() => categoriesData.value?.items ?? [])
 
 function buildManagedQuery() {
   return {
@@ -226,23 +179,12 @@ watch(
       debouncedSearch.value = nextSearch
     }
 
-    if (typeFilter.value !== nextType)
-      typeFilter.value = nextType
-
-    if (inventoryFilter.value !== nextInventory)
-      inventoryFilter.value = nextInventory
-
-    if (categoryFilter.value !== nextCategory)
-      categoryFilter.value = nextCategory
-
-    if (page.value !== nextPage)
-      page.value = nextPage
-
-    if (pageSize.value !== nextPageSize)
-      pageSize.value = nextPageSize
-
-    if (viewMode.value !== nextView)
-      viewMode.value = nextView
+    if (typeFilter.value !== nextType) typeFilter.value = nextType
+    if (inventoryFilter.value !== nextInventory) inventoryFilter.value = nextInventory
+    if (categoryFilter.value !== nextCategory) categoryFilter.value = nextCategory
+    if (page.value !== nextPage) page.value = nextPage
+    if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize
+    if (viewMode.value !== nextView) viewMode.value = nextView
 
     const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : ''
     const nextSortDesc = query.sortOrder === 'desc'
@@ -282,13 +224,6 @@ watch(categoryFilter, async () => {
   await syncQuery()
 })
 
-watch(page, async () => {
-  if (page.value > totalPages.value && totalPages.value > 0)
-    page.value = totalPages.value
-
-  await syncQuery()
-})
-
 watch(pageSize, async () => {
   page.value = 1
   await syncQuery()
@@ -301,14 +236,17 @@ watch(sorting, async () => {
   await syncQuery()
 })
 
-function formatCurrency(value: number | null) {
-  if (value == null)
-    return '-'
+watch(page, async () => {
+  if (page.value > totalPages.value && totalPages.value > 0)
+    page.value = totalPages.value
+  await syncQuery()
+})
 
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value)
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatCurrency(value: number | null) {
+  if (value == null) return '-'
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
 }
 
 function getProductTypeLabel(type: ProductItem['type']) {
@@ -320,208 +258,81 @@ function getStockSummary(product: ProductItem) {
     const count = (product.group_items ?? []).length
     return `${count} ${count === 1 ? 'item' : 'itens'}`
   }
-  if (!product.track_inventory)
-    return '-'
+  if (!product.track_inventory) return '-'
   return `${product.initial_stock_quantity ?? 0} un`
 }
 
 function getTotalCost(product: ProductItem): number | null {
   if (product.type === 'group') {
-    return (product.group_items ?? []).reduce((acc, item) => acc + (item.preco_custo ?? 0) * (item.quantidade ?? 0), 0)
+    return (product.group_items ?? []).reduce(
+      (acc, item) => acc + (item.preco_custo ?? 0) * (item.quantidade ?? 0),
+      0
+    )
   }
   return product.unit_cost_price
 }
 
 function getTotalSale(product: ProductItem): number | null {
   if (product.type === 'group') {
-    return (product.group_items ?? []).reduce((acc, item) => acc + (item.preco_venda ?? 0) * (item.quantidade ?? 0), 0)
+    return (product.group_items ?? []).reduce(
+      (acc, item) => acc + (item.preco_venda ?? 0) * (item.quantidade ?? 0),
+      0
+    )
   }
   return product.unit_sale_price
 }
 
-const showModal = ref(false)
-const selectedProduct = ref<ProductItem | null>(null)
-const isSaving = ref(false)
-const isDeleting = ref(false)
-const showDeleteModal = ref(false)
-const showBulkDeleteModal = ref(false)
-const productPendingDeletion = ref<ProductItem | null>(null)
-const isBulkDeleting = ref(false)
+// ── Product modal ─────────────────────────────────────────────────────────────
 
-const groupItems = ref<GroupItem[]>([])
-
-const totalGroupCost = computed(() =>
-  groupItems.value.reduce((acc, item) => acc + (item.preco_custo ?? 0) * (item.quantidade ?? 0), 0)
-)
-
-const totalGroupSale = computed(() =>
-  groupItems.value.reduce((acc, item) => acc + (item.preco_venda ?? 0) * (item.quantidade ?? 0), 0)
-)
-
-function addGroupItem() {
-  groupItems.value.push({
-    descricao: '',
-    quantidade: 1,
-    unidade_medida: 'un',
-    preco_custo: 0,
-    preco_venda: 0,
-    controlar_estoque: false,
-    quantidade_inicial_estoque: 0
-  })
-}
-
-function removeGroupItem(index: number) {
-  groupItems.value.splice(index, 1)
-}
-
-const form = reactive({
-  name: '',
-  code: '',
-  type: 'unit' as ProductItem['type'],
-  category_id: '',
-  track_inventory: true,
-  initial_stock_quantity: 0,
-  unit_sale_price: '' as number | string,
-  unit_cost_price: '' as number | string,
-  notes: ''
-})
-
-function resetForm() {
-  Object.assign(form, {
-    name: '',
-    code: '',
-    type: 'unit',
-    category_id: '',
-    track_inventory: true,
-    initial_stock_quantity: 0,
-    unit_sale_price: '',
-    unit_cost_price: '',
-    notes: ''
-  })
-  groupItems.value = []
-}
+const showProductModal = ref(false)
+const editingProduct = ref<ProductItem | null>(null)
+const cloneFromProduct = ref<ProductItem | null>(null)
 
 function openCreate() {
-  selectedProduct.value = null
-  resetForm()
-  showModal.value = true
+  editingProduct.value = null
+  cloneFromProduct.value = null
+  showProductModal.value = true
 }
 
 function openEdit(product: ProductItem) {
-  selectedProduct.value = product
-  Object.assign(form, {
-    name: product.name ?? '',
-    code: product.code ?? '',
-    type: product.type ?? 'unit',
-    category_id: product.category_id ?? '',
-    track_inventory: product.track_inventory ?? false,
-    initial_stock_quantity: product.initial_stock_quantity ?? 0,
-    unit_sale_price: product.unit_sale_price ?? '',
-    unit_cost_price: product.unit_cost_price ?? '',
-    notes: product.notes ?? ''
-  })
-  groupItems.value = product.group_items ? [...product.group_items] : []
-  showModal.value = true
+  editingProduct.value = product
+  cloneFromProduct.value = null
+  showProductModal.value = true
 }
 
 function openClone(product: ProductItem) {
-  selectedProduct.value = null
-  Object.assign(form, {
-    name: `${product.name} (Cópia)`,
-    code: `${product.code}-COPIA`,
-    type: product.type,
-    category_id: product.category_id ?? '',
-    track_inventory: product.track_inventory ?? false,
-    initial_stock_quantity: product.initial_stock_quantity ?? 0,
-    unit_sale_price: product.unit_sale_price ?? '',
-    unit_cost_price: product.unit_cost_price ?? '',
-    notes: product.notes ?? ''
-  })
-  groupItems.value = product.group_items ? [...product.group_items] : []
-  showModal.value = true
+  editingProduct.value = null
+  cloneFromProduct.value = product
+  showProductModal.value = true
 }
 
-async function save() {
-  if (isSaving.value)
-    return
-
-  if (!form.name.trim() || !form.code.trim()) {
-    toast.add({
-      title: 'Preencha nome e código do produto',
-      color: 'warning'
-    })
-    return
-  }
-
-  isSaving.value = true
-
-  try {
-    const body = {
-      name: form.name.trim(),
-      code: form.code.trim(),
-      type: form.type,
-      category_id: form.category_id || null,
-      track_inventory: form.type === 'unit' ? form.track_inventory : false,
-      initial_stock_quantity: form.type === 'unit' && form.track_inventory
-        ? Number(form.initial_stock_quantity || 0)
-        : 0,
-      unit_sale_price: form.type === 'unit' ? (form.unit_sale_price === '' ? null : Number(form.unit_sale_price)) : null,
-      unit_cost_price: form.type === 'unit' ? (form.unit_cost_price === '' ? null : Number(form.unit_cost_price)) : null,
-      group_items: form.type === 'group' ? groupItems.value : null,
-      notes: form.notes || null
-    }
-
-    if (selectedProduct.value?.id) {
-      await $fetch(`/api/products/${selectedProduct.value.id}`, {
-        method: 'PUT',
-        body
-      })
-      toast.add({ title: 'Produto atualizado', color: 'success' })
-    } else {
-      await $fetch('/api/products', {
-        method: 'POST',
-        body
-      })
-      toast.add({ title: 'Produto criado', color: 'success' })
-    }
-
-    showModal.value = false
-    await refresh()
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({
-      title: 'Erro ao salvar produto',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
-      color: 'error'
-    })
-  } finally {
-    isSaving.value = false
-  }
+async function onProductSaved() {
+  await refresh()
 }
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+
+const isDeleting = ref(false)
+const showDeleteModal = ref(false)
+const productPendingDeletion = ref<ProductItem | null>(null)
 
 function requestRemove(product: ProductItem) {
-  if (isDeleting.value)
-    return
-
+  if (isDeleting.value) return
   productPendingDeletion.value = product
   showDeleteModal.value = true
 }
 
-async function remove(product: ProductItem) {
-  if (isDeleting.value)
-    return
-
+async function confirmRemove() {
+  if (!productPendingDeletion.value || isDeleting.value) return
   isDeleting.value = true
 
   try {
-    await $fetch(`/api/products/${product.id}`, { method: 'DELETE' })
+    await $fetch(`/api/products/${productPendingDeletion.value.id}`, { method: 'DELETE' })
     toast.add({ title: 'Produto removido', color: 'success' })
     showDeleteModal.value = false
     productPendingDeletion.value = null
 
-    if (productItems.value.length === 1 && page.value > 1)
-      page.value -= 1
-
+    if (productItems.value.length === 1 && page.value > 1) page.value -= 1
     await refresh()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
@@ -535,12 +346,7 @@ async function remove(product: ProductItem) {
   }
 }
 
-async function confirmRemove() {
-  if (!productPendingDeletion.value)
-    return
-
-  await remove(productPendingDeletion.value)
-}
+// ── Bulk delete ───────────────────────────────────────────────────────────────
 
 const rowSelection = ref<RowSelectionState>({})
 const selectedIds = computed(() =>
@@ -549,39 +355,35 @@ const selectedIds = computed(() =>
     .map(([id]) => id)
 )
 const selectedCount = computed(() => selectedIds.value.length)
+const showBulkDeleteModal = ref(false)
+const isBulkDeleting = ref(false)
 
 watch(viewMode, () => {
   rowSelection.value = {}
 })
 
 async function confirmBulkDelete() {
-  if (!selectedIds.value.length || isBulkDeleting.value)
-    return
-
+  if (!selectedIds.value.length || isBulkDeleting.value) return
   isBulkDeleting.value = true
 
   try {
-    await Promise.all(
-      selectedIds.value.map(id => $fetch(`/api/products/${id}`, { method: 'DELETE' }))
-    )
-
-    toast.add({
-      title: `${selectedIds.value.length} produto(s) removido(s)`,
-      color: 'success'
-    })
-
+    await Promise.all(selectedIds.value.map(id => $fetch(`/api/products/${id}`, { method: 'DELETE' })))
+    toast.add({ title: `${selectedIds.value.length} produto(s) removido(s)`, color: 'success' })
     rowSelection.value = {}
     showBulkDeleteModal.value = false
     await refresh()
   } catch {
-    toast.add({
-      title: 'Erro ao excluir produtos',
-      color: 'error'
-    })
+    toast.add({ title: 'Erro ao excluir produtos', color: 'error' })
   } finally {
     isBulkDeleting.value = false
   }
 }
+
+// ── Categories modal ──────────────────────────────────────────────────────────
+
+const showCategoriesModal = ref(false)
+
+// ── Export CSV ────────────────────────────────────────────────────────────────
 
 async function exportCsv() {
   try {
@@ -608,29 +410,22 @@ async function exportCsv() {
       return
     }
 
-    const headers = [
-      'nome',
-      'codigo',
-      'tipo',
-      'categoria',
-      'controla_estoque',
-      'estoque_inicial',
-      'preco_venda',
-      'preco_custo',
-      'observacoes'
-    ]
-
-    const rows = all.items.map(item => [
-      item.name,
-      item.code,
-      item.type,
-      item.product_categories?.name ?? '',
-      item.track_inventory ? 'sim' : 'nao',
-      item.initial_stock_quantity ?? 0,
-      item.unit_sale_price ?? '',
-      item.unit_cost_price ?? '',
-      item.notes ?? ''
-    ].map(value => `"${String(value).replace(/"/g, '""')}"`).join(','))
+    const headers = ['nome', 'codigo', 'tipo', 'categoria', 'controla_estoque', 'estoque_inicial', 'preco_venda', 'preco_custo', 'observacoes']
+    const rows = all.items.map(item =>
+      [
+        item.name,
+        item.code,
+        item.type,
+        item.product_categories?.name ?? '',
+        item.track_inventory ? 'sim' : 'nao',
+        item.initial_stock_quantity ?? 0,
+        item.unit_sale_price ?? '',
+        item.unit_cost_price ?? '',
+        item.notes ?? ''
+      ]
+        .map(value => `"${String(value).replace(/"/g, '""')}"`)
+        .join(',')
+    )
 
     const csv = [headers.join(','), ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -645,87 +440,7 @@ async function exportCsv() {
   }
 }
 
-const typeFilterOptions = [
-  { label: 'Todos os tipos', value: 'all' },
-  { label: 'Unitário', value: 'unit' },
-  { label: 'Grupo', value: 'group' }
-]
-
-const inventoryFilterOptions = [
-  { label: 'Todo o catálogo', value: 'all' },
-  { label: 'Com estoque', value: 'tracked' },
-  { label: 'Sem estoque', value: 'not_tracked' }
-]
-
-const productTypeOptions = [
-  { label: 'Unitário', value: 'unit' },
-  { label: 'Grupo', value: 'group' }
-]
-
-// Category management
-const showCategoriesModal = ref(false)
-const categoryModalForm = reactive({ id: '', name: '' })
-const isSavingCategory = ref(false)
-const isDeletingCategory = ref(false)
-const categoryPendingDelete = ref<ProductCategory | null>(null)
-const showDeleteCategoryModal = ref(false)
-
-function resetCategoryForm() {
-  categoryModalForm.id = ''
-  categoryModalForm.name = ''
-}
-
-function editCategory(cat: ProductCategory) {
-  categoryModalForm.id = cat.id
-  categoryModalForm.name = cat.name
-}
-
-async function saveCategory() {
-  if (!categoryModalForm.name.trim() || isSavingCategory.value) return
-  isSavingCategory.value = true
-  try {
-    if (categoryModalForm.id) {
-      await $fetch(`/api/product-categories/${categoryModalForm.id}`, {
-        method: 'PUT',
-        body: { name: categoryModalForm.name }
-      })
-      toast.add({ title: 'Categoria atualizada', color: 'success' })
-    } else {
-      await $fetch('/api/product-categories', {
-        method: 'POST',
-        body: { name: categoryModalForm.name }
-      })
-      toast.add({ title: 'Categoria criada', color: 'success' })
-    }
-    resetCategoryForm()
-    await refreshCategories()
-  } catch {
-    toast.add({ title: 'Erro ao salvar categoria', color: 'error' })
-  } finally {
-    isSavingCategory.value = false
-  }
-}
-
-function requestDeleteCategory(cat: ProductCategory) {
-  categoryPendingDelete.value = cat
-  showDeleteCategoryModal.value = true
-}
-
-async function confirmDeleteCategory() {
-  if (!categoryPendingDelete.value || isDeletingCategory.value) return
-  isDeletingCategory.value = true
-  try {
-    await $fetch(`/api/product-categories/${categoryPendingDelete.value.id}`, { method: 'DELETE' })
-    toast.add({ title: 'Categoria removida', color: 'success' })
-    showDeleteCategoryModal.value = false
-    categoryPendingDelete.value = null
-    await refreshCategories()
-  } catch {
-    toast.add({ title: 'Erro ao remover categoria', color: 'error' })
-  } finally {
-    isDeletingCategory.value = false
-  }
-}
+// ── Table columns ─────────────────────────────────────────────────────────────
 
 const lineColumns = [
   { accessorKey: 'name', header: 'Produto', enableSorting: true },
@@ -820,46 +535,12 @@ const lineColumns = [
           </template>
 
           <template #filters>
-            <UPopover>
-              <UButton
-                icon="i-lucide-sliders-horizontal"
-                :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
-                color="neutral"
-                variant="outline"
-                size="sm"
-              />
-              <template #content>
-                <div class="w-64 space-y-3 p-3">
-                  <UFormField label="Tipo">
-                    <USelectMenu
-                      v-model="typeFilter"
-                      :items="typeFilterOptions"
-                      value-key="value"
-                      class="w-full"
-                      :search-input="false"
-                    />
-                  </UFormField>
-                  <UFormField label="Estoque">
-                    <USelectMenu
-                      v-model="inventoryFilter"
-                      :items="inventoryFilterOptions"
-                      value-key="value"
-                      class="w-full"
-                      :search-input="false"
-                    />
-                  </UFormField>
-                  <UFormField label="Categoria">
-                    <USelectMenu
-                      v-model="categoryFilter"
-                      :items="categoryOptions"
-                      value-key="value"
-                      class="w-full"
-                      searchable
-                    />
-                  </UFormField>
-                </div>
-              </template>
-            </UPopover>
+            <ProductFilters
+              v-model:type-filter="typeFilter"
+              v-model:inventory-filter="inventoryFilter"
+              v-model:category-filter="categoryFilter"
+              :categories="categoriesList"
+            />
           </template>
 
           <template #name-cell="{ row }">
@@ -936,284 +617,29 @@ const lineColumns = [
           </template>
 
           <template #card="{ item: product }">
-            <UCard class="border border-default/80 shadow-sm">
-              <div class="space-y-4">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0 space-y-2">
-                    <h3 class="truncate text-base font-semibold text-highlighted">
-                      {{ product.name }}
-                    </h3>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <UBadge
-                        :label="getProductTypeLabel((product as ProductItem).type)"
-                        color="neutral"
-                        variant="subtle"
-                        size="xs"
-                      />
-                      <UBadge
-                        v-if="(product as ProductItem).type === 'group'"
-                        :label="`${((product as ProductItem).group_items ?? []).length} itens`"
-                        color="info"
-                        variant="subtle"
-                        size="xs"
-                      />
-                      <UBadge
-                        v-else-if="(product as ProductItem).track_inventory"
-                        label="Estoque controlado"
-                        color="success"
-                        variant="subtle"
-                        size="xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div class="flex shrink-0 items-center gap-1">
-                    <UTooltip v-if="canCreate" text="Clonar produto">
-                      <UButton
-                        icon="i-lucide-copy"
-                        color="neutral"
-                        variant="ghost"
-                        size="xs"
-                        @click="openClone(product as ProductItem)"
-                      />
-                    </UTooltip>
-
-                    <UTooltip v-if="canUpdate" text="Editar produto">
-                      <UButton
-                        icon="i-lucide-pencil"
-                        color="neutral"
-                        variant="ghost"
-                        size="xs"
-                        @click="openEdit(product as ProductItem)"
-                      />
-                    </UTooltip>
-
-                    <UTooltip v-if="canDelete" text="Excluir produto">
-                      <UButton
-                        icon="i-lucide-trash-2"
-                        color="error"
-                        variant="ghost"
-                        size="xs"
-                        :loading="isDeleting"
-                        @click="requestRemove(product as ProductItem)"
-                      />
-                    </UTooltip>
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-scan-line" class="size-4 shrink-0" />
-                    <span class="truncate">{{ (product as ProductItem).code }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-folder-tree" class="size-4 shrink-0" />
-                    <span class="truncate">{{ (product as ProductItem).product_categories?.name || 'Sem categoria' }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-trending-down" class="size-4 shrink-0 text-error" />
-                    <span class="truncate">{{ formatCurrency(getTotalCost(product as ProductItem)) }}</span>
-                  </div>
-                  <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-trending-up" class="size-4 shrink-0 text-success" />
-                    <span class="truncate font-medium text-highlighted">{{ formatCurrency(getTotalSale(product as ProductItem)) }}</span>
-                  </div>
-                </div>
-              </div>
-            </UCard>
+            <ProductCard
+              :product="product as ProductItem"
+              :can-create="canCreate"
+              :can-update="canUpdate"
+              :can-delete="canDelete"
+              :is-deleting="isDeleting"
+              @clone="openClone"
+              @edit="openEdit"
+              @delete="requestRemove"
+            />
           </template>
         </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>
 
-  <UModal
-    v-model:open="showModal"
-    :title="selectedProduct ? 'Editar produto' : 'Novo produto'"
-    :ui="{ body: 'overflow-y-auto max-h-[75vh]' }"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <UFormField label="Nome" required class="sm:col-span-2">
-            <UInput v-model="form.name" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Código" required>
-            <UInput v-model="form.code" class="w-full" />
-          </UFormField>
-
-          <UFormField label="Tipo">
-            <USelectMenu
-              v-model="form.type"
-              :items="productTypeOptions"
-              value-key="value"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField label="Categoria" class="sm:col-span-2">
-            <USelectMenu
-              v-model="form.category_id"
-              :items="categoryOptions.filter(option => option.value !== 'all')"
-              value-key="value"
-              class="w-full"
-              searchable
-              placeholder="Sem categoria"
-            />
-          </UFormField>
-
-          <UFormField v-if="form.type === 'unit'" label="Preço de venda">
-            <UInput
-              v-model="form.unit_sale_price"
-              type="number"
-              min="0"
-              step="0.01"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField v-if="form.type === 'unit'" label="Preço de custo">
-            <UInput
-              v-model="form.unit_cost_price"
-              type="number"
-              min="0"
-              step="0.01"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField
-            v-if="form.type === 'unit' && form.track_inventory"
-            label="Estoque inicial"
-          >
-            <UInput
-              v-model="form.initial_stock_quantity"
-              type="number"
-              min="0"
-              step="1"
-              class="w-full"
-            />
-          </UFormField>
-
-          <UFormField label="Observações" class="sm:col-span-2">
-            <UTextarea v-model="form.notes" class="w-full" :rows="3" />
-          </UFormField>
-        </div>
-
-        <div v-if="form.type === 'unit'" class="flex gap-4">
-          <UCheckbox v-model="form.track_inventory" label="Controlar estoque" />
-        </div>
-
-        <template v-if="form.type === 'group'">
-          <USeparator label="Itens do grupo" />
-
-          <div
-            v-for="(item, index) in groupItems"
-            :key="index"
-            class="rounded-lg border border-default p-3 space-y-3"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-muted">Item {{ index + 1 }}</span>
-              <UButton
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                @click="removeGroupItem(index)"
-              />
-            </div>
-
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <UFormField label="Descrição" required class="sm:col-span-2">
-                <UInput v-model="item.descricao" class="w-full" />
-              </UFormField>
-
-              <UFormField label="Quantidade">
-                <UInput
-                  v-model.number="item.quantidade"
-                  type="number"
-                  min="1"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField label="Unidade">
-                <UInput v-model="item.unidade_medida" class="w-full" placeholder="un" />
-              </UFormField>
-
-              <UFormField label="Preço de custo">
-                <UInput
-                  v-model.number="item.preco_custo"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="w-full"
-                />
-              </UFormField>
-
-              <UFormField label="Preço de venda">
-                <UInput
-                  v-model.number="item.preco_venda"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="w-full"
-                />
-              </UFormField>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between gap-4">
-            <UButton
-              label="Adicionar item"
-              icon="i-lucide-plus"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              @click="addGroupItem"
-            />
-
-            <div class="flex gap-3">
-              <div class="rounded bg-elevated px-3 py-1.5 text-center">
-                <p class="text-xs text-muted">
-                  Custo total
-                </p>
-                <p class="text-sm font-semibold text-highlighted">
-                  {{ formatCurrency(totalGroupCost) }}
-                </p>
-              </div>
-              <div class="rounded bg-elevated px-3 py-1.5 text-center">
-                <p class="text-xs text-muted">
-                  Venda total
-                </p>
-                <p class="text-sm font-semibold text-highlighted">
-                  {{ formatCurrency(totalGroupSale) }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </template>
-      </div>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          label="Cancelar"
-          color="neutral"
-          variant="ghost"
-          @click="showModal = false"
-        />
-        <UButton
-          label="Salvar"
-          :loading="isSaving"
-          :disabled="isSaving"
-          @click="save"
-        />
-      </div>
-    </template>
-  </UModal>
+  <ProductFormModal
+    v-model:open="showProductModal"
+    :product="editingProduct"
+    :clone-from="cloneFromProduct"
+    :categories="categoriesList"
+    @saved="onProductSaved"
+  />
 
   <AppConfirmModal
     v-model:open="showDeleteModal"
@@ -1232,9 +658,7 @@ const lineColumns = [
     <template #description>
       <p class="text-sm text-muted">
         Tem certeza que deseja excluir
-        <strong class="text-highlighted">
-          {{ productPendingDeletion?.name || 'este produto' }}
-        </strong>?
+        <strong class="text-highlighted">{{ productPendingDeletion?.name || 'este produto' }}</strong>?
         Esta ação não pode ser desfeita.
       </p>
     </template>
@@ -1257,96 +681,9 @@ const lineColumns = [
     </template>
   </AppConfirmModal>
 
-  <UModal
+  <ProductCategoriesModal
     v-model:open="showCategoriesModal"
-    title="Gerenciar Categorias"
-    :ui="{ body: 'overflow-y-auto max-h-[65vh]' }"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <div class="flex gap-2">
-          <UInput
-            v-model="categoryModalForm.name"
-            class="flex-1"
-            :placeholder="categoryModalForm.id ? 'Editar nome...' : 'Nova categoria...'"
-            @keydown.enter="saveCategory"
-          />
-          <UButton
-            :label="categoryModalForm.id ? 'Atualizar' : 'Criar'"
-            :loading="isSavingCategory"
-            size="sm"
-            @click="saveCategory"
-          />
-          <UButton
-            v-if="categoryModalForm.id"
-            icon="i-lucide-x"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            @click="resetCategoryForm"
-          />
-        </div>
-
-        <div class="space-y-1.5">
-          <div
-            v-for="cat in categoriesData?.items ?? []"
-            :key="cat.id"
-            class="flex items-center justify-between rounded-lg border border-default px-3 py-2"
-            :class="{ 'border-primary bg-primary/5': categoryModalForm.id === cat.id }"
-          >
-            <span class="text-sm text-highlighted">{{ cat.name }}</span>
-            <div class="flex gap-1">
-              <UButton
-                icon="i-lucide-pencil"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                @click="editCategory(cat)"
-              />
-              <UButton
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                @click="requestDeleteCategory(cat)"
-              />
-            </div>
-          </div>
-
-          <div v-if="!categoriesData?.items?.length" class="py-6 text-center text-sm text-muted">
-            Nenhuma categoria cadastrada
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end">
-        <UButton
-          label="Fechar"
-          color="neutral"
-          variant="ghost"
-          @click="showCategoriesModal = false"
-        />
-      </div>
-    </template>
-  </UModal>
-
-  <AppConfirmModal
-    v-model:open="showDeleteCategoryModal"
-    title="Excluir categoria"
-    confirm-label="Excluir"
-    confirm-color="error"
-    :loading="isDeletingCategory"
-    @confirm="confirmDeleteCategory"
-    @update:open="(value: boolean) => { showDeleteCategoryModal = value; if (!value && !isDeletingCategory) categoryPendingDelete = null }"
-  >
-    <template #description>
-      <p class="text-sm text-muted">
-        Tem certeza que deseja excluir a categoria
-        <strong class="text-highlighted">{{ categoryPendingDelete?.name }}</strong>?
-        Produtos vinculados perderão a categoria.
-      </p>
-    </template>
-  </AppConfirmModal>
+    :categories="categoriesList"
+    @updated="refreshCategories"
+  />
 </template>
