@@ -67,11 +67,11 @@ function removeItem(index: number) {
         </UFormField>
 
         <UFormField label="Preço de custo">
-          <CurrencyInput v-model="item.cost_price" />
+          <UiCurrencyInput v-model="item.cost_price" />
         </UFormField>
 
         <UFormField label="Preço de venda">
-          <CurrencyInput v-model="item.sale_price" />
+          <UiCurrencyInput v-model="item.sale_price" />
         </UFormField>
       </div>
 

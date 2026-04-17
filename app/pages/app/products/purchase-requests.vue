@@ -958,7 +958,7 @@ const lineColumns = [
           </div>
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <UFormField label="Peça / Item do estoque" class="sm:col-span-2">
+            <UFormField label="Peça" class="sm:col-span-2">
               <USelectMenu
                 v-model="item.part_id"
                 :items="partOptions"

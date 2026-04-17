@@ -1091,7 +1091,7 @@ const lineColumns = [
           </UFormField>
 
           <UFormField label="Limite de Crédito (R$)">
-            <CurrencyInput v-model="form.credit_limit" />
+            <UiCurrencyInput v-model="form.credit_limit" />
           </UFormField>
 
           <UFormField label="Observações" class="sm:col-span-2">

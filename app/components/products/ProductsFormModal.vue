@@ -39,6 +39,18 @@ const form = reactive({
 
 const groupItems = ref<GroupItem[]>([])
 
+function createEmptyGroupItem(): GroupItem {
+  return {
+    description: '',
+    quantity: 1,
+    unit: 'un',
+    cost_price: 0,
+    sale_price: 0,
+    track_inventory: false,
+    initial_stock_quantity: 0
+  }
+}
+
 function resetForm() {
   Object.assign(form, {
     name: '',
@@ -68,6 +80,22 @@ function populateFromProduct(source: ProductItem, clone = false) {
   })
   groupItems.value = source.group_items ? [...source.group_items] : []
 }
+
+watch(
+  () => form.type,
+  (type, previousType) => {
+    if (type === previousType)
+      return
+
+    if (type === 'group') {
+      if (!groupItems.value.length)
+        groupItems.value = [createEmptyGroupItem()]
+      return
+    }
+
+    groupItems.value = []
+  }
+)
 
 watch(
   () => props.open,
@@ -181,11 +209,11 @@ async function save() {
           </UFormField>
 
           <UFormField v-if="form.type === 'unit'" label="Preço de venda">
-            <CurrencyInput v-model="form.unit_sale_price" />
+            <UiCurrencyInput v-model="form.unit_sale_price" />
           </UFormField>
 
           <UFormField v-if="form.type === 'unit'" label="Preço de custo">
-            <CurrencyInput v-model="form.unit_cost_price" />
+            <UiCurrencyInput v-model="form.unit_cost_price" />
           </UFormField>
 
           <UFormField
