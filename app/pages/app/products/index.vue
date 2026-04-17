@@ -262,7 +262,7 @@ function getStockSummary(product: ProductItem) {
 function getTotalCost(product: ProductItem): number | null {
   if (product.type === 'group') {
     return (product.group_items ?? []).reduce(
-      (acc, item) => acc + (item.preco_custo ?? 0) * (item.quantidade ?? 0),
+      (acc, item) => acc + (item.cost_price ?? 0) * (item.quantity ?? 0),
       0
     )
   }
@@ -272,7 +272,7 @@ function getTotalCost(product: ProductItem): number | null {
 function getTotalSale(product: ProductItem): number | null {
   if (product.type === 'group') {
     return (product.group_items ?? []).reduce(
-      (acc, item) => acc + (item.preco_venda ?? 0) * (item.quantidade ?? 0),
+      (acc, item) => acc + (item.sale_price ?? 0) * (item.quantity ?? 0),
       0
     )
   }
@@ -567,12 +567,21 @@ const lineColumns = [
           </template>
 
           <template #type-cell="{ row }">
-            <UBadge
-              :label="getProductTypeLabel((row.original as ProductItem).type)"
-              color="neutral"
-              variant="subtle"
-              size="xs"
-            />
+            <div class="flex items-center gap-1.5">
+              <UBadge
+                :label="getProductTypeLabel((row.original as ProductItem).type)"
+                color="neutral"
+                variant="subtle"
+                size="xs"
+              />
+              <UBadge
+                v-if="(row.original as ProductItem).type === 'group' && ((row.original as ProductItem).group_items?.length ?? 0) > 1"
+                :label="`${(row.original as ProductItem).group_items!.length} itens`"
+                color="info"
+                variant="subtle"
+                size="xs"
+              />
+            </div>
           </template>
 
           <template #track_inventory-cell="{ row }">
