@@ -440,7 +440,7 @@ function openEdit(part: PartItem) {
     cost_price: part.cost_price ?? '',
     brand: part.brand ?? '',
     category: part.category ?? 'other',
-    supplier_name: part.supplier_name ?? null,,
+    supplier_name: part.supplier_name ?? null,
     location: part.location ?? '',
     notes: part.notes ?? ''
   })
