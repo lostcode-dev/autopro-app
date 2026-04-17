@@ -15,6 +15,16 @@ type ProductCategory = {
   name: string
 }
 
+type GroupItem = {
+  descricao: string
+  quantidade: number
+  unidade_medida: string
+  preco_custo: number
+  preco_venda: number
+  controlar_estoque: boolean
+  quantidade_inicial_estoque: number
+}
+
 type ProductItem = {
   id: string
   name: string
@@ -26,6 +36,7 @@ type ProductItem = {
   unit_sale_price: number | null
   unit_cost_price: number | null
   notes: string | null
+  group_items?: GroupItem[] | null
   product_categories?: ProductCategory | null
 }
 
@@ -144,7 +155,7 @@ const { data, status, refresh } = await useAsyncData(
   }
 )
 
-const { data: categoriesData } = await useAsyncData(
+const { data: categoriesData, refresh: refreshCategories } = await useAsyncData(
   'products-categories-options',
   () => requestFetch<{ items: ProductCategory[] }>('/api/product-categories', { headers: requestHeaders }),
   { default: () => ({ items: [] }) }
@@ -305,10 +316,27 @@ function getProductTypeLabel(type: ProductItem['type']) {
 }
 
 function getStockSummary(product: ProductItem) {
+  if (product.type === 'group') {
+    const count = (product.group_items ?? []).length
+    return `${count} ${count === 1 ? 'item' : 'itens'}`
+  }
   if (!product.track_inventory)
-    return 'Sem controle de estoque'
-
+    return '-'
   return `${product.initial_stock_quantity ?? 0} un`
+}
+
+function getTotalCost(product: ProductItem): number | null {
+  if (product.type === 'group') {
+    return (product.group_items ?? []).reduce((acc, item) => acc + (item.preco_custo ?? 0) * (item.quantidade ?? 0), 0)
+  }
+  return product.unit_cost_price
+}
+
+function getTotalSale(product: ProductItem): number | null {
+  if (product.type === 'group') {
+    return (product.group_items ?? []).reduce((acc, item) => acc + (item.preco_venda ?? 0) * (item.quantidade ?? 0), 0)
+  }
+  return product.unit_sale_price
 }
 
 const showModal = ref(false)
@@ -319,6 +347,32 @@ const showDeleteModal = ref(false)
 const showBulkDeleteModal = ref(false)
 const productPendingDeletion = ref<ProductItem | null>(null)
 const isBulkDeleting = ref(false)
+
+const groupItems = ref<GroupItem[]>([])
+
+const totalGroupCost = computed(() =>
+  groupItems.value.reduce((acc, item) => acc + (item.preco_custo ?? 0) * (item.quantidade ?? 0), 0)
+)
+
+const totalGroupSale = computed(() =>
+  groupItems.value.reduce((acc, item) => acc + (item.preco_venda ?? 0) * (item.quantidade ?? 0), 0)
+)
+
+function addGroupItem() {
+  groupItems.value.push({
+    descricao: '',
+    quantidade: 1,
+    unidade_medida: 'un',
+    preco_custo: 0,
+    preco_venda: 0,
+    controlar_estoque: false,
+    quantidade_inicial_estoque: 0
+  })
+}
+
+function removeGroupItem(index: number) {
+  groupItems.value.splice(index, 1)
+}
 
 const form = reactive({
   name: '',
@@ -344,6 +398,7 @@ function resetForm() {
     unit_cost_price: '',
     notes: ''
   })
+  groupItems.value = []
 }
 
 function openCreate() {
@@ -365,6 +420,24 @@ function openEdit(product: ProductItem) {
     unit_cost_price: product.unit_cost_price ?? '',
     notes: product.notes ?? ''
   })
+  groupItems.value = product.group_items ? [...product.group_items] : []
+  showModal.value = true
+}
+
+function openClone(product: ProductItem) {
+  selectedProduct.value = null
+  Object.assign(form, {
+    name: `${product.name} (Cópia)`,
+    code: `${product.code}-COPIA`,
+    type: product.type,
+    category_id: product.category_id ?? '',
+    track_inventory: product.track_inventory ?? false,
+    initial_stock_quantity: product.initial_stock_quantity ?? 0,
+    unit_sale_price: product.unit_sale_price ?? '',
+    unit_cost_price: product.unit_cost_price ?? '',
+    notes: product.notes ?? ''
+  })
+  groupItems.value = product.group_items ? [...product.group_items] : []
   showModal.value = true
 }
 
@@ -392,8 +465,9 @@ async function save() {
       initial_stock_quantity: form.type === 'unit' && form.track_inventory
         ? Number(form.initial_stock_quantity || 0)
         : 0,
-      unit_sale_price: form.unit_sale_price === '' ? null : Number(form.unit_sale_price),
-      unit_cost_price: form.unit_cost_price === '' ? null : Number(form.unit_cost_price),
+      unit_sale_price: form.type === 'unit' ? (form.unit_sale_price === '' ? null : Number(form.unit_sale_price)) : null,
+      unit_cost_price: form.type === 'unit' ? (form.unit_cost_price === '' ? null : Number(form.unit_cost_price)) : null,
+      group_items: form.type === 'group' ? groupItems.value : null,
       notes: form.notes || null
     }
 
@@ -588,12 +662,78 @@ const productTypeOptions = [
   { label: 'Grupo', value: 'group' }
 ]
 
+// Category management
+const showCategoriesModal = ref(false)
+const categoryModalForm = reactive({ id: '', name: '' })
+const isSavingCategory = ref(false)
+const isDeletingCategory = ref(false)
+const categoryPendingDelete = ref<ProductCategory | null>(null)
+const showDeleteCategoryModal = ref(false)
+
+function resetCategoryForm() {
+  categoryModalForm.id = ''
+  categoryModalForm.name = ''
+}
+
+function editCategory(cat: ProductCategory) {
+  categoryModalForm.id = cat.id
+  categoryModalForm.name = cat.name
+}
+
+async function saveCategory() {
+  if (!categoryModalForm.name.trim() || isSavingCategory.value) return
+  isSavingCategory.value = true
+  try {
+    if (categoryModalForm.id) {
+      await $fetch(`/api/product-categories/${categoryModalForm.id}`, {
+        method: 'PUT',
+        body: { name: categoryModalForm.name }
+      })
+      toast.add({ title: 'Categoria atualizada', color: 'success' })
+    } else {
+      await $fetch('/api/product-categories', {
+        method: 'POST',
+        body: { name: categoryModalForm.name }
+      })
+      toast.add({ title: 'Categoria criada', color: 'success' })
+    }
+    resetCategoryForm()
+    await refreshCategories()
+  } catch {
+    toast.add({ title: 'Erro ao salvar categoria', color: 'error' })
+  } finally {
+    isSavingCategory.value = false
+  }
+}
+
+function requestDeleteCategory(cat: ProductCategory) {
+  categoryPendingDelete.value = cat
+  showDeleteCategoryModal.value = true
+}
+
+async function confirmDeleteCategory() {
+  if (!categoryPendingDelete.value || isDeletingCategory.value) return
+  isDeletingCategory.value = true
+  try {
+    await $fetch(`/api/product-categories/${categoryPendingDelete.value.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Categoria removida', color: 'success' })
+    showDeleteCategoryModal.value = false
+    categoryPendingDelete.value = null
+    await refreshCategories()
+  } catch {
+    toast.add({ title: 'Erro ao remover categoria', color: 'error' })
+  } finally {
+    isDeletingCategory.value = false
+  }
+}
+
 const lineColumns = [
   { accessorKey: 'name', header: 'Produto', enableSorting: true },
   { accessorKey: 'code', header: 'Código', enableSorting: true },
-  { accessorKey: 'type', header: 'Tipo', enableSorting: true },
-  { accessorKey: 'track_inventory', header: 'Estoque', enableSorting: true },
-  { accessorKey: 'unit_sale_price', header: 'Venda', enableSorting: true },
+  { accessorKey: 'type', header: 'Tipo', enableSorting: false },
+  { accessorKey: 'track_inventory', header: 'Estoque', enableSorting: false },
+  { id: 'cost', header: 'Custo Total', enableSorting: false },
+  { id: 'sale', header: 'Venda Total', enableSorting: false },
   { id: 'actions', header: 'Ações', enableSorting: false }
 ]
 </script>
@@ -660,6 +800,15 @@ const lineColumns = [
                 @click="showBulkDeleteModal = true"
               />
             </UTooltip>
+
+            <UButton
+              label="Categorias"
+              icon="i-lucide-tag"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="showCategoriesModal = true"
+            />
 
             <UButton
               v-if="canCreate"
@@ -734,27 +883,35 @@ const lineColumns = [
           </template>
 
           <template #track_inventory-cell="{ row }">
-            <div class="min-w-0 space-y-1">
-              <UBadge
-                :label="(row.original as ProductItem).track_inventory ? 'Controlado' : 'Livre'"
-                :color="(row.original as ProductItem).track_inventory ? 'success' : 'neutral'"
-                variant="subtle"
-                size="xs"
-              />
-              <p class="text-xs text-muted">
-                {{ getStockSummary(row.original as ProductItem) }}
-              </p>
-            </div>
+            <span class="text-sm text-muted">
+              {{ getStockSummary(row.original as ProductItem) }}
+            </span>
           </template>
 
-          <template #unit_sale_price-cell="{ row }">
+          <template #cost-cell="{ row }">
             <span class="text-sm text-muted">
-              {{ formatCurrency((row.original as ProductItem).unit_sale_price) }}
+              {{ formatCurrency(getTotalCost(row.original as ProductItem)) }}
+            </span>
+          </template>
+
+          <template #sale-cell="{ row }">
+            <span class="text-sm font-medium text-highlighted">
+              {{ formatCurrency(getTotalSale(row.original as ProductItem)) }}
             </span>
           </template>
 
           <template #actions-cell="{ row }">
             <div class="flex items-center justify-end gap-2">
+              <UTooltip v-if="canCreate" text="Clonar produto">
+                <UButton
+                  icon="i-lucide-copy"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="openClone(row.original as ProductItem)"
+                />
+              </UTooltip>
+
               <UTooltip v-if="canUpdate" text="Editar produto">
                 <UButton
                   icon="i-lucide-pencil"
@@ -794,8 +951,16 @@ const lineColumns = [
                         size="xs"
                       />
                       <UBadge
-                        :label="(product as ProductItem).track_inventory ? 'Estoque controlado' : 'Sem estoque'"
-                        :color="(product as ProductItem).track_inventory ? 'success' : 'neutral'"
+                        v-if="(product as ProductItem).type === 'group'"
+                        :label="`${((product as ProductItem).group_items ?? []).length} itens`"
+                        color="info"
+                        variant="subtle"
+                        size="xs"
+                      />
+                      <UBadge
+                        v-else-if="(product as ProductItem).track_inventory"
+                        label="Estoque controlado"
+                        color="success"
                         variant="subtle"
                         size="xs"
                       />
@@ -803,6 +968,16 @@ const lineColumns = [
                   </div>
 
                   <div class="flex shrink-0 items-center gap-1">
+                    <UTooltip v-if="canCreate" text="Clonar produto">
+                      <UButton
+                        icon="i-lucide-copy"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        @click="openClone(product as ProductItem)"
+                      />
+                    </UTooltip>
+
                     <UTooltip v-if="canUpdate" text="Editar produto">
                       <UButton
                         icon="i-lucide-pencil"
@@ -836,12 +1011,12 @@ const lineColumns = [
                     <span class="truncate">{{ (product as ProductItem).product_categories?.name || 'Sem categoria' }}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
-                    <span class="truncate">{{ formatCurrency((product as ProductItem).unit_sale_price) }}</span>
+                    <UIcon name="i-lucide-trending-down" class="size-4 shrink-0 text-error" />
+                    <span class="truncate">{{ formatCurrency(getTotalCost(product as ProductItem)) }}</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <UIcon name="i-lucide-box" class="size-4 shrink-0" />
-                    <span class="truncate">{{ getStockSummary(product as ProductItem) }}</span>
+                    <UIcon name="i-lucide-trending-up" class="size-4 shrink-0 text-success" />
+                    <span class="truncate font-medium text-highlighted">{{ formatCurrency(getTotalSale(product as ProductItem)) }}</span>
                   </div>
                 </div>
               </div>
@@ -888,7 +1063,7 @@ const lineColumns = [
             />
           </UFormField>
 
-          <UFormField label="Preço de venda">
+          <UFormField v-if="form.type === 'unit'" label="Preço de venda">
             <UInput
               v-model="form.unit_sale_price"
               type="number"
@@ -898,7 +1073,7 @@ const lineColumns = [
             />
           </UFormField>
 
-          <UFormField label="Preço de custo">
+          <UFormField v-if="form.type === 'unit'" label="Preço de custo">
             <UInput
               v-model="form.unit_cost_price"
               type="number"
@@ -929,6 +1104,96 @@ const lineColumns = [
         <div v-if="form.type === 'unit'" class="flex gap-4">
           <UCheckbox v-model="form.track_inventory" label="Controlar estoque" />
         </div>
+
+        <template v-if="form.type === 'group'">
+          <USeparator label="Itens do grupo" />
+
+          <div
+            v-for="(item, index) in groupItems"
+            :key="index"
+            class="rounded-lg border border-default p-3 space-y-3"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-muted">Item {{ index + 1 }}</span>
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                @click="removeGroupItem(index)"
+              />
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <UFormField label="Descrição" required class="sm:col-span-2">
+                <UInput v-model="item.descricao" class="w-full" />
+              </UFormField>
+
+              <UFormField label="Quantidade">
+                <UInput
+                  v-model.number="item.quantidade"
+                  type="number"
+                  min="1"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="Unidade">
+                <UInput v-model="item.unidade_medida" class="w-full" placeholder="un" />
+              </UFormField>
+
+              <UFormField label="Preço de custo">
+                <UInput
+                  v-model.number="item.preco_custo"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="Preço de venda">
+                <UInput
+                  v-model.number="item.preco_venda"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full"
+                />
+              </UFormField>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-4">
+            <UButton
+              label="Adicionar item"
+              icon="i-lucide-plus"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="addGroupItem"
+            />
+
+            <div class="flex gap-3">
+              <div class="rounded bg-elevated px-3 py-1.5 text-center">
+                <p class="text-xs text-muted">
+                  Custo total
+                </p>
+                <p class="text-sm font-semibold text-highlighted">
+                  {{ formatCurrency(totalGroupCost) }}
+                </p>
+              </div>
+              <div class="rounded bg-elevated px-3 py-1.5 text-center">
+                <p class="text-xs text-muted">
+                  Venda total
+                </p>
+                <p class="text-sm font-semibold text-highlighted">
+                  {{ formatCurrency(totalGroupSale) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </template>
 
@@ -988,6 +1253,99 @@ const lineColumns = [
         Tem certeza que deseja excluir
         <strong class="text-highlighted">{{ selectedCount }} produto(s)</strong>?
         Esta ação não pode ser desfeita.
+      </p>
+    </template>
+  </AppConfirmModal>
+
+  <UModal
+    v-model:open="showCategoriesModal"
+    title="Gerenciar Categorias"
+    :ui="{ body: 'overflow-y-auto max-h-[65vh]' }"
+  >
+    <template #body>
+      <div class="space-y-4">
+        <div class="flex gap-2">
+          <UInput
+            v-model="categoryModalForm.name"
+            class="flex-1"
+            :placeholder="categoryModalForm.id ? 'Editar nome...' : 'Nova categoria...'"
+            @keydown.enter="saveCategory"
+          />
+          <UButton
+            :label="categoryModalForm.id ? 'Atualizar' : 'Criar'"
+            :loading="isSavingCategory"
+            size="sm"
+            @click="saveCategory"
+          />
+          <UButton
+            v-if="categoryModalForm.id"
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="resetCategoryForm"
+          />
+        </div>
+
+        <div class="space-y-1.5">
+          <div
+            v-for="cat in categoriesData?.items ?? []"
+            :key="cat.id"
+            class="flex items-center justify-between rounded-lg border border-default px-3 py-2"
+            :class="{ 'border-primary bg-primary/5': categoryModalForm.id === cat.id }"
+          >
+            <span class="text-sm text-highlighted">{{ cat.name }}</span>
+            <div class="flex gap-1">
+              <UButton
+                icon="i-lucide-pencil"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="editCategory(cat)"
+              />
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                @click="requestDeleteCategory(cat)"
+              />
+            </div>
+          </div>
+
+          <div v-if="!categoriesData?.items?.length" class="py-6 text-center text-sm text-muted">
+            Nenhuma categoria cadastrada
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template #footer>
+      <div class="flex justify-end">
+        <UButton
+          label="Fechar"
+          color="neutral"
+          variant="ghost"
+          @click="showCategoriesModal = false"
+        />
+      </div>
+    </template>
+  </UModal>
+
+  <AppConfirmModal
+    v-model:open="showDeleteCategoryModal"
+    title="Excluir categoria"
+    confirm-label="Excluir"
+    confirm-color="error"
+    :loading="isDeletingCategory"
+    @confirm="confirmDeleteCategory"
+    @update:open="(value: boolean) => { showDeleteCategoryModal = value; if (!value && !isDeletingCategory) categoryPendingDelete = null }"
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir a categoria
+        <strong class="text-highlighted">{{ categoryPendingDelete?.name }}</strong>?
+        Produtos vinculados perderão a categoria.
       </p>
     </template>
   </AppConfirmModal>
