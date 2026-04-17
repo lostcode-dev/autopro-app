@@ -19,7 +19,7 @@ const moreItems = computed(() => [
   workshop.can(ActionCode.CUSTOMERS_READ) ? { label: 'Clientes', icon: 'i-lucide-users', to: '/app/customers' } : null,
   workshop.can(ActionCode.VEHICLES_READ) ? { label: 'Veiculos', icon: 'i-lucide-car-front', to: '/app/vehicles' } : null,
   workshop.can(ActionCode.PRODUCTS_READ) ? { label: 'Produtos', icon: 'i-lucide-package', to: '/app/products' } : null,
-  workshop.can(ActionCode.INVENTORY_READ) ? { label: 'Estoque', icon: 'i-lucide-box', to: '/app/inventory' } : null,
+  workshop.can(ActionCode.INVENTORY_READ) ? { label: 'Estoque', icon: 'i-lucide-box', to: '/app/products/inventory' } : null,
   workshop.can(ActionCode.REPORTS_VIEW) ? { label: 'Relatorios', icon: 'i-lucide-bar-chart-3', to: '/app/reports' } : null,
   { label: 'Configuracoes', icon: 'i-lucide-settings', to: '/app/settings' }
 ].filter(Boolean) as Array<{ label: string, icon: string, to: string }>)

@@ -86,19 +86,19 @@ const links = computed<NavigationMenuItem[][]>(() => {
     productsChildren.push(item('Visão geral', 'i-lucide-package', '/app/products'))
 
   if (workshop.can(ActionCode.INVENTORY_READ))
-    productsChildren.push(item('Estoque', 'i-lucide-box', '/app/inventory'))
+    productsChildren.push(item('Estoque', 'i-lucide-box', '/app/products/inventory'))
 
   if (workshop.can(ActionCode.SUPPLIERS_READ))
-    productsChildren.push(item('Fornecedores', 'i-lucide-briefcase-business', '/app/suppliers'))
+    productsChildren.push(item('Fornecedores', 'i-lucide-briefcase-business', '/app/products/suppliers'))
 
   if (workshop.can(ActionCode.AUTHORIZATIONS_READ))
-    productsChildren.push(item('Autorizações', 'i-lucide-clipboard-list', '/app/purchase-requests'))
+    productsChildren.push(item('Autorizações', 'i-lucide-clipboard-list', '/app/products/purchase-requests'))
 
   if (workshop.can(ActionCode.PURCHASES_READ))
-    productsChildren.push(item('Compras', 'i-lucide-shopping-cart', '/app/purchases'))
+    productsChildren.push(item('Compras', 'i-lucide-shopping-cart', '/app/products/purchases'))
 
   if (workshop.can(ActionCode.RETURNS_READ))
-    productsChildren.push(item('Devoluções', 'i-lucide-undo-2', '/app/purchase-returns'))
+    productsChildren.push(item('Devoluções', 'i-lucide-undo-2', '/app/products/purchase-returns'))
 
   const catalog: NavigationMenuItem[] = productsChildren.length > 0
     ? [triggerItem('Produtos', 'i-lucide-shopping-bag', '/app/products', sortChildren(productsChildren))]
