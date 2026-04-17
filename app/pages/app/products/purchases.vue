@@ -11,6 +11,25 @@ type PurchaseStatusFilter = 'all' | 'pending' | 'paid'
 
 type SupplierOption = { id: string, name: string }
 type BankAccountOption = { id: string, account_name?: string | null, name?: string | null }
+type PartOption = {
+  id: string
+  code: string | null
+  description: string
+  sale_price: number | null
+  cost_price: number | null
+  brand: string | null
+  stock_quantity: number
+}
+
+type PurchaseLineItem = {
+  part_id: string | null
+  description: string
+  quantity: number
+  unit_cost_price: number
+  unit_sale_price: number | null
+  total_item_price: number
+  add_to_stock: boolean
+}
 
 type PurchaseItem = {
   id: string
@@ -23,7 +42,7 @@ type PurchaseItem = {
   payment_date: string | null
   due_date: string | null
   notes: string | null
-  items: unknown[] | null
+  items: PurchaseLineItem[] | null
   suppliers?: { id: string, name: string } | null
 }
 
@@ -184,6 +203,34 @@ const bankAccountOptions = computed(() =>
   (bankAccountsData.value.items ?? []).map(account => ({
     label: account.account_name ?? account.name ?? 'Conta bancária',
     value: account.id
+  }))
+)
+
+const partsData = ref<PartOption[]>([])
+const isLoadingParts = ref(false)
+
+async function loadParts() {
+  if (partsData.value.length > 0 || isLoadingParts.value)
+    return
+
+  isLoadingParts.value = true
+
+  try {
+    const response = await requestFetch<{ items: PartOption[] }>('/api/parts', {
+      headers: requestHeaders,
+      query: { page: 1, page_size: 300, sort_by: 'description', sort_order: 'asc' }
+    })
+
+    partsData.value = response.items ?? []
+  } finally {
+    isLoadingParts.value = false
+  }
+}
+
+const partOptions = computed(() =>
+  partsData.value.map(part => ({
+    label: part.code ? `${part.code} - ${part.description}` : part.description,
+    value: part.id
   }))
 )
 
@@ -387,7 +434,6 @@ const showDeleteModal = ref(false)
 const showBulkDeleteModal = ref(false)
 const purchasePendingDeletion = ref<PurchaseItem | null>(null)
 const isBulkDeleting = ref(false)
-const itemsJson = ref('[]')
 
 const form = reactive({
   supplier_id: '',
@@ -400,6 +446,81 @@ const form = reactive({
   notes: ''
 })
 
+const items = ref<PurchaseLineItem[]>([])
+
+function createEmptyPurchaseItem(): PurchaseLineItem {
+  return {
+    part_id: null,
+    description: '',
+    quantity: 1,
+    unit_cost_price: 0,
+    unit_sale_price: null,
+    total_item_price: 0,
+    add_to_stock: true
+  }
+}
+
+function normalizePurchaseItem(item: unknown): PurchaseLineItem | null {
+  if (!item || typeof item !== 'object')
+    return null
+
+  const source = item as Record<string, unknown>
+
+  return {
+    part_id: typeof source.part_id === 'string' ? source.part_id : null,
+    description: typeof source.description === 'string' ? source.description : '',
+    quantity: Number(source.quantity || 1),
+    unit_cost_price: Number(source.unit_cost_price || 0),
+    unit_sale_price: source.unit_sale_price == null ? null : Number(source.unit_sale_price),
+    total_item_price: Number(source.total_item_price || 0),
+    add_to_stock: source.add_to_stock !== false
+  }
+}
+
+function recalcItem(item: PurchaseLineItem) {
+  item.total_item_price = Number(item.quantity || 0) * Number(item.unit_cost_price || 0)
+}
+
+function purchaseItemHasContent(item: PurchaseLineItem) {
+  return Boolean(
+    item.part_id
+    || item.description.trim()
+    || Number(item.quantity) > 0
+    || Number(item.unit_cost_price) > 0
+    || Number(item.unit_sale_price || 0) > 0
+  )
+}
+
+function addItem() {
+  items.value.push(createEmptyPurchaseItem())
+}
+
+function removeItem(index: number) {
+  items.value.splice(index, 1)
+}
+
+function onPartSelect(item: PurchaseLineItem, partId: string | null) {
+  if (!partId)
+    return
+
+  const part = partsData.value.find(entry => entry.id === partId)
+  if (!part)
+    return
+
+  item.description = part.description
+  item.unit_cost_price = Number(part.cost_price || 0)
+  item.unit_sale_price = part.sale_price == null ? null : Number(part.sale_price)
+  recalcItem(item)
+}
+
+const itemsTotalAmount = computed(() =>
+  items.value.reduce((sum, item) => sum + Number(item.total_item_price || 0), 0)
+)
+
+function useItemsTotal() {
+  form.total_amount = Number(itemsTotalAmount.value.toFixed(2))
+}
+
 function resetForm() {
   Object.assign(form, {
     supplier_id: '',
@@ -411,12 +532,13 @@ function resetForm() {
     due_date: '',
     notes: ''
   })
-  itemsJson.value = '[]'
+  items.value = []
 }
 
 function openCreate() {
   selectedPurchase.value = null
   resetForm()
+  loadParts()
   showModal.value = true
 }
 
@@ -432,7 +554,12 @@ function openEdit(purchase: PurchaseItem) {
     due_date: purchase.due_date ?? '',
     notes: purchase.notes ?? ''
   })
-  itemsJson.value = purchase.items ? JSON.stringify(purchase.items, null, 2) : '[]'
+  items.value = Array.isArray(purchase.items)
+    ? purchase.items
+        .map(normalizePurchaseItem)
+        .filter((item): item is PurchaseLineItem => item !== null)
+    : []
+  loadParts()
   showModal.value = true
 }
 
@@ -448,11 +575,30 @@ async function save() {
     return
   }
 
-  let parsedItems: unknown[] = []
-  try {
-    parsedItems = JSON.parse(itemsJson.value)
-  } catch {
-    parsedItems = []
+  const detailedItems = items.value
+    .filter(purchaseItemHasContent)
+    .map((item) => {
+      recalcItem(item)
+
+      return {
+        part_id: item.part_id,
+        description: item.description.trim(),
+        quantity: Number(item.quantity || 0),
+        unit_cost_price: Number(item.unit_cost_price || 0),
+        unit_sale_price: item.unit_sale_price == null || item.unit_sale_price === ''
+          ? null
+          : Number(item.unit_sale_price),
+        total_item_price: Number(item.total_item_price || 0),
+        add_to_stock: item.add_to_stock
+      }
+    })
+
+  if (detailedItems.some(item => !item.description || item.quantity <= 0)) {
+    toast.add({
+      title: 'Preencha descriÃ§Ã£o e quantidade vÃ¡lida para todos os itens detalhados',
+      color: 'warning'
+    })
+    return
   }
 
   isSaving.value = true
@@ -467,7 +613,7 @@ async function save() {
       invoice_number: form.invoice_number || null,
       due_date: form.due_date || null,
       notes: form.notes || null,
-      items: parsedItems.length ? parsedItems : null
+      items: detailedItems.length ? detailedItems : null
     }
 
     if (selectedPurchase.value?.id) {
@@ -607,230 +753,230 @@ const lineColumns = [
 
       <div v-else class="p-4">
         <AppDataTable
-            v-model:display-mode="viewMode"
-            v-model:search-term="search"
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            v-model:sorting="sorting"
-            v-model:row-selection="rowSelection"
-            :columns="lineColumns"
-            :data="purchaseItems"
-            :loading="status === 'pending'"
-            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
-            :selectable="viewMode === 'table'"
-            :sticky-header="viewMode === 'table'"
-            :get-row-id="(row) => String(row.id ?? '')"
-            :page-size-options="PAGE_SIZE_OPTIONS"
-            :total="totalPurchases"
-            search-placeholder="Buscar por nota fiscal ou observações..."
-            :show-search="true"
-            :show-view-mode-toggle="true"
-            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
-            empty-icon="i-lucide-shopping-cart"
-            empty-title="Nenhuma compra encontrada"
-            empty-description="Cadastre compras ou ajuste os filtros para continuar."
-          >
-            <template #toolbar-right>
+          v-model:display-mode="viewMode"
+          v-model:search-term="search"
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          v-model:sorting="sorting"
+          v-model:row-selection="rowSelection"
+          :columns="lineColumns"
+          :data="purchaseItems"
+          :loading="status === 'pending'"
+          :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+          :selectable="viewMode === 'table'"
+          :sticky-header="viewMode === 'table'"
+          :get-row-id="(row) => String(row.id ?? '')"
+          :page-size-options="PAGE_SIZE_OPTIONS"
+          :total="totalPurchases"
+          search-placeholder="Buscar por nota fiscal ou observações..."
+          :show-search="true"
+          :show-view-mode-toggle="true"
+          card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+          empty-icon="i-lucide-shopping-cart"
+          empty-title="Nenhuma compra encontrada"
+          empty-description="Cadastre compras ou ajuste os filtros para continuar."
+        >
+          <template #toolbar-right>
+            <UTooltip
+              v-if="canDelete"
+              :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+            >
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="outline"
+                size="sm"
+                :disabled="selectedCount === 0"
+                @click="showBulkDeleteModal = true"
+              />
+            </UTooltip>
+
+            <UButton
+              v-if="canCreate"
+              label="Nova compra"
+              icon="i-lucide-plus"
+              size="sm"
+              @click="openCreate"
+            />
+          </template>
+
+          <template #filters>
+            <UPopover>
+              <UButton
+                icon="i-lucide-sliders-horizontal"
+                :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                color="neutral"
+                variant="outline"
+                size="sm"
+              />
+              <template #content>
+                <div class="w-64 space-y-3 p-3">
+                  <UFormField label="Status">
+                    <USelectMenu
+                      v-model="statusFilter"
+                      :items="paymentStatusOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                  <UFormField label="Data inicial">
+                    <UInput v-model="dateFrom" type="date" class="w-full" />
+                  </UFormField>
+                  <UFormField label="Data final">
+                    <UInput v-model="dateTo" type="date" class="w-full" />
+                  </UFormField>
+                </div>
+              </template>
+            </UPopover>
+          </template>
+
+          <template #purchase_date-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatDate(row.original.purchase_date) }}
+            </span>
+          </template>
+
+          <template #supplier-cell="{ row }">
+            <div class="min-w-0">
+              <p class="truncate font-medium text-highlighted">
+                {{ row.original.suppliers?.name || 'Fornecedor não informado' }}
+              </p>
+            </div>
+          </template>
+
+          <template #total_amount-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatCurrency(row.original.total_amount) }}
+            </span>
+          </template>
+
+          <template #payment_status-cell="{ row }">
+            <UBadge
+              :label="statusLabelMap[row.original.payment_status] || row.original.payment_status"
+              :color="statusColorMap[row.original.payment_status] || 'neutral'"
+              :leading-icon="statusIconMap[row.original.payment_status]"
+              variant="subtle"
+              size="xs"
+            />
+          </template>
+
+          <template #actions-cell="{ row }">
+            <div class="flex items-center justify-end gap-2">
               <UTooltip
-                v-if="canDelete"
-                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+                v-if="canUpdate && row.original.payment_status === 'pending'"
+                text="Confirmar pagamento"
               >
                 <UButton
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="outline"
-                  size="sm"
-                  :disabled="selectedCount === 0"
-                  @click="showBulkDeleteModal = true"
+                  icon="i-lucide-check-circle"
+                  color="success"
+                  variant="ghost"
+                  size="xs"
+                  @click="openPayModal(row.original as PurchaseItem)"
                 />
               </UTooltip>
 
-              <UButton
-                v-if="canCreate"
-                label="Nova compra"
-                icon="i-lucide-plus"
-                size="sm"
-                @click="openCreate"
-              />
-            </template>
-
-            <template #filters>
-              <UPopover>
+              <UTooltip v-if="canUpdate" text="Editar compra">
                 <UButton
-                  icon="i-lucide-sliders-horizontal"
-                  :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                  icon="i-lucide-pencil"
                   color="neutral"
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="xs"
+                  @click="openEdit(row.original as PurchaseItem)"
                 />
-                <template #content>
-                  <div class="w-64 space-y-3 p-3">
-                    <UFormField label="Status">
-                      <USelectMenu
-                        v-model="statusFilter"
-                        :items="paymentStatusOptions"
-                        value-key="value"
-                        class="w-full"
-                        :search-input="false"
+              </UTooltip>
+
+              <UTooltip v-if="canDelete" text="Excluir compra">
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  :loading="isDeleting"
+                  @click="requestRemove(row.original as PurchaseItem)"
+                />
+              </UTooltip>
+            </div>
+          </template>
+
+          <template #card="{ item: purchase }">
+            <UCard class="border border-default/80 shadow-sm">
+              <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 space-y-2">
+                    <h3 class="truncate text-base font-semibold text-highlighted">
+                      {{ (purchase as PurchaseItem).suppliers?.name || 'Fornecedor não informado' }}
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <UBadge
+                        :label="statusLabelMap[(purchase as PurchaseItem).payment_status] || (purchase as PurchaseItem).payment_status"
+                        :color="statusColorMap[(purchase as PurchaseItem).payment_status] || 'neutral'"
+                        :leading-icon="statusIconMap[(purchase as PurchaseItem).payment_status]"
+                        variant="subtle"
+                        size="xs"
                       />
-                    </UFormField>
-                    <UFormField label="Data inicial">
-                      <UInput v-model="dateFrom" type="date" class="w-full" />
-                    </UFormField>
-                    <UFormField label="Data final">
-                      <UInput v-model="dateTo" type="date" class="w-full" />
-                    </UFormField>
-                  </div>
-                </template>
-              </UPopover>
-            </template>
-
-            <template #purchase_date-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatDate(row.original.purchase_date) }}
-              </span>
-            </template>
-
-            <template #supplier-cell="{ row }">
-              <div class="min-w-0">
-                <p class="truncate font-medium text-highlighted">
-                  {{ row.original.suppliers?.name || 'Fornecedor não informado' }}
-                </p>
-              </div>
-            </template>
-
-            <template #total_amount-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatCurrency(row.original.total_amount) }}
-              </span>
-            </template>
-
-            <template #payment_status-cell="{ row }">
-              <UBadge
-                :label="statusLabelMap[row.original.payment_status] || row.original.payment_status"
-                :color="statusColorMap[row.original.payment_status] || 'neutral'"
-                :leading-icon="statusIconMap[row.original.payment_status]"
-                variant="subtle"
-                size="xs"
-              />
-            </template>
-
-            <template #actions-cell="{ row }">
-              <div class="flex items-center justify-end gap-2">
-                <UTooltip
-                  v-if="canUpdate && row.original.payment_status === 'pending'"
-                  text="Confirmar pagamento"
-                >
-                  <UButton
-                    icon="i-lucide-check-circle"
-                    color="success"
-                    variant="ghost"
-                    size="xs"
-                    @click="openPayModal(row.original as PurchaseItem)"
-                  />
-                </UTooltip>
-
-                <UTooltip v-if="canUpdate" text="Editar compra">
-                  <UButton
-                    icon="i-lucide-pencil"
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    @click="openEdit(row.original as PurchaseItem)"
-                  />
-                </UTooltip>
-
-                <UTooltip v-if="canDelete" text="Excluir compra">
-                  <UButton
-                    icon="i-lucide-trash-2"
-                    color="error"
-                    variant="ghost"
-                    size="xs"
-                    :loading="isDeleting"
-                    @click="requestRemove(row.original as PurchaseItem)"
-                  />
-                </UTooltip>
-              </div>
-            </template>
-
-            <template #card="{ item: purchase }">
-              <UCard class="border border-default/80 shadow-sm">
-                <div class="space-y-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 space-y-2">
-                      <h3 class="truncate text-base font-semibold text-highlighted">
-                        {{ (purchase as PurchaseItem).suppliers?.name || 'Fornecedor não informado' }}
-                      </h3>
-                      <div class="flex flex-wrap items-center gap-2">
-                        <UBadge
-                          :label="statusLabelMap[(purchase as PurchaseItem).payment_status] || (purchase as PurchaseItem).payment_status"
-                          :color="statusColorMap[(purchase as PurchaseItem).payment_status] || 'neutral'"
-                          :leading-icon="statusIconMap[(purchase as PurchaseItem).payment_status]"
-                          variant="subtle"
-                          size="xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="flex shrink-0 items-center gap-1">
-                      <UTooltip
-                        v-if="canUpdate && (purchase as PurchaseItem).payment_status === 'pending'"
-                        text="Confirmar pagamento"
-                      >
-                        <UButton
-                          icon="i-lucide-check-circle"
-                          color="success"
-                          variant="ghost"
-                          size="xs"
-                          @click="openPayModal(purchase as PurchaseItem)"
-                        />
-                      </UTooltip>
-
-                      <UTooltip v-if="canUpdate" text="Editar compra">
-                        <UButton
-                          icon="i-lucide-pencil"
-                          color="neutral"
-                          variant="ghost"
-                          size="xs"
-                          @click="openEdit(purchase as PurchaseItem)"
-                        />
-                      </UTooltip>
-
-                      <UTooltip v-if="canDelete" text="Excluir compra">
-                        <UButton
-                          icon="i-lucide-trash-2"
-                          color="error"
-                          variant="ghost"
-                          size="xs"
-                          :loading="isDeleting"
-                          @click="requestRemove(purchase as PurchaseItem)"
-                        />
-                      </UTooltip>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-calendar" class="size-4 shrink-0" />
-                      <span class="truncate">{{ formatDate((purchase as PurchaseItem).purchase_date) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-receipt" class="size-4 shrink-0" />
-                      <span class="truncate">{{ (purchase as PurchaseItem).invoice_number || 'Sem nota fiscal' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-circle-dollar-sign" class="size-4 shrink-0" />
-                      <span class="truncate font-medium text-highlighted">{{ formatCurrency((purchase as PurchaseItem).total_amount) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0" />
-                      <span class="truncate">{{ (purchase as PurchaseItem).due_date ? formatDate((purchase as PurchaseItem).due_date) : 'Sem vencimento' }}</span>
-                    </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <UTooltip
+                      v-if="canUpdate && (purchase as PurchaseItem).payment_status === 'pending'"
+                      text="Confirmar pagamento"
+                    >
+                      <UButton
+                        icon="i-lucide-check-circle"
+                        color="success"
+                        variant="ghost"
+                        size="xs"
+                        @click="openPayModal(purchase as PurchaseItem)"
+                      />
+                    </UTooltip>
+
+                    <UTooltip v-if="canUpdate" text="Editar compra">
+                      <UButton
+                        icon="i-lucide-pencil"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        @click="openEdit(purchase as PurchaseItem)"
+                      />
+                    </UTooltip>
+
+                    <UTooltip v-if="canDelete" text="Excluir compra">
+                      <UButton
+                        icon="i-lucide-trash-2"
+                        color="error"
+                        variant="ghost"
+                        size="xs"
+                        :loading="isDeleting"
+                        @click="requestRemove(purchase as PurchaseItem)"
+                      />
+                    </UTooltip>
                   </div>
                 </div>
-              </UCard>
-            </template>
-          </AppDataTable>
+
+                <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-calendar" class="size-4 shrink-0" />
+                    <span class="truncate">{{ formatDate((purchase as PurchaseItem).purchase_date) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-receipt" class="size-4 shrink-0" />
+                    <span class="truncate">{{ (purchase as PurchaseItem).invoice_number || 'Sem nota fiscal' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-circle-dollar-sign" class="size-4 shrink-0" />
+                    <span class="truncate font-medium text-highlighted">{{ formatCurrency((purchase as PurchaseItem).total_amount) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0" />
+                    <span class="truncate">{{ (purchase as PurchaseItem).due_date ? formatDate((purchase as PurchaseItem).due_date) : 'Sem vencimento' }}</span>
+                  </div>
+                </div>
+              </div>
+            </UCard>
+          </template>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>
@@ -928,13 +1074,133 @@ const lineColumns = [
             <UInput v-model="form.invoice_number" class="w-full" />
           </UFormField>
 
-          <UFormField label="Itens (JSON)" class="sm:col-span-2">
-            <UTextarea v-model="itemsJson" :rows="6" class="w-full font-mono text-xs" />
-          </UFormField>
-
           <UFormField label="Observações" class="sm:col-span-2">
             <UTextarea v-model="form.notes" class="w-full" :rows="3" />
           </UFormField>
+        </div>
+
+        <USeparator label="Itens da compra" />
+
+        <div class="space-y-3">
+          <p class="text-sm text-muted">
+            O detalhamento dos itens Ã© opcional, para manter o fluxo simples do sistema legado.
+            Se quiser registrar a entrada corretamente no estoque, adicione os itens abaixo.
+          </p>
+
+          <div
+            v-if="!items.length"
+            class="rounded-lg border border-dashed border-default px-4 py-5 text-sm text-muted"
+          >
+            Nenhum item detalhado adicionado.
+          </div>
+
+          <div
+            v-for="(item, index) in items"
+            :key="`${item.part_id || 'item'}-${index}`"
+            class="space-y-3 rounded-lg border border-default p-3"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-muted">Item {{ index + 1 }}</span>
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                @click="removeItem(index)"
+              />
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <UFormField label="PeÃ§a do estoque" class="sm:col-span-2">
+                <USelectMenu
+                  v-model="item.part_id"
+                  :items="partOptions"
+                  value-key="value"
+                  :loading="isLoadingParts"
+                  placeholder="Selecionar peÃ§a (opcional)"
+                  class="w-full"
+                  searchable
+                  clearable
+                  @update:model-value="onPartSelect(item, item.part_id ?? null)"
+                />
+              </UFormField>
+
+              <UFormField label="DescriÃ§Ã£o" required class="sm:col-span-2">
+                <UInput v-model="item.description" class="w-full" />
+              </UFormField>
+
+              <UFormField label="Quantidade">
+                <UInput
+                  v-model="item.quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  class="w-full"
+                  @update:model-value="recalcItem(item)"
+                />
+              </UFormField>
+
+              <UFormField label="Custo unitÃ¡rio">
+                <UInput
+                  v-model="item.unit_cost_price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full"
+                  @update:model-value="recalcItem(item)"
+                />
+              </UFormField>
+
+              <UFormField label="PreÃ§o de venda sugerido">
+                <UInput
+                  v-model="item.unit_sale_price"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full"
+                />
+              </UFormField>
+
+              <UFormField label="Total do item">
+                <UInput :model-value="formatCurrency(item.total_item_price)" disabled class="w-full" />
+              </UFormField>
+
+              <div class="sm:col-span-2">
+                <UCheckbox v-model="item.add_to_stock" label="Adicionar ao estoque ao registrar a compra" />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-elevated/40 px-4 py-3">
+            <div class="space-y-1">
+              <p class="text-sm font-medium text-highlighted">
+                Total dos itens: {{ formatCurrency(itemsTotalAmount) }}
+              </p>
+              <p class="text-xs text-muted">
+                O valor total da compra continua editÃ¡vel, como no sistema antigo.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                label="Adicionar item"
+                icon="i-lucide-plus"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="addItem"
+              />
+              <UButton
+                label="Usar total dos itens"
+                icon="i-lucide-calculator"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                :disabled="itemsTotalAmount <= 0"
+                @click="useItemsTotal"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </template>
