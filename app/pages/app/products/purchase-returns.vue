@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 
@@ -9,12 +10,22 @@ type ViewMode = 'table' | 'card'
 type ReturnStatusFilter = 'all' | 'pending' | 'completed'
 type ReturnReasonFilter = 'all' | 'warranty' | 'wrong_part' | 'manufacturing_defect' | 'damaged_product' | 'incompatible' | 'other'
 
+type PurchaseLineItem = {
+  part_id?: string | null
+  description?: string
+  quantity?: number
+  unit_cost_price?: number
+  unit_sale_price?: number | null
+  total_item_price?: number
+}
+
 type PurchaseOption = {
   id: string
   supplier_id: string
   suppliers?: { name: string } | null
   invoice_number?: string | null
   purchase_date?: string | null
+  items?: PurchaseLineItem[] | null
 }
 
 type PurchaseReturnItem = {
@@ -39,7 +50,7 @@ type PurchaseReturnsResponse = {
 
 const DEFAULT_PAGE_SIZE = 10
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
-const MANAGED_QUERY_KEYS = ['status', 'reason', 'page', 'pageSize', 'view', 'sortBy', 'sortOrder'] as const
+const MANAGED_QUERY_KEYS = ['search', 'status', 'reason', 'page', 'pageSize', 'view', 'sortBy', 'sortOrder'] as const
 
 const toast = useToast()
 const workshop = useWorkshopPermissions()
@@ -82,6 +93,8 @@ function parseReason(value: unknown): ReturnReasonFilter {
     : 'all'
 }
 
+const search = ref(typeof route.query.search === 'string' ? route.query.search : '')
+const debouncedSearch = ref(search.value)
 const statusFilter = ref<ReturnStatusFilter>(parseStatus(route.query.status))
 const reasonFilter = ref<ReturnReasonFilter>(parseReason(route.query.reason))
 const page = ref(parsePage(route.query.page))
@@ -96,6 +109,7 @@ const sorting = ref<SortingState>(
 )
 
 const requestQuery = computed(() => ({
+  search: debouncedSearch.value || undefined,
   status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
   reason: reasonFilter.value !== 'all' ? reasonFilter.value : undefined,
   page: page.value,
@@ -105,7 +119,7 @@ const requestQuery = computed(() => ({
 }))
 
 const { data, status, refresh } = await useAsyncData(
-  () => `purchase-returns-${statusFilter.value}-${reasonFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
+  () => `purchase-returns-${debouncedSearch.value}-${statusFilter.value}-${reasonFilter.value}-${page.value}-${pageSize.value}-${sorting.value[0]?.id}-${sorting.value[0]?.desc}`,
   async () => {
     if (!canRead.value) {
       return {
@@ -166,6 +180,7 @@ const purchaseOptions = computed(() =>
 
 function buildManagedQuery() {
   return {
+    search: search.value || undefined,
     status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
     reason: reasonFilter.value !== 'all' ? reasonFilter.value : undefined,
     page: page.value > 1 ? String(page.value) : undefined,
@@ -194,11 +209,17 @@ async function syncQuery() {
 watch(
   () => route.query,
   (query) => {
+    const nextSearch = typeof query.search === 'string' ? query.search : ''
     const nextStatus = parseStatus(query.status)
     const nextReason = parseReason(query.reason)
     const nextPage = parsePage(query.page)
     const nextPageSize = parsePageSize(query.pageSize)
     const nextView = parseView(query.view)
+
+    if (search.value !== nextSearch) {
+      search.value = nextSearch
+      debouncedSearch.value = nextSearch
+    }
 
     if (statusFilter.value !== nextStatus)
       statusFilter.value = nextStatus
@@ -226,6 +247,16 @@ watch(
       sorting.value = [DEFAULT_SORT]
     }
   }
+)
+
+watchDebounced(
+  search,
+  async (value) => {
+    debouncedSearch.value = value
+    page.value = 1
+    await syncQuery()
+  },
+  { debounce: 300, maxWait: 800 }
 )
 
 watch(statusFilter, async () => {
@@ -326,7 +357,16 @@ const showDeleteModal = ref(false)
 const showBulkDeleteModal = ref(false)
 const returnPendingDeletion = ref<PurchaseReturnItem | null>(null)
 const isBulkDeleting = ref(false)
-const returnedItemsJson = ref('[]')
+
+type ReturnFormItem = {
+  purchase_item_index: number | null
+  part_id: string | null
+  description: string
+  quantity: number
+  unit_price: number | string
+  total_price: number
+  notes: string
+}
 
 const form = reactive({
   purchase_id: '',
@@ -337,6 +377,120 @@ const form = reactive({
   total_returned_amount: '' as string | number,
   notes: ''
 })
+
+const returnedItems = ref<ReturnFormItem[]>([])
+
+function createEmptyReturnItem(): ReturnFormItem {
+  return {
+    purchase_item_index: null,
+    part_id: null,
+    description: '',
+    quantity: 1,
+    unit_price: '',
+    total_price: 0,
+    notes: ''
+  }
+}
+
+function normalizeReturnedItem(item: unknown): ReturnFormItem | null {
+  if (!item || typeof item !== 'object')
+    return null
+
+  const source = item as Record<string, unknown>
+  const quantity = Number(
+    source.quantity
+    ?? source.returned_quantity
+    ?? 1
+  )
+  const unitPrice = Number(
+    source.unit_price
+    ?? source.unit_cost_price
+    ?? source.price
+    ?? source.value
+    ?? 0
+  )
+  const totalPrice = Number(
+    source.total_price
+    ?? source.total_item_price
+    ?? quantity * unitPrice
+  )
+
+  return {
+    purchase_item_index: typeof source.purchase_item_index === 'number' ? source.purchase_item_index : null,
+    part_id: typeof source.part_id === 'string' ? source.part_id : null,
+    description: typeof source.description === 'string'
+      ? source.description
+      : typeof source.name === 'string'
+        ? source.name
+        : '',
+    quantity,
+    unit_price: unitPrice || '',
+    total_price: totalPrice,
+    notes: typeof source.notes === 'string' ? source.notes : ''
+  }
+}
+
+const selectedPurchase = computed(() =>
+  (purchasesData.value.items ?? []).find(item => item.id === form.purchase_id) ?? null
+)
+
+const purchaseItemOptions = computed(() =>
+  (selectedPurchase.value?.items ?? []).map((item, index) => ({
+    label: [
+      item.description || `Item ${index + 1}`,
+      `${Number(item.quantity || 0)} un`,
+      formatCurrency(item.unit_cost_price || 0)
+    ].join(' • '),
+    value: index
+  }))
+)
+
+function recalcReturnedItem(item: ReturnFormItem) {
+  item.total_price = Number(item.quantity || 0) * Number(item.unit_price || 0)
+}
+
+function returnedItemHasContent(item: ReturnFormItem) {
+  return Boolean(
+    item.description.trim()
+    || Number(item.quantity) > 0
+    || Number(item.unit_price || 0) > 0
+  )
+}
+
+const returnedItemsTotal = computed(() =>
+  returnedItems.value.reduce((sum, item) => sum + Number(item.total_price || 0), 0)
+)
+
+function useReturnedItemsTotal() {
+  form.total_returned_amount = Number(returnedItemsTotal.value.toFixed(2))
+}
+
+function addReturnedItem() {
+  returnedItems.value.push(createEmptyReturnItem())
+}
+
+function removeReturnedItem(index: number) {
+  if (returnedItems.value.length === 1)
+    return
+
+  returnedItems.value.splice(index, 1)
+}
+
+function onPurchaseItemSelect(item: ReturnFormItem, purchaseItemIndex: number | null) {
+  if (purchaseItemIndex == null)
+    return
+
+  const source = selectedPurchase.value?.items?.[purchaseItemIndex]
+  if (!source)
+    return
+
+  item.purchase_item_index = purchaseItemIndex
+  item.part_id = source.part_id ?? null
+  item.description = source.description ?? ''
+  item.quantity = Number(source.quantity || 1)
+  item.unit_price = Number(source.unit_cost_price || 0) || ''
+  recalcReturnedItem(item)
+}
 
 watch(() => form.purchase_id, (purchaseId) => {
   const purchase = purchaseOptions.value.find(option => option.value === purchaseId)
@@ -354,7 +508,7 @@ function resetForm() {
     total_returned_amount: '',
     notes: ''
   })
-  returnedItemsJson.value = '[]'
+  returnedItems.value = [createEmptyReturnItem()]
 }
 
 function openCreate() {
@@ -374,7 +528,11 @@ function openEdit(item: PurchaseReturnItem) {
     total_returned_amount: item.total_returned_amount ?? '',
     notes: item.notes ?? ''
   })
-  returnedItemsJson.value = item.returned_items ? JSON.stringify(item.returned_items, null, 2) : '[]'
+  returnedItems.value = Array.isArray(item.returned_items) && item.returned_items.length
+    ? item.returned_items
+        .map(normalizeReturnedItem)
+        .filter((entry): entry is ReturnFormItem => entry !== null)
+    : [createEmptyReturnItem()]
   showModal.value = true
 }
 
@@ -390,11 +548,28 @@ async function save() {
     return
   }
 
-  let parsedItems: unknown[] = []
-  try {
-    parsedItems = JSON.parse(returnedItemsJson.value)
-  } catch {
-    parsedItems = []
+  const parsedItems = returnedItems.value
+    .filter(returnedItemHasContent)
+    .map((item) => {
+      recalcReturnedItem(item)
+
+      return {
+        purchase_item_index: item.purchase_item_index,
+        part_id: item.part_id,
+        description: item.description.trim(),
+        quantity: Number(item.quantity || 0),
+        unit_price: Number(item.unit_price || 0),
+        total_price: Number(item.total_price || 0),
+        notes: item.notes || null
+      }
+    })
+
+  if (!parsedItems.length || parsedItems.some(item => !item.description || item.quantity <= 0)) {
+    toast.add({
+      title: 'Adicione pelo menos um item devolvido com descrição e quantidade válida',
+      color: 'warning'
+    })
+    return
   }
 
   isSaving.value = true
@@ -787,13 +962,7 @@ const lineColumns = [
           </UFormField>
 
           <UFormField label="Valor total devolvido" required>
-            <UInput
-              v-model="form.total_returned_amount"
-              type="number"
-              min="0"
-              step="0.01"
-              class="w-full"
-            />
+            <UiCurrencyInput v-model="form.total_returned_amount" />
           </UFormField>
 
           <UFormField label="Status">
@@ -805,13 +974,116 @@ const lineColumns = [
             />
           </UFormField>
 
-          <UFormField label="Itens devolvidos (JSON)" class="sm:col-span-2">
-            <UTextarea v-model="returnedItemsJson" :rows="6" class="w-full font-mono text-xs" />
-          </UFormField>
-
           <UFormField label="Observações" class="sm:col-span-2">
             <UTextarea v-model="form.notes" class="w-full" :rows="3" />
           </UFormField>
+        </div>
+
+        <USeparator label="Itens devolvidos" />
+
+        <div class="space-y-3">
+          <p class="text-sm text-muted">
+            Descreva os itens devolvidos de forma simples. Se a compra original tiver itens detalhados,
+            vocÃª pode selecionÃ¡-los para preencher automaticamente.
+          </p>
+
+          <div
+            v-for="(item, index) in returnedItems"
+            :key="`${item.part_id || 'returned-item'}-${index}`"
+            class="space-y-3 rounded-lg border border-default p-3"
+          >
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-muted">Item {{ index + 1 }}</span>
+              <UButton
+                v-if="returnedItems.length > 1"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="ghost"
+                size="xs"
+                @click="removeReturnedItem(index)"
+              />
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <UFormField
+                v-if="purchaseItemOptions.length"
+                label="Item da compra"
+                class="sm:col-span-2"
+              >
+                <USelectMenu
+                  v-model="item.purchase_item_index"
+                  :items="purchaseItemOptions"
+                  value-key="value"
+                  class="w-full"
+                  searchable
+                  clearable
+                  placeholder="Selecionar item da compra (opcional)"
+                  @update:model-value="onPurchaseItemSelect(item, item.purchase_item_index)"
+                />
+              </UFormField>
+
+              <UFormField label="DescriÃ§Ã£o" required class="sm:col-span-2">
+                <UInput v-model="item.description" class="w-full" />
+              </UFormField>
+
+              <UFormField label="Quantidade">
+                <UInput
+                  v-model="item.quantity"
+                  type="number"
+                  min="1"
+                  step="1"
+                  class="w-full"
+                  @update:model-value="recalcReturnedItem(item)"
+                />
+              </UFormField>
+
+              <UFormField label="Valor unitÃ¡rio">
+                <UiCurrencyInput
+                  v-model="item.unit_price"
+                  @update:model-value="recalcReturnedItem(item)"
+                />
+              </UFormField>
+
+              <UFormField label="Total do item">
+                <UInput :model-value="formatCurrency(item.total_price)" disabled class="w-full" />
+              </UFormField>
+
+              <UFormField label="ObservaÃ§Ãµes do item" class="sm:col-span-2">
+                <UTextarea v-model="item.notes" class="w-full" :rows="2" />
+              </UFormField>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-elevated/40 px-4 py-3">
+            <div class="space-y-1">
+              <p class="text-sm font-medium text-highlighted">
+                Total dos itens: {{ formatCurrency(returnedItemsTotal) }}
+              </p>
+              <p class="text-xs text-muted">
+                Use a soma dos itens para preencher o valor total devolvido quando fizer sentido.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                label="Adicionar item"
+                icon="i-lucide-plus"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="addReturnedItem"
+              />
+              <UButton
+                label="Usar total dos itens"
+                icon="i-lucide-calculator"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                :disabled="returnedItemsTotal <= 0"
+                @click="useReturnedItemsTotal"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </template>
