@@ -58,5 +58,41 @@ export default defineEventHandler(async (event) => {
   if (error)
     throw createError({ statusCode: 500, statusMessage: error.message })
 
+  // Create parts for new group items that have track_inventory = true
+  if (item.type === 'group' && Array.isArray(group_items)) {
+    const { data: existingParts } = await supabase
+      .from('parts')
+      .select('description')
+      .eq('product_id', id)
+      .eq('organization_id', organizationId)
+      .is('deleted_at', null)
+
+    const existingDescriptions = new Set((existingParts ?? []).map((p: { description: string }) => p.description))
+
+    const partsToCreate = (group_items as {
+      description: string
+      track_inventory?: boolean
+      initial_stock_quantity?: number
+      sale_price?: number
+      cost_price?: number
+    }[])
+      .map((gi, idx) => ({ gi, idx }))
+      .filter(({ gi }) => gi.track_inventory === true && !existingDescriptions.has(gi.description))
+      .map(({ gi, idx }) => ({
+        organization_id: organizationId,
+        product_id: id,
+        code: `${item.code}-ITEM-${idx + 1}`,
+        description: gi.description,
+        stock_quantity: gi.initial_stock_quantity ?? 0,
+        sale_price: gi.sale_price ?? 0,
+        cost_price: gi.cost_price ?? 0,
+        created_by: authUser.email,
+        updated_by: authUser.email
+      }))
+
+    if (partsToCreate.length > 0)
+      await supabase.from('parts').insert(partsToCreate)
+  }
+
   return { item }
 })

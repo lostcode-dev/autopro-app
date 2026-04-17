@@ -4,13 +4,13 @@ export type ProductCategory = {
 }
 
 export type GroupItem = {
-  descricao: string
-  quantidade: number
-  unidade_medida: string
-  preco_custo: number
-  preco_venda: number
-  controlar_estoque: boolean
-  quantidade_inicial_estoque: number
+  description: string
+  quantity: number
+  unit: string
+  cost_price: number
+  sale_price: number
+  track_inventory: boolean
+  initial_stock_quantity: number
 }
 
 export type ProductItem = {

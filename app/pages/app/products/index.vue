@@ -254,10 +254,7 @@ function getProductTypeLabel(type: ProductItem['type']) {
 }
 
 function getStockSummary(product: ProductItem) {
-  if (product.type === 'group') {
-    const count = (product.group_items ?? []).length
-    return `${count} ${count === 1 ? 'item' : 'itens'}`
-  }
+  if (product.type === 'group') return '-'
   if (!product.track_inventory) return '-'
   return `${product.initial_stock_quantity ?? 0} un`
 }
@@ -382,6 +379,10 @@ async function confirmBulkDelete() {
 // ── Categories modal ──────────────────────────────────────────────────────────
 
 const showCategoriesModal = ref(false)
+
+// ── Import modal ──────────────────────────────────────────────────────────────
+
+const showImportModal = ref(false)
 
 // ── Export CSV ────────────────────────────────────────────────────────────────
 
@@ -515,6 +516,16 @@ const lineColumns = [
                 @click="showBulkDeleteModal = true"
               />
             </UTooltip>
+
+            <UButton
+              v-if="canCreate"
+              label="Importar"
+              icon="i-lucide-upload"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="showImportModal = true"
+            />
 
             <UButton
               label="Categorias"
@@ -685,5 +696,10 @@ const lineColumns = [
     v-model:open="showCategoriesModal"
     :categories="categoriesList"
     @updated="refreshCategories"
+  />
+
+  <ProductImportModal
+    v-model:open="showImportModal"
+    @imported="refresh"
   />
 </template>

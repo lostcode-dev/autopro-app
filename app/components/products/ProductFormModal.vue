@@ -181,23 +181,11 @@ async function save() {
           </UFormField>
 
           <UFormField v-if="form.type === 'unit'" label="Preço de venda">
-            <UInput
-              v-model="form.unit_sale_price"
-              type="number"
-              min="0"
-              step="0.01"
-              class="w-full"
-            />
+            <CurrencyInput v-model="form.unit_sale_price" />
           </UFormField>
 
           <UFormField v-if="form.type === 'unit'" label="Preço de custo">
-            <UInput
-              v-model="form.unit_cost_price"
-              type="number"
-              min="0"
-              step="0.01"
-              class="w-full"
-            />
+            <CurrencyInput v-model="form.unit_cost_price" />
           </UFormField>
 
           <UFormField

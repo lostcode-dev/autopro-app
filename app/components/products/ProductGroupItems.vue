@@ -8,22 +8,22 @@ function formatCurrency(value: number) {
 }
 
 const totalCost = computed(() =>
-  modelValue.value.reduce((acc, item) => acc + (item.preco_custo ?? 0) * (item.quantidade ?? 0), 0)
+  modelValue.value.reduce((acc, item) => acc + (item.cost_price ?? 0) * (item.quantity ?? 0), 0)
 )
 
 const totalSale = computed(() =>
-  modelValue.value.reduce((acc, item) => acc + (item.preco_venda ?? 0) * (item.quantidade ?? 0), 0)
+  modelValue.value.reduce((acc, item) => acc + (item.sale_price ?? 0) * (item.quantity ?? 0), 0)
 )
 
 function addItem() {
   modelValue.value.push({
-    descricao: '',
-    quantidade: 1,
-    unidade_medida: 'un',
-    preco_custo: 0,
-    preco_venda: 0,
-    controlar_estoque: false,
-    quantidade_inicial_estoque: 0
+    description: '',
+    quantity: 1,
+    unit: 'un',
+    cost_price: 0,
+    sale_price: 0,
+    track_inventory: false,
+    initial_stock_quantity: 0
   })
 }
 
@@ -54,42 +54,45 @@ function removeItem(index: number) {
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <UFormField label="Descrição" required class="sm:col-span-2">
-          <UInput v-model="item.descricao" class="w-full" />
+          <UInput v-model="item.description" class="w-full" />
         </UFormField>
 
         <UFormField label="Quantidade">
           <UInput
-            v-model.number="item.quantidade"
+            v-model.number="item.quantity"
             type="number"
             min="1"
             class="w-full"
           />
         </UFormField>
 
-        <UFormField label="Unidade">
-          <UInput
-            v-model="item.unidade_medida"
-            class="w-full"
-            placeholder="un"
-          />
-        </UFormField>
-
         <UFormField label="Preço de custo">
-          <UInput
-            v-model.number="item.preco_custo"
-            type="number"
-            min="0"
-            step="0.01"
-            class="w-full"
-          />
+          <CurrencyInput v-model="item.cost_price" />
         </UFormField>
 
         <UFormField label="Preço de venda">
+          <CurrencyInput v-model="item.sale_price" />
+        </UFormField>
+      </div>
+
+      <div class="rounded-lg border border-default p-3 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-highlighted">
+              Adicionar ao Estoque
+            </p>
+            <p class="text-xs text-muted">
+              Este item será criado no módulo de estoque
+            </p>
+          </div>
+          <USwitch v-model="item.track_inventory" />
+        </div>
+
+        <UFormField v-if="item.track_inventory" label="Quantidade inicial">
           <UInput
-            v-model.number="item.preco_venda"
+            v-model.number="item.initial_stock_quantity"
             type="number"
             min="0"
-            step="0.01"
             class="w-full"
           />
         </UFormField>
