@@ -1001,7 +1001,7 @@ const lineColumns = [
               <UInput :model-value="formatCurrency(item.estimated_total_price)" disabled class="w-full" />
             </UFormField>
 
-            <UFormField label="Observações do item" class="sm:col-span-2">
+            <UFormField label="Observações" class="sm:col-span-2">
               <UTextarea v-model="item.notes" class="w-full" :rows="2" />
             </UFormField>
           </div>

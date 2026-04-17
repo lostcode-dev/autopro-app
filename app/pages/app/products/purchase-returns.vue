@@ -166,12 +166,18 @@ const activeFiltersCount = computed(() => {
   return count
 })
 
+function formatDateBR(value: string | null | undefined) {
+  if (!value) return ''
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : value
+}
+
 const purchaseOptions = computed(() =>
   (purchasesData.value.items ?? []).map(purchase => ({
     label: [
+      purchase.invoice_number ? `NF ${purchase.invoice_number}` : null,
       purchase.suppliers?.name,
-      purchase.invoice_number,
-      purchase.purchase_date
+      purchase.purchase_date ? formatDateBR(purchase.purchase_date) : null
     ].filter(Boolean).join(' - '),
     value: purchase.id,
     supplier_id: purchase.supplier_id
@@ -368,10 +374,14 @@ type ReturnFormItem = {
   notes: string
 }
 
+function todayISO() {
+  return new Date().toISOString().split('T')[0] || ''
+}
+
 const form = reactive({
   purchase_id: '',
   supplier_id: '',
-  return_date: new Date().toISOString().split('T')[0] || '',
+  return_date: todayISO(),
   reason: 'other',
   status: 'pending',
   total_returned_amount: '' as string | number,
@@ -445,6 +455,15 @@ const purchaseItemOptions = computed(() =>
   }))
 )
 
+function availablePurchaseItemOptions(currentItem: ReturnFormItem) {
+  const takenIndices = new Set(
+    returnedItems.value
+      .filter(i => i !== currentItem && i.purchase_item_index !== null)
+      .map(i => i.purchase_item_index)
+  )
+  return purchaseItemOptions.value.filter(opt => !takenIndices.has(opt.value))
+}
+
 function recalcReturnedItem(item: ReturnFormItem) {
   item.total_price = Number(item.quantity || 0) * Number(item.unit_price || 0)
 }
@@ -499,10 +518,11 @@ watch(() => form.purchase_id, (purchaseId) => {
 })
 
 function resetForm() {
+  const today = todayISO()
   Object.assign(form, {
     purchase_id: '',
     supplier_id: '',
-    return_date: new Date().toISOString().split('T')[0] || '',
+    return_date: today,
     reason: 'other',
     status: 'pending',
     total_returned_amount: '',
@@ -519,10 +539,11 @@ function openCreate() {
 
 function openEdit(item: PurchaseReturnItem) {
   selectedReturn.value = item
+  const rd = item.return_date ?? ''
   Object.assign(form, {
     purchase_id: item.purchase_id ?? '',
     supplier_id: item.supplier_id ?? '',
-    return_date: item.return_date ?? '',
+    return_date: rd,
     reason: item.reason ?? 'other',
     status: item.status ?? 'pending',
     total_returned_amount: item.total_returned_amount ?? '',
@@ -951,7 +972,7 @@ const lineColumns = [
           </UFormField>
 
           <UFormField label="Data da devolução" required>
-            <UInput v-model="form.return_date" type="date" class="w-full" />
+            <UiDatePicker v-model="form.return_date" class="w-full" />
           </UFormField>
 
           <UFormField label="Motivo">
@@ -961,10 +982,6 @@ const lineColumns = [
               value-key="value"
               class="w-full"
             />
-          </UFormField>
-
-          <UFormField label="Valor total devolvido">
-            <UInput :model-value="formatCurrency(returnedItemsTotal)" disabled class="w-full" />
           </UFormField>
 
           <UFormField label="Status">
@@ -1005,12 +1022,12 @@ const lineColumns = [
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <UFormField
                   v-if="purchaseItemOptions.length"
-                  label="Item da compra"
+                  label="Item"
                   class="sm:col-span-2"
                 >
                   <USelectMenu
                     :model-value="item.purchase_item_index ?? undefined"
-                    :items="purchaseItemOptions"
+                    :items="availablePurchaseItemOptions(item)"
                     value-key="value"
                     class="w-full"
                     searchable
@@ -1046,7 +1063,7 @@ const lineColumns = [
                   <UInput :model-value="formatCurrency(item.total_price)" disabled class="w-full" />
                 </UFormField>
 
-                <UFormField label="Observações do item" class="sm:col-span-2">
+                <UFormField label="Observações" class="sm:col-span-2">
                   <UTextarea v-model="item.notes" class="w-full" :rows="2" />
                 </UFormField>
               </div>
