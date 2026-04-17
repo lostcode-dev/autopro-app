@@ -85,6 +85,39 @@ function emptyForm() {
 
 const form = reactive(emptyForm())
 
+// ─── BR date/time display helpers ────────────────────────────────────────────
+const dateDisplay = ref('')
+const timeDisplay = ref('')
+
+function isoToDisplay(iso: string): string {
+  const m = iso?.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : ''
+}
+
+function displayToIso(display: string): string {
+  const m = display?.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : ''
+}
+
+function handleDateInput(val: string | number) {
+  const raw = String(val).replace(/\D/g, '').slice(0, 8)
+  let formatted = ''
+  if (raw.length > 0) formatted = raw.slice(0, 2)
+  if (raw.length > 2) formatted += '/' + raw.slice(2, 4)
+  if (raw.length > 4) formatted += '/' + raw.slice(4, 8)
+  dateDisplay.value = formatted
+  form.appointment_date = displayToIso(formatted)
+}
+
+function handleTimeInput(val: string | number) {
+  const raw = String(val).replace(/\D/g, '').slice(0, 4)
+  let formatted = ''
+  if (raw.length > 0) formatted = raw.slice(0, 2)
+  if (raw.length > 2) formatted += ':' + raw.slice(2, 4)
+  timeDisplay.value = formatted
+  form.time = formatted.length === 5 ? formatted : ''
+}
+
 watch(
   () => props.open,
   (opened) => {
@@ -108,6 +141,8 @@ watch(
       if (props.prefill?.date) form.appointment_date = props.prefill.date
       if (props.prefill?.time) form.time = props.prefill.time
     }
+    dateDisplay.value = isoToDisplay(form.appointment_date)
+    timeDisplay.value = form.time || ''
   },
 )
 
@@ -215,11 +250,27 @@ async function remove() {
           </UFormField>
 
           <UFormField label="Data" required>
-            <UInput v-model="form.appointment_date" type="date" class="w-full" />
+            <UInput
+              :model-value="dateDisplay"
+              type="text"
+              placeholder="DD/MM/AAAA"
+              maxlength="10"
+              inputmode="numeric"
+              class="w-full"
+              @update:model-value="handleDateInput"
+            />
           </UFormField>
 
           <UFormField label="Horário" required>
-            <UInput v-model="form.time" type="time" class="w-full" />
+            <UInput
+              :model-value="timeDisplay"
+              type="text"
+              placeholder="HH:MM"
+              maxlength="5"
+              inputmode="numeric"
+              class="w-full"
+              @update:model-value="handleTimeInput"
+            />
           </UFormField>
 
           <UFormField label="Tipo de serviço" required class="sm:col-span-2">
