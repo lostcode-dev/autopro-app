@@ -359,11 +359,55 @@ const requestPendingDeletion = ref<PurchaseRequestItem | null>(null)
 const isBulkDeleting = ref(false)
 
 type RequestFormItem = {
+  part_id?: string | null
   description: string
+  code?: string | null
   quantity: number
   estimated_unit_price: number
   estimated_total_price: number
   notes?: string | null
+}
+
+type PartOption = {
+  id: string
+  code: string
+  description: string
+  sale_price: number
+  cost_price: number | null
+  brand: string | null
+  stock_quantity: number
+}
+
+const partsData = ref<PartOption[]>([])
+const isLoadingParts = ref(false)
+
+async function loadParts() {
+  if (partsData.value.length > 0) return
+  isLoadingParts.value = true
+  try {
+    const res = await $fetch<{ items: PartOption[] }>('/api/parts', { query: { page_size: 200 } })
+    partsData.value = res.items ?? []
+  }
+  finally {
+    isLoadingParts.value = false
+  }
+}
+
+const partOptions = computed(() =>
+  partsData.value.map(p => ({
+    label: p.code ? `${p.code} – ${p.description}` : p.description,
+    value: p.id
+  }))
+)
+
+function onPartSelect(item: RequestFormItem, partId: string | null) {
+  if (!partId) return
+  const part = partsData.value.find(p => p.id === partId)
+  if (!part) return
+  item.description = part.description
+  item.code = part.code ?? ''
+  item.estimated_unit_price = part.sale_price ?? 0
+  recalcItem(item)
 }
 
 const form = reactive({
@@ -372,7 +416,7 @@ const form = reactive({
   notes: ''
 })
 const items = ref<RequestFormItem[]>([
-  { description: '', quantity: 1, estimated_unit_price: 0, estimated_total_price: 0, notes: '' }
+  { part_id: null, description: '', code: '', quantity: 1, estimated_unit_price: 0, estimated_total_price: 0, notes: '' }
 ])
 
 function resetForm() {
@@ -382,7 +426,7 @@ function resetForm() {
     notes: ''
   })
   items.value = [
-    { description: '', quantity: 1, estimated_unit_price: 0, estimated_total_price: 0, notes: '' }
+    { part_id: null, description: '', code: '', quantity: 1, estimated_unit_price: 0, estimated_total_price: 0, notes: '' }
   ]
 }
 
@@ -396,7 +440,9 @@ const totalAmount = computed(() =>
 
 function addItem() {
   items.value.push({
+    part_id: null,
     description: '',
+    code: '',
     quantity: 1,
     estimated_unit_price: 0,
     estimated_total_price: 0,
@@ -414,8 +460,11 @@ function removeItem(index: number) {
 function openCreate() {
   selectedRequest.value = null
   resetForm()
+  loadParts()
   showModal.value = true
 }
+
+
 
 function openEdit(request: PurchaseRequestItem) {
   selectedRequest.value = request
@@ -427,12 +476,15 @@ function openEdit(request: PurchaseRequestItem) {
   items.value = Array.isArray(request.items) && request.items.length
     ? request.items.map(item => ({ ...item }))
     : [{
+        part_id: null,
         description: '',
+        code: '',
         quantity: 1,
         estimated_unit_price: 0,
         estimated_total_price: 0,
         notes: ''
       }]
+  loadParts()
   showModal.value = true
 }
 
@@ -906,7 +958,25 @@ const lineColumns = [
           </div>
 
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <UFormField label="Descrição" required class="sm:col-span-2">
+            <UFormField label="Peça / Item do estoque" class="sm:col-span-2">
+              <USelectMenu
+                v-model="item.part_id"
+                :items="partOptions"
+                value-key="value"
+                :loading="isLoadingParts"
+                placeholder="Selecionar peça (opcional)"
+                class="w-full"
+                searchable
+                clearable
+                @update:model-value="onPartSelect(item, item.part_id ?? null)"
+              />
+            </UFormField>
+
+            <UFormField label="Código">
+              <UInput v-model="item.code" class="w-full" placeholder="Ex: FILT-001" />
+            </UFormField>
+
+            <UFormField label="Descrição" required>
               <UInput v-model="item.description" class="w-full" />
             </UFormField>
 
@@ -933,6 +1003,10 @@ const lineColumns = [
 
             <UFormField label="Total estimado" class="sm:col-span-2">
               <UInput :model-value="formatCurrency(item.estimated_total_price)" disabled class="w-full" />
+            </UFormField>
+
+            <UFormField label="Observações do item" class="sm:col-span-2">
+              <UTextarea v-model="item.notes" class="w-full" :rows="2" />
             </UFormField>
           </div>
         </div>

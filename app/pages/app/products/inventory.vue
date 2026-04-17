@@ -172,7 +172,7 @@ const { data, status, refresh } = await useAsyncData(
   }
 )
 
-const { data: productsData } = await useAsyncData(
+const { data: productsData, refresh: refreshProducts } = await useAsyncData(
   'parts-products-options',
   () => requestFetch<{ items: ProductOption[] }>('/api/products', {
     headers: requestHeaders,
@@ -218,7 +218,7 @@ const activeFiltersCount = computed(() => {
 })
 
 const productOptions = computed(() => [
-  { label: 'Sem vínculo com produto', value: '' },
+  { label: 'Sem vínculo com produto', value: null },
   ...(productsData.value.items ?? []).map(product => ({
     label: `${product.name} (${product.code})`,
     value: product.id
@@ -226,7 +226,7 @@ const productOptions = computed(() => [
 ])
 
 const supplierOptions = computed(() => [
-  { label: 'Sem fornecedor definido', value: '' },
+  { label: 'Sem fornecedor definido', value: null },
   ...(suppliersData.value.items ?? []).map(supplier => ({
     label: supplier.name,
     value: supplier.name
@@ -376,7 +376,7 @@ const isBulkDeleting = ref(false)
 const showCategoriesModal = ref(false)
 
 const form = reactive({
-  product_id: '',
+  product_id: null as string | null,
   code: '',
   description: '',
   stock_quantity: 0,
@@ -385,7 +385,7 @@ const form = reactive({
   cost_price: '' as number | string,
   brand: '',
   category: 'other',
-  supplier_name: '',
+  supplier_name: null as string | null,
   location: '',
   notes: ''
 })
@@ -398,9 +398,16 @@ const selectedProductCategoryName = computed(() =>
   selectedProductOption.value?.product_categories?.name || 'Sem categoria do catálogo'
 )
 
+async function handleCategoriesUpdated() {
+  await Promise.all([
+    refreshCategories(),
+    refreshProducts()
+  ])
+}
+
 function resetForm() {
   Object.assign(form, {
-    product_id: '',
+    product_id: null,
     code: generateCode('E'),
     description: '',
     stock_quantity: 0,
@@ -409,7 +416,7 @@ function resetForm() {
     cost_price: '',
     brand: '',
     category: 'other',
-    supplier_name: '',
+    supplier_name: null,
     location: '',
     notes: ''
   })
@@ -424,7 +431,7 @@ function openCreate() {
 function openEdit(part: PartItem) {
   selectedPart.value = part
   Object.assign(form, {
-    product_id: part.product_id ?? '',
+    product_id: part.product_id ?? null,
     code: part.code ?? '',
     description: part.description ?? '',
     stock_quantity: part.stock_quantity ?? 0,
@@ -433,7 +440,7 @@ function openEdit(part: PartItem) {
     cost_price: part.cost_price ?? '',
     brand: part.brand ?? '',
     category: part.category ?? 'other',
-    supplier_name: part.supplier_name ?? '',
+    supplier_name: part.supplier_name ?? null,,
     location: part.location ?? '',
     notes: part.notes ?? ''
   })
@@ -675,239 +682,239 @@ const lineColumns = [
 
       <div v-else class="p-4">
         <AppDataTable
-            v-model:display-mode="viewMode"
-            v-model:search-term="search"
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            v-model:sorting="sorting"
-            v-model:row-selection="rowSelection"
-            :columns="lineColumns"
-            :data="partItems"
-            :loading="status === 'pending'"
-            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
-            :selectable="viewMode === 'table'"
-            :sticky-header="viewMode === 'table'"
-            :get-row-id="(row) => String(row.id ?? '')"
-            :page-size-options="PAGE_SIZE_OPTIONS"
-            :total="totalParts"
-            search-placeholder="Buscar por descrição, código ou marca..."
-            :show-search="true"
-            :show-view-mode-toggle="true"
-            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
-            empty-icon="i-lucide-box"
-            empty-title="Nenhuma peça encontrada"
-            empty-description="Cadastre itens de estoque ou ajuste os filtros para continuar."
-          >
-            <template #toolbar-right>
-              <UTooltip text="Exportar estoque">
-                <UButton
-                  icon="i-lucide-download"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                  @click="exportCsv"
-                />
-              </UTooltip>
-
-              <UTooltip
-                v-if="canDelete"
-                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
-              >
-                <UButton
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="outline"
-                  size="sm"
-                  :disabled="selectedCount === 0"
-                  @click="showBulkDeleteModal = true"
-                />
-              </UTooltip>
-
+          v-model:display-mode="viewMode"
+          v-model:search-term="search"
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          v-model:sorting="sorting"
+          v-model:row-selection="rowSelection"
+          :columns="lineColumns"
+          :data="partItems"
+          :loading="status === 'pending'"
+          :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+          :selectable="viewMode === 'table'"
+          :sticky-header="viewMode === 'table'"
+          :get-row-id="(row) => String(row.id ?? '')"
+          :page-size-options="PAGE_SIZE_OPTIONS"
+          :total="totalParts"
+          search-placeholder="Buscar por descrição, código ou marca..."
+          :show-search="true"
+          :show-view-mode-toggle="true"
+          card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+          empty-icon="i-lucide-box"
+          empty-title="Nenhuma peça encontrada"
+          empty-description="Cadastre itens de estoque ou ajuste os filtros para continuar."
+        >
+          <template #toolbar-right>
+            <UTooltip text="Exportar estoque">
               <UButton
-                label="Categorias"
-                icon="i-lucide-tag"
+                icon="i-lucide-download"
                 color="neutral"
                 variant="outline"
                 size="sm"
-                @click="showCategoriesModal = true"
+                @click="exportCsv"
               />
+            </UTooltip>
 
+            <UTooltip
+              v-if="canDelete"
+              :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+            >
               <UButton
-                v-if="canCreate"
-                label="Nova peça"
-                icon="i-lucide-plus"
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="outline"
                 size="sm"
-                @click="openCreate"
+                :disabled="selectedCount === 0"
+                @click="showBulkDeleteModal = true"
               />
-            </template>
+            </UTooltip>
 
-            <template #filters>
-              <UPopover>
+            <UButton
+              label="Categorias"
+              icon="i-lucide-tag"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              @click="showCategoriesModal = true"
+            />
+
+            <UButton
+              v-if="canCreate"
+              label="Nova peça"
+              icon="i-lucide-plus"
+              size="sm"
+              @click="openCreate"
+            />
+          </template>
+
+          <template #filters>
+            <UPopover>
+              <UButton
+                icon="i-lucide-sliders-horizontal"
+                :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                color="neutral"
+                variant="outline"
+                size="sm"
+              />
+              <template #content>
+                <div class="w-64 space-y-3 p-3">
+                  <UFormField label="Categoria">
+                    <USelectMenu
+                      v-model="categoryFilter"
+                      :items="categoryOptions"
+                      value-key="value"
+                      class="w-full"
+                      searchable
+                    />
+                  </UFormField>
+                  <UFormField label="Estoque">
+                    <USelectMenu
+                      v-model="stockFilter"
+                      :items="stockFilterOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                </div>
+              </template>
+            </UPopover>
+          </template>
+
+          <template #description-cell="{ row }">
+            <div class="min-w-0 space-y-1">
+              <p class="truncate font-semibold text-highlighted">
+                {{ row.original.description }}
+              </p>
+              <p class="truncate text-xs text-muted">
+                {{ row.original.products?.product_categories?.name || row.original.products?.name || row.original.brand || 'Sem vínculo de catálogo' }}
+              </p>
+            </div>
+          </template>
+
+          <template #location-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ row.original.location || '-' }}
+            </span>
+          </template>
+
+          <template #sale_price-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatCurrency(row.original.sale_price) }}
+            </span>
+          </template>
+
+          <template #status-cell="{ row }">
+            <UBadge
+              :label="getStockStatus(row.original as PartItem).label"
+              :color="getStockStatus(row.original as PartItem).color"
+              :leading-icon="getStockStatus(row.original as PartItem).icon"
+              variant="subtle"
+              size="xs"
+            />
+          </template>
+
+          <template #actions-cell="{ row }">
+            <div class="flex items-center justify-end gap-2">
+              <UTooltip v-if="canUpdate" text="Editar peça">
                 <UButton
-                  icon="i-lucide-sliders-horizontal"
-                  :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                  icon="i-lucide-pencil"
                   color="neutral"
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="xs"
+                  @click="openEdit(row.original as PartItem)"
                 />
-                <template #content>
-                  <div class="w-64 space-y-3 p-3">
-                    <UFormField label="Categoria">
-                      <USelectMenu
-                        v-model="categoryFilter"
-                        :items="categoryOptions"
-                        value-key="value"
-                        class="w-full"
-                        searchable
+              </UTooltip>
+
+              <UTooltip v-if="canDelete" text="Excluir peça">
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  :loading="isDeleting"
+                  @click="requestRemove(row.original as PartItem)"
+                />
+              </UTooltip>
+            </div>
+          </template>
+
+          <template #card="{ item: part }">
+            <UCard class="border border-default/80 shadow-sm">
+              <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 space-y-2">
+                    <h3 class="truncate text-base font-semibold text-highlighted">
+                      {{ part.description }}
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <UBadge
+                        :label="getStockStatus(part as PartItem).label"
+                        :color="getStockStatus(part as PartItem).color"
+                        :leading-icon="getStockStatus(part as PartItem).icon"
+                        variant="subtle"
+                        size="xs"
                       />
-                    </UFormField>
-                    <UFormField label="Estoque">
-                      <USelectMenu
-                        v-model="stockFilter"
-                        :items="stockFilterOptions"
-                        value-key="value"
-                        class="w-full"
-                        :search-input="false"
+                      <UBadge
+                        :label="part.products?.product_categories?.name || 'Sem categoria do catálogo'"
+                        color="neutral"
+                        variant="subtle"
+                        size="xs"
                       />
-                    </UFormField>
-                  </div>
-                </template>
-              </UPopover>
-            </template>
-
-            <template #description-cell="{ row }">
-              <div class="min-w-0 space-y-1">
-                <p class="truncate font-semibold text-highlighted">
-                  {{ row.original.description }}
-                </p>
-                <p class="truncate text-xs text-muted">
-                  {{ row.original.products?.product_categories?.name || row.original.products?.name || row.original.brand || 'Sem vínculo de catálogo' }}
-                </p>
-              </div>
-            </template>
-
-            <template #location-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ row.original.location || '-' }}
-              </span>
-            </template>
-
-            <template #sale_price-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatCurrency(row.original.sale_price) }}
-              </span>
-            </template>
-
-            <template #status-cell="{ row }">
-              <UBadge
-                :label="getStockStatus(row.original as PartItem).label"
-                :color="getStockStatus(row.original as PartItem).color"
-                :leading-icon="getStockStatus(row.original as PartItem).icon"
-                variant="subtle"
-                size="xs"
-              />
-            </template>
-
-            <template #actions-cell="{ row }">
-              <div class="flex items-center justify-end gap-2">
-                <UTooltip v-if="canUpdate" text="Editar peça">
-                  <UButton
-                    icon="i-lucide-pencil"
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    @click="openEdit(row.original as PartItem)"
-                  />
-                </UTooltip>
-
-                <UTooltip v-if="canDelete" text="Excluir peça">
-                  <UButton
-                    icon="i-lucide-trash-2"
-                    color="error"
-                    variant="ghost"
-                    size="xs"
-                    :loading="isDeleting"
-                    @click="requestRemove(row.original as PartItem)"
-                  />
-                </UTooltip>
-              </div>
-            </template>
-
-            <template #card="{ item: part }">
-              <UCard class="border border-default/80 shadow-sm">
-                <div class="space-y-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 space-y-2">
-                      <h3 class="truncate text-base font-semibold text-highlighted">
-                        {{ part.description }}
-                      </h3>
-                      <div class="flex flex-wrap items-center gap-2">
-                        <UBadge
-                          :label="getStockStatus(part as PartItem).label"
-                          :color="getStockStatus(part as PartItem).color"
-                          :leading-icon="getStockStatus(part as PartItem).icon"
-                          variant="subtle"
-                          size="xs"
-                        />
-                        <UBadge
-                          :label="part.products?.product_categories?.name || 'Sem categoria do catálogo'"
-                          color="neutral"
-                          variant="subtle"
-                          size="xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="flex shrink-0 items-center gap-1">
-                      <UTooltip v-if="canUpdate" text="Editar peça">
-                        <UButton
-                          icon="i-lucide-pencil"
-                          color="neutral"
-                          variant="ghost"
-                          size="xs"
-                          @click="openEdit(part as PartItem)"
-                        />
-                      </UTooltip>
-
-                      <UTooltip v-if="canDelete" text="Excluir peça">
-                        <UButton
-                          icon="i-lucide-trash-2"
-                          color="error"
-                          variant="ghost"
-                          size="xs"
-                          :loading="isDeleting"
-                          @click="requestRemove(part as PartItem)"
-                        />
-                      </UTooltip>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-scan-barcode" class="size-4 shrink-0" />
-                      <span class="truncate">{{ part.code }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-package" class="size-4 shrink-0" />
-                      <span class="truncate">{{ part.stock_quantity }} un</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-briefcase-business" class="size-4 shrink-0" />
-                      <span class="truncate">{{ part.supplier_name || 'Sem fornecedor' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
-                      <span class="truncate">{{ part.location || 'Localização não informada' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
-                      <span class="truncate">{{ formatCurrency(part.sale_price) }}</span>
-                    </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <UTooltip v-if="canUpdate" text="Editar peça">
+                      <UButton
+                        icon="i-lucide-pencil"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        @click="openEdit(part as PartItem)"
+                      />
+                    </UTooltip>
+
+                    <UTooltip v-if="canDelete" text="Excluir peça">
+                      <UButton
+                        icon="i-lucide-trash-2"
+                        color="error"
+                        variant="ghost"
+                        size="xs"
+                        :loading="isDeleting"
+                        @click="requestRemove(part as PartItem)"
+                      />
+                    </UTooltip>
                   </div>
                 </div>
-              </UCard>
-            </template>
-          </AppDataTable>
+
+                <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-scan-barcode" class="size-4 shrink-0" />
+                    <span class="truncate">{{ part.code }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-package" class="size-4 shrink-0" />
+                    <span class="truncate">{{ part.stock_quantity }} un</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-briefcase-business" class="size-4 shrink-0" />
+                    <span class="truncate">{{ part.supplier_name || 'Sem fornecedor' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
+                    <span class="truncate">{{ part.location || 'Localização não informada' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
+                    <span class="truncate">{{ formatCurrency(part.sale_price) }}</span>
+                  </div>
+                </div>
+              </div>
+            </UCard>
+          </template>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>
@@ -1090,6 +1097,6 @@ const lineColumns = [
   <ProductCategoriesModal
     v-model:open="showCategoriesModal"
     :categories="categoriesList"
-    @updated="refreshCategories"
+    @updated="handleCategoriesUpdated"
   />
 </template>

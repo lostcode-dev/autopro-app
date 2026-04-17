@@ -64,7 +64,7 @@ export default defineEventHandler(async (event) => {
     : allItems ?? []
 
   if (category) {
-    filteredItems = filteredItems.filter((item) => item.products?.category_id === category)
+    filteredItems = filteredItems.filter(item => item.products?.category_id === category)
   }
 
   return {

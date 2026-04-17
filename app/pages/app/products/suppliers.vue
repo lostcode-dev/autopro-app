@@ -30,6 +30,12 @@ type SupplierItem = {
   category: string | null
   is_active: boolean
   notes: string | null
+  contact_name: string | null
+  contact_role: string | null
+  contact_phone: string | null
+  contact_email: string | null
+  payment_term_days: number | null
+  credit_limit: number | null
 }
 
 type SuppliersResponse = {
@@ -53,7 +59,7 @@ const MANAGED_QUERY_KEYS = [
 ] as const
 
 const SUPPLIER_CATEGORY_OPTIONS = [
-  { label: 'Sem categoria', value: '' },
+  { label: 'Sem categoria', value: null },
   { label: 'Autopeças', value: 'auto_parts' },
   { label: 'Ferramentas', value: 'tools' },
   { label: 'Equipamentos', value: 'equipment' },
@@ -310,6 +316,7 @@ function getLocationSummary(supplier: SupplierItem) {
 }
 
 const showModal = ref(false)
+const showImportModal = ref(false)
 const selectedSupplier = ref<SupplierItem | null>(null)
 const isSaving = ref(false)
 const isDeleting = ref(false)
@@ -337,7 +344,13 @@ const form = reactive({
   state: '',
   category: '',
   is_active: true,
-  notes: ''
+  notes: '',
+  contact_name: '',
+  contact_role: '',
+  contact_phone: '',
+  contact_email: '',
+  payment_term_days: 30 as number | string,
+  credit_limit: '' as number | string
 })
 
 function resetForm() {
@@ -357,9 +370,15 @@ function resetForm() {
     neighborhood: '',
     city: '',
     state: '',
-    category: '',
+    category: null,
     is_active: true,
-    notes: ''
+    notes: '',
+    contact_name: '',
+    contact_role: '',
+    contact_phone: '',
+    contact_email: '',
+    payment_term_days: 30,
+    credit_limit: ''
   })
 }
 
@@ -387,9 +406,15 @@ function openEdit(supplier: SupplierItem) {
     neighborhood: supplier.neighborhood ?? '',
     city: supplier.city ?? '',
     state: supplier.state ?? '',
-    category: supplier.category ?? '',
+    category: supplier.category ?? null,
     is_active: supplier.is_active ?? true,
-    notes: supplier.notes ?? ''
+    notes: supplier.notes ?? '',
+    contact_name: supplier.contact_name ?? '',
+    contact_role: supplier.contact_role ?? '',
+    contact_phone: supplier.contact_phone ?? '',
+    contact_email: supplier.contact_email ?? '',
+    payment_term_days: supplier.payment_term_days ?? 30,
+    credit_limit: supplier.credit_limit ?? ''
   })
   showModal.value = true
 }
@@ -427,7 +452,13 @@ async function save() {
       state: form.state || null,
       category: form.category || null,
       is_active: form.is_active,
-      notes: form.notes || null
+      notes: form.notes || null,
+      contact_name: form.contact_name || null,
+      contact_role: form.contact_role || null,
+      contact_phone: form.contact_phone || null,
+      contact_email: form.contact_email || null,
+      payment_term_days: form.payment_term_days === '' ? null : Number(form.payment_term_days),
+      credit_limit: form.credit_limit === '' ? null : Number(form.credit_limit)
     }
 
     if (selectedSupplier.value?.id) {
@@ -728,6 +759,16 @@ const lineColumns = [
 
               <UButton
                 v-if="canCreate"
+                label="Importar"
+                icon="i-lucide-upload"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="showImportModal = true"
+              />
+
+              <UButton
+                v-if="canCreate"
                 label="Novo fornecedor"
                 icon="i-lucide-plus"
                 size="sm"
@@ -1012,9 +1053,46 @@ const lineColumns = [
           </UFormField>
         </div>
 
-        <UFormField label="Observações">
-          <UTextarea v-model="form.notes" class="w-full" :rows="3" />
-        </UFormField>
+        <USeparator label="Pessoa de Contato" />
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <UFormField label="Nome do Contato">
+            <UInput v-model="form.contact_name" class="w-full" />
+          </UFormField>
+
+          <UFormField label="Cargo">
+            <UInput v-model="form.contact_role" class="w-full" />
+          </UFormField>
+
+          <UFormField label="Telefone do Contato">
+            <UInput v-model="form.contact_phone" class="w-full" />
+          </UFormField>
+
+          <UFormField label="Email do Contato">
+            <UInput v-model="form.contact_email" type="email" class="w-full" />
+          </UFormField>
+        </div>
+
+        <USeparator label="Condições Comerciais" />
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <UFormField label="Prazo Pagamento (dias)">
+            <UInput
+              v-model.number="form.payment_term_days"
+              type="number"
+              min="0"
+              class="w-full"
+            />
+          </UFormField>
+
+          <UFormField label="Limite de Crédito (R$)">
+            <CurrencyInput v-model="form.credit_limit" />
+          </UFormField>
+
+          <UFormField label="Observações" class="sm:col-span-2">
+            <UTextarea v-model="form.notes" class="w-full" :rows="3" />
+          </UFormField>
+        </div>
       </div>
     </template>
 
@@ -1077,4 +1155,9 @@ const lineColumns = [
       </p>
     </template>
   </AppConfirmModal>
+
+  <SupplierImportModal
+    v-model:open="showImportModal"
+    @imported="refresh"
+  />
 </template>
