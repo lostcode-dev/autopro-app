@@ -14,6 +14,9 @@ type ProductOption = {
   id: string
   name: string
   code: string
+  type: 'unit' | 'group'
+  unit_sale_price: number | null
+  unit_cost_price: number | null
   category_id?: string | null
   product_categories?: ProductCategory | null
 }
@@ -397,6 +400,32 @@ const selectedProductOption = computed(() =>
 const selectedProductCategoryName = computed(() =>
   selectedProductOption.value?.product_categories?.name || 'Sem categoria do catálogo'
 )
+
+const selectedProductTypeLabel = computed(() =>
+  selectedProductOption.value?.type === 'group' ? 'Grupo' : 'UnitÃ¡rio'
+)
+
+function handleProductSelect(productId: string | null) {
+  const product = (productsData.value.items ?? []).find(item => item.id === productId)
+  if (!product)
+    return
+
+  if (!form.description.trim())
+    form.description = product.name ?? ''
+
+  if (form.sale_price === '' && product.unit_sale_price != null)
+    form.sale_price = product.unit_sale_price
+
+  if (form.cost_price === '' && product.unit_cost_price != null)
+    form.cost_price = product.unit_cost_price
+}
+
+const selectedProductTypeBadgeLabel = computed(() => {
+  if (!selectedProductOption.value)
+    return 'Tipo indisponÃ­vel'
+
+  return selectedProductOption.value.type === 'group' ? 'Grupo' : 'UnitÃ¡rio'
+})
 
 async function handleCategoriesUpdated() {
   await Promise.all([
@@ -927,7 +956,11 @@ const lineColumns = [
     <template #body>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <UFormField label="Descrição" required class="sm:col-span-2">
-          <UInput v-model="form.description" class="w-full" />
+          <UInput
+            v-model="form.description"
+            class="w-full"
+            placeholder="Ex: Pastilha dianteira cerÃ¢mica"
+          />
         </UFormField>
 
         <UFormField label="Código" required>
@@ -941,6 +974,7 @@ const lineColumns = [
             value-key="value"
             class="w-full"
             searchable
+            @update:model-value="handleProductSelect(form.product_id)"
           />
         </UFormField>
 
@@ -957,6 +991,24 @@ const lineColumns = [
           </div>
         </UFormField>
 
+        <div class="sm:col-span-2 flex flex-wrap items-center gap-2 rounded-lg border border-default bg-elevated/40 px-3 py-2">
+          <UBadge
+            :label="selectedProductOption?.code || 'Sem produto vinculado'"
+            color="neutral"
+            variant="subtle"
+            size="sm"
+          />
+          <UBadge
+            :label="selectedProductTypeBadgeLabel"
+            :color="selectedProductOption ? 'primary' : 'neutral'"
+            variant="subtle"
+            size="sm"
+          />
+          <span class="text-xs text-muted">
+            Ao vincular um produto, a descriÃ§Ã£o e os preÃ§os podem ser sugeridos automaticamente.
+          </span>
+        </div>
+
         <UFormField label="Categoria técnica">
           <USelectMenu
             v-model="form.category"
@@ -967,7 +1019,7 @@ const lineColumns = [
         </UFormField>
 
         <UFormField label="Marca">
-          <UInput v-model="form.brand" class="w-full" />
+          <UInput v-model="form.brand" class="w-full" placeholder="Ex: Bosch, Cofap, NGK" />
         </UFormField>
 
         <UFormField label="Fornecedor">
@@ -1009,23 +1061,11 @@ const lineColumns = [
         </UFormField>
 
         <UFormField label="Preço de venda">
-          <UInput
-            v-model="form.sale_price"
-            type="number"
-            min="0"
-            step="0.01"
-            class="w-full"
-          />
+          <UiCurrencyInput v-model="form.sale_price" />
         </UFormField>
 
         <UFormField label="Preço de custo">
-          <UInput
-            v-model="form.cost_price"
-            type="number"
-            min="0"
-            step="0.01"
-            class="w-full"
-          />
+          <UiCurrencyInput v-model="form.cost_price" />
         </UFormField>
 
         <UFormField label="Observações" class="sm:col-span-2">

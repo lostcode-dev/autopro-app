@@ -461,9 +461,9 @@ const returnedItemsTotal = computed(() =>
   returnedItems.value.reduce((sum, item) => sum + Number(item.total_price || 0), 0)
 )
 
-function useReturnedItemsTotal() {
-  form.total_returned_amount = Number(returnedItemsTotal.value.toFixed(2))
-}
+watch(returnedItemsTotal, (val) => {
+  form.total_returned_amount = Number(val.toFixed(2))
+})
 
 function addReturnedItem() {
   returnedItems.value.push(createEmptyReturnItem())
@@ -540,9 +540,9 @@ async function save() {
   if (isSaving.value)
     return
 
-  if (!form.purchase_id || !form.return_date || !form.total_returned_amount) {
+  if (!form.purchase_id || !form.return_date) {
     toast.add({
-      title: 'Preencha compra, data e valor total da devolução',
+      title: 'Preencha a compra e a data da devolução',
       color: 'warning'
     })
     return
@@ -581,7 +581,7 @@ async function save() {
       return_date: form.return_date,
       reason: form.reason,
       status: form.status,
-      total_returned_amount: Number(form.total_returned_amount),
+      total_returned_amount: Number(returnedItemsTotal.value.toFixed(2)),
       returned_items: parsedItems,
       notes: form.notes || null
     }
@@ -963,8 +963,8 @@ const lineColumns = [
             />
           </UFormField>
 
-          <UFormField label="Valor total devolvido" required>
-            <UiCurrencyInput v-model="form.total_returned_amount" />
+          <UFormField label="Valor total devolvido">
+            <UInput :model-value="formatCurrency(returnedItemsTotal)" disabled class="w-full" />
           </UFormField>
 
           <UFormField label="Status">
@@ -981,112 +981,97 @@ const lineColumns = [
           </UFormField>
         </div>
 
-        <USeparator label="Itens devolvidos" />
+        <template v-if="form.purchase_id">
+          <USeparator label="Itens devolvidos" />
 
-        <div class="space-y-3">
-          <p class="text-sm text-muted">
-            Descreva os itens devolvidos de forma simples. Se a compra original tiver itens detalhados,
-            vocÃª pode selecionÃ¡-los para preencher automaticamente.
-          </p>
+          <div class="space-y-3">
+            <div
+              v-for="(item, index) in returnedItems"
+              :key="`${item.part_id || 'returned-item'}-${index}`"
+              class="space-y-3 rounded-lg border border-default p-3"
+            >
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-muted">Item {{ index + 1 }}</span>
+                <UButton
+                  v-if="returnedItems.length > 1"
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  @click="removeReturnedItem(index)"
+                />
+              </div>
 
-          <div
-            v-for="(item, index) in returnedItems"
-            :key="`${item.part_id || 'returned-item'}-${index}`"
-            class="space-y-3 rounded-lg border border-default p-3"
-          >
-            <div class="flex items-center justify-between">
-              <span class="text-sm font-medium text-muted">Item {{ index + 1 }}</span>
-              <UButton
-                v-if="returnedItems.length > 1"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                @click="removeReturnedItem(index)"
-              />
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <UFormField
+                  v-if="purchaseItemOptions.length"
+                  label="Item da compra"
+                  class="sm:col-span-2"
+                >
+                  <USelectMenu
+                    :model-value="item.purchase_item_index ?? undefined"
+                    :items="purchaseItemOptions"
+                    value-key="value"
+                    class="w-full"
+                    searchable
+                    clearable
+                    placeholder="Selecionar item da compra (opcional)"
+                    @update:model-value="(v: number | undefined) => { item.purchase_item_index = v ?? null; onPurchaseItemSelect(item, item.purchase_item_index) }"
+                  />
+                </UFormField>
+
+                <UFormField label="Descrição" required class="sm:col-span-2">
+                  <UInput v-model="item.description" class="w-full" />
+                </UFormField>
+
+                <UFormField label="Quantidade">
+                  <UInput
+                    v-model="item.quantity"
+                    type="number"
+                    min="1"
+                    step="1"
+                    class="w-full"
+                    @update:model-value="recalcReturnedItem(item)"
+                  />
+                </UFormField>
+
+                <UFormField label="Valor unitário">
+                  <UiCurrencyInput
+                    v-model="item.unit_price"
+                    @update:model-value="recalcReturnedItem(item)"
+                  />
+                </UFormField>
+
+                <UFormField label="Total do item">
+                  <UInput :model-value="formatCurrency(item.total_price)" disabled class="w-full" />
+                </UFormField>
+
+                <UFormField label="Observações do item" class="sm:col-span-2">
+                  <UTextarea v-model="item.notes" class="w-full" :rows="2" />
+                </UFormField>
+              </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <UFormField
-                v-if="purchaseItemOptions.length"
-                label="Item da compra"
-                class="sm:col-span-2"
-              >
-                <USelectMenu
-                  v-model="item.purchase_item_index"
-                  :items="purchaseItemOptions"
-                  value-key="value"
-                  class="w-full"
-                  searchable
-                  clearable
-                  placeholder="Selecionar item da compra (opcional)"
-                  @update:model-value="onPurchaseItemSelect(item, item.purchase_item_index)"
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-elevated/40 px-4 py-3">
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-highlighted">
+                  Total dos itens: {{ formatCurrency(returnedItemsTotal) }}
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <UButton
+                  label="Adicionar item"
+                  icon="i-lucide-plus"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="addReturnedItem"
                 />
-              </UFormField>
-
-              <UFormField label="DescriÃ§Ã£o" required class="sm:col-span-2">
-                <UInput v-model="item.description" class="w-full" />
-              </UFormField>
-
-              <UFormField label="Quantidade">
-                <UInput
-                  v-model="item.quantity"
-                  type="number"
-                  min="1"
-                  step="1"
-                  class="w-full"
-                  @update:model-value="recalcReturnedItem(item)"
-                />
-              </UFormField>
-
-              <UFormField label="Valor unitÃ¡rio">
-                <UiCurrencyInput
-                  v-model="item.unit_price"
-                  @update:model-value="recalcReturnedItem(item)"
-                />
-              </UFormField>
-
-              <UFormField label="Total do item">
-                <UInput :model-value="formatCurrency(item.total_price)" disabled class="w-full" />
-              </UFormField>
-
-              <UFormField label="ObservaÃ§Ãµes do item" class="sm:col-span-2">
-                <UTextarea v-model="item.notes" class="w-full" :rows="2" />
-              </UFormField>
+              </div>
             </div>
           </div>
-
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-elevated/40 px-4 py-3">
-            <div class="space-y-1">
-              <p class="text-sm font-medium text-highlighted">
-                Total dos itens: {{ formatCurrency(returnedItemsTotal) }}
-              </p>
-              <p class="text-xs text-muted">
-                Use a soma dos itens para preencher o valor total devolvido quando fizer sentido.
-              </p>
-            </div>
-
-            <div class="flex flex-wrap gap-2">
-              <UButton
-                label="Adicionar item"
-                icon="i-lucide-plus"
-                color="neutral"
-                variant="outline"
-                size="sm"
-                @click="addReturnedItem"
-              />
-              <UButton
-                label="Usar total dos itens"
-                icon="i-lucide-calculator"
-                color="neutral"
-                variant="outline"
-                size="sm"
-                :disabled="returnedItemsTotal <= 0"
-                @click="useReturnedItemsTotal"
-              />
-            </div>
-          </div>
-        </div>
+        </template>
       </div>
     </template>
 
