@@ -724,6 +724,7 @@ const lineColumns = [
       <div v-else class="p-4">
         <AppDataTable
           v-model:display-mode="viewMode"
+          v-model:search-term="search"
           v-model:page="page"
           v-model:page-size="pageSize"
           v-model:sorting="sorting"
@@ -737,7 +738,8 @@ const lineColumns = [
           :get-row-id="(row) => String(row.id ?? '')"
           :page-size-options="PAGE_SIZE_OPTIONS"
           :total="totalReturns"
-          :show-search="false"
+          search-placeholder="Buscar por fornecedor, nota fiscal ou observações..."
+          :show-search="true"
           :show-view-mode-toggle="true"
           card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
           empty-icon="i-lucide-undo-2"

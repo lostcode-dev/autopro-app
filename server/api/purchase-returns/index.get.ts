@@ -33,6 +33,42 @@ export default defineEventHandler(async (event) => {
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
 
+  if (query.search) {
+    const search = String(query.search).trim()
+
+    if (search) {
+      const escapedSearch = search.replace(/[%_,()]/g, '')
+      const notesFilter = `notes.ilike.%${escapedSearch}%`
+      const orFilters = [notesFilter]
+
+      const [{ data: suppliers }, { data: purchases }] = await Promise.all([
+        supabase
+          .from('suppliers')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .is('deleted_at', null)
+          .ilike('name', `%${escapedSearch}%`),
+        supabase
+          .from('purchases')
+          .select('id')
+          .eq('organization_id', organizationId)
+          .is('deleted_at', null)
+          .ilike('invoice_number', `%${escapedSearch}%`)
+      ])
+
+      const supplierIds = (suppliers ?? []).map(item => item.id).filter(Boolean)
+      const purchaseIds = (purchases ?? []).map(item => item.id).filter(Boolean)
+
+      if (supplierIds.length)
+        orFilters.push(`supplier_id.in.(${supplierIds.join(',')})`)
+
+      if (purchaseIds.length)
+        orFilters.push(`purchase_id.in.(${purchaseIds.join(',')})`)
+
+      dbQuery = dbQuery.or(orFilters.join(','))
+    }
+  }
+
   if (query.status) {
     dbQuery = dbQuery.eq('status', query.status as string)
   }
