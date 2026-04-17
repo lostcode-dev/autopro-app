@@ -547,7 +547,7 @@ const lineColumns = [
           </template>
 
           <template #filters>
-            <ProductFilters
+            <ProductsFilters
               v-model:type-filter="typeFilter"
               v-model:inventory-filter="inventoryFilter"
               v-model:category-filter="categoryFilter"
@@ -638,7 +638,7 @@ const lineColumns = [
           </template>
 
           <template #card="{ item: product }">
-            <ProductCard
+            <ProductsCard
               :product="product as ProductItem"
               :can-create="canCreate"
               :can-update="canUpdate"
@@ -654,7 +654,7 @@ const lineColumns = [
     </template>
   </UDashboardPanel>
 
-  <ProductFormModal
+  <ProductsFormModal
     v-model:open="showProductModal"
     :product="editingProduct"
     :clone-from="cloneFromProduct"
@@ -702,13 +702,13 @@ const lineColumns = [
     </template>
   </AppConfirmModal>
 
-  <ProductCategoriesModal
+  <ProductsCategoriesModal
     v-model:open="showCategoriesModal"
     :categories="categoriesList"
     @updated="refreshCategories"
   />
 
-  <ProductImportModal
+  <ProductsImportModal
     v-model:open="showImportModal"
     @imported="refresh"
   />

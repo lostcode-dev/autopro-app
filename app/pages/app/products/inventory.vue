@@ -1094,7 +1094,7 @@ const lineColumns = [
     </template>
   </AppConfirmModal>
 
-  <ProductCategoriesModal
+  <ProductsCategoriesModal
     v-model:open="showCategoriesModal"
     :categories="categoriesList"
     @updated="handleCategoriesUpdated"

@@ -210,7 +210,7 @@ async function save() {
           <UCheckbox v-model="form.track_inventory" label="Controlar estoque" />
         </div>
 
-        <ProductGroupItems v-if="form.type === 'group'" v-model="groupItems" />
+        <ProductsGroupItems v-if="form.type === 'group'" v-model="groupItems" />
       </div>
     </template>
 
