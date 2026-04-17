@@ -42,7 +42,7 @@ const groupItems = ref<GroupItem[]>([])
 function resetForm() {
   Object.assign(form, {
     name: '',
-    code: '',
+    code: generateCode('P'),
     type: 'unit',
     category_id: '',
     track_inventory: true,
@@ -57,7 +57,7 @@ function resetForm() {
 function populateFromProduct(source: ProductItem, clone = false) {
   Object.assign(form, {
     name: clone ? `${source.name} (Cópia)` : (source.name ?? ''),
-    code: clone ? `${source.code}-COPIA` : (source.code ?? ''),
+    code: clone ? generateCode('P') : (source.code ?? ''),
     type: source.type ?? 'unit',
     category_id: source.category_id ?? '',
     track_inventory: source.track_inventory ?? false,

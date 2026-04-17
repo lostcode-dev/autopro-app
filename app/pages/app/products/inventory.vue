@@ -2,6 +2,7 @@
 import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
+import type { ProductCategory } from '~/types/products'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Estoque' })
@@ -13,6 +14,8 @@ type ProductOption = {
   id: string
   name: string
   code: string
+  category_id?: string | null
+  product_categories?: ProductCategory | null
 }
 
 type SupplierOption = {
@@ -57,7 +60,7 @@ const MANAGED_QUERY_KEYS = [
   'sortOrder'
 ] as const
 
-const PART_CATEGORY_OPTIONS = [
+const PART_TECHNICAL_CATEGORY_OPTIONS = [
   { label: 'Todas as categorias', value: 'all' },
   { label: 'Freios', value: 'brakes' },
   { label: 'Motor', value: 'engine' },
@@ -178,6 +181,14 @@ const { data: productsData } = await useAsyncData(
   { default: () => ({ items: [] }) }
 )
 
+const { data: categoriesData, refresh: refreshCategories } = await useAsyncData(
+  'parts-product-categories-options',
+  () => requestFetch<{ items: ProductCategory[] }>('/api/product-categories', {
+    headers: requestHeaders
+  }),
+  { default: () => ({ items: [] }) }
+)
+
 const { data: suppliersData } = await useAsyncData(
   'parts-suppliers-options',
   () => requestFetch<{ items: SupplierOption[] }>('/api/suppliers', {
@@ -190,6 +201,14 @@ const { data: suppliersData } = await useAsyncData(
 const partItems = computed(() => data.value?.items ?? [])
 const totalParts = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalParts.value / pageSize.value)))
+const categoriesList = computed(() => categoriesData.value?.items ?? [])
+const categoryOptions = computed(() => [
+  { label: 'Todas as categorias', value: 'all' },
+  ...categoriesList.value.map(category => ({
+    label: category.name,
+    value: category.id
+  }))
+])
 
 const activeFiltersCount = computed(() => {
   let count = 0
@@ -354,6 +373,7 @@ const showDeleteModal = ref(false)
 const showBulkDeleteModal = ref(false)
 const partPendingDeletion = ref<PartItem | null>(null)
 const isBulkDeleting = ref(false)
+const showCategoriesModal = ref(false)
 
 const form = reactive({
   product_id: '',
@@ -370,10 +390,18 @@ const form = reactive({
   notes: ''
 })
 
+const selectedProductOption = computed(() =>
+  (productsData.value.items ?? []).find(product => product.id === form.product_id) ?? null
+)
+
+const selectedProductCategoryName = computed(() =>
+  selectedProductOption.value?.product_categories?.name || 'Sem categoria do catálogo'
+)
+
 function resetForm() {
   Object.assign(form, {
     product_id: '',
-    code: '',
+    code: generateCode('E'),
     description: '',
     stock_quantity: 0,
     minimum_quantity: 0,
@@ -591,7 +619,7 @@ async function exportCsv() {
       item.description,
       item.code,
       item.products?.name ?? '',
-      item.category ?? '',
+      item.products?.product_categories?.name ?? item.category ?? '',
       item.brand ?? '',
       item.stock_quantity,
       item.minimum_quantity ?? 0,
