@@ -687,6 +687,69 @@ const lineColumns = [
               </UTooltip>
             </div>
           </template>
+
+          <template #card="{ item: returnItem }">
+            <UCard class="border border-default/80 shadow-sm">
+              <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 space-y-2">
+                    <h3 class="truncate text-base font-semibold text-highlighted">
+                      {{ (returnItem as PurchaseReturnItem).suppliers?.name || 'Fornecedor não informado' }}
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <UBadge
+                        :label="statusLabelMap[(returnItem as PurchaseReturnItem).status] || (returnItem as PurchaseReturnItem).status"
+                        :color="statusColorMap[(returnItem as PurchaseReturnItem).status] || 'neutral'"
+                        :leading-icon="statusIconMap[(returnItem as PurchaseReturnItem).status]"
+                        variant="subtle"
+                        size="xs"
+                      />
+                      <UBadge
+                        :label="reasonLabelMap[(returnItem as PurchaseReturnItem).reason] || (returnItem as PurchaseReturnItem).reason"
+                        color="neutral"
+                        variant="subtle"
+                        size="xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="flex shrink-0 items-center gap-1">
+                    <UTooltip v-if="canUpdate" text="Editar devolução">
+                      <UButton
+                        icon="i-lucide-pencil"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        @click="openEdit(returnItem as PurchaseReturnItem)"
+                      />
+                    </UTooltip>
+
+                    <UTooltip v-if="canDelete" text="Excluir devolução">
+                      <UButton
+                        icon="i-lucide-trash-2"
+                        color="error"
+                        variant="ghost"
+                        size="xs"
+                        :loading="isDeleting"
+                        @click="requestRemove(returnItem as PurchaseReturnItem)"
+                      />
+                    </UTooltip>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-calendar" class="size-4 shrink-0" />
+                    <span class="truncate">{{ formatDate((returnItem as PurchaseReturnItem).return_date) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-circle-dollar-sign" class="size-4 shrink-0" />
+                    <span class="truncate font-medium text-highlighted">{{ formatCurrency((returnItem as PurchaseReturnItem).total_returned_amount) }}</span>
+                  </div>
+                </div>
+              </div>
+            </UCard>
+          </template>
         </AppDataTable>
       </div>
     </template>

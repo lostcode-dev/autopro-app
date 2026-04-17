@@ -729,6 +729,95 @@ const lineColumns = [
                 </UTooltip>
               </div>
             </template>
+
+            <template #card="{ item: request }">
+              <UCard class="border border-default/80 shadow-sm">
+                <div class="space-y-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 space-y-2">
+                      <h3 class="truncate text-base font-semibold text-highlighted">
+                        {{ (request as PurchaseRequestItem).suppliers?.name || 'Fornecedor não informado' }}
+                      </h3>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <UBadge
+                          :label="statusLabelMap[(request as PurchaseRequestItem).status] || (request as PurchaseRequestItem).status"
+                          :color="statusColorMap[(request as PurchaseRequestItem).status] || 'neutral'"
+                          :leading-icon="statusIconMap[(request as PurchaseRequestItem).status]"
+                          variant="subtle"
+                          size="xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="flex shrink-0 items-center gap-1">
+                      <template v-if="canApprove && (request as PurchaseRequestItem).status === 'waiting'">
+                        <UTooltip text="Autorizar solicitação">
+                          <UButton
+                            icon="i-lucide-check"
+                            color="success"
+                            variant="ghost"
+                            size="xs"
+                            @click="authorize(request as PurchaseRequestItem)"
+                          />
+                        </UTooltip>
+                        <UTooltip text="Recusar solicitação">
+                          <UButton
+                            icon="i-lucide-x"
+                            color="error"
+                            variant="ghost"
+                            size="xs"
+                            @click="openReject(request as PurchaseRequestItem)"
+                          />
+                        </UTooltip>
+                      </template>
+
+                      <UTooltip
+                        v-if="canUpdate && (request as PurchaseRequestItem).status === 'waiting'"
+                        text="Editar solicitação"
+                      >
+                        <UButton
+                          icon="i-lucide-pencil"
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
+                          @click="openEdit(request as PurchaseRequestItem)"
+                        />
+                      </UTooltip>
+
+                      <UTooltip v-if="canDelete" text="Excluir solicitação">
+                        <UButton
+                          icon="i-lucide-trash-2"
+                          color="error"
+                          variant="ghost"
+                          size="xs"
+                          :loading="isDeleting"
+                          @click="requestRemove(request as PurchaseRequestItem)"
+                        />
+                      </UTooltip>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-hash" class="size-4 shrink-0" />
+                      <span class="truncate">{{ (request as PurchaseRequestItem).request_number }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-calendar" class="size-4 shrink-0" />
+                      <span class="truncate">{{ formatDate((request as PurchaseRequestItem).request_date) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-user" class="size-4 shrink-0" />
+                      <span class="truncate">{{ (request as PurchaseRequestItem).requester || 'Não informado' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-circle-dollar-sign" class="size-4 shrink-0" />
+                      <span class="truncate font-medium text-highlighted">{{ formatCurrency((request as PurchaseRequestItem).total_request_amount) }}</span>
+                    </div>
+                  </div>
+                </div>
+              </UCard>
+            </template>
           </AppDataTable>
       </div>
     </template>

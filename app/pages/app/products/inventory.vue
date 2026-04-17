@@ -801,6 +801,7 @@ const lineColumns = [
                         <UBadge
                           :label="getStockStatus(part as PartItem).label"
                           :color="getStockStatus(part as PartItem).color"
+                          :leading-icon="getStockStatus(part as PartItem).icon"
                           variant="subtle"
                           size="xs"
                         />

@@ -752,6 +752,84 @@ const lineColumns = [
                 </UTooltip>
               </div>
             </template>
+
+            <template #card="{ item: purchase }">
+              <UCard class="border border-default/80 shadow-sm">
+                <div class="space-y-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0 space-y-2">
+                      <h3 class="truncate text-base font-semibold text-highlighted">
+                        {{ (purchase as PurchaseItem).suppliers?.name || 'Fornecedor não informado' }}
+                      </h3>
+                      <div class="flex flex-wrap items-center gap-2">
+                        <UBadge
+                          :label="statusLabelMap[(purchase as PurchaseItem).payment_status] || (purchase as PurchaseItem).payment_status"
+                          :color="statusColorMap[(purchase as PurchaseItem).payment_status] || 'neutral'"
+                          :leading-icon="statusIconMap[(purchase as PurchaseItem).payment_status]"
+                          variant="subtle"
+                          size="xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div class="flex shrink-0 items-center gap-1">
+                      <UTooltip
+                        v-if="canUpdate && (purchase as PurchaseItem).payment_status === 'pending'"
+                        text="Confirmar pagamento"
+                      >
+                        <UButton
+                          icon="i-lucide-check-circle"
+                          color="success"
+                          variant="ghost"
+                          size="xs"
+                          @click="openPayModal(purchase as PurchaseItem)"
+                        />
+                      </UTooltip>
+
+                      <UTooltip v-if="canUpdate" text="Editar compra">
+                        <UButton
+                          icon="i-lucide-pencil"
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
+                          @click="openEdit(purchase as PurchaseItem)"
+                        />
+                      </UTooltip>
+
+                      <UTooltip v-if="canDelete" text="Excluir compra">
+                        <UButton
+                          icon="i-lucide-trash-2"
+                          color="error"
+                          variant="ghost"
+                          size="xs"
+                          :loading="isDeleting"
+                          @click="requestRemove(purchase as PurchaseItem)"
+                        />
+                      </UTooltip>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-calendar" class="size-4 shrink-0" />
+                      <span class="truncate">{{ formatDate((purchase as PurchaseItem).purchase_date) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-receipt" class="size-4 shrink-0" />
+                      <span class="truncate">{{ (purchase as PurchaseItem).invoice_number || 'Sem nota fiscal' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-circle-dollar-sign" class="size-4 shrink-0" />
+                      <span class="truncate font-medium text-highlighted">{{ formatCurrency((purchase as PurchaseItem).total_amount) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <UIcon name="i-lucide-calendar-clock" class="size-4 shrink-0" />
+                      <span class="truncate">{{ (purchase as PurchaseItem).due_date ? formatDate((purchase as PurchaseItem).due_date) : 'Sem vencimento' }}</span>
+                    </div>
+                  </div>
+                </div>
+              </UCard>
+            </template>
           </AppDataTable>
       </div>
     </template>

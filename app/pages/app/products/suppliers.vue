@@ -854,6 +854,7 @@ const lineColumns = [
                         <UBadge
                           :label="supplier.is_active ? 'Ativo' : 'Inativo'"
                           :color="supplier.is_active ? 'success' : 'neutral'"
+                          :leading-icon="supplier.is_active ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
                           variant="subtle"
                           size="xs"
                         />
