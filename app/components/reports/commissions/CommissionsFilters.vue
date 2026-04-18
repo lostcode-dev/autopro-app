@@ -12,24 +12,21 @@ defineProps<CommissionsFiltersProps>()
 
 const dateFrom = defineModel<string>('dateFrom')
 const dateTo = defineModel<string>('dateTo')
-const search = defineModel<string>('search', { default: '' })
 const selectedEmployees = defineModel<string[]>('selectedEmployees', { default: () => [] })
-const commissionStatus = defineModel<string>('commissionStatus', { default: 'all' })
-const recordType = defineModel<string>('recordType', { default: 'all' })
+const commissionStatus = defineModel<string[]>('commissionStatus', { default: () => [] })
+const recordType = defineModel<string[]>('recordType', { default: () => [] })
 const orderStatusFilters = defineModel<string[]>('orderStatusFilters', { default: () => [] })
 const paymentStatusFilters = defineModel<string[]>('paymentStatusFilters', { default: () => [] })
 const paymentMethods = defineModel<string[]>('paymentMethods', { default: () => [] })
 
-const commissionStatusOptions = [
-  { value: 'all', label: 'Todos' },
-  { value: 'paid', label: 'Pagas' },
-  { value: 'pending', label: 'Pendentes' },
+const commissionStatusOptions: TagFilterOption[] = [
+  { value: 'paid', label: 'Pagas', color: 'success', icon: 'i-lucide-circle-check' },
+  { value: 'pending', label: 'Pendentes', color: 'warning', icon: 'i-lucide-clock' },
 ]
 
-const recordTypeOptions = [
-  { value: 'all', label: 'Todos' },
-  { value: 'commission', label: 'Comissões' },
-  { value: 'bonus', label: 'Bônus' },
+const recordTypeOptions: TagFilterOption[] = [
+  { value: 'commission', label: 'Comissões', color: 'primary', icon: 'i-lucide-badge-percent' },
+  { value: 'bonus', label: 'Bônus', color: 'info', icon: 'i-lucide-gift' },
 ]
 </script>
 
@@ -41,67 +38,76 @@ const recordTypeOptions = [
         <span class="text-sm font-medium">Filtros</span>
       </div>
 
-      <!-- Row 1: date + search -->
-      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <!-- Row 1: date range -->
+      <div>
+        <p class="mb-1 text-xs font-medium text-muted">Período</p>
         <UiDateRangePicker
           v-model:from="dateFrom"
           v-model:to="dateTo"
           class="w-full"
         />
-        <UInput
-          v-model="search"
-          placeholder="Buscar funcionário..."
-          icon="i-lucide-search"
-          class="w-full"
-        />
       </div>
 
       <!-- Row 2: employee + commission status + record type -->
-      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <UiTagFilter
-          v-model="selectedEmployees"
-          :options="employees.map(e => ({ value: e.id, label: e.name, color: 'neutral' as const, icon: 'i-lucide-user' }))"
-          placeholder="Funcionários"
-          class="w-full"
-        />
-        <USelect
-          v-model="commissionStatus"
-          :items="commissionStatusOptions"
-          value-key="value"
-          label-key="label"
-          placeholder="Status comissão"
-          class="w-full"
-        />
-        <USelect
-          v-model="recordType"
-          :items="recordTypeOptions"
-          value-key="value"
-          label-key="label"
-          placeholder="Tipo"
-          class="w-full"
-        />
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">Funcionários</p>
+          <UiTagFilter
+            v-model="selectedEmployees"
+            :options="employees.map(e => ({ value: e.id, label: e.name, color: 'neutral' as const, icon: 'i-lucide-user' }))"
+            placeholder="Selecionar"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">Status comissão</p>
+          <UiTagFilter
+            v-model="commissionStatus"
+            :options="commissionStatusOptions"
+            placeholder="Todos"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">Tipo</p>
+          <UiTagFilter
+            v-model="recordType"
+            :options="recordTypeOptions"
+            placeholder="Todos"
+            class="w-full"
+          />
+        </div>
       </div>
 
       <!-- Row 3: OS status + payment status + payment method -->
-      <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <UiTagFilter
-          v-model="orderStatusFilters"
-          :options="orderStatusOptions"
-          placeholder="Status da OS"
-          class="w-full"
-        />
-        <UiTagFilter
-          v-model="paymentStatusFilters"
-          :options="paymentStatusOptions"
-          placeholder="Pagamento da OS"
-          class="w-full"
-        />
-        <UiTagFilter
-          v-model="paymentMethods"
-          :options="paymentMethodOptions"
-          placeholder="Forma de pagamento"
-          class="w-full"
-        />
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">Status da OS</p>
+          <UiTagFilter
+            v-model="orderStatusFilters"
+            :options="orderStatusOptions"
+            placeholder="Todos"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">Pagamento da OS</p>
+          <UiTagFilter
+            v-model="paymentStatusFilters"
+            :options="paymentStatusOptions"
+            placeholder="Todos"
+            class="w-full"
+          />
+        </div>
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">Forma de pagamento</p>
+          <UiTagFilter
+            v-model="paymentMethods"
+            :options="paymentMethodOptions"
+            placeholder="Todas"
+            class="w-full"
+          />
+        </div>
       </div>
     </div>
   </UCard>

@@ -15,10 +15,9 @@ const toast = useToast()
 const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters } = useReportDateRange()
 
 // Filter state
-const search = ref('')
 const selectedEmployees = ref<string[]>([])
-const commissionStatus = ref('all')
-const recordType = ref('all')
+const commissionStatus = ref<string[]>([])
+const recordType = ref<string[]>([])
 const paymentMethods = ref<string[]>([])
 
 // Pagination / sorting
@@ -30,7 +29,7 @@ const sortByMap: Record<string, string> = {
   employee_name: 'employee',
   reference_date: 'date',
   amount: 'amount',
-  status_col: 'status',
+  status_col: 'status'
 }
 const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'date')
 const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
@@ -50,12 +49,12 @@ const exporting = ref<'csv' | 'pdf' | null>(null)
 
 // Reset page on filter changes
 watch(
-  [dateFrom, dateTo, search, selectedEmployees, commissionStatus, recordType, orderStatusFilters, paymentStatusFilters, paymentMethods, sortBy, sortOrder],
+  [dateFrom, dateTo, selectedEmployees, commissionStatus, recordType, orderStatusFilters, paymentStatusFilters, paymentMethods, sortBy, sortOrder],
   () => { page.value = 1 },
 )
 
 const queryKey = computed(() =>
-  `rc-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}-${selectedEmployees.value.join(',')}-${commissionStatus.value}-${recordType.value}-${orderStatusFilters.value.join(',')}-${paymentStatusFilters.value.join(',')}-${paymentMethods.value.join(',')}-${sortBy.value}-${sortOrder.value}`,
+  `rc-${dateFrom.value}-${dateTo.value}-${page.value}-${selectedEmployees.value.join(',')}-${commissionStatus.value.join(',')}-${recordType.value.join(',')}-${orderStatusFilters.value.join(',')}-${paymentStatusFilters.value.join(',')}-${paymentMethods.value.join(',')}-${sortBy.value}-${sortOrder.value}`,
 )
 
 const { data, status, refresh } = await useAsyncData(
@@ -67,10 +66,9 @@ const { data, status, refresh } = await useAsyncData(
       dateTo: dateTo.value,
       page: page.value,
       pageSize,
-      searchTerm: search.value || undefined,
       employeeIds: selectedEmployees.value.length ? selectedEmployees.value : undefined,
-      status: commissionStatus.value !== 'all' ? commissionStatus.value : undefined,
-      recordType: recordType.value !== 'all' ? recordType.value : undefined,
+      status: commissionStatus.value.length === 1 ? commissionStatus.value[0] : undefined,
+      recordType: recordType.value.length === 1 ? recordType.value[0] : undefined,
       orderStatusFilters: orderStatusFilters.value.length ? orderStatusFilters.value : undefined,
       paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
       paymentMethods: paymentMethods.value.length ? paymentMethods.value : undefined,
@@ -133,9 +131,9 @@ const canDelete = computed(() => can(ActionCode.FINANCIAL_DELETE))
 
 const columns = computed(() => [
   ...(canUpdate.value ? [{ id: 'select', header: '', enableSorting: false }] : []),
+  { accessorKey: 'reference_date', header: 'Referência' },
   { accessorKey: 'employee_name', header: 'Funcionário' },
   { accessorKey: 'order_number', header: 'OS', enableSorting: false },
-  { accessorKey: 'reference_date', header: 'Referência' },
   { accessorKey: 'order_entry_date', header: 'Entrada OS', enableSorting: false },
   { id: 'order_status_col', header: 'Status OS', enableSorting: false },
   { id: 'order_payment_col', header: 'Pgto OS', enableSorting: false },
@@ -270,12 +268,11 @@ async function exportReport(format: 'csv' | 'pdf') {
           dateFrom: dateFrom.value,
           dateTo: dateTo.value,
           employeeIds: selectedEmployees.value.length ? selectedEmployees.value : undefined,
-          status: commissionStatus.value !== 'all' ? commissionStatus.value : undefined,
-          recordType: recordType.value !== 'all' ? recordType.value : undefined,
+          status: commissionStatus.value.length === 1 ? commissionStatus.value[0] : undefined,
+          recordType: recordType.value.length === 1 ? recordType.value[0] : undefined,
           orderStatusFilters: orderStatusFilters.value.length ? orderStatusFilters.value : undefined,
           paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
           paymentMethods: paymentMethods.value.length ? paymentMethods.value : undefined,
-          searchTerm: search.value || undefined,
           sortBy: sortBy.value,
           sortOrder: sortOrder.value,
         },
@@ -337,7 +334,6 @@ async function exportReport(format: 'csv' | 'pdf') {
         <ReportsCommissionsFilters
           v-model:date-from="dateFrom"
           v-model:date-to="dateTo"
-          v-model:search="search"
           v-model:selected-employees="selectedEmployees"
           v-model:commission-status="commissionStatus"
           v-model:record-type="recordType"
