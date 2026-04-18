@@ -1,4 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
+import type { PDFFont } from 'pdf-lib'
 
 // ─── File utils ───
 export function csvEscape(value: unknown) {
@@ -39,7 +40,7 @@ const HEADER_SIZE = 8
 const BODY_SIZE = 7
 const ROW_HEIGHT = 15
 
-function clipText(text: string, maxWidth: number, font: any, size: number) {
+function clipText(text: string, maxWidth: number, font: PDFFont, size: number) {
   const value = String(text || '')
   if (font.widthOfTextAtSize(value, size) <= maxWidth) return value
   const ellipsis = '...'
@@ -57,13 +58,15 @@ export async function buildTablePdfBase64({
   subtitle,
   columns,
   rows,
-  footerRows
+  footerRows,
+  footerNotes
 }: {
   title: string
   subtitle?: string
   columns: Array<{ header: string, widthRatio: number, align?: 'left' | 'right' }>
   rows: string[][]
   footerRows?: Array<{ label: string, value: string }>
+  footerNotes?: string[]
 }) {
   const pdfDocument = await PDFDocument.create()
   const fontRegular = await pdfDocument.embedFont(StandardFonts.Helvetica)
@@ -120,8 +123,14 @@ export async function buildTablePdfBase64({
     y -= ROW_HEIGHT
   }
 
+  const footerRowsHeight = footerRows && footerRows.length > 0 ? ROW_HEIGHT * (footerRows.length + 1) : 0
+  const footerNotesHeight = footerNotes && footerNotes.length > 0 ? 10 + (footerNotes.length * 11) : 0
+
+  if ((footerRows && footerRows.length > 0) || (footerNotes && footerNotes.length > 0)) {
+    if (y <= MARGIN_BOTTOM + footerRowsHeight + footerNotesHeight) addPage()
+  }
+
   if (footerRows && footerRows.length > 0) {
-    if (y <= MARGIN_BOTTOM + ROW_HEIGHT * (footerRows.length + 1)) addPage()
     y -= 8
     page.drawLine({ start: { x: MARGIN_X, y }, end: { x: PAGE_WIDTH - MARGIN_X, y }, thickness: 0.6, color: rgb(0.75, 0.79, 0.84) })
     y -= 12
@@ -131,6 +140,21 @@ export async function buildTablePdfBase64({
       const valueWidth = fontBold.widthOfTextAtSize(valueText, BODY_SIZE + 1)
       page.drawText(valueText, { x: PAGE_WIDTH - MARGIN_X - valueWidth, y, size: BODY_SIZE + 1, font: fontBold, color: rgb(0.12, 0.16, 0.22) })
       y -= ROW_HEIGHT
+    }
+  }
+
+  if (footerNotes && footerNotes.length > 0) {
+    y -= 4
+    for (const footerNote of footerNotes) {
+      const noteText = clipText(String(footerNote || ''), PAGE_WIDTH - (MARGIN_X * 2), fontRegular, BODY_SIZE)
+      page.drawText(noteText, {
+        x: MARGIN_X,
+        y,
+        size: BODY_SIZE,
+        font: fontRegular,
+        color: rgb(0.34, 0.39, 0.45)
+      })
+      y -= 11
     }
   }
 
@@ -145,15 +169,17 @@ export async function buildReportDownloadData({
   fileNameBase,
   columns,
   rows,
-  footerRows
+  footerRows,
+  footerNotes
 }: {
   format: 'csv' | 'pdf'
   title: string
   subtitle?: string
   fileNameBase: string
   columns: Array<{ header: string, widthRatio?: number, align?: 'left' | 'right' }>
-  rows: any[][]
+  rows: unknown[][]
   footerRows?: Array<{ label: string, value: string }>
+  footerNotes?: string[]
 }) {
   if (!Array.isArray(columns) || columns.length === 0) {
     throw new Error('As colunas do relatório são obrigatórias.')
@@ -182,10 +208,16 @@ export async function buildReportDownloadData({
         csvLines.push(`${csvEscape(footerRow.label)},${csvEscape(footerRow.value)}`)
       }
     }
+    if (footerNotes && footerNotes.length > 0) {
+      csvLines.push('')
+      for (const footerNote of footerNotes) {
+        csvLines.push(csvEscape(footerNote))
+      }
+    }
     const csv = csvLines.join('\n')
     return { fileName: `${fileNameBase}_${today}.csv`, contentType: 'text/csv;charset=utf-8;', base64: textToBase64(csv) }
   }
 
-  const base64 = await buildTablePdfBase64({ title, subtitle, columns: normalizedColumns, rows: normalizedRows, footerRows })
+  const base64 = await buildTablePdfBase64({ title, subtitle, columns: normalizedColumns, rows: normalizedRows, footerRows, footerNotes })
   return { fileName: `${fileNameBase}_${today}.pdf`, contentType: 'application/pdf', base64 }
 }

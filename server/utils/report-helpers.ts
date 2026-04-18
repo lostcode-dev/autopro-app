@@ -65,7 +65,11 @@ export function toStringArray(value: unknown): string[] {
     const n = value.trim()
     if (!n || ['todos', 'null', 'undefined'].includes(n)) return []
     if (n.startsWith('[') && n.endsWith(']')) {
-      try { return toStringArray(JSON.parse(n)) } catch { return [] }
+      try {
+        return toStringArray(JSON.parse(n))
+      } catch {
+        return []
+      }
     }
     if (n.includes(',')) return Array.from(new Set(n.split(',').map(i => i.trim()).filter(Boolean)))
     return [n]
@@ -121,8 +125,28 @@ export function matchesStatusFilters(value: unknown, filters: string[]): boolean
 }
 
 export function formatStatusLabel(value: unknown): string {
-  const status = String(value || '')
+  const status = String(value || '').trim().toLowerCase()
   if (!status) return '-'
+
+  const statusLabelMap: Record<string, string> = {
+    open: 'Aberta',
+    in_progress: 'Em andamento',
+    waiting_for_part: 'Aguardando peça',
+    completed: 'Concluída',
+    delivered: 'Entregue',
+    estimate: 'Orçamento',
+    cancelled: 'Cancelada',
+    paid: 'Pago',
+    pending: 'Pendente',
+    partial: 'Parcial',
+    overdue: 'Vencido',
+    no_payment: 'Sem pagamento',
+    no_payment_method: 'Sem pagamento',
+    commission: 'Comissão',
+    bonus: 'Bônus'
+  }
+
+  if (statusLabelMap[status]) return statusLabelMap[status]
   return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
 }
 
@@ -146,8 +170,10 @@ export function getPreviousRangeByMode(
   compareMode: string
 ): { previousStartDate: Date, previousEndDate: Date } {
   if (compareMode === 'same_period_last_year') {
-    const ps = new Date(startDate); ps.setFullYear(ps.getFullYear() - 1)
-    const pe = new Date(endDate); pe.setFullYear(pe.getFullYear() - 1)
+    const ps = new Date(startDate)
+    ps.setFullYear(ps.getFullYear() - 1)
+    const pe = new Date(endDate)
+    pe.setFullYear(pe.getFullYear() - 1)
     return { previousStartDate: startOfDay(ps), previousEndDate: endOfDay(pe) }
   }
   if (compareMode === 'previous_month') {
@@ -167,8 +193,10 @@ export function getPreviousRangeByMode(
   // default: previous equivalent period
   const DAY_MS = 1000 * 60 * 60 * 24
   const periodDays = Math.floor((endDate.getTime() - startDate.getTime()) / DAY_MS) + 1
-  const pe = new Date(startDate); pe.setDate(pe.getDate() - 1)
-  const ps = new Date(pe); ps.setDate(ps.getDate() - (periodDays - 1))
+  const pe = new Date(startDate)
+  pe.setDate(pe.getDate() - 1)
+  const ps = new Date(pe)
+  ps.setDate(ps.getDate() - (periodDays - 1))
   return { previousStartDate: startOfDay(ps), previousEndDate: endOfDay(pe) }
 }
 
@@ -209,12 +237,14 @@ export function formatOptionalDate(value: unknown): string {
     const date = new Date(String(value).includes('T') ? String(value) : `${String(value)}T00:00:00`)
     if (Number.isNaN(date.getTime())) return '-'
     return new Intl.DateTimeFormat('pt-BR').format(date)
-  } catch { return '-' }
+  } catch {
+    return '-'
+  }
 }
 
 // ─── Purchase payment status ──────────────────────────────────────────────────
 
-export function getPurchasePaymentStatus(purchase: any): string {
+export function getPurchasePaymentStatus(purchase: { payment_status?: unknown, due_date?: string | null } | null | undefined): string {
   if (normalizeReportStatus(purchase?.payment_status) === 'paid') return 'paid'
   if (purchase?.due_date) {
     const due = new Date(`${purchase.due_date}T00:00:00`)

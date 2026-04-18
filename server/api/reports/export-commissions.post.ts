@@ -3,7 +3,78 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
-import { parseDateStart, parseDateEnd, toNumber, sortFactor, formatOptionalDate, formatCurrency, formatStatusLabel } from '../../utils/report-helpers'
+import {
+  formatCurrency,
+  formatOptionalDate,
+  formatStatusLabel,
+  normalizeReportStatus,
+  parseDateEnd,
+  parseDateStart,
+  sortFactor,
+  toNumber
+} from '../../utils/report-helpers'
+
+interface EmployeeRecord {
+  id: string
+  name?: string | null
+}
+
+interface OrganizationRecord {
+  name?: string | null
+  tax_id?: string | null
+  phone?: string | null
+  whatsapp?: string | null
+  email?: string | null
+  website?: string | null
+  city?: string | null
+  state?: string | null
+}
+
+interface ServiceOrderRecord {
+  id?: string | null
+  number?: string | number | null
+  status?: string | null
+  payment_status?: string | null
+  payment_method?: string | null
+  entry_date?: string | null
+}
+
+interface EmployeeFinancialRecord {
+  id: string
+  employee_id?: string | null
+  service_order_id?: string | null
+  reference_date?: string | null
+  payment_date?: string | null
+  amount?: number | string | null
+  status?: string | null
+  record_type?: string | null
+}
+
+interface ExportCommissionRecord extends EmployeeFinancialRecord {
+  employee_name: string
+  order_number: string | number | null
+  order_status: string | null
+  order_payment_status: 'paid' | 'pending' | 'cancelled' | null
+  order_entry_date: string | null
+}
+
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(value)
+}
+
+function formatPhone(value?: string | null) {
+  if (!value) return null
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 10) return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  if (digits.length === 11) return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return value
+}
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -14,94 +85,144 @@ export default defineEventHandler(async (event) => {
 
   const dateFrom = parseDateStart(body?.dateFrom)
   const dateTo = parseDateEnd(body?.dateTo)
-  const employeeIds = Array.isArray(body?.employeeIds) ? body.employeeIds.map((v: unknown) => String(v)).filter(Boolean) : []
+  const employeeIds = Array.isArray(body?.employeeIds)
+    ? body.employeeIds.map((value: unknown) => String(value)).filter(Boolean)
+    : []
   const employeeId = body?.employeeId && body.employeeId !== 'all' ? String(body.employeeId) : null
-  const status = body?.status && body.status !== 'all' ? String(body.status) : null
-  const orderStatusFilters = Array.isArray(body?.orderStatusFilters) ? body.orderStatusFilters.map((v: unknown) => String(v)).filter(Boolean) : []
-  const paymentStatusFilters = Array.isArray(body?.paymentStatusFilters) ? body.paymentStatusFilters.map((v: unknown) => String(v)).filter(Boolean) : []
-  const paymentMethods = Array.isArray(body?.paymentMethods) ? body.paymentMethods.map((v: unknown) => String(v)).filter(Boolean) : []
+  const status = body?.status && body.status !== 'all' ? normalizeReportStatus(body.status) : null
+  const orderStatusFilters = Array.isArray(body?.orderStatusFilters)
+    ? body.orderStatusFilters.map((value: unknown) => String(value)).filter(Boolean)
+    : []
+  const paymentStatusFilters = Array.isArray(body?.paymentStatusFilters)
+    ? body.paymentStatusFilters.map((value: unknown) => String(value)).filter(Boolean)
+    : []
+  const paymentMethods = Array.isArray(body?.paymentMethods)
+    ? body.paymentMethods.map((value: unknown) => String(value)).filter(Boolean)
+    : []
   const recordType = body?.recordType && body.recordType !== 'all' ? String(body.recordType) : null
   const searchTerm = String(body?.searchTerm || '').trim().toLowerCase()
   const sortBy = ['employee', 'date', 'amount', 'status'].includes(body?.sortBy) ? body.sortBy : 'date'
   const sortOrder: 'asc' | 'desc' = body?.sortOrder === 'asc' ? 'asc' : 'desc'
   const format = body?.format === 'pdf' ? 'pdf' : 'csv'
 
-  const [recordsResult, ordersResult, employeesResult] = await Promise.all([
+  const [recordsResult, ordersResult, employeesResult, organizationResult] = await Promise.all([
     supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).order('reference_date', { ascending: false }),
     supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null)
+    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase
+      .from('organizations')
+      .select('name, tax_id, phone, whatsapp, email, website, city, state')
+      .eq('id', organizationId)
+      .maybeSingle()
   ])
 
-  const records = recordsResult.data || []
-  const orders = ordersResult.data || []
-  const employees = employeesResult.data || []
+  const records = (recordsResult.data ?? []) as EmployeeFinancialRecord[]
+  const orders = (ordersResult.data ?? []) as ServiceOrderRecord[]
+  const employees = (employeesResult.data ?? []) as EmployeeRecord[]
+  const organization = (organizationResult.data ?? null) as OrganizationRecord | null
 
-  const employeesMap = new Map(employees.map((e: any) => [String(e.id), e]))
-  const ordersMap = new Map(orders.map((o: any) => [String(o.id), o]))
+  const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
+  const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))
 
-  const items = records
-    .filter((record: any) => {
-      const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
+  const items: ExportCommissionRecord[] = records
+    .filter((record) => {
+      const order = record.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
       const orderEntryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
+
       if (!orderEntryDate || Number.isNaN(orderEntryDate.getTime())) return false
       if (dateFrom && orderEntryDate < dateFrom) return false
       if (dateTo && orderEntryDate > dateTo) return false
-      if (employeeIds.length > 0 && !employeeIds.includes(String(record?.employee_id || ''))) return false
-      if (employeeIds.length === 0 && employeeId && String(record?.employee_id) !== employeeId) return false
-      if (status && record?.status !== status) return false
-      if (recordType && record?.record_type !== recordType) return false
+
+      if (employeeIds.length > 0) {
+        if (!employeeIds.includes(String(record.employee_id || ''))) return false
+      } else if (employeeId && String(record.employee_id || '') !== employeeId) {
+        return false
+      }
+
+      const normalizedStatus = normalizeReportStatus(record.status)
+      if (status && normalizedStatus !== status) return false
+      if (recordType && record.record_type !== recordType) return false
+
       if (paymentStatusFilters.length > 0) {
-        const s = String(order?.payment_status || '')
-        if (!s || !paymentStatusFilters.includes(s)) return false
+        const orderPaymentStatus = normalizeReportStatus(order?.payment_status)
+        if (!paymentStatusFilters.includes(orderPaymentStatus)) return false
       }
+
       if (orderStatusFilters.length > 0) {
-        const s = String(order?.status || '')
-        if (!s || !orderStatusFilters.includes(s)) return false
+        const orderStatus = String(order?.status || '')
+        if (!orderStatus || !orderStatusFilters.includes(orderStatus)) return false
       }
+
       if (paymentMethods.length > 0) {
-        const pm = String(order?.payment_method || '')
-        if (!paymentMethods.includes(pm || 'no_payment_method')) return false
+        const paymentMethod = String(order?.payment_method || 'no_payment')
+        if (!paymentMethods.includes(paymentMethod)) return false
       }
+
       if (searchTerm) {
-        const name = String(employeesMap.get(String(record?.employee_id || ''))?.name || '').toLowerCase()
-        if (!name.includes(searchTerm)) return false
+        const employeeName = String(employeesMap.get(String(record.employee_id || ''))?.name || '').toLowerCase()
+        if (!employeeName.includes(searchTerm)) return false
       }
+
       return true
     })
-    .map((record: any) => {
-      const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
+    .map((record) => {
+      const order = record.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
       return {
         ...record,
-        employee_name: String(employeesMap.get(String(record?.employee_id || ''))?.name || 'Unknown'),
-        order_number: order?.number || 'N/A',
+        status: normalizeReportStatus(record.status),
+        employee_name: String(employeesMap.get(String(record.employee_id || ''))?.name || 'Desconhecido'),
+        order_number: order?.number || null,
         order_status: order?.status || null,
-        order_payment_status: order?.payment_status || null,
+        order_payment_status: order?.payment_status ? normalizeReportStatus(order.payment_status) : null,
         order_entry_date: order?.entry_date || null
       }
     })
 
   const factor = sortFactor(sortOrder)
-  items.sort((a: any, b: any) => {
-    if (sortBy === 'employee') return String(a.employee_name || '').localeCompare(String(b.employee_name || ''), 'pt-BR', { sensitivity: 'base' }) * factor
-    if (sortBy === 'amount') return (toNumber(a?.amount, 0) - toNumber(b?.amount, 0)) * factor
-    if (sortBy === 'status') return String(a?.status || '').localeCompare(String(b?.status || ''), 'pt-BR', { sensitivity: 'base' }) * factor
-    return String(a?.order_entry_date || a?.reference_date || '').localeCompare(String(b?.order_entry_date || b?.reference_date || '')) * factor
+  items.sort((recordA, recordB) => {
+    if (sortBy === 'employee') {
+      return String(recordA.employee_name || '').localeCompare(String(recordB.employee_name || ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    }
+    if (sortBy === 'amount') {
+      return (toNumber(recordA.amount, 0) - toNumber(recordB.amount, 0)) * factor
+    }
+    if (sortBy === 'status') {
+      return String(recordA.status || '').localeCompare(String(recordB.status || ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    }
+
+    return String(recordA.order_entry_date || recordA.reference_date || '').localeCompare(String(recordB.order_entry_date || recordB.reference_date || '')) * factor
   })
 
   const totalRows = items.length
-  const totalCommission = items.reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
+  const totalCommission = items.reduce((sum, record) => sum + toNumber(record.amount, 0), 0)
+  const generatedAt = formatDateTime(new Date())
+  const companyPrimaryParts = [
+    organization?.name ? `Empresa: ${organization.name}` : null,
+    organization?.tax_id ? `CNPJ/CPF: ${organization.tax_id}` : null,
+    formatPhone(organization?.phone) ? `Telefone: ${formatPhone(organization?.phone)}` : null
+  ].filter(Boolean)
+  const companySecondaryParts = [
+    formatPhone(organization?.whatsapp) ? `WhatsApp: ${formatPhone(organization?.whatsapp)}` : null,
+    organization?.email ? `E-mail: ${organization.email}` : null,
+    organization?.website ? `Site: ${organization.website}` : null,
+    organization?.city || organization?.state ? `Local: ${[organization?.city, organization?.state].filter(Boolean).join('/')}` : null
+  ].filter(Boolean)
 
   const columns = [
-    { header: 'FUNCIONÁRIO', widthRatio: 0.18 }, { header: 'OS', widthRatio: 0.06 },
-    { header: 'REFERÊNCIA PAGAMENTO', widthRatio: 0.12 }, { header: 'STATUS OS', widthRatio: 0.1 },
-    { header: 'ENTRADA OS', widthRatio: 0.1 }, { header: 'VALOR', widthRatio: 0.1, align: 'right' as const },
-    { header: 'PAGAMENTO OS', widthRatio: 0.1 }, { header: 'STATUS COMISSÃO', widthRatio: 0.12 },
-    { header: 'DATA PAGAMENTO COMISSÃO', widthRatio: 0.12 }
+    { header: 'FUNC.', widthRatio: 0.17 },
+    { header: 'OS', widthRatio: 0.16 },
+    { header: 'REF. PGTO', widthRatio: 0.1 },
+    { header: 'ST. OS', widthRatio: 0.09 },
+    { header: 'ENT. OS', widthRatio: 0.09 },
+    { header: 'VALOR', widthRatio: 0.09, align: 'right' as const },
+    { header: 'PGTO OS', widthRatio: 0.1 },
+    { header: 'ST. COM.', widthRatio: 0.1 },
+    { header: 'DT. PGTO', widthRatio: 0.1 }
   ]
 
-  const dataRows = items.map((record: any) => [
-    String(record.employee_name || 'Unknown'),
-    String(record.service_order_id ? `#${record.order_number || 'N/A'}` : '-'),
+  const dataRows = items.map(record => [
+    String(record.employee_name || 'Desconhecido'),
+    record.order_number ? String(record.order_number) : '-',
     formatOptionalDate(record.reference_date),
     formatStatusLabel(record.order_status),
     formatOptionalDate(record.order_entry_date || record.reference_date),
@@ -121,7 +242,12 @@ export default defineEventHandler(async (event) => {
     footerRows: [
       { label: 'Total de Linhas', value: String(totalRows) },
       { label: 'Total da Comissão', value: formatCurrency(totalCommission) }
-    ]
+    ],
+    footerNotes: [
+      `Gerado em: ${generatedAt}`,
+      companyPrimaryParts.join(' | '),
+      companySecondaryParts.join(' | ')
+    ].filter(Boolean)
   })
 
   return { success: true, data }

@@ -259,8 +259,8 @@ const bulkPayTotal = computed(() =>
 
 async function openBulkPay() {
   if (!bankAccounts.value.length) {
-    const res = await $fetch<{ data: { items: BankAccountItem[] } }>('/api/bank-accounts', { query: { is_active: 'true' } })
-    bankAccounts.value = res.data?.items ?? []
+    const res = await $fetch<{ items: BankAccountItem[] }>('/api/bank-accounts', { query: { is_active: 'true' } })
+    bankAccounts.value = res.items ?? []
   }
   bulkPayOpen.value = true
 }
