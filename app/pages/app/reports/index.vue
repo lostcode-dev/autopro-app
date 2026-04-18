@@ -125,9 +125,10 @@ const kpis = computed(() => [
         <!-- Revenue vs Cost Chart -->
         <UPageCard variant="subtle">
           <template #header>
-            <p class="text-sm font-semibold">
-              Faturamento vs Custo
-            </p>
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-bar-chart-2" class="size-4 text-primary shrink-0" />
+              <p class="text-sm font-semibold">Faturamento vs Custo</p>
+            </div>
           </template>
           <ChartsBar
             :categories="barCategories"
@@ -141,9 +142,10 @@ const kpis = computed(() => [
         <!-- Top Items -->
         <UPageCard v-if="topItems.length" variant="subtle">
           <template #header>
-            <p class="text-sm font-semibold">
-              Itens mais vendidos
-            </p>
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-list-checks" class="size-4 text-primary shrink-0" />
+              <p class="text-sm font-semibold">Itens mais vendidos</p>
+            </div>
           </template>
           <div class="divide-y divide-default">
             <div
