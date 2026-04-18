@@ -4,6 +4,26 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, formatDayLabel, getPurchasePaymentStatus } from '../../utils/report-helpers'
 
+interface PurchaseRecord {
+  supplier_id?: string | null
+  purchase_date?: string | null
+  total_amount?: number | string | null
+  invoice_number?: string | null
+  due_date?: string | null
+  payment_status?: string | null
+  [key: string]: unknown
+}
+
+interface SupplierRecord {
+  id: string
+  name?: string | null
+}
+
+interface PurchaseReportItem extends PurchaseRecord {
+  supplierName: string
+  paymentStatus: string
+}
+
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -13,8 +33,8 @@ export default defineEventHandler(async (event) => {
 
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
-  const supplierIds = qArr(query.supplierIds)
-  const statusFilter = query.status && query.status !== 'all' ? String(query.status) : null
+  const supplierIds = qArr(query.supplierIds as string | string[] | undefined)
+  const statusFilters = qArr(query.status as string | string[] | undefined).filter(status => ['pending', 'paid', 'overdue'].includes(status))
   const searchTerm = String(query.searchTerm || '').trim().toLowerCase()
   const sortBy = ['purchase_date', 'total_amount', 'supplier', 'invoice_number', 'status'].includes(query.sortBy as string) ? String(query.sortBy) : 'purchase_date'
   const sortOrder: 'asc' | 'desc' = query.sortOrder === 'asc' ? 'asc' : 'desc'
@@ -26,18 +46,18 @@ export default defineEventHandler(async (event) => {
     supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
-  const purchasesRaw = purchasesResult.data || []
-  const suppliers = suppliersResult.data || []
-  const suppliersMap = new Map<string, any>(suppliers.map((s: any) => [String(s.id), s]))
+  const purchasesRaw = (purchasesResult.data ?? []) as PurchaseRecord[]
+  const suppliers = (suppliersResult.data ?? []) as SupplierRecord[]
+  const suppliersMap = new Map<string, SupplierRecord>(suppliers.map(s => [String(s.id), s]))
 
-  let filteredPurchases = purchasesRaw.map((p: any) => ({
+  let filteredPurchases: PurchaseReportItem[] = purchasesRaw.map(p => ({
     ...p,
-    supplierName: suppliersMap.get(String(p?.supplier_id || ''))?.name || 'Unknown',
+    supplierName: suppliersMap.get(String(p?.supplier_id || ''))?.name || 'Sem fornecedor',
     paymentStatus: getPurchasePaymentStatus(p)
   }))
 
   if (dateFrom || dateTo) {
-    filteredPurchases = filteredPurchases.filter((p: any) => {
+    filteredPurchases = filteredPurchases.filter((p) => {
       const purchaseDate = p?.purchase_date ? new Date(`${p.purchase_date}T00:00:00`) : null
       if (!purchaseDate || Number.isNaN(purchaseDate.getTime())) return false
       if (dateFrom && purchaseDate < dateFrom) return false
@@ -46,26 +66,26 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (supplierIds.length > 0) filteredPurchases = filteredPurchases.filter((p: any) => supplierIds.includes(String(p?.supplier_id || '')))
-  if (statusFilter) filteredPurchases = filteredPurchases.filter((p: any) => p.paymentStatus === statusFilter)
+  if (supplierIds.length > 0) filteredPurchases = filteredPurchases.filter(p => supplierIds.includes(String(p?.supplier_id || '')))
+  if (statusFilters.length > 0) filteredPurchases = filteredPurchases.filter(p => statusFilters.includes(String(p.paymentStatus || '')))
   if (searchTerm) {
-    filteredPurchases = filteredPurchases.filter((p: any) =>
+    filteredPurchases = filteredPurchases.filter(p =>
       p.supplierName.toLowerCase().includes(searchTerm)
       || String(p?.invoice_number || '').toLowerCase().includes(searchTerm)
     )
   }
 
   const factor = sortFactor(sortOrder)
-  filteredPurchases.sort((a: any, b: any) => {
+  filteredPurchases.sort((a, b) => {
     if (sortBy === 'total_amount') return (toNumber(a?.total_amount, 0) - toNumber(b?.total_amount, 0)) * factor
     if (sortBy === 'supplier') return a.supplierName.localeCompare(b.supplierName, 'pt-BR', { sensitivity: 'base' }) * factor
     if (sortBy === 'invoice_number') return String(a?.invoice_number || '').localeCompare(String(b?.invoice_number || '')) * factor
-    if (sortBy === 'status') return a.paymentStatus.localeCompare(b.paymentStatus) * factor
-    return String(b?.purchase_date || '').localeCompare(String(a?.purchase_date || '')) * factor * (sortOrder === 'asc' ? -1 : 1)
+    if (sortBy === 'status') return String(a.paymentStatus || '').localeCompare(String(b.paymentStatus || ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    return String(a?.purchase_date || '').localeCompare(String(b?.purchase_date || '')) * factor
   })
 
-  const totalPurchased = filteredPurchases.reduce((s: number, p: any) => s + toNumber(p?.total_amount, 0), 0)
-  const totalPaid = filteredPurchases.filter((p: any) => p.paymentStatus === 'paid').reduce((s: number, p: any) => s + toNumber(p?.total_amount, 0), 0)
+  const totalPurchased = filteredPurchases.reduce((s: number, p) => s + toNumber(p?.total_amount, 0), 0)
+  const totalPaid = filteredPurchases.filter(p => p.paymentStatus === 'paid').reduce((s: number, p) => s + toNumber(p?.total_amount, 0), 0)
 
   // Chart: top 10 suppliers by total
   const supplierTotals: Record<string, { name: string, total: number }> = {}
@@ -101,7 +121,7 @@ export default defineEventHandler(async (event) => {
       pagination,
       summary: { totalPurchased, totalPaid, totalPending: totalPurchased - totalPaid, count: filteredPurchases.length },
       charts: { bySupplier: bySupplierChart, byDay: byDayChart },
-      suppliers: suppliers.sort((a: any, b: any) => String(a?.name || '').localeCompare(String(b?.name || ''), 'pt-BR'))
+      suppliers: suppliers.sort((a, b) => String(a?.name || '').localeCompare(String(b?.name || ''), 'pt-BR'))
     }
   }
 })

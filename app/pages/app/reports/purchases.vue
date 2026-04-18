@@ -1,63 +1,185 @@
 <script setup lang="ts">
+import type { SortingState } from '@tanstack/vue-table'
+
+interface PurchaseReportItem {
+  purchase_date?: string | null
+  total_amount?: number | string | null
+  invoice_number?: string | null
+  paymentStatus?: string | null
+  payment_status?: string | null
+  supplierName?: string | null
+  supplier_name?: string | null
+  suppliers?: { name?: string | null } | null
+}
+
+interface PurchaseSummary {
+  totalPurchased?: number
+  totalPaid?: number
+  totalPending?: number
+  count?: number
+}
+
+interface PurchasePagination {
+  totalItems?: number
+}
+
+interface PurchaseSupplierOption {
+  id: string
+  name: string
+}
+
+interface PurchaseCharts {
+  bySupplier: Array<{ name: string, total: number }>
+  byDay: Array<{ name: string, total: number }>
+}
+
+interface PurchaseReportResponse {
+  data?: {
+    items?: PurchaseReportItem[]
+    summary?: PurchaseSummary
+    pagination?: PurchasePagination | null
+    charts?: PurchaseCharts
+    suppliers?: PurchaseSupplierOption[]
+  }
+}
+
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Relatório de Compras' })
 
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const toast = useToast()
 
 const { dateFrom, dateTo } = useReportDateRange()
+
+const search = ref('')
+const paymentStatus = ref<string[]>([])
+const supplierIds = ref<string[]>([])
 const page = ref(1)
 const pageSize = 20
+const exporting = ref<'csv' | 'pdf' | null>(null)
 
-const { data, status } = await useAsyncData(
-  () => `report-purchases-${dateFrom.value}-${dateTo.value}-${page.value}`,
-  () => requestFetch<{ data: any }>('/api/reports/purchases', {
-    headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, page: page.value, pageSize }
-  }),
-  { watch: [dateFrom, dateTo, page] }
-)
+const sorting = ref<SortingState>([{ id: 'purchase_date', desc: true }])
 
-const items = computed(() => data.value?.data?.items ?? [])
-const summary = computed(() => data.value?.data?.summary ?? {})
-const pagination = computed(() => data.value?.data?.pagination ?? null)
+const sortByMap: Record<string, string> = {
+  supplier: 'supplier',
+  purchase_date: 'purchase_date',
+  invoice_number: 'invoice_number',
+  total_amount: 'total_amount',
+  pay_status: 'status'
+}
 
-const chartData = computed(() => {
-  const byDate: Record<string, number> = {}
-  for (const item of items.value) {
-    const date = String(item.purchase_date ?? '')
-    if (!date) continue
-    byDate[date] = (byDate[date] ?? 0) + Number(item.total_amount ?? 0)
-  }
-  return Object.entries(byDate)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, amount]) => {
-      const [, m, d] = date.split('-')
-      return { name: `${d}/${m}`, amount }
-    })
+const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'purchase_date')
+const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+
+watch([dateFrom, dateTo, search, paymentStatus, supplierIds, sortBy, sortOrder], () => {
+  page.value = 1
 })
 
-const chartCategories = computed(() => chartData.value.map(d => d.name))
-const chartSeries = computed(() => [{ name: 'Total comprado', data: chartData.value.map(d => d.amount) }])
+const queryKey = computed(() =>
+  `report-purchases-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}-${paymentStatus.value.join(',')}-${supplierIds.value.join(',')}-${sortBy.value}-${sortOrder.value}`
+)
+
+const { data, status } = await useAsyncData(
+  () => queryKey.value,
+  () => requestFetch<PurchaseReportResponse>('/api/reports/purchases', {
+    headers: requestHeaders,
+    query: {
+      dateFrom: dateFrom.value,
+      dateTo: dateTo.value,
+      page: page.value,
+      pageSize,
+      searchTerm: search.value || undefined,
+      supplierIds: supplierIds.value.length ? supplierIds.value : undefined,
+      status: paymentStatus.value.length ? paymentStatus.value : undefined,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value
+    }
+  }),
+  { watch: [queryKey] }
+)
+
+const items = computed<PurchaseReportItem[]>(() => data.value?.data?.items ?? [])
+const summary = computed<PurchaseSummary>(() => data.value?.data?.summary ?? {})
+const pagination = computed<PurchasePagination | null>(() => data.value?.data?.pagination ?? null)
+const charts = computed<PurchaseCharts>(() => data.value?.data?.charts ?? { bySupplier: [], byDay: [] })
+const suppliers = computed<PurchaseSupplierOption[]>(() => data.value?.data?.suppliers ?? [])
+
+const payStatusColor: Record<string, string> = {
+  pending: 'warning',
+  paid: 'success',
+  overdue: 'error'
+}
+
+const payStatusLabel: Record<string, string> = {
+  pending: 'Pendente',
+  paid: 'Pago',
+  overdue: 'Vencido'
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
+  return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
+}
+
+const columns = [
+  { id: 'supplier', header: 'Fornecedor', enableSorting: true },
+  { accessorKey: 'purchase_date', header: 'Data' },
+  { accessorKey: 'invoice_number', header: 'Nota fiscal' },
+  { accessorKey: 'total_amount', header: 'Total' },
+  { id: 'pay_status', header: 'Status', enableSorting: true }
+]
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
+
 function formatDate(v: string) {
   if (!v) return '—'
   const [y, m, d] = v.split('-')
   return `${d}/${m}/${y}`
 }
 
-const payStatusColor: Record<string, string> = { pending: 'warning', paid: 'success', overdue: 'error' }
-const payStatusLabel: Record<string, string> = { pending: 'Pendente', paid: 'Pago', overdue: 'Vencido' }
+async function exportReport(format: 'csv' | 'pdf') {
+  exporting.value = format
+  try {
+    const res = await $fetch<{ success: boolean, data: { fileName: string, contentType: string, base64: string } }>(
+      '/api/reports/export-purchases',
+      {
+        method: 'POST',
+        body: {
+          format,
+          dateFrom: dateFrom.value,
+          dateTo: dateTo.value,
+          supplierIds: supplierIds.value.length ? supplierIds.value : undefined,
+          status: paymentStatus.value.length ? paymentStatus.value : undefined,
+          searchTerm: search.value || undefined,
+          sortBy: sortBy.value,
+          sortOrder: sortOrder.value
+        }
+      }
+    )
 
-const columns = [
-  { id: 'supplier', header: 'Fornecedor' },
-  { accessorKey: 'purchase_date', header: 'Data' },
-  { id: 'total_amount', header: 'Total' },
-  { id: 'pay_status', header: 'Status' }
-]
+    if (res.data?.base64) {
+      const binary = atob(res.data.base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index)
+      const blob = new Blob([bytes], { type: res.data.contentType })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = res.data.fileName
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+  } catch {
+    toast.add({ title: 'Erro ao exportar relatório', color: 'error' })
+  } finally {
+    exporting.value = null
+  }
+}
 </script>
 
 <template>
@@ -68,88 +190,95 @@ const columns = [
 
     <template #body>
       <div class="space-y-4 p-4">
-        <!-- Filter card -->
-        <UCard :ui="{ body: 'p-3' }">
-          <div class="space-y-3">
-            <div class="flex items-center gap-2 text-muted">
-              <UIcon name="i-lucide-filter" class="size-4" />
-              <span class="text-sm font-medium">Filtros</span>
-            </div>
-            <div>
-              <p class="mb-1 text-xs font-medium text-muted">Período</p>
-              <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-auto" />
-            </div>
-          </div>
-        </UCard>
-        <!-- Summary cards -->
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <UCard
-          v-for="stat in [
-            { label: 'Total comprado', value: formatCurrency(summary.totalPurchased ?? 0), icon: 'i-lucide-shopping-cart', color: 'text-primary', description: 'no período' },
-            { label: 'Total pago', value: formatCurrency(summary.totalPaid ?? 0), icon: 'i-lucide-circle-check', color: 'text-success', description: 'já quitado' },
-            { label: 'Pendente', value: formatCurrency(summary.totalPending ?? 0), icon: 'i-lucide-clock', color: 'text-warning', description: 'a pagar' },
-          ]"
-          :key="stat.label"
-          :ui="{ body: 'p-3 sm:p-4' }"
-        >
-          <div class="flex items-start gap-3">
-            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
-            <div>
-              <p class="text-lg font-bold leading-tight">
-                {{ stat.value }}
-              </p>
-              <p class="text-xs font-medium text-highlighted">
-                {{ stat.label }}
-              </p>
-              <p class="text-xs text-muted">
-                {{ stat.description }}
-              </p>
-            </div>
-          </div>
-        </UCard>
-      </div>
-        <!-- Chart -->
-        <UPageCard v-if="chartData.length" variant="subtle" class="overflow-hidden">
-          <template #header>
-            <p class="text-sm font-semibold">
-              Compras por dia
-            </p>
-          </template>
-          <ChartsBar
-            :categories="chartCategories"
-            :series="chartSeries"
-            :height="200"
-            :colors="['#a78bfa']"
-            :format-value="formatCurrency"
-          />
-        </UPageCard>
+        <ReportsPurchasesFilters
+          v-model:date-from="dateFrom"
+          v-model:date-to="dateTo"
+          v-model:payment-status="paymentStatus"
+          v-model:supplier-ids="supplierIds"
+          :suppliers="suppliers"
+        />
+
+        <ReportsPurchasesSummary :summary="summary" />
+
+        <ReportsPurchasesCharts
+          :by-supplier="charts.bySupplier"
+          :by-day="charts.byDay"
+        />
 
         <AppDataTable
-          :columns="columns"
-          :data="items"
-          :loading="status === 'pending'"
           v-model:page="page"
+          v-model:sorting="sorting"
+          v-model:search-term="search"
+          :columns="columns"
+          :data="items as Record<string, unknown>[]"
+          :loading="status === 'pending'"
           :page-size="pageSize"
           :total="pagination?.totalItems ?? items.length"
           :show-page-size-selector="false"
+          show-search
+          search-placeholder="Buscar fornecedor ou nota fiscal..."
           empty-icon="i-lucide-shopping-cart"
           empty-title="Nenhuma compra encontrada"
-          empty-description="Não há compras registradas para o período selecionado."
+          empty-description="Não há compras registradas para o período e filtros selecionados."
+          @search-change="page = 1"
         >
+          <template #toolbar-right>
+            <UButton
+              icon="i-lucide-file-spreadsheet"
+              label="CSV"
+              color="neutral"
+              variant="outline"
+              size="xs"
+              :loading="exporting === 'csv'"
+              @click="exportReport('csv')"
+            />
+            <UButton
+              icon="i-lucide-file-text"
+              label="PDF"
+              color="neutral"
+              variant="outline"
+              size="xs"
+              :loading="exporting === 'pdf'"
+              @click="exportReport('pdf')"
+            />
+          </template>
+
           <template #supplier-cell="{ row }">
-            {{ row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '—' }}
+            <div
+              v-if="row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name"
+              class="flex items-center gap-2"
+            >
+              <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <span class="text-xs font-bold text-primary">
+                  {{ getInitials(String(row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '')) }}
+                </span>
+              </div>
+              <span class="truncate font-medium text-highlighted">
+                {{ row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '—' }}
+              </span>
+            </div>
+            <span v-else class="text-sm text-muted">—</span>
           </template>
+
           <template #purchase_date-cell="{ row }">
-            {{ formatDate(row.original.purchase_date) }}
+            {{ formatDate(row.original.purchase_date as string) }}
           </template>
+
+          <template #invoice_number-cell="{ row }">
+            <span class="font-mono text-sm text-muted">
+              {{ row.original.invoice_number || '—' }}
+            </span>
+          </template>
+
           <template #total_amount-cell="{ row }">
-            <span class="font-medium">{{ formatCurrency(row.original.total_amount) }}</span>
+            <span class="font-medium">{{ formatCurrency(row.original.total_amount as number) }}</span>
           </template>
+
           <template #pay_status-cell="{ row }">
             <UBadge
-              :color="payStatusColor[row.original.paymentStatus ?? row.original.payment_status] ?? 'neutral'"
+              :color="(payStatusColor[String(row.original.paymentStatus ?? row.original.payment_status)] ?? 'neutral') as any"
               variant="subtle"
-              :label="payStatusLabel[row.original.paymentStatus ?? row.original.payment_status] ?? (row.original.paymentStatus ?? row.original.payment_status ?? '—')"
+              :label="payStatusLabel[String(row.original.paymentStatus ?? row.original.payment_status)] ?? String(row.original.paymentStatus ?? row.original.payment_status ?? '—')"
               size="sm"
             />
           </template>

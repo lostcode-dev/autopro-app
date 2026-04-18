@@ -78,8 +78,8 @@ const paymentMethodOptions: TagFilterOption[] = [
 
 <template>
   <UCard :ui="{ body: 'p-3' }">
-    <div class="space-y-3">
-      <div class="flex items-center gap-2 text-muted">
+    <div class="space-y-3 grid grid-cols-2">
+      <div class="flex items-center gap-2 text-muted col-span-2">
         <UIcon name="i-lucide-filter" class="size-4" />
         <span class="text-sm font-medium">Filtros</span>
       </div>
@@ -93,6 +93,8 @@ const paymentMethodOptions: TagFilterOption[] = [
           class="w-full"
         />
       </div>
+
+      <div> </div>
 
       <!-- Row 2: employee + commission status + record type -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
