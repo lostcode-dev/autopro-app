@@ -281,14 +281,26 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
         >
           <template #toolbar-right>
             <div class="flex items-center gap-2">
-              <UTabs
-                :model-value="viewMode"
-                :items="[
-                  { label: `Por cliente`, value: 'clients' },
-                  { label: `Por OS`, value: 'orders' }
-                ]"
-                @update:model-value="value => viewMode = value as 'clients' | 'orders'"
-              />
+              <div class="inline-flex">
+                <UTooltip :text="`Visualização por cliente (${counts.clients ?? 0})`">
+                  <UButton
+                    icon="i-lucide-user-round"
+                    color="neutral"
+                    class="rounded-r-none"
+                    :variant="viewMode === 'clients' ? 'solid' : 'outline'"
+                    @click="viewMode = 'clients'"
+                  />
+                </UTooltip>
+                <UTooltip :text="`Visualização por OS (${counts.orders ?? 0})`">
+                  <UButton
+                    icon="i-lucide-file-text"
+                    color="neutral"
+                    class="-ml-px rounded-l-none"
+                    :variant="viewMode === 'orders' ? 'solid' : 'outline'"
+                    @click="viewMode = 'orders'"
+                  />
+                </UTooltip>
+              </div>
             </div>
           </template>
 
