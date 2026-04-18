@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import VueApexCharts from 'vue3-apexcharts'
+
 interface Series {
   name: string
   data: number[]
@@ -99,13 +101,15 @@ const chartOptions = computed(() => ({
 
 <template>
   <ClientOnly>
-    <ApexChart
-      type="area"
-      :height="height ?? 220"
-      :options="chartOptions"
-      :series="series"
-      class="w-full"
-    />
+    <div class="w-full" :style="`height: ${height ?? 220}px`">
+      <VueApexCharts
+        type="area"
+        :height="height ?? 220"
+        :options="chartOptions"
+        :series="series"
+        class="w-full"
+      />
+    </div>
     <template #fallback>
       <div
         class="animate-pulse bg-elevated rounded-xl w-full"

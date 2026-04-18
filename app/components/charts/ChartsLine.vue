@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import VueApexCharts from 'vue3-apexcharts'
+
 interface Series {
   name: string
   data: number[]
@@ -92,7 +94,7 @@ const chartOptions = computed(() => ({
 <template>
   <ClientOnly>
     <div class="w-full" :style="`height: ${height ?? 220}px`">
-      <ApexChart
+      <VueApexCharts
         type="line"
         :height="height ?? 220"
         :options="chartOptions"

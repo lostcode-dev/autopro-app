@@ -91,7 +91,7 @@ const kpis = computed(() => [
         <USkeleton class="h-40 rounded-xl" />
       </div>
 
-      <div v-else class="p-4 space-y-4">
+      <div v-else class="p-4 space-y-4 pt-0">
         <!-- KPI Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <UPageCard
