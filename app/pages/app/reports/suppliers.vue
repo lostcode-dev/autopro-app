@@ -1,51 +1,161 @@
 <script setup lang="ts">
+import type { SortingState } from '@tanstack/vue-table'
+import type { SupplierDetailData } from '~/components/reports/suppliers/SuppliersDetailSlideover.vue'
+
+interface SupplierReportItem {
+  id: string
+  name: string
+  tradeName: string | null
+  phone: string | null
+  email: string | null
+  contactName: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  taxId: string | null
+  totalPurchased: number
+  purchaseCount: number
+  itemCount: number
+  averagePurchase: number
+  lastPurchase: string | null
+  topItems: Array<[string, number]>
+}
+
+interface SuppliersReportResponse {
+  data?: {
+    suppliersReport?: {
+      availableSuppliers?: Array<{ value: string, label: string }>
+      items?: SupplierReportItem[]
+      charts?: { topSuppliers?: Array<{ name: string, total: number }> }
+      summary?: {
+        totalPurchased?: number
+        supplierCount?: number
+        purchaseCount?: number
+        itemCount?: number
+      }
+      pagination?: { totalItems?: number } | null
+      selectedSupplierDaily?: Array<{ name: string, total: number }>
+    }
+  }
+}
+
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Relatório de Fornecedores' })
 
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const toast = useToast()
 
 const { dateFrom, dateTo } = useReportDateRange()
 const search = ref('')
 const page = ref(1)
 const pageSize = 20
+const supplierIds = ref<string[]>([])
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<SupplierDetailData | null>(null)
+
+const sorting = ref<SortingState>([{ id: 'totalPurchased', desc: true }])
+
+const sortByMap: Record<string, string> = {
+  name: 'name',
+  totalPurchased: 'totalPurchased',
+  purchaseCount: 'purchaseCount',
+  itemCount: 'itemCount',
+  averagePurchase: 'averagePurchase',
+  lastPurchase: 'lastPurchase'
+}
+
+const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'totalPurchased')
+const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+
+watch([dateFrom, dateTo, search, supplierIds, sortBy, sortOrder], () => {
+  page.value = 1
+})
+
+const queryKey = computed(() =>
+  `report-suppliers-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}-${supplierIds.value.join(',')}-${sortBy.value}-${sortOrder.value}`
+)
 
 const { data, status } = await useAsyncData(
-  () => `report-suppliers-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}`,
-  () => requestFetch<{ data: any }>('/api/reports/suppliers', {
+  () => queryKey.value,
+  () => requestFetch<SuppliersReportResponse>('/api/reports/suppliers', {
     headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, page: page.value, pageSize, searchTerm: search.value || undefined }
+    query: {
+      dateFrom: dateFrom.value,
+      dateTo: dateTo.value,
+      page: page.value,
+      pageSize,
+      searchTerm: search.value || undefined,
+      supplierIds: supplierIds.value.length ? supplierIds.value : undefined,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value
+    }
   }),
-  { watch: [dateFrom, dateTo, page, search] }
+  { watch: [queryKey] }
 )
 
-const items = computed(() => data.value?.data?.suppliersReport?.items ?? [])
-const summary = computed(() => data.value?.data?.suppliersReport?.summary ?? {})
-const pagination = computed(() => data.value?.data?.suppliersReport?.pagination ?? null)
+const report = computed(() => data.value?.data?.suppliersReport)
+const items = computed<SupplierReportItem[]>(() => report.value?.items ?? [])
+const summary = computed(() => report.value?.summary ?? {})
+const charts = computed(() => report.value?.charts ?? { topSuppliers: [] })
+const pagination = computed(() => report.value?.pagination ?? null)
+const availableSuppliers = computed(() => report.value?.availableSuppliers ?? [])
 
-const chartData = computed(() =>
-  [...items.value]
-    .sort((a: any, b: any) => (b.totalPurchased ?? b.totalAmount ?? 0) - (a.totalPurchased ?? a.totalAmount ?? 0))
-    .slice(0, 10)
-    .map((s: any) => ({
-      name: String(s.name ?? '?').substring(0, 14),
-      amount: Number(s.totalPurchased ?? s.totalAmount ?? 0)
-    }))
-)
-
-const chartCategories = computed(() => chartData.value.map(d => d.name))
-const chartSeries = computed(() => [{ name: 'Total comprado', data: chartData.value.map(d => d.amount) }])
+const columns = [
+  { accessorKey: 'name', header: 'Fornecedor' },
+  { accessorKey: 'totalPurchased', header: 'Total comprado' },
+  { accessorKey: 'purchaseCount', header: 'Compras' },
+  { accessorKey: 'itemCount', header: 'Itens' },
+  { accessorKey: 'averagePurchase', header: 'Ticket médio' },
+  { accessorKey: 'lastPurchase', header: 'Última compra' },
+  { id: 'actions', header: '', enableSorting: false }
+]
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-const columns = [
-  { accessorKey: 'name', header: 'Fornecedor' },
-  { id: 'totalPurchased', header: 'Total comprado' },
-  { accessorKey: 'purchaseCount', header: 'Compras' },
-  { id: 'averagePurchase', header: 'Ticket médio' }
-]
+function formatDate(v: string | null | undefined) {
+  if (!v) return '—'
+  const [year, month, day] = v.split('-')
+  if (!year || !month || !day) return '—'
+  return `${day}/${month}/${year}`
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
+  return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
+}
+
+async function openDetail(row: SupplierReportItem) {
+  detailOpen.value = true
+  detailLoading.value = true
+  detailData.value = null
+
+  try {
+    const response = await $fetch<SuppliersReportResponse>('/api/reports/suppliers', {
+      query: {
+        selectedSupplierId: row.id,
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value,
+        supplierIds: supplierIds.value.length ? supplierIds.value : undefined,
+        searchTerm: search.value || undefined
+      }
+    })
+
+    detailData.value = {
+      ...row,
+      daily: response.data?.suppliersReport?.selectedSupplierDaily ?? []
+    }
+  } catch {
+    toast.add({ title: 'Erro ao carregar detalhes do fornecedor', color: 'error' })
+    detailOpen.value = false
+  } finally {
+    detailLoading.value = false
+  }
+}
 </script>
 
 <template>
@@ -56,86 +166,95 @@ const columns = [
 
     <template #body>
       <div class="space-y-4 p-4">
-        <!-- Filter card -->
-        <UCard :ui="{ body: 'p-3' }">
-          <div class="space-y-3">
-            <div class="flex items-center gap-2 text-muted">
-              <UIcon name="i-lucide-filter" class="size-4" />
-              <span class="text-sm font-medium">Filtros</span>
-            </div>
-            <div>
-              <p class="mb-1 text-xs font-medium text-muted">Período</p>
-              <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-auto" />
-            </div>
-          </div>
-        </UCard>
-        <!-- Summary cards -->
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <UCard
-          v-for="stat in [
-            { label: 'Total em compras', value: formatCurrency(summary.totalPurchased ?? 0), icon: 'i-lucide-truck', color: 'text-primary', description: 'no período' },
-            { label: 'Fornecedores ativos', value: summary.supplierCount ?? items.length, icon: 'i-lucide-building-2', color: 'text-info', description: 'com movimentação' },
-            { label: 'Total de compras', value: summary.purchaseCount ?? 0, icon: 'i-lucide-shopping-bag', color: 'text-warning', description: 'transações' },
-          ]"
-          :key="stat.label"
-          :ui="{ body: 'p-3 sm:p-4' }"
-        >
-          <div class="flex items-start gap-3">
-            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
-            <div>
-              <p class="text-lg font-bold leading-tight">
-                {{ stat.value }}
-              </p>
-              <p class="text-xs font-medium text-highlighted">
-                {{ stat.label }}
-              </p>
-              <p class="text-xs text-muted">
-                {{ stat.description }}
-              </p>
-            </div>
-          </div>
-        </UCard>
-      </div>
-        <!-- Top suppliers chart -->
-        <UPageCard v-if="chartData.length" variant="subtle" class="overflow-hidden">
-          <template #header>
-            <p class="text-sm font-semibold">
-              Top fornecedores por volume
-            </p>
-          </template>
-          <ChartsBar
-            :categories="chartCategories"
-            :series="chartSeries"
-            :height="200"
-            :colors="['#60a5fa']"
-            :format-value="formatCurrency"
-          />
-        </UPageCard>
+        <ReportsSuppliersFilters
+          v-model:date-from="dateFrom"
+          v-model:date-to="dateTo"
+          v-model:supplier-ids="supplierIds"
+          :suppliers="availableSuppliers"
+        />
+
+        <ReportsSuppliersSummary :summary="summary" />
+
+        <ReportsSuppliersCharts :top-suppliers="charts.topSuppliers ?? []" />
 
         <AppDataTable
-          :columns="columns"
-          :data="items"
-          :loading="status === 'pending'"
           v-model:page="page"
+          v-model:sorting="sorting"
+          v-model:search-term="search"
+          :columns="columns"
+          :data="items as Record<string, unknown>[]"
+          :loading="status === 'pending'"
           :page-size="pageSize"
           :total="pagination?.totalItems ?? items.length"
           :show-page-size-selector="false"
           show-search
-          v-model:search-term="search"
           search-placeholder="Buscar fornecedor..."
-          empty-icon="i-lucide-truck"
+          empty-icon="i-lucide-building-2"
           empty-title="Nenhum fornecedor encontrado"
-          empty-description="Não há fornecedores com compras no período selecionado."
+          empty-description="Não há fornecedores com compras nos filtros selecionados."
           @search-change="page = 1"
         >
-          <template #totalPurchased-cell="{ row }">
-            <span class="font-medium">{{ formatCurrency(row.original.totalPurchased ?? row.original.totalAmount ?? 0) }}</span>
+          <template #name-cell="{ row }">
+            <div class="flex items-center gap-2">
+              <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <span class="text-xs font-bold text-primary">
+                  {{ getInitials(String(row.original.name ?? '')) }}
+                </span>
+              </div>
+              <div class="min-w-0">
+                <p class="truncate font-medium text-highlighted">
+                  {{ row.original.name }}
+                </p>
+                <p
+                  v-if="row.original.tradeName || row.original.contactName"
+                  class="truncate text-xs text-muted"
+                >
+                  {{ row.original.tradeName || row.original.contactName }}
+                </p>
+              </div>
+            </div>
           </template>
+
+          <template #totalPurchased-cell="{ row }">
+            <span class="font-medium text-primary">
+              {{ formatCurrency(Number(row.original.totalPurchased ?? 0)) }}
+            </span>
+          </template>
+
+          <template #purchaseCount-cell="{ row }">
+            {{ row.original.purchaseCount ?? 0 }}
+          </template>
+
+          <template #itemCount-cell="{ row }">
+            {{ row.original.itemCount ?? 0 }}
+          </template>
+
           <template #averagePurchase-cell="{ row }">
-            {{ formatCurrency(row.original.averagePurchase ?? row.original.avgPerPurchase ?? 0) }}
+            {{ formatCurrency(Number(row.original.averagePurchase ?? 0)) }}
+          </template>
+
+          <template #lastPurchase-cell="{ row }">
+            {{ formatDate(String(row.original.lastPurchase ?? '')) }}
+          </template>
+
+          <template #actions-cell="{ row }">
+            <UButton
+              icon="i-lucide-eye"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openDetail(row.original as SupplierReportItem)"
+            />
           </template>
         </AppDataTable>
       </div>
+
+      <ReportsSuppliersDetailSlideover
+        :open="detailOpen"
+        :loading="detailLoading"
+        :data="detailData"
+        @update:open="detailOpen = $event"
+      />
     </template>
   </UDashboardPanel>
 </template>

@@ -102,21 +102,6 @@ const columns = [
           </div>
         </UCard>
       </div>
-        <!-- Top items chart -->
-        <UPageCard v-if="chartData.length" variant="subtle" class="overflow-hidden">
-          <template #header>
-            <p class="text-sm font-semibold">
-              Top itens por receita
-            </p>
-          </template>
-          <ChartsBar
-            :categories="chartCategories"
-            :series="chartSeries"
-            :height="200"
-            :colors="['#22c55e', '#a78bfa']"
-            :format-value="formatCurrency"
-          />
-        </UPageCard>
 
         <AppDataTable
           :columns="columns"

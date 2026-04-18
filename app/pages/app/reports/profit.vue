@@ -147,35 +147,6 @@ const topOrderColumns = [
           />
         </UPageCard>
 
-        <!-- Variation vs previous period -->
-        <UPageCard v-if="variations" variant="subtle">
-          <template #header>
-            <p class="text-sm font-semibold">
-              Variação vs. período anterior
-            </p>
-          </template>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-            <div
-              v-for="(val, key) in variations"
-              :key="key"
-              class="flex items-center gap-2"
-            >
-              <UIcon
-                :name="variationIcon(Number(val))"
-                :class="variationColor(Number(val))"
-              />
-              <div>
-                <p class="text-muted text-xs">
-                  {{ variationLabels[String(key)] ?? key }}
-                </p>
-                <p :class="['font-medium', variationColor(Number(val))]">
-                  {{ formatPercent(Number(val)) }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </UPageCard>
-
         <!-- Top profitable orders -->
         <div class="space-y-2">
           <p class="px-1 text-sm font-semibold">

@@ -4,6 +4,57 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor } from '../../utils/report-helpers'
 
+interface PurchaseItemRecord {
+  description?: string | null
+  quantity?: number | string | null
+}
+
+interface PurchaseRecord {
+  id?: string | null
+  supplier_id?: string | null
+  total_amount?: number | string | null
+  purchase_date?: string | null
+  items?: PurchaseItemRecord[] | null
+}
+
+interface SupplierRecord {
+  id: string
+  name?: string | null
+  trade_name?: string | null
+  phone?: string | null
+  email?: string | null
+  contact_name?: string | null
+  contact_phone?: string | null
+  contact_email?: string | null
+  tax_id?: string | null
+}
+
+interface SupplierStats {
+  totalPurchased: number
+  purchaseCount: number
+  itemCount: number
+  lastPurchase: string | null
+  topItemsMap: Record<string, number>
+}
+
+interface SupplierReportItem {
+  id: string
+  name: string
+  tradeName: string | null
+  phone: string | null
+  email: string | null
+  contactName: string | null
+  contactPhone: string | null
+  contactEmail: string | null
+  taxId: string | null
+  totalPurchased: number
+  purchaseCount: number
+  itemCount: number
+  averagePurchase: number
+  lastPurchase: string | null
+  topItems: Array<[string, number]>
+}
+
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -13,9 +64,12 @@ export default defineEventHandler(async (event) => {
 
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
-  const supplierIds = qArr(query.supplierIds)
+  const supplierIds = qArr(query.supplierIds as string | string[] | undefined)
   const selectedSupplierId = query.selectedSupplierId ? String(query.selectedSupplierId) : null
-  const sortBy = ['name', 'totalPurchased', 'purchaseCount', 'itemCount', 'avgPerPurchase', 'lastPurchase'].includes(query.sortBy as string) ? String(query.sortBy) : 'name'
+  const searchTerm = String(query.searchTerm || '').trim().toLowerCase()
+  const sortBy = ['name', 'totalPurchased', 'purchaseCount', 'itemCount', 'averagePurchase', 'lastPurchase'].includes(query.sortBy as string)
+    ? String(query.sortBy)
+    : 'totalPurchased'
   const sortOrder: 'asc' | 'desc' = query.sortOrder === 'asc' ? 'asc' : 'desc'
   const page = Math.max(1, Math.floor(toNumber(query.page, 1)))
   const pageSize = Math.min(100, Math.max(1, Math.floor(toNumber(query.pageSize, 10))))
@@ -25,72 +79,157 @@ export default defineEventHandler(async (event) => {
     supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
-  const allPurchases = purchasesResult.data || []
-  const suppliers = suppliersResult.data || []
-  const suppliersMap = new Map<string, any>(suppliers.map((s: any) => [String(s.id), s]))
+  const allPurchases = (purchasesResult.data ?? []) as PurchaseRecord[]
+  const suppliers = (suppliersResult.data ?? []) as SupplierRecord[]
+  const suppliersMap = new Map<string, SupplierRecord>(suppliers.map(supplier => [String(supplier.id), supplier]))
 
   let filteredPurchases = allPurchases
   if (dateFrom || dateTo) {
-    filteredPurchases = filteredPurchases.filter((p: any) => {
-      const purchaseDate = p?.purchase_date ? new Date(`${p.purchase_date}T00:00:00`) : null
+    filteredPurchases = filteredPurchases.filter((purchase) => {
+      const purchaseDate = purchase?.purchase_date ? new Date(`${purchase.purchase_date}T00:00:00`) : null
       if (!purchaseDate || Number.isNaN(purchaseDate.getTime())) return false
       if (dateFrom && purchaseDate < dateFrom) return false
       if (dateTo && purchaseDate > dateTo) return false
       return true
     })
   }
-  if (supplierIds.length > 0) filteredPurchases = filteredPurchases.filter((p: any) => supplierIds.includes(String(p?.supplier_id || '')))
+  if (supplierIds.length > 0) {
+    filteredPurchases = filteredPurchases.filter(purchase => supplierIds.includes(String(purchase?.supplier_id || '')))
+  }
 
-  // Group by supplier
-  const supplierStats: Record<string, { totalPurchased: number, purchaseCount: number, itemCount: number, lastPurchase: string | null, topItemsMap: Record<string, number> }> = {}
+  const supplierStats: Record<string, SupplierStats> = {}
 
-  for (const p of filteredPurchases) {
-    const supplierId = String(p?.supplier_id || '')
+  for (const purchase of filteredPurchases) {
+    const supplierId = String(purchase?.supplier_id || '')
     if (!supplierId) continue
-    if (!supplierStats[supplierId]) supplierStats[supplierId] = { totalPurchased: 0, purchaseCount: 0, itemCount: 0, lastPurchase: null, topItemsMap: {} }
-    const s = supplierStats[supplierId]
-    s.totalPurchased += toNumber(p?.total_amount, 0)
-    s.purchaseCount += 1
-    const items = Array.isArray(p?.items) ? p.items : []
-    s.itemCount += items.length
-    const purchaseDate = String(p?.purchase_date || '')
-    if (purchaseDate && (!s.lastPurchase || purchaseDate > s.lastPurchase)) s.lastPurchase = purchaseDate
+    if (!supplierStats[supplierId]) {
+      supplierStats[supplierId] = {
+        totalPurchased: 0,
+        purchaseCount: 0,
+        itemCount: 0,
+        lastPurchase: null,
+        topItemsMap: {}
+      }
+    }
+
+    const stats = supplierStats[supplierId]
+    stats.totalPurchased += toNumber(purchase?.total_amount, 0)
+    stats.purchaseCount += 1
+
+    const items = Array.isArray(purchase?.items) ? purchase.items : []
     for (const item of items) {
-      const desc = String(item?.description || 'No description')
-      s.topItemsMap[desc] = (s.topItemsMap[desc] || 0) + (Number(item?.quantity) || 1)
+      const description = String(item?.description || 'Sem descrição')
+      const quantity = Number(item?.quantity) || 1
+      stats.itemCount += quantity
+      stats.topItemsMap[description] = (stats.topItemsMap[description] || 0) + quantity
+    }
+
+    const purchaseDate = String(purchase?.purchase_date || '')
+    if (purchaseDate && (!stats.lastPurchase || purchaseDate > stats.lastPurchase)) {
+      stats.lastPurchase = purchaseDate
     }
   }
 
-  const supplierItems = Object.entries(supplierStats).map(([supplierId, stats]) => {
+  let supplierItems: SupplierReportItem[] = Object.entries(supplierStats).map(([supplierId, stats]) => {
     const supplier = suppliersMap.get(supplierId)
-    const topItems = Object.entries(stats.topItemsMap).sort(([, a], [, b]) => b - a).slice(0, 5)
+    const topItems = Object.entries(stats.topItemsMap)
+      .sort(([, amountA], [, amountB]) => amountB - amountA)
+      .slice(0, 5)
+
     return {
-      id: supplierId, name: supplier?.name || 'Unknown',
-      totalPurchased: stats.totalPurchased, purchaseCount: stats.purchaseCount,
+      id: supplierId,
+      name: supplier?.name || 'Fornecedor sem nome',
+      tradeName: supplier?.trade_name || null,
+      phone: supplier?.phone || null,
+      email: supplier?.email || null,
+      contactName: supplier?.contact_name || null,
+      contactPhone: supplier?.contact_phone || null,
+      contactEmail: supplier?.contact_email || null,
+      taxId: supplier?.tax_id || null,
+      totalPurchased: stats.totalPurchased,
+      purchaseCount: stats.purchaseCount,
       itemCount: stats.itemCount,
-      avgPerPurchase: stats.purchaseCount > 0 ? stats.totalPurchased / stats.purchaseCount : 0,
-      lastPurchase: stats.lastPurchase, topItems
+      averagePurchase: stats.purchaseCount > 0 ? stats.totalPurchased / stats.purchaseCount : 0,
+      lastPurchase: stats.lastPurchase,
+      topItems
     }
   })
 
+  if (searchTerm) {
+    supplierItems = supplierItems.filter((supplier) => {
+      const haystack = [
+        supplier.name,
+        supplier.tradeName,
+        supplier.phone,
+        supplier.email,
+        supplier.contactName,
+        supplier.contactPhone,
+        supplier.contactEmail,
+        supplier.taxId
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(searchTerm)
+    })
+  }
+
   const factor = sortFactor(sortOrder)
-  supplierItems.sort((a, b) => {
-    if (sortBy === 'totalPurchased') return (a.totalPurchased - b.totalPurchased) * factor
-    if (sortBy === 'purchaseCount') return (a.purchaseCount - b.purchaseCount) * factor
-    if (sortBy === 'itemCount') return (a.itemCount - b.itemCount) * factor
-    if (sortBy === 'avgPerPurchase') return (a.avgPerPurchase - b.avgPerPurchase) * factor
-    if (sortBy === 'lastPurchase') return String(a.lastPurchase || '').localeCompare(String(b.lastPurchase || '')) * factor
-    return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }) * factor
+  supplierItems.sort((supplierA, supplierB) => {
+    if (sortBy === 'totalPurchased') return (supplierA.totalPurchased - supplierB.totalPurchased) * factor
+    if (sortBy === 'purchaseCount') return (supplierA.purchaseCount - supplierB.purchaseCount) * factor
+    if (sortBy === 'itemCount') return (supplierA.itemCount - supplierB.itemCount) * factor
+    if (sortBy === 'averagePurchase') return (supplierA.averagePurchase - supplierB.averagePurchase) * factor
+    if (sortBy === 'lastPurchase') return String(supplierA.lastPurchase || '').localeCompare(String(supplierB.lastPurchase || '')) * factor
+    return supplierA.name.localeCompare(supplierB.name, 'pt-BR', { sensitivity: 'base' }) * factor
   })
+
+  const charts = {
+    topSuppliers: [...supplierItems]
+      .sort((supplierA, supplierB) => supplierB.totalPurchased - supplierA.totalPurchased)
+      .slice(0, 10)
+      .map(supplier => ({
+        name: supplier.name,
+        total: supplier.totalPurchased
+      }))
+  }
+
+  const summary = {
+    totalPurchased: supplierItems.reduce((sum, supplier) => sum + supplier.totalPurchased, 0),
+    supplierCount: supplierItems.length,
+    purchaseCount: supplierItems.reduce((sum, supplier) => sum + supplier.purchaseCount, 0),
+    itemCount: supplierItems.reduce((sum, supplier) => sum + supplier.itemCount, 0)
+  }
 
   const { data: paginatedItems, pagination } = paginate(supplierItems, page, pageSize)
 
-  const result: Record<string, any> = {
+  const result: {
     data: {
       suppliersReport: {
-        availableSuppliers: suppliers.map((s: any) => ({ id: s.id, name: s.name || '' })).sort((a: any, b: any) => a.name.localeCompare(b.name, 'pt-BR')),
+        availableSuppliers: Array<{ value: string, label: string }>
+        items: SupplierReportItem[]
+        charts: { topSuppliers: Array<{ name: string, total: number }> }
+        summary: {
+          totalPurchased: number
+          supplierCount: number
+          purchaseCount: number
+          itemCount: number
+        }
+        pagination: ReturnType<typeof paginate<SupplierReportItem>>['pagination']
+        sort: { sortBy: string, sortOrder: 'asc' | 'desc' }
+        selectedSupplierDaily?: Array<{ name: string, total: number }>
+      }
+    }
+  } = {
+    data: {
+      suppliersReport: {
+        availableSuppliers: suppliers
+          .map(supplier => ({ value: supplier.id, label: supplier.name || 'Fornecedor sem nome' }))
+          .sort((supplierA, supplierB) => supplierA.label.localeCompare(supplierB.label, 'pt-BR', { sensitivity: 'base' })),
         items: paginatedItems,
-        summary: { totalPurchased: supplierItems.reduce((s, i) => s + i.totalPurchased, 0), totalSuppliers: supplierItems.length },
+        charts,
+        summary,
         pagination,
         sort: { sortBy, sortOrder }
       }
@@ -99,12 +238,16 @@ export default defineEventHandler(async (event) => {
 
   if (selectedSupplierId) {
     const dailyMap: Record<string, number> = {}
-    for (const p of filteredPurchases.filter((p: any) => String(p?.supplier_id) === selectedSupplierId)) {
-      const d = String(p?.purchase_date || '')
-      if (!d) continue
-      dailyMap[d] = (dailyMap[d] || 0) + toNumber(p?.total_amount, 0)
+
+    for (const purchase of filteredPurchases.filter(purchase => String(purchase?.supplier_id || '') === selectedSupplierId)) {
+      const dateKey = String(purchase?.purchase_date || '')
+      if (!dateKey) continue
+      dailyMap[dateKey] = (dailyMap[dateKey] || 0) + toNumber(purchase?.total_amount, 0)
     }
-    result.data.suppliersReport.selectedSupplierDaily = Object.entries(dailyMap).sort(([a], [b]) => a.localeCompare(b)).map(([name, total]) => ({ name, total }))
+
+    result.data.suppliersReport.selectedSupplierDaily = Object.entries(dailyMap)
+      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
+      .map(([name, total]) => ({ name, total }))
   }
 
   return result
