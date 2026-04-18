@@ -101,7 +101,7 @@ const hasSelection = computed(() => props.modelValue.length > 0)
     </button>
 
     <template #content>
-      <div class="flex flex-col gap-0.5">
+      <div class="flex max-h-[min(24rem,calc(100vh-10rem))] flex-col gap-0.5 overflow-y-auto pr-1">
         <button
           v-for="opt in options"
           :key="opt.value"
