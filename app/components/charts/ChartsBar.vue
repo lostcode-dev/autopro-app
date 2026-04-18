@@ -89,13 +89,15 @@ const chartOptions = computed(() => ({
 
 <template>
   <ClientOnly>
-    <ApexChart
-      type="bar"
-      :height="height ?? 220"
-      :options="chartOptions"
-      :series="series"
-      class="w-full"
-    />
+    <div class="w-full" :style="`height: ${height ?? 220}px`">
+      <ApexChart
+        type="bar"
+        :height="height ?? 220"
+        :options="chartOptions"
+        :series="series"
+        class="w-full"
+      />
+    </div>
     <template #fallback>
       <div
         class="animate-pulse bg-elevated rounded-xl w-full"

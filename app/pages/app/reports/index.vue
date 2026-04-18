@@ -10,8 +10,7 @@ const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(
 const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
 const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-const dateFrom = ref(defaultFrom)
-const dateTo = ref(defaultTo)
+const { dateFrom, dateTo } = useReportDateRange()
 
 interface ChartPoint { name: string, revenue: number, cost: number }
 interface TopItem { name: string, count: number }
@@ -69,18 +68,21 @@ const kpis = computed(() => [
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Visão Geral">
-        <template #right>
-          <div class="flex items-center gap-2">
-            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
-            <span class="text-muted text-sm">até</span>
-            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
-          </div>
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Visão Geral" />
     </template>
 
     <template #body>
+      <div class="p-4 pb-0">
+        <UCard :ui="{ body: 'p-3' }">
+          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
+            <div class="flex items-center gap-2 shrink-0 text-muted">
+              <UIcon name="i-lucide-filter" class="size-4" />
+              <span class="text-sm font-medium">Filtros</span>
+            </div>
+            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-72" />
+          </div>
+        </UCard>
+      </div>
       <div v-if="status === 'pending'" class="p-6 space-y-4">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <USkeleton v-for="i in 8" :key="i" class="h-20 rounded-xl" />
