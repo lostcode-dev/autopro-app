@@ -89,28 +89,38 @@ const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKe
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div v-if="props.loading" class="flex items-center gap-3">
-        <USkeleton class="h-10 w-10 rounded-xl shrink-0" />
-        <div class="space-y-1.5">
-          <USkeleton class="h-5 w-40" />
-          <USkeleton class="h-3.5 w-28" />
+      <div class="flex items-center justify-between gap-3">
+        <div v-if="props.loading" class="flex items-center gap-3">
+          <USkeleton class="h-10 w-10 rounded-xl shrink-0" />
+          <div class="space-y-1.5">
+            <USkeleton class="h-5 w-40" />
+            <USkeleton class="h-3.5 w-28" />
+          </div>
         </div>
-      </div>
-      <div v-else-if="props.data" class="flex items-center gap-3">
-        <div
-          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
-          :style="{ backgroundColor: headerVisual.chartColor }"
-        >
-          <UIcon :name="headerVisual.icon" class="size-4" />
+        <div v-else-if="props.data" class="flex items-center gap-3">
+          <div
+            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+            :style="{ backgroundColor: headerVisual.chartColor }"
+          >
+            <UIcon :name="headerVisual.icon" class="size-4" />
+          </div>
+          <div>
+            <h2 class="text-base font-bold leading-tight text-highlighted">
+              {{ formatCostCategoryLabel(props.data.categoryKey) }}
+            </h2>
+            <p class="mt-0.5 text-xs text-muted">
+              {{ props.data.totalItems }} lançamento{{ props.data.totalItems !== 1 ? 's' : '' }} nos filtros atuais
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 class="text-base font-bold leading-tight text-highlighted">
-            {{ formatCostCategoryLabel(props.data.categoryKey) }}
-          </h2>
-          <p class="mt-0.5 text-xs text-muted">
-            {{ props.data.totalItems }} lançamento{{ props.data.totalItems !== 1 ? 's' : '' }} nos filtros atuais
-          </p>
-        </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          class="shrink-0"
+          @click="$emit('update:open', false)"
+        />
       </div>
     </template>
 

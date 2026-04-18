@@ -138,7 +138,7 @@ function clientInitial(name?: string) {
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex w-full items-center gap-3">
+      <div class="flex items-center justify-between gap-3">
         <div v-if="loading" class="flex flex-1 items-center gap-3">
           <USkeleton class="h-10 w-10 shrink-0 rounded-full" />
           <div class="space-y-1.5">
@@ -146,7 +146,7 @@ function clientInitial(name?: string) {
             <USkeleton class="h-3.5 w-24" />
           </div>
         </div>
-        <div v-else-if="data" class="flex flex-1 items-center gap-3">
+        <div v-else-if="data" class="flex min-w-0 flex-1 items-center gap-3">
           <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-sm font-bold text-white shadow-sm">
             {{ clientInitial(data.client?.name) }}
           </div>

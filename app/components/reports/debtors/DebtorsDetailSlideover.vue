@@ -115,7 +115,7 @@ const headerSubtitle = computed(() => {
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex items-start justify-between gap-3">
+      <div class="flex items-center justify-between gap-3">
         <div v-if="loading" class="flex items-center gap-3">
           <USkeleton class="h-10 w-10 rounded-full shrink-0" />
           <div class="space-y-1.5">
@@ -231,7 +231,7 @@ const headerSubtitle = computed(() => {
               {{ formatCurrency(data.totalOwed) }}
             </p>
             <p class="mt-0.5 text-xs text-muted">
-              Total devido
+              Total em aberto
             </p>
           </div>
           <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
