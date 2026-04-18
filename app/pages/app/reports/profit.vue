@@ -79,9 +79,7 @@ const topOrderColumns = [
               <UIcon name="i-lucide-filter" class="size-4" />
               <span class="text-sm font-medium">Filtros</span>
             </div>
-            <UiDatePicker v-model="dateFrom" placeholder="Data inicial" class="w-44" />
-            <span class="text-muted text-sm">até</span>
-            <UiDatePicker v-model="dateTo" placeholder="Data final" class="w-44" />
+            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-72" />
           </div>
         </UCard>
       </div>
