@@ -346,9 +346,20 @@ async function exportReport(format: 'csv' | 'pdf') {
           :status-distribution="charts.statusDistribution"
         />
 
-        <!-- Toolbar -->
-        <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-default bg-elevated/50 px-3 py-2">
-          <div class="flex min-w-0 items-center gap-2">
+        <AppDataTable
+          :columns="columns"
+          :data="items as Record<string, unknown>[]"
+          :loading="status === 'pending'"
+          v-model:page="page"
+          v-model:sorting="sorting"
+          :page-size="pageSize"
+          :total="pagination?.totalItems ?? items.length"
+          :show-page-size-selector="false"
+          empty-icon="i-lucide-badge-percent"
+          empty-title="Nenhuma comissão encontrada"
+          empty-description="Não há comissões registradas para o período selecionado."
+        >
+          <template #filters>
             <template v-if="selectedIds.length > 0 && (canUpdate || canDelete)">
               <p class="shrink-0 text-sm font-medium text-highlighted">
                 {{ selectedIds.length }} selecionada{{ selectedIds.length !== 1 ? 's' : '' }}
@@ -373,17 +384,15 @@ async function exportReport(format: 'csv' | 'pdf') {
                 @click="bulkDeleteOpen = true"
               />
             </template>
-            <p v-else-if="items.length > 0" class="text-xs text-muted">
-              {{ pagination?.totalItems ?? items.length }} registro{{ (pagination?.totalItems ?? items.length) !== 1 ? 's' : '' }}
-            </p>
-          </div>
-          <div class="flex shrink-0 items-center gap-2">
+          </template>
+
+          <template #toolbar-right>
             <UButton
               icon="i-lucide-file-spreadsheet"
               label="CSV"
               color="neutral"
               variant="outline"
-              size="xs"
+              size="sm"
               :loading="exporting === 'csv'"
               @click="exportReport('csv')"
             />
@@ -392,26 +401,12 @@ async function exportReport(format: 'csv' | 'pdf') {
               label="PDF"
               color="neutral"
               variant="outline"
-              size="xs"
+              size="sm"
               :loading="exporting === 'pdf'"
               @click="exportReport('pdf')"
             />
-          </div>
-        </div>
+          </template>
 
-        <AppDataTable
-          :columns="columns"
-          :data="items as Record<string, unknown>[]"
-          :loading="status === 'pending'"
-          v-model:page="page"
-          v-model:sorting="sorting"
-          :page-size="pageSize"
-          :total="pagination?.totalItems ?? items.length"
-          :show-page-size-selector="false"
-          empty-icon="i-lucide-badge-percent"
-          empty-title="Nenhuma comissão encontrada"
-          empty-description="Não há comissões registradas para o período selecionado."
-        >
           <!-- Select all header -->
           <template #select-header>
             <UCheckbox
