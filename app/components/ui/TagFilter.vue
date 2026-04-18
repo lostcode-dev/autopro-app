@@ -99,7 +99,7 @@ const hasSelection = computed(() => props.modelValue.length > 0)
           :class="modelValue.includes(opt.value) ? 'bg-elevated' : ''"
           @click="toggle(opt.value)"
         >
-          <UBadge :color="opt.color" variant="subtle" size="xs" class="gap-1 shrink-0">
+          <UBadge :color="opt.color" variant="subtle" size="sm" class="gap-1 shrink-0">
             <UIcon :name="opt.icon" class="size-3" />
             {{ opt.label }}
           </UBadge>

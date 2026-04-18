@@ -79,21 +79,25 @@ const columns = [
       <div class="space-y-4 p-4">
         <!-- Filter card -->
         <UCard :ui="{ body: 'p-3' }">
-          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
-            <div class="flex items-center gap-2 shrink-0 text-muted">
+          <div class="grid grid-cols-2 gap-2 sm:gap-3">
+            <div class="flex items-center gap-2 shrink-0 text-muted col-span-2">
               <UIcon name="i-lucide-filter" class="size-4" />
               <span class="text-sm font-medium">Filtros</span>
             </div>
-            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-72" />
+            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full col-span-2" />
+            
             <UiTagFilter
               v-model="orderStatusFilters"
               :options="orderStatusOptions"
               placeholder="Status da OS"
+              class="w-full"
             />
+
             <UiTagFilter
               v-model="paymentStatusFilters"
               :options="paymentStatusOptions"
               placeholder="Pagamento"
+              class="w-full"
             />
           </div>
         </UCard>
