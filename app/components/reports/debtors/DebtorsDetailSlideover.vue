@@ -82,6 +82,57 @@ function pendingItemTypeColor(type: string): 'neutral' | 'info' {
   return type === 'installment' ? 'info' : 'neutral'
 }
 
+function buildWhatsAppUrl(phone: string, message: string) {
+  const digits = phone.replace(/\D/g, '')
+  return `https://wa.me/55${digits}?text=${encodeURIComponent(message)}`
+}
+
+function whatsAppMessageFull() {
+  if (!props.data) return ''
+  const { clientName, pendingItems, totalOwed } = props.data
+  let msg = `Olá ${clientName}! 👋\n\nIdentificamos pendências financeiras em sua conta:\n\n`
+  pendingItems.forEach((item, idx) => {
+    const status = item.daysOverdue > 0
+      ? `⚠️ *${item.daysOverdue} dia(s) em atraso*`
+      : '🟢 Dentro do prazo'
+    msg += `${idx + 1}. ${item.number}\n`
+    msg += `   💰 Valor: ${formatCurrency(item.amount)}\n`
+    msg += `   📅 Vencimento: ${formatDate(item.dueDate)}\n`
+    msg += `   ${status}\n\n`
+  })
+  msg += `*Total em aberto: ${formatCurrency(totalOwed)}*\n\n`
+  msg += 'Por favor, regularize sua situação o mais breve possível. Estamos à disposição para esclarecer dúvidas! 😊'
+  return msg
+}
+
+function whatsAppMessageSingle(item: DebtorPendingItem) {
+  if (!props.data) return ''
+  const { clientName } = props.data
+  const status = item.daysOverdue > 0
+    ? `⚠️ *${item.daysOverdue} dia(s) em atraso*`
+    : '🟢 Dentro do prazo'
+  let msg = `Olá ${clientName}! 👋\n\nEstamos entrando em contato referente à seguinte pendência:\n\n`
+  msg += `📋 *${item.number}*\n`
+  msg += `💰 Valor: *${formatCurrency(item.amount)}*\n`
+  msg += `📅 Vencimento: ${formatDate(item.dueDate)}\n`
+  msg += `${status}\n\n`
+  msg += item.daysOverdue > 0
+    ? 'Por favor, regularize este pagamento o quanto antes. '
+    : 'Lembramos que o vencimento está próximo. '
+  msg += 'Estamos à disposição para esclarecer dúvidas! 😊'
+  return msg
+}
+
+function sendWhatsAppFull() {
+  if (!props.data?.phone) return
+  window.open(buildWhatsAppUrl(props.data.phone, whatsAppMessageFull()), '_blank')
+}
+
+function sendWhatsAppSingle(item: DebtorPendingItem) {
+  if (!props.data?.phone) return
+  window.open(buildWhatsAppUrl(props.data.phone, whatsAppMessageSingle(item)), '_blank')
+}
+
 const sortedItems = computed(() =>
   [...(props.data?.pendingItems ?? [])].sort((a, b) => {
     const overdueScore = Number(b.daysOverdue > 0) - Number(a.daysOverdue > 0)
@@ -222,6 +273,17 @@ const headerSubtitle = computed(() => {
           </div>
         </UCard>
 
+        <!-- WhatsApp full charge -->
+        <UButton
+          v-if="data.phone"
+          color="success"
+          variant="solid"
+          icon="i-lucide-message-circle"
+          label="Enviar cobrança completa via WhatsApp"
+          class="w-full"
+          @click="sendWhatsAppFull"
+        />
+
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
             <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-neutral/10">
@@ -287,63 +349,92 @@ const headerSubtitle = computed(() => {
             <div
               v-for="item in sortedItems"
               :key="`${item.type}-${item.id}`"
-              class="flex items-start gap-3 px-4 py-3 text-sm transition-colors duration-100 hover:bg-elevated/40"
+              class="text-sm transition-colors duration-100 hover:bg-elevated/40"
             >
-              <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-error/10">
-                <UIcon :name="debtorStatusIcon(item.status)" class="size-3.5 text-error" />
-              </div>
+              <!-- Item content row -->
+              <div class="flex items-start gap-3 px-4 py-3">
+                <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-error/10">
+                  <UIcon :name="debtorStatusIcon(item.status)" class="size-3.5 text-error" />
+                </div>
 
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <p class="font-semibold leading-tight text-highlighted">
-                    {{ item.number }}
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="font-semibold leading-tight text-highlighted">
+                      {{ item.number }}
+                    </p>
+                    <UBadge
+                      :color="pendingItemTypeColor(item.type)"
+                      variant="outline"
+                      size="xs"
+                    >
+                      {{ formatPendingItemType(item.type) }}
+                    </UBadge>
+                    <UBadge
+                      :color="debtorStatusColor(item.status)"
+                      variant="subtle"
+                      :label="formatDebtorStatusLabel(item.status)"
+                      size="xs"
+                    />
+                    <UBadge
+                      v-if="item.orderStatus"
+                      :color="orderStatusColor(item.orderStatus)"
+                      variant="soft"
+                      size="xs"
+                    >
+                      {{ formatOrderStatusLabel(item.orderStatus) }}
+                    </UBadge>
+                  </div>
+                  <div class="mt-1.5 flex flex-wrap items-center gap-3">
+                    <span class="flex items-center gap-1 text-xs text-muted">
+                      <UIcon name="i-lucide-calendar" class="size-3" />
+                      {{ formatDate(item.dueDate) }}
+                    </span>
+                    <UBadge
+                      :color="paymentMethodColor(String(item.paymentMethod || 'no_payment'))"
+                      variant="outline"
+                      size="xs"
+                      class="gap-0.5"
+                    >
+                      <UIcon :name="paymentMethodIcon(String(item.paymentMethod || 'no_payment'))" class="size-3" />
+                      {{ formatPaymentMethodLabel(String(item.paymentMethod || 'no_payment')) }}
+                    </UBadge>
+                  </div>
+                </div>
+
+                <div class="shrink-0 text-right">
+                  <p class="text-sm font-bold text-highlighted">
+                    {{ formatCurrency(item.amount) }}
                   </p>
-                  <UBadge
-                    :color="pendingItemTypeColor(item.type)"
-                    variant="outline"
-                    size="xs"
-                  >
-                    {{ formatPendingItemType(item.type) }}
-                  </UBadge>
-                  <UBadge
-                    :color="debtorStatusColor(item.status)"
-                    variant="subtle"
-                    :label="formatDebtorStatusLabel(item.status)"
-                    size="xs"
-                  />
-                  <UBadge
-                    v-if="item.orderStatus"
-                    :color="orderStatusColor(item.orderStatus)"
-                    variant="soft"
-                    size="xs"
-                  >
-                    {{ formatOrderStatusLabel(item.orderStatus) }}
-                  </UBadge>
-                </div>
-                <div class="mt-1.5 flex flex-wrap items-center gap-3">
-                  <span class="flex items-center gap-1 text-xs text-muted">
-                    <UIcon name="i-lucide-calendar" class="size-3" />
-                    {{ formatDate(item.dueDate) }}
-                  </span>
-                  <UBadge
-                    :color="paymentMethodColor(String(item.paymentMethod || 'no_payment'))"
-                    variant="outline"
-                    size="xs"
-                    class="gap-0.5"
-                  >
-                    <UIcon :name="paymentMethodIcon(String(item.paymentMethod || 'no_payment'))" class="size-3" />
-                    {{ formatPaymentMethodLabel(String(item.paymentMethod || 'no_payment')) }}
-                  </UBadge>
+                  <p v-if="item.daysOverdue > 0" class="text-xs text-muted">
+                    {{ item.daysOverdue }} dia(s) de atraso
+                  </p>
                 </div>
               </div>
 
-              <div class="shrink-0 text-right">
-                <p class="text-sm font-bold text-highlighted">
-                  {{ formatCurrency(item.amount) }}
-                </p>
-                <p v-if="item.daysOverdue > 0" class="text-xs text-muted">
-                  {{ item.daysOverdue }} dia(s) de atraso
-                </p>
+              <!-- Per-item actions -->
+              <div
+                v-if="data.phone || item.orderId"
+                class="flex flex-wrap items-center gap-2 border-t border-default/50 px-4 pb-3 pt-2"
+              >
+                <UButton
+                  v-if="data.phone"
+                  size="xs"
+                  color="success"
+                  variant="soft"
+                  icon="i-lucide-message-circle"
+                  label="Cobrar apenas esta OS"
+                  @click="sendWhatsAppSingle(item)"
+                />
+                <UButton
+                  v-if="item.orderId"
+                  size="xs"
+                  color="neutral"
+                  variant="outline"
+                  icon="i-lucide-external-link"
+                  label="Ver OS"
+                  :to="`/app/service-orders?id=${item.orderId}`"
+                  target="_blank"
+                />
               </div>
             </div>
           </div>
