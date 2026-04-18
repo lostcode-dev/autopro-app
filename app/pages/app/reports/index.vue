@@ -151,12 +151,16 @@ const reports = [
       <div class="p-4 pb-0">
         <!-- Filter card -->
         <UCard :ui="{ body: 'p-3' }">
-          <div class="grid gap-2 sm:gap-3">
+          <div class="grid gap-2 sm:gap-3 grid-cols-2">
             <div class="flex items-center gap-2 shrink-0 text-muted">
               <UIcon name="i-lucide-filter" class="size-4" />
               <span class="text-sm font-medium">Filtros</span>
             </div>
-            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-72" />
+            <UiDateRangePicker
+              v-model:from="dateFrom"
+              v-model:to="dateTo"
+              class="w-full sm:w-72"
+            />
           </div>
         </UCard>
       </div>
