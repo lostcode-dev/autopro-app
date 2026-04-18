@@ -100,7 +100,7 @@ const columns = [
               Top fornecedores por volume
             </p>
           </template>
-          <ChartsBarChart
+          <ChartsBar
             :categories="chartCategories"
             :series="chartSeries"
             :height="200"

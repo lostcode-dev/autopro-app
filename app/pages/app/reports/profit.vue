@@ -138,7 +138,7 @@ const topOrderColumns = [
               Evolução do período
             </p>
           </template>
-          <ChartsAreaChart
+          <ChartsArea
             :categories="evoCategories"
             :series="evoSeries"
             :height="240"

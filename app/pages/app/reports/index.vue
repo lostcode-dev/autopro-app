@@ -127,7 +127,7 @@ const kpis = computed(() => [
               Faturamento vs Custo
             </p>
           </template>
-          <ChartsBarChart
+          <ChartsBar
             :categories="barCategories"
             :series="barSeries"
             :height="240"

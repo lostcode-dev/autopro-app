@@ -106,7 +106,7 @@ const columns = [
               Top itens por receita
             </p>
           </template>
-          <ChartsBarChart
+          <ChartsBar
             :categories="chartCategories"
             :series="chartSeries"
             :height="200"

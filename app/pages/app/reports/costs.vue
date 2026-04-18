@@ -113,7 +113,7 @@ function formatPercent(v: number) {
                 Evolução de custos
               </p>
             </template>
-            <ChartsBarChart
+            <ChartsBar
               :categories="evoCategories"
               :series="evoSeries"
               :height="240"
@@ -129,7 +129,7 @@ function formatPercent(v: number) {
                 Custos por categoria
               </p>
             </template>
-            <ChartsDonutChart
+            <ChartsDonut
               :labels="donutLabels"
               :series="donutSeries"
               :height="260"

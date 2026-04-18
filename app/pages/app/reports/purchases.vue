@@ -112,7 +112,7 @@ const columns = [
               Compras por dia
             </p>
           </template>
-          <ChartsBarChart
+          <ChartsBar
             :categories="chartCategories"
             :series="chartSeries"
             :height="200"
