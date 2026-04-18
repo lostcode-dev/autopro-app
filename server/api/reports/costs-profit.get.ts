@@ -101,7 +101,11 @@ export default defineEventHandler(async (event) => {
     const cat = String(t?.category || 'other')
     if (combinedCategoryIds.length > 0 && !combinedCategoryIds.includes(cat)) return false
     if (categoryFilter && cat !== categoryFilter) return false
-    if (searchTerm && !String(t?.description || '').toLowerCase().includes(searchTerm)) return false
+    if (searchTerm) {
+      const description = String(t?.description || '').toLowerCase()
+      const categoryLabel = normalizeCategoryName(cat).toLowerCase()
+      if (!description.includes(searchTerm) && !categoryLabel.includes(searchTerm)) return false
+    }
     return true
   })
 

@@ -1,173 +1,267 @@
 <script setup lang="ts">
+import type { SortingState } from '@tanstack/vue-table'
+import type { CostCategoryDetailData } from '~/components/reports/costs/CostsCategoryDetailsSlideover.vue'
+import { formatCostCategoryLabel, getCostCategoryVisual } from '~/utils/report-costs'
+
+interface CategoryRow {
+  categoryKey: string
+  category: string
+  amount: number
+  percentage: number
+}
+
+interface EvolutionPoint {
+  name: string
+  cost: number
+}
+
+interface CostsSummary {
+  totalCosts?: number
+  totalRevenue?: number
+  netProfit?: number
+  profitMargin?: number
+}
+
+interface CostsPagination {
+  totalItems?: number
+}
+
+interface CostsReportResponse {
+  data?: {
+    costsReport?: {
+      availableCategories?: string[]
+      summary?: CostsSummary
+      charts?: {
+        categories?: CategoryRow[]
+        evolution?: EvolutionPoint[]
+      }
+      table?: {
+        items?: CategoryRow[]
+        pagination?: CostsPagination | null
+      }
+    }
+    costsCategoryDetails?: CostCategoryDetailData | null
+  }
+}
+
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Custos e Lucro' })
+useSeoMeta({ title: 'Relatório de Custos' })
 
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const toast = useToast()
 
-const now = new Date()
-const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+const { dateFrom, dateTo } = useReportDateRange()
+const search = ref('')
+const selectedCategories = ref<string[]>([])
+const statusFilters = ref<string[]>([])
+const page = ref(1)
+const pageSize = 20
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<CostCategoryDetailData | null>(null)
+const selectedCategory = ref('')
 
-const dateFrom = ref(defaultFrom)
-const dateTo = ref(defaultTo)
+const sorting = ref<SortingState>([{ id: 'amount', desc: true }])
 
-interface CategoryRow { categoryKey: string, category: string, amount: number, percentage: number }
-interface EvolutionPoint { name: string, cost: number }
-interface Summary { totalCosts: number, totalRevenue: number, netProfit: number, profitMargin: number }
+const sortByMap: Record<string, string> = {
+  category: 'category',
+  amount: 'amount',
+  percentage: 'percentage'
+}
+
+const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'amount')
+const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+
+watch([dateFrom, dateTo, search, selectedCategories, statusFilters, sortBy, sortOrder], () => {
+  page.value = 1
+})
+
+const queryKey = computed(() =>
+  `report-costs-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}-${selectedCategories.value.join(',')}-${statusFilters.value.join(',')}-${sortBy.value}-${sortOrder.value}`
+)
 
 const { data, status } = await useAsyncData(
-  () => `report-costs-${dateFrom.value}-${dateTo.value}`,
-  () => requestFetch<{ data: { costsReport: {
-    summary: Summary
-    charts: { categories: CategoryRow[], evolution: EvolutionPoint[] }
-  } } }>('/api/reports/costs-profit', {
+  () => queryKey.value,
+  () => requestFetch<CostsReportResponse>('/api/reports/costs-profit', {
     headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, includeReport: 'true' }
+    query: {
+      dateFrom: dateFrom.value,
+      dateTo: dateTo.value,
+      categoryIds: selectedCategories.value.length ? selectedCategories.value : undefined,
+      status: statusFilters.value.length ? statusFilters.value : undefined,
+      searchTerm: search.value || undefined,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value,
+      page: page.value,
+      pageSize
+    }
   }),
-  { watch: [dateFrom, dateTo] }
+  { watch: [queryKey] }
 )
 
 const costsReport = computed(() => data.value?.data?.costsReport)
-const summary = computed(() => costsReport.value?.summary)
-const categories = computed(() => costsReport.value?.charts?.categories ?? [])
-const evolution = computed(() => costsReport.value?.charts?.evolution ?? [])
+const summary = computed<CostsSummary>(() => costsReport.value?.summary ?? {})
+const chartCategories = computed<CategoryRow[]>(() => costsReport.value?.charts?.categories ?? [])
+const evolution = computed<EvolutionPoint[]>(() => costsReport.value?.charts?.evolution ?? [])
+const items = computed<CategoryRow[]>(() => costsReport.value?.table?.items ?? [])
+const pagination = computed<CostsPagination | null>(() => costsReport.value?.table?.pagination ?? null)
+const availableCategories = computed<string[]>(() => costsReport.value?.availableCategories ?? [])
 
-const evoCategories = computed(() => evolution.value.map(d => d.name))
-const evoSeries = computed(() => [{ name: 'Custo', data: evolution.value.map(d => d.cost) }])
-
-const donutLabels = computed(() => categories.value.map(c => c.category))
-const donutSeries = computed(() => categories.value.map(c => c.amount))
+const columns = [
+  { id: 'category', header: 'Categoria', enableSorting: true },
+  { accessorKey: 'amount', header: 'Valor total' },
+  { accessorKey: 'percentage', header: '% do total' },
+  { id: 'actions', header: '', enableSorting: false }
+]
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
-function formatPercent(v: number) {
+
+function formatPercent(v: number | string) {
   return `${parseFloat(String(v || 0)).toFixed(1)}%`
 }
+
+async function loadCategoryDetails() {
+  if (!selectedCategory.value) return
+
+  detailLoading.value = true
+  try {
+    const res = await $fetch<CostsReportResponse>('/api/reports/costs-profit', {
+      query: {
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value,
+        categoryIds: selectedCategories.value.length ? selectedCategories.value : undefined,
+        status: statusFilters.value.length ? statusFilters.value : undefined,
+        searchTerm: search.value || undefined,
+        includeCategoryDetails: 'true',
+        selectedCategory: selectedCategory.value
+      }
+    })
+    detailData.value = res.data?.costsCategoryDetails ?? null
+  } catch {
+    toast.add({ title: 'Erro ao carregar detalhes da categoria', color: 'error' })
+    detailOpen.value = false
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+async function openCategoryDetails(categoryKey: string) {
+  selectedCategory.value = categoryKey
+  detailData.value = null
+  detailOpen.value = true
+  await loadCategoryDetails()
+}
+
+watch([dateFrom, dateTo, search, selectedCategories, statusFilters], async () => {
+  if (detailOpen.value && selectedCategory.value) {
+    await loadCategoryDetails()
+  }
+})
 </script>
 
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Custos e Lucro">
-        <template #right>
-          <div class="flex items-center gap-2">
-            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
-            <span class="text-muted text-sm">até</span>
-            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
-          </div>
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Relatório de Custos" />
     </template>
 
     <template #body>
-      <div v-if="status === 'pending'" class="p-6 space-y-4">
-        <USkeleton v-for="i in 6" :key="i" class="h-20 rounded-xl" />
-      </div>
+      <div class="space-y-4 p-4">
+        <ReportsCostsFilters
+          v-model:date-from="dateFrom"
+          v-model:date-to="dateTo"
+          v-model:selected-categories="selectedCategories"
+          v-model:status-filters="statusFilters"
+          :categories="availableCategories"
+        />
 
-      <div v-else class="p-4 space-y-4">
-        <!-- KPI cards -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <UPageCard variant="subtle" class="text-center">
-            <p class="text-lg font-bold text-green-600">
-              {{ formatCurrency(summary?.totalRevenue ?? summary?.grossRevenue ?? 0) }}
-            </p>
-            <p class="text-xs text-muted">
-              Receita bruta
-            </p>
-          </UPageCard>
-          <UPageCard variant="subtle" class="text-center">
-            <p class="text-lg font-bold text-red-500">
-              {{ formatCurrency(summary?.totalCosts ?? 0) }}
-            </p>
-            <p class="text-xs text-muted">
-              Custos totais
-            </p>
-          </UPageCard>
-          <UPageCard variant="subtle" class="text-center">
-            <p class="text-lg font-bold text-blue-600">
-              {{ formatCurrency(summary?.netProfit ?? 0) }}
-            </p>
-            <p class="text-xs text-muted">
-              Lucro líquido
-            </p>
-          </UPageCard>
-          <UPageCard variant="subtle" class="text-center">
-            <p class="text-lg font-bold">
-              {{ formatPercent(summary?.profitMargin ?? 0) }}
-            </p>
-            <p class="text-xs text-muted">
-              Margem de lucro
-            </p>
-          </UPageCard>
-        </div>
+        <ReportsCostsSummary
+          :summary="summary"
+          :category-count="pagination?.totalItems ?? items.length"
+        />
 
-        <!-- Charts row -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <!-- Cost evolution bar chart -->
-          <UPageCard v-if="evolution.length" variant="subtle" class="lg:col-span-2">
-            <template #header>
-              <p class="text-sm font-semibold">
-                Evolução de custos
-              </p>
-            </template>
-            <ChartsBar
-              :categories="evoCategories"
-              :series="evoSeries"
-              :height="240"
-              :colors="['#f87171']"
-              :format-value="formatCurrency"
-            />
-          </UPageCard>
+        <ReportsCostsCharts
+          :categories="chartCategories"
+          :evolution="evolution"
+        />
 
-          <!-- Category donut chart -->
-          <UPageCard v-if="categories.length" variant="subtle">
-            <template #header>
-              <p class="text-sm font-semibold">
-                Custos por categoria
-              </p>
-            </template>
-            <ChartsDonut
-              :labels="donutLabels"
-              :series="donutSeries"
-              :height="260"
-              :format-value="formatCurrency"
-            />
-          </UPageCard>
-        </div>
-
-        <!-- Category breakdown table -->
-        <UPageCard v-if="categories.length" variant="subtle">
-          <template #header>
-            <p class="text-sm font-semibold">
-              Detalhamento por categoria
+        <AppDataTable
+          v-model:page="page"
+          v-model:sorting="sorting"
+          v-model:search-term="search"
+          :columns="columns"
+          :data="items as Record<string, unknown>[]"
+          :loading="status === 'pending'"
+          :page-size="pageSize"
+          :total="pagination?.totalItems ?? items.length"
+          :show-page-size-selector="false"
+          show-search
+          search-placeholder="Buscar categoria ou descrição..."
+          empty-icon="i-lucide-wallet-cards"
+          empty-title="Nenhum custo encontrado"
+          empty-description="Não há categorias de custo para o período e filtros selecionados."
+          @search-change="page = 1"
+        >
+          <template #toolbar-right>
+            <p class="text-xs text-muted">
+              {{ pagination?.totalItems ?? items.length }} categoria{{ (pagination?.totalItems ?? items.length) !== 1 ? 's' : '' }}
             </p>
           </template>
-          <div class="divide-y divide-default">
-            <div
-              v-for="cat in categories"
-              :key="cat.categoryKey"
-              class="flex items-center gap-4 py-2.5 text-sm"
-            >
-              <span class="flex-1 truncate font-medium">{{ cat.category }}</span>
-              <div class="w-24 h-1.5 bg-elevated rounded-full overflow-hidden shrink-0">
-                <div
-                  class="h-full bg-red-400 rounded-full"
-                  :style="{ width: `${cat.percentage ?? 0}%` }"
-                />
-              </div>
-              <span class="text-muted text-xs w-10 text-right shrink-0">{{ formatPercent(cat.percentage ?? 0) }}</span>
-              <span class="font-semibold w-28 text-right shrink-0">{{ formatCurrency(cat.amount ?? 0) }}</span>
-            </div>
-          </div>
-        </UPageCard>
 
-        <div v-if="!costsReport" class="text-center text-muted py-8 text-sm">
-          Nenhum dado disponível para o período selecionado.
-        </div>
+          <template #category-cell="{ row }">
+            <button
+              type="button"
+              class="flex items-center gap-3 text-left transition-opacity hover:opacity-80"
+              @click="openCategoryDetails(String(row.original.categoryKey ?? ''))"
+            >
+              <div
+                class="flex size-8 shrink-0 items-center justify-center rounded-xl text-white shadow-sm"
+                :style="{ backgroundColor: getCostCategoryVisual(String(row.original.categoryKey ?? '')).chartColor }"
+              >
+                <UIcon :name="getCostCategoryVisual(String(row.original.categoryKey ?? '')).icon" class="size-4" />
+              </div>
+              <div>
+                <p class="font-medium text-highlighted">
+                  {{ formatCostCategoryLabel(String(row.original.categoryKey ?? '')) }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ formatPercent(Number(row.original.percentage ?? 0)) }} do total
+                </p>
+              </div>
+            </button>
+          </template>
+
+          <template #amount-cell="{ row }">
+            <span class="font-medium text-error">
+              {{ formatCurrency(Number(row.original.amount ?? 0)) }}
+            </span>
+          </template>
+
+          <template #percentage-cell="{ row }">
+            {{ formatPercent(Number(row.original.percentage ?? 0)) }}
+          </template>
+
+          <template #actions-cell="{ row }">
+            <UButton
+              icon="i-lucide-eye"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openCategoryDetails(String(row.original.categoryKey ?? ''))"
+            />
+          </template>
+        </AppDataTable>
       </div>
+
+      <ReportsCostsCategoryDetailsSlideover
+        :open="detailOpen"
+        :loading="detailLoading"
+        :data="detailData"
+        @update:open="detailOpen = $event"
+      />
     </template>
   </UDashboardPanel>
 </template>
