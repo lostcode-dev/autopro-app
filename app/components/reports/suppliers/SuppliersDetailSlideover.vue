@@ -44,7 +44,12 @@ function formatDate(v: string | null) {
   return `${day}/${month}/${year}`
 }
 
-const chartCategories = computed(() => props.data?.daily.map(item => item.name) ?? [])
+const chartCategories = computed(() =>
+  props.data?.daily.map(item => {
+    const [y, m, d] = item.name.split('-')
+    return (y && m && d) ? `${d}/${m}/${y}` : item.name
+  }) ?? []
+)
 const chartSeries = computed(() => [
   { name: 'Total comprado', data: props.data?.daily.map(item => item.total) ?? [] }
 ])
@@ -58,17 +63,27 @@ const chartSeries = computed(() => [
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div v-if="props.loading" class="space-y-2">
-        <USkeleton class="h-5 w-48" />
-        <USkeleton class="h-4 w-32" />
-      </div>
-      <div v-else-if="props.data">
-        <h2 class="text-base font-bold text-highlighted">
-          {{ props.data.name }}
-        </h2>
-        <p class="mt-0.5 text-xs text-muted">
-          {{ props.data.tradeName || props.data.contactName || 'Detalhes do fornecedor' }}
-        </p>
+      <div class="flex items-center justify-between gap-3">
+        <div v-if="props.loading" class="space-y-2">
+          <USkeleton class="h-5 w-48" />
+          <USkeleton class="h-4 w-32" />
+        </div>
+        <div v-else-if="props.data">
+          <h2 class="text-base font-bold text-highlighted">
+            {{ props.data.name }}
+          </h2>
+          <p class="mt-0.5 text-xs text-muted">
+            {{ props.data.tradeName || props.data.contactName || 'Detalhes do fornecedor' }}
+          </p>
+        </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          class="shrink-0"
+          @click="$emit('update:open', false)"
+        />
       </div>
     </template>
 
