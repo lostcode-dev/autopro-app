@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'autopro:report-date-range'
+const STORAGE_KEY = 'autopro:report-filters'
 
 function defaultFrom(): string {
   const now = new Date()
@@ -14,10 +14,12 @@ function defaultTo(): string {
 export function useReportDateRange() {
   const dateFrom = useState<string>('report:dateFrom', defaultFrom)
   const dateTo = useState<string>('report:dateTo', defaultTo)
+  const orderStatusFilters = useState<string[]>('report:orderStatusFilters', () => [])
+  const paymentStatusFilters = useState<string[]>('report:paymentStatusFilters', () => [])
 
   // Restore from localStorage once per client session
   if (import.meta.client) {
-    const initialized = useState('report:dateRange:init', () => false)
+    const initialized = useState('report:filters:init', () => false)
     if (!initialized.value) {
       initialized.value = true
       try {
@@ -26,6 +28,8 @@ export function useReportDateRange() {
           const parsed = JSON.parse(saved)
           if (parsed.from) dateFrom.value = parsed.from
           if (parsed.to) dateTo.value = parsed.to
+          if (Array.isArray(parsed.orderStatusFilters)) orderStatusFilters.value = parsed.orderStatusFilters
+          if (Array.isArray(parsed.paymentStatusFilters)) paymentStatusFilters.value = parsed.paymentStatusFilters
         }
       }
       catch {}
@@ -33,14 +37,14 @@ export function useReportDateRange() {
   }
 
   // Persist changes to localStorage
-  watch([dateFrom, dateTo], ([from, to]) => {
+  watch([dateFrom, dateTo, orderStatusFilters, paymentStatusFilters], ([from, to, osf, psf]) => {
     if (import.meta.client) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ from, to }))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ from, to, orderStatusFilters: osf, paymentStatusFilters: psf }))
       }
       catch {}
     }
-  })
+  }, { deep: true })
 
-  return { dateFrom, dateTo }
+  return { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters }
 }

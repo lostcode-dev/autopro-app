@@ -11,12 +11,10 @@ const requestHeaders = import.meta.server
   ? useRequestHeaders(['cookie'])
   : undefined
 
-const { dateFrom, dateTo } = useReportDateRange()
+const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters } = useReportDateRange()
 const search = ref('')
 const page = ref(1)
 const pageSize = 20
-const orderStatusFilters = ref<string[]>([])
-const paymentStatusFilters = ref<string[]>([])
 
 // Sorting
 const sorting = ref<SortingState>([{ id: 'totalSpent', desc: true }])
