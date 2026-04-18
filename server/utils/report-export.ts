@@ -59,6 +59,7 @@ export async function buildTablePdfBase64({
   columns,
   rows,
   footerRows,
+  footerMetaRows,
   footerNotes
 }: {
   title: string
@@ -66,6 +67,7 @@ export async function buildTablePdfBase64({
   columns: Array<{ header: string, widthRatio: number, align?: 'left' | 'right' }>
   rows: string[][]
   footerRows?: Array<{ label: string, value: string }>
+  footerMetaRows?: Array<{ left?: string, right?: string }>
   footerNotes?: string[]
 }) {
   const pdfDocument = await PDFDocument.create()
@@ -124,10 +126,11 @@ export async function buildTablePdfBase64({
   }
 
   const footerRowsHeight = footerRows && footerRows.length > 0 ? ROW_HEIGHT * (footerRows.length + 1) : 0
+  const footerMetaRowsHeight = footerMetaRows && footerMetaRows.length > 0 ? footerMetaRows.length * 11 : 0
   const footerNotesHeight = footerNotes && footerNotes.length > 0 ? 10 + (footerNotes.length * 11) : 0
 
-  if ((footerRows && footerRows.length > 0) || (footerNotes && footerNotes.length > 0)) {
-    if (y <= MARGIN_BOTTOM + footerRowsHeight + footerNotesHeight) addPage()
+  if ((footerRows && footerRows.length > 0) || (footerMetaRows && footerMetaRows.length > 0) || (footerNotes && footerNotes.length > 0)) {
+    if (y <= MARGIN_BOTTOM + footerRowsHeight + footerMetaRowsHeight + footerNotesHeight) addPage()
   }
 
   if (footerRows && footerRows.length > 0) {
@@ -140,6 +143,37 @@ export async function buildTablePdfBase64({
       const valueWidth = fontBold.widthOfTextAtSize(valueText, BODY_SIZE + 1)
       page.drawText(valueText, { x: PAGE_WIDTH - MARGIN_X - valueWidth, y, size: BODY_SIZE + 1, font: fontBold, color: rgb(0.12, 0.16, 0.22) })
       y -= ROW_HEIGHT
+    }
+  }
+
+  if (footerMetaRows && footerMetaRows.length > 0) {
+    y -= 4
+    for (const footerMetaRow of footerMetaRows) {
+      const leftText = clipText(String(footerMetaRow.left || ''), (PAGE_WIDTH - (MARGIN_X * 2)) / 2 - 8, fontRegular, BODY_SIZE)
+      const rightText = clipText(String(footerMetaRow.right || ''), (PAGE_WIDTH - (MARGIN_X * 2)) / 2 - 8, fontRegular, BODY_SIZE)
+
+      if (leftText) {
+        page.drawText(leftText, {
+          x: MARGIN_X,
+          y,
+          size: BODY_SIZE,
+          font: fontRegular,
+          color: rgb(0.34, 0.39, 0.45)
+        })
+      }
+
+      if (rightText) {
+        const rightWidth = fontRegular.widthOfTextAtSize(rightText, BODY_SIZE)
+        page.drawText(rightText, {
+          x: PAGE_WIDTH - MARGIN_X - rightWidth,
+          y,
+          size: BODY_SIZE,
+          font: fontRegular,
+          color: rgb(0.34, 0.39, 0.45)
+        })
+      }
+
+      y -= 11
     }
   }
 
@@ -170,6 +204,7 @@ export async function buildReportDownloadData({
   columns,
   rows,
   footerRows,
+  footerMetaRows,
   footerNotes
 }: {
   format: 'csv' | 'pdf'
@@ -179,6 +214,7 @@ export async function buildReportDownloadData({
   columns: Array<{ header: string, widthRatio?: number, align?: 'left' | 'right' }>
   rows: unknown[][]
   footerRows?: Array<{ label: string, value: string }>
+  footerMetaRows?: Array<{ left?: string, right?: string }>
   footerNotes?: string[]
 }) {
   if (!Array.isArray(columns) || columns.length === 0) {
@@ -208,6 +244,12 @@ export async function buildReportDownloadData({
         csvLines.push(`${csvEscape(footerRow.label)},${csvEscape(footerRow.value)}`)
       }
     }
+    if (footerMetaRows && footerMetaRows.length > 0) {
+      csvLines.push('')
+      for (const footerMetaRow of footerMetaRows) {
+        csvLines.push(`${csvEscape(footerMetaRow.left || '')},${csvEscape(footerMetaRow.right || '')}`)
+      }
+    }
     if (footerNotes && footerNotes.length > 0) {
       csvLines.push('')
       for (const footerNote of footerNotes) {
@@ -218,6 +260,6 @@ export async function buildReportDownloadData({
     return { fileName: `${fileNameBase}_${today}.csv`, contentType: 'text/csv;charset=utf-8;', base64: textToBase64(csv) }
   }
 
-  const base64 = await buildTablePdfBase64({ title, subtitle, columns: normalizedColumns, rows: normalizedRows, footerRows, footerNotes })
+  const base64 = await buildTablePdfBase64({ title, subtitle, columns: normalizedColumns, rows: normalizedRows, footerRows, footerMetaRows, footerNotes })
   return { fileName: `${fileNameBase}_${today}.pdf`, contentType: 'application/pdf', base64 }
 }

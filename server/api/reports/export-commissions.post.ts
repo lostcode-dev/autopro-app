@@ -197,15 +197,14 @@ export default defineEventHandler(async (event) => {
   const totalCommission = items.reduce((sum, record) => sum + toNumber(record.amount, 0), 0)
   const generatedAt = formatDateTime(new Date())
   const companyPrimaryParts = [
-    organization?.name ? `Empresa: ${organization.name}` : null,
-    organization?.tax_id ? `CNPJ/CPF: ${organization.tax_id}` : null,
-    formatPhone(organization?.phone) ? `Telefone: ${formatPhone(organization?.phone)}` : null
+    organization?.tax_id || null,
+    formatPhone(organization?.phone),
+    formatPhone(organization?.whatsapp)
   ].filter(Boolean)
   const companySecondaryParts = [
-    formatPhone(organization?.whatsapp) ? `WhatsApp: ${formatPhone(organization?.whatsapp)}` : null,
-    organization?.email ? `E-mail: ${organization.email}` : null,
-    organization?.website ? `Site: ${organization.website}` : null,
-    organization?.city || organization?.state ? `Local: ${[organization?.city, organization?.state].filter(Boolean).join('/')}` : null
+    organization?.email || null,
+    organization?.website || null,
+    organization?.city || organization?.state ? [organization?.city, organization?.state].filter(Boolean).join('/') : null
   ].filter(Boolean)
 
   const columns = [
@@ -243,8 +242,13 @@ export default defineEventHandler(async (event) => {
       { label: 'Total de Linhas', value: String(totalRows) },
       { label: 'Total da Comissão', value: formatCurrency(totalCommission) }
     ],
+    footerMetaRows: [
+      {
+        left: `Gerado em: ${generatedAt}`,
+        right: organization?.name || ''
+      }
+    ],
     footerNotes: [
-      `Gerado em: ${generatedAt}`,
       companyPrimaryParts.join(' | '),
       companySecondaryParts.join(' | ')
     ].filter(Boolean)

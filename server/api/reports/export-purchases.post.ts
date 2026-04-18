@@ -20,6 +20,17 @@ interface SupplierRecord {
   name?: string | null
 }
 
+interface OrganizationRecord {
+  name?: string | null
+  tax_id?: string | null
+  phone?: string | null
+  whatsapp?: string | null
+  email?: string | null
+  website?: string | null
+  city?: string | null
+  state?: string | null
+}
+
 interface PurchaseReportItem extends PurchaseRecord {
   supplierName: string
   paymentStatus: string
@@ -29,6 +40,24 @@ const paymentStatusLabelMap: Record<string, string> = {
   pending: 'Pendente',
   paid: 'Pago',
   overdue: 'Vencido'
+}
+
+function formatDateTime(value: Date) {
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(value)
+}
+
+function formatPhone(value?: string | null) {
+  if (!value) return null
+  const digits = value.replace(/\D/g, '')
+  if (digits.length === 10) return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  if (digits.length === 11) return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return value
 }
 
 export default defineEventHandler(async (event) => {
@@ -47,13 +76,19 @@ export default defineEventHandler(async (event) => {
   const sortOrder: 'asc' | 'desc' = body?.sortOrder === 'asc' ? 'asc' : 'desc'
   const format = body?.format === 'pdf' ? 'pdf' : 'csv'
 
-  const [purchasesResult, suppliersResult] = await Promise.all([
+  const [purchasesResult, suppliersResult, organizationResult] = await Promise.all([
     supabase.from('purchases').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('purchase_date', { ascending: false }),
-    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null)
+    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase
+      .from('organizations')
+      .select('name, tax_id, phone, whatsapp, email, website, city, state')
+      .eq('id', organizationId)
+      .maybeSingle()
   ])
 
   const purchasesRaw = (purchasesResult.data ?? []) as PurchaseRecord[]
   const suppliers = (suppliersResult.data ?? []) as SupplierRecord[]
+  const organization = (organizationResult.data ?? null) as OrganizationRecord | null
   const suppliersMap = new Map<string, SupplierRecord>(suppliers.map(supplier => [String(supplier.id), supplier]))
 
   const items = purchasesRaw
@@ -92,6 +127,17 @@ export default defineEventHandler(async (event) => {
   const totalPaid = items
     .filter(purchase => purchase.paymentStatus === 'paid')
     .reduce((sum: number, purchase) => sum + toNumber(purchase?.total_amount, 0), 0)
+  const generatedAt = formatDateTime(new Date())
+  const companyPrimaryParts = [
+    organization?.tax_id || null,
+    formatPhone(organization?.phone),
+    formatPhone(organization?.whatsapp)
+  ].filter(Boolean)
+  const companySecondaryParts = [
+    organization?.email || null,
+    organization?.website || null,
+    organization?.city || organization?.state ? [organization?.city, organization?.state].filter(Boolean).join('/') : null
+  ].filter(Boolean)
 
   const data = await buildReportDownloadData({
     format,
@@ -119,7 +165,17 @@ export default defineEventHandler(async (event) => {
       { label: 'Total Comprado', value: formatCurrency(totalPurchased) },
       { label: 'Total Pago', value: formatCurrency(totalPaid) },
       { label: 'Total Pendente', value: formatCurrency(totalPurchased - totalPaid) }
-    ]
+    ],
+    footerMetaRows: [
+      {
+        left: `Gerado em: ${generatedAt}`,
+        right: organization?.name || ''
+      }
+    ],
+    footerNotes: [
+      companyPrimaryParts.join(' | '),
+      companySecondaryParts.join(' | ')
+    ].filter(Boolean)
   })
 
   return { success: true, data }
