@@ -52,17 +52,26 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 const toast = useToast()
 
 const { dateFrom, dateTo } = useReportDateRange()
-const search = ref('')
-const selectedCategories = ref<string[]>([])
-const statusFilters = ref<string[]>([])
-const page = ref(1)
+const search = useReportQueryParam('q', '')
+const selectedCategories = useReportQueryParam('categories', [] as string[])
+const statusFilters = useReportQueryParam('status', [] as string[])
+const page = useReportQueryParam('page', 1)
 const pageSize = 20
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<CostCategoryDetailData | null>(null)
 const selectedCategory = ref('')
 
-const sorting = ref<SortingState>([{ id: 'amount', desc: true }])
+const sortByParam = useReportQueryParam('sortBy', 'amount')
+const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sorting = computed<SortingState>({
+  get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
+  set: (val) => {
+    sortByParam.value = val[0]?.id ?? 'amount'
+    sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    page.value = 1
+  }
+})
 
 const sortByMap: Record<string, string> = {
   category: 'category',
@@ -70,8 +79,8 @@ const sortByMap: Record<string, string> = {
   percentage: 'percentage'
 }
 
-const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'amount')
-const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'amount')
+const sortOrder = computed(() => sortOrderParam.value)
 
 watch([dateFrom, dateTo, search, selectedCategories, statusFilters, sortBy, sortOrder], () => {
   page.value = 1

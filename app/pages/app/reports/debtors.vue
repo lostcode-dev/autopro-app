@@ -76,18 +76,27 @@ const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 const { dateFrom, dateTo } = useReportDateRange()
-const search = ref('')
-const page = ref(1)
+const search = useReportQueryParam('q', '')
+const page = useReportQueryParam('page', 1)
 const pageSize = 20
-const viewMode = ref<'clients' | 'orders'>('clients')
-const clientIds = ref<string[]>([])
-const statusFilters = ref<string[]>([])
-const paymentMethodFilters = ref<string[]>([])
-const orderStatusFilters = ref<string[]>(['completed'])
+const viewMode = useReportQueryParam('view', 'clients' as 'clients' | 'orders')
+const clientIds = useReportQueryParam('clients', [] as string[])
+const statusFilters = useReportQueryParam('status', [] as string[])
+const paymentMethodFilters = useReportQueryParam('paymentMethod', [] as string[])
+const orderStatusFilters = useReportQueryParam('orderStatus', ['completed'] as string[])
 const detailOpen = ref(false)
 const detailData = ref<DebtorDetailData | null>(null)
 
-const sorting = ref<SortingState>([{ id: 'earliestDue', desc: false }])
+const sortByParam = useReportQueryParam('sortBy', 'earliestDue')
+const sortOrderParam = useReportQueryParam('sortOrder', 'asc')
+const sorting = computed<SortingState>({
+  get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
+  set: (val) => {
+    sortByParam.value = val[0]?.id ?? 'earliestDue'
+    sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    page.value = 1
+  }
+})
 
 const sortByMap: Record<string, string> = {
   clientName: 'client_name',
@@ -98,8 +107,8 @@ const sortByMap: Record<string, string> = {
   orderNumber: 'order_number'
 }
 
-const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'earliest_due')
-const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'earliest_due')
+const sortOrder = computed(() => sortOrderParam.value)
 
 watch([dateFrom, dateTo, search, clientIds, statusFilters, paymentMethodFilters, orderStatusFilters, viewMode, sortBy, sortOrder], () => {
   page.value = 1

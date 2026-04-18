@@ -60,8 +60,8 @@ const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 const { dateFrom, dateTo } = useReportDateRange()
-const statusFilters = ref<string[]>(['paid'])
-const compareMode = ref('no_compare')
+const statusFilters = useReportQueryParam('status', ['paid'] as string[])
+const compareMode = useReportQueryParam('compare', 'no_compare')
 
 const compareWithPreviousPeriod = computed(() => compareMode.value !== 'no_compare')
 

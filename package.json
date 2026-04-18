@@ -11,6 +11,7 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "nuxt typecheck",
     "generate:icons": "node scripts/generate-icons.mjs",
+    "migrate:base44": "node scripts/migrate-base44.mjs",
     "cap:init": "cap init 'Kortex' com.kortex.app --web-dir .output/public",
     "cap:add:android": "cap add android",
     "cap:add:ios": "cap add ios",

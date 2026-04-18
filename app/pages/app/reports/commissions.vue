@@ -62,14 +62,23 @@ const toast = useToast()
 const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees } = useReportDateRange()
 
 // Filter state
-const commissionStatus = ref<string[]>([])
-const recordType = ref<string[]>([])
-const paymentMethods = ref<string[]>([])
+const commissionStatus = useReportQueryParam('commissionStatus', [] as string[])
+const recordType = useReportQueryParam('recordType', [] as string[])
+const paymentMethods = useReportQueryParam('paymentMethods', [] as string[])
 
 // Pagination / sorting
-const page = ref(1)
+const page = useReportQueryParam('page', 1)
 const pageSize = 20
-const sorting = ref<SortingState>([{ id: 'reference_date', desc: true }])
+const sortByParam = useReportQueryParam('sortBy', 'reference_date')
+const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sorting = computed<SortingState>({
+  get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
+  set: (val) => {
+    sortByParam.value = val[0]?.id ?? 'reference_date'
+    sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    page.value = 1
+  }
+})
 
 const sortByMap: Record<string, string> = {
   employee_name: 'employee',
@@ -77,8 +86,8 @@ const sortByMap: Record<string, string> = {
   amount: 'amount',
   status_col: 'status'
 }
-const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'date')
-const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'date')
+const sortOrder = computed(() => sortOrderParam.value)
 
 // Selection for bulk pay
 const selectedIds = ref<string[]>([])

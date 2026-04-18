@@ -94,27 +94,36 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 const toast = useToast()
 
 const { dateFrom, dateTo } = useReportDateRange()
-const search = ref('')
-const page = ref(1)
+const search = useReportQueryParam('q', '')
+const page = useReportQueryParam('page', 1)
 const pageSize = 20
-const viewMode = ref<'item' | 'os'>('item')
+const viewMode = useReportQueryParam('view', 'item' as 'item' | 'os')
 
-const clientIds = ref<string[]>([])
-const orderIds = ref<string[]>([])
-const responsibleIds = ref<string[]>([])
-const statusFilters = ref<string[]>([])
-const paymentStatusFilters = ref<string[]>([])
-const paymentMethodFilters = ref<string[]>([])
-const categoryIds = ref<string[]>([])
-const costFilters = ref<string[]>([])
-const costSources = ref<string[]>([])
+const clientIds = useReportQueryParam('clients', [] as string[])
+const orderIds = useReportQueryParam('orders', [] as string[])
+const responsibleIds = useReportQueryParam('responsibles', [] as string[])
+const statusFilters = useReportQueryParam('status', [] as string[])
+const paymentStatusFilters = useReportQueryParam('paymentStatus', [] as string[])
+const paymentMethodFilters = useReportQueryParam('paymentMethod', [] as string[])
+const categoryIds = useReportQueryParam('categories', [] as string[])
+const costFilters = useReportQueryParam('costFilters', [] as string[])
+const costSources = useReportQueryParam('costSources', [] as string[])
 
 const detailOpen = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<SalesItemsDetailData | null>(null)
 const exporting = ref<'csv' | 'pdf' | null>(null)
 
-const sorting = ref<SortingState>([{ id: 'date', desc: true }])
+const sortByParam = useReportQueryParam('sortBy', 'date')
+const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sorting = computed<SortingState>({
+  get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
+  set: (val) => {
+    sortByParam.value = val[0]?.id ?? 'date'
+    sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    page.value = 1
+  }
+})
 const sortByMap: Record<string, string> = {
   client: 'client',
   orderNumber: 'orderNumber',
@@ -132,8 +141,8 @@ const sortByMap: Record<string, string> = {
   itemCount: 'itemCount'
 }
 
-const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'date')
-const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'date')
+const sortOrder = computed(() => sortOrderParam.value)
 
 watch([
   dateFrom,

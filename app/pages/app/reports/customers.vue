@@ -11,15 +11,23 @@ const requestHeaders = import.meta.server
   : undefined
 
 const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters } = useReportDateRange()
-const search = ref('')
-const page = ref(1)
+const search = useReportQueryParam('q', '')
+const page = useReportQueryParam('page', 1)
 const pageSize = 20
 
 // Sorting
-const sorting = ref<SortingState>([{ id: 'totalSpent', desc: true }])
-const sortBy = computed(() => sorting.value[0]?.id ?? 'totalSpent')
-const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
-watch([sortBy, sortOrder], () => { page.value = 1 })
+const sortByParam = useReportQueryParam('sortBy', 'totalSpent')
+const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sorting = computed<SortingState>({
+  get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
+  set: (val) => {
+    sortByParam.value = val[0]?.id ?? 'totalSpent'
+    sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    page.value = 1
+  }
+})
+const sortBy = computed(() => sortByParam.value)
+const sortOrder = computed(() => sortOrderParam.value)
 
 const isDetailOpen = ref(false)
 const detailLoading = ref(false)

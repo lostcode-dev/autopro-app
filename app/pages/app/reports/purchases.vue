@@ -54,14 +54,23 @@ const toast = useToast()
 
 const { dateFrom, dateTo } = useReportDateRange()
 
-const search = ref('')
-const paymentStatus = ref<string[]>([])
-const supplierIds = ref<string[]>([])
-const page = ref(1)
+const search = useReportQueryParam('q', '')
+const paymentStatus = useReportQueryParam('paymentStatus', [] as string[])
+const supplierIds = useReportQueryParam('suppliers', [] as string[])
+const page = useReportQueryParam('page', 1)
 const pageSize = 20
 const exporting = ref<'csv' | 'pdf' | null>(null)
 
-const sorting = ref<SortingState>([{ id: 'purchase_date', desc: true }])
+const sortByParam = useReportQueryParam('sortBy', 'purchase_date')
+const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
+const sorting = computed<SortingState>({
+  get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
+  set: (val) => {
+    sortByParam.value = val[0]?.id ?? 'purchase_date'
+    sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    page.value = 1
+  }
+})
 
 const sortByMap: Record<string, string> = {
   supplier: 'supplier',
@@ -71,8 +80,8 @@ const sortByMap: Record<string, string> = {
   pay_status: 'status'
 }
 
-const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'purchase_date')
-const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'purchase_date')
+const sortOrder = computed(() => sortOrderParam.value)
 
 watch([dateFrom, dateTo, search, paymentStatus, supplierIds, sortBy, sortOrder], () => {
   page.value = 1
