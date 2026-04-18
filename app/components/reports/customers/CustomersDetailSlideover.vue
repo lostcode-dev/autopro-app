@@ -112,7 +112,11 @@ function formatDate(v: string) {
 }
 
 function clientInitial(name?: string) {
-  return (name ?? '?').charAt(0).toUpperCase()
+  const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  const first = parts[0].charAt(0)
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0) : ''
+  return (first + last).toUpperCase()
 }
 </script>
 
@@ -141,7 +145,7 @@ function clientInitial(name?: string) {
               {{ data.client?.name ?? '—' }}
             </h2>
             <p class="mt-0.5 text-xs text-muted">
-              {{ data.stats.totalOrders }} ordem{{ data.stats.totalOrders !== 1 ? 's' : '' }} no período
+              {{ data.client?.email ?? data.client?.phone ?? '-' }}
             </p>
           </div>
         </div>
