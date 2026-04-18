@@ -147,7 +147,7 @@ const kpis = computed(() => [
       <div v-else class="p-4 space-y-4 pt-0">
         <!-- KPI Cards -->
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          <UPageCard v-for="kpi in kpis" :key="kpi.label" variant="subtle">
+          <UCard v-for="kpi in kpis" :key="kpi.label">
             <div class="flex items-center gap-3">
               <div
                 class="size-9 rounded-xl flex items-center justify-center bg-elevated shrink-0"
@@ -163,13 +163,13 @@ const kpis = computed(() => [
                 </p>
               </div>
             </div>
-          </UPageCard>
+          </UCard>
         </div>
 
         <div class="grid gap-4 grid-cols-1 md:grid-cols-6">
           <!-- Revenue vs Cost Chart -->
           <div class="md:col-span-4">
-            <UPageCard variant="subtle">
+            <UCard>
               <template #header>
                 <div class="flex items-center gap-2">
                   <UIcon
@@ -188,12 +188,12 @@ const kpis = computed(() => [
                 :colors="['#22c55e', '#f87171']"
                 :format-value="formatCurrency"
               />
-            </UPageCard>
+            </UCard>
           </div>
 
           <!-- Top Items -->
           <div class="md:col-span-2">
-            <UPageCard v-if="topItems.length" variant="subtle">
+            <UCard v-if="topItems.length">
               <template #header>
                 <div class="flex items-center gap-2">
                   <UIcon
@@ -223,7 +223,7 @@ const kpis = computed(() => [
                   />
                 </div>
               </div>
-            </UPageCard>
+            </UCard>
           </div>
         </div>
       </div>
