@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
-import { parseDateStart, parseDateEnd, toNumber, roundMoney, formatCurrency, formatOptionalDate } from '../../utils/report-helpers'
+import { parseDateStart, parseDateEnd, toNumber, roundMoney, formatCurrency, formatOptionalDate, normalizeReportStatus } from '../../utils/report-helpers'
 
 function normalizeNumber(value: unknown) {
   const parsed = Number(value)
@@ -216,10 +216,10 @@ export default defineEventHandler(async (event) => {
     if (dateFrom && orderEntryDate < dateFrom) continue
     if (dateTo && orderEntryDate > dateTo) continue
     if (statusFiltersSet.size > 0 && !statusFiltersSet.has(String(order?.status || ''))) continue
-    if (paymentStatusFiltersSet.size > 0 && !paymentStatusFiltersSet.has(String(order?.payment_status || ''))) continue
+    if (paymentStatusFiltersSet.size > 0 && !paymentStatusFiltersSet.has(normalizeReportStatus(order?.payment_status))) continue
     if (paymentMethodsSet.size > 0) {
-      const pm = String(order?.payment_method || '')
-      if (!paymentMethodsSet.has(pm || 'no_payment_method')) continue
+      const pm = String(order?.payment_method || 'no_payment')
+      if (!paymentMethodsSet.has(pm)) continue
     }
 
     const responsibles = getResponsibles(order, employeesMap)

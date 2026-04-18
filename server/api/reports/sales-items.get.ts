@@ -4,6 +4,146 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { toNumber, qArr, parseDateStart, parseDateEnd, roundMoney, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
+interface ClientRecord {
+  id: string
+  name?: string | null
+}
+
+interface EmployeeRecord {
+  id: string
+  name?: string | null
+}
+
+interface ProductRecord {
+  id: string
+  name?: string | null
+  unit_cost_price?: number | string | null
+  category_id?: string | null
+}
+
+interface CategoryRecord {
+  id: string
+  name?: string | null
+}
+
+interface CommissionRecord {
+  employee_id?: string | null
+  amount?: number | string | null
+}
+
+interface ServiceOrderItem {
+  product_id?: string | null
+  description?: string | null
+  name?: string | null
+  quantity?: number | string | null
+  cost_amount?: number | string | null
+  total_amount?: number | string | null
+  unit_price?: number | string | null
+  commissions?: CommissionRecord[] | null
+}
+
+interface ResponsibleEmployee {
+  employee_id?: string | null
+}
+
+interface ServiceOrderRecord {
+  id?: string | null
+  number?: string | number | null
+  client_id?: string | null
+  employee_responsible_id?: string | null
+  responsible_employees?: ResponsibleEmployee[] | null
+  status?: string | null
+  payment_status?: string | null
+  payment_method?: string | null
+  entry_date?: string | null
+  items?: ServiceOrderItem[] | null
+}
+
+interface ExpandedItemRow {
+  id: string
+  orderId: string
+  clientId: string | null
+  client: string
+  orderNumber: string
+  itemDescription: string
+  quantity: number
+  unitCost: number
+  totalCost: number
+  commissionCost: number
+  totalCostWithCommission: number
+  totalValue: number
+  profit: number
+  responsible: string
+  status: string
+  paymentStatus: string
+  paymentMethod: string
+  date: string
+  categoryId: string | null
+  categoryName: string
+  costSource: 'item' | 'product' | 'none'
+}
+
+interface GroupedOrderRow {
+  id: string
+  orderId: string
+  clientId: string | null
+  client: string
+  orderNumber: string
+  quantity: number
+  totalCost: number
+  commissionCost: number
+  totalCostWithCommission: number
+  totalValue: number
+  profit: number
+  responsible: string
+  status: string
+  paymentStatus: string
+  paymentMethod: string
+  date: string
+  itemCount: number
+}
+
+interface SalesItemDetailData {
+  mode: 'item' | 'os'
+  id: string
+  orderId: string
+  orderNumber: string
+  client: string
+  responsible: string
+  status: string
+  paymentStatus: string
+  paymentMethod: string
+  date: string
+  categoryName: string
+  costSource: string
+  itemDescription: string
+  quantity: number
+  totalCost: number
+  commissionCost: number
+  totalCostWithCommission: number
+  totalValue: number
+  profit: number
+  itemCount: number
+  items: ExpandedItemRow[]
+}
+
+const sortableFields = new Set([
+  'client',
+  'orderNumber',
+  'itemDescription',
+  'categoryName',
+  'quantity',
+  'totalValue',
+  'totalCost',
+  'commissionCost',
+  'profit',
+  'responsible',
+  'status',
+  'paymentStatus',
+  'date',
+  'itemCount'
+])
+
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -13,114 +153,144 @@ export default defineEventHandler(async (event) => {
 
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
-  const clientIds = qArr(query.clientIds)
-  const orderIds = qArr(query.orderIds)
-  const responsibleIds = qArr(query.responsibleIds)
-  const statusFilters = qArr(query.statusFilters)
-  const paymentStatusFilters = qArr(query.paymentStatusFilters)
-  const paymentMethodFilters = qArr(query.paymentMethodFilters)
-  const categoryIds = qArr(query.categoryIds)
+  const clientIds = qArr(query.clientIds as string | string[] | undefined)
+  const orderIds = qArr(query.orderIds as string | string[] | undefined)
+  const responsibleIds = qArr(query.responsibleIds as string | string[] | undefined)
+  const statusFilters = qArr(query.statusFilters as string | string[] | undefined)
+  const paymentStatusFilters = qArr(query.paymentStatusFilters as string | string[] | undefined)
+  const paymentMethodFilters = qArr(query.paymentMethodFilters as string | string[] | undefined)
+  const categoryIds = qArr(query.categoryIds as string | string[] | undefined)
+  const costFilters = qArr((query.costFilters ?? query.costFilter) as string | string[] | undefined)
+  const costSources = qArr((query.costSources ?? query.costSource) as string | string[] | undefined)
   const searchTerm = String(query.searchTerm || '').trim().toLowerCase()
   const viewMode = query.viewMode === 'os' ? 'os' : 'item'
-  const sortBy = String(query.sortBy || 'date')
+  const sortBy = sortableFields.has(String(query.sortBy || '')) ? String(query.sortBy) : 'date'
   const sortOrder: 'asc' | 'desc' = query.sortOrder === 'asc' ? 'asc' : 'desc'
   const page = Math.max(1, Math.floor(toNumber(query.page, 1)))
   const pageSize = Math.min(100, Math.max(1, Math.floor(toNumber(query.pageSize, 20))))
+  const includeDetails = query.includeDetails === 'true'
+  const selectedItemId = String(query.selectedItemId || '').trim()
+  const selectedOrderId = String(query.selectedOrderId || '').trim()
 
-  const [ordersResult, clientsResult, employeesResult, productsResult, categoriesResult, commissionRecordsResult] = await Promise.all([
+  const [ordersResult, clientsResult, employeesResult, productsResult, categoriesResult] = await Promise.all([
     supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('entry_date', { ascending: false }),
     supabase.from('clients').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+    supabase.from('employees').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('products').select('id, name, unit_cost_price, category_id').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('product_categories').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).eq('record_type', 'comissao').order('reference_date', { ascending: false })
+    supabase.from('product_categories').select('id, name').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
-  const orders = ordersResult.data || []
-  const clients = clientsResult.data || []
-  const employees = employeesResult.data || []
-  const products = productsResult.data || []
-  const categories = categoriesResult.data || []
-  const commissionRecords = commissionRecordsResult.data || []
+  const orders = (ordersResult.data ?? []) as ServiceOrderRecord[]
+  const clients = (clientsResult.data ?? []) as ClientRecord[]
+  const employees = (employeesResult.data ?? []) as EmployeeRecord[]
+  const products = (productsResult.data ?? []) as ProductRecord[]
+  const categories = (categoriesResult.data ?? []) as CategoryRecord[]
 
-  const clientsMap = new Map(clients.map((c: any) => [String(c.id), c]))
-  const employeesMap = new Map(employees.map((e: any) => [String(e.id), e]))
-  const productsMap = new Map(products.map((p: any) => [String(p.id), p]))
-  const categoriesMap = new Map(categories.map((c: any) => [String(c.id), c]))
+  const clientsMap = new Map<string, ClientRecord>(clients.map(client => [String(client.id), client]))
+  const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
+  const productsMap = new Map<string, ProductRecord>(products.map(product => [String(product.id), product]))
+  const categoriesMap = new Map<string, CategoryRecord>(categories.map(category => [String(category.id), category]))
 
-  // Filter orders
-  let filteredOrders = orders.filter((o: any) => {
-    if (o?.status === 'cancelled') return false
-    if (statusFilters.length > 0 && !statusFilters.includes(String(o?.status || ''))) return false
-    if (paymentStatusFilters.length > 0 && !paymentStatusFilters.includes(normalizeReportStatus(o?.payment_status))) return false
-    if (paymentMethodFilters.length > 0 && !paymentMethodFilters.includes(String(o?.payment_method || 'no_payment'))) return false
-    if (clientIds.length > 0 && !clientIds.includes(String(o?.client_id || ''))) return false
-    if (orderIds.length > 0 && !orderIds.includes(String(o?.id || ''))) return false
-    if (dateFrom || dateTo) {
-      const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
-      if (!entryDate || Number.isNaN(entryDate.getTime())) return false
-      if (dateFrom && entryDate < dateFrom) return false
-      if (dateTo && entryDate > dateTo) return false
-    }
+  let filteredOrders = orders.filter((order) => {
+    if (order?.status === 'cancelled') return false
+    if (statusFilters.length > 0 && !statusFilters.includes(String(order?.status || ''))) return false
+    if (paymentStatusFilters.length > 0 && !paymentStatusFilters.includes(normalizeReportStatus(order?.payment_status))) return false
+    if (paymentMethodFilters.length > 0 && !paymentMethodFilters.includes(String(order?.payment_method || 'no_payment'))) return false
+    if (clientIds.length > 0 && !clientIds.includes(String(order?.client_id || ''))) return false
+    if (orderIds.length > 0 && !orderIds.includes(String(order?.id || ''))) return false
+
+    const entryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
+    if ((dateFrom || dateTo) && (!entryDate || Number.isNaN(entryDate.getTime()))) return false
+    if (dateFrom && entryDate && entryDate < dateFrom) return false
+    if (dateTo && entryDate && entryDate > dateTo) return false
+
     return true
   })
 
   if (responsibleIds.length > 0) {
-    filteredOrders = filteredOrders.filter((o: any) => {
-      const responsibles = Array.isArray(o?.responsible_employees) ? o.responsible_employees : []
-      const empId = o?.employee_responsible_id
-      return responsibles.some((r: any) => responsibleIds.includes(String(r?.employee_id || ''))) || (empId && responsibleIds.includes(String(empId)))
+    filteredOrders = filteredOrders.filter((order) => {
+      const responsibles = Array.isArray(order?.responsible_employees) ? order.responsible_employees : []
+      const orderResponsibleId = order?.employee_responsible_id ? String(order.employee_responsible_id) : null
+      return responsibles.some(responsible => responsibleIds.includes(String(responsible?.employee_id || '')))
+        || (orderResponsibleId ? responsibleIds.includes(orderResponsibleId) : false)
     })
   }
 
-  // Expand to item level
-  let expandedItems: any[] = []
-  for (const o of filteredOrders) {
-    const items = Array.isArray(o?.items) ? o.items : []
-    const clientName = clientsMap.get(String(o?.client_id || ''))?.name || 'Unknown'
+  let expandedItems: ExpandedItemRow[] = []
 
-    for (const item of items) {
+  for (const order of filteredOrders) {
+    const orderId = String(order?.id || '')
+    if (!orderId) continue
+
+    const items = Array.isArray(order?.items) ? order.items : []
+    const clientId = order?.client_id ? String(order.client_id) : null
+    const client = clientId ? clientsMap.get(clientId)?.name || 'Cliente sem nome' : 'Cliente sem nome'
+    const orderNumber = String(order?.number || '-')
+    const status = String(order?.status || '')
+    const paymentStatus = normalizeReportStatus(order?.payment_status)
+    const paymentMethod = String(order?.payment_method || 'no_payment')
+    const date = String(order?.entry_date || '')
+
+    for (const [index, item] of items.entries()) {
       const product = item?.product_id ? productsMap.get(String(item.product_id)) : null
-      const categoryId = product?.category_id || null
-      const categoryName = categoryId ? categoriesMap.get(String(categoryId))?.name || '' : ''
+      const categoryId = product?.category_id ? String(product.category_id) : null
+      const categoryName = categoryId ? categoriesMap.get(categoryId)?.name || 'Sem categoria' : 'Sem categoria'
+      const costSource: 'item' | 'product' | 'none' = item?.cost_amount != null && String(item.cost_amount) !== ''
+        ? 'item'
+        : product?.unit_cost_price != null && String(product.unit_cost_price) !== ''
+          ? 'product'
+          : 'none'
 
-      if (categoryIds.length > 0 && categoryId && !categoryIds.includes(String(categoryId))) continue
+      if (categoryIds.length > 0 && categoryId && !categoryIds.includes(categoryId)) continue
+      if (categoryIds.length > 0 && !categoryId) continue
 
-      const qty = toNumber(item?.quantity, 1)
-      const unitCost = toNumber(item?.cost_amount, 0) || toNumber(product?.unit_cost_price, 0)
-      const totalCost = roundMoney(unitCost * qty)
-      const costSource = item?.cost_amount ? 'item' : (product?.unit_cost_price ? 'product' : 'none')
-      const totalValue = toNumber(item?.total_amount, 0) || (toNumber(item?.unit_price, 0) * qty)
-
-      let commissionCost = 0
-      if (Array.isArray(item?.commissions)) {
-        commissionCost = item.commissions.reduce((s: number, c: any) => s + toNumber(c?.amount, 0), 0)
-      }
+      const quantity = toNumber(item?.quantity, 1)
+      const unitCost = item?.cost_amount != null && String(item.cost_amount) !== ''
+        ? toNumber(item.cost_amount, 0)
+        : toNumber(product?.unit_cost_price, 0)
+      const totalCost = roundMoney(unitCost * quantity)
+      const commissionCost = roundMoney((Array.isArray(item?.commissions) ? item.commissions : []).reduce((sum, commission) => sum + toNumber(commission?.amount, 0), 0))
+      const totalValue = roundMoney(toNumber(item?.total_amount, 0) || (toNumber(item?.unit_price, 0) * quantity))
+      const totalCostWithCommission = roundMoney(totalCost + commissionCost)
+      const profit = roundMoney(totalValue - totalCostWithCommission)
 
       let responsible = ''
       if (Array.isArray(item?.commissions) && item.commissions.length > 0) {
-        responsible = item.commissions.map((c: any) => employeesMap.get(String(c?.employee_id || ''))?.name || '').filter(Boolean).join(', ')
+        responsible = item.commissions
+          .map(commission => employeesMap.get(String(commission?.employee_id || ''))?.name || '')
+          .filter(Boolean)
+          .join(', ')
       }
       if (!responsible) {
-        const responsibles = Array.isArray(o?.responsible_employees) ? o.responsible_employees : []
-        responsible = responsibles.map((r: any) => employeesMap.get(String(r?.employee_id || ''))?.name || '').filter(Boolean).join(', ')
+        const responsibles = Array.isArray(order?.responsible_employees) ? order.responsible_employees : []
+        responsible = responsibles
+          .map(itemResponsible => employeesMap.get(String(itemResponsible?.employee_id || ''))?.name || '')
+          .filter(Boolean)
+          .join(', ')
+      }
+      if (!responsible && order?.employee_responsible_id) {
+        responsible = employeesMap.get(String(order.employee_responsible_id))?.name || ''
       }
 
       expandedItems.push({
-        id: `${o.id}_${items.indexOf(item)}`,
-        orderId: o.id,
-        client: clientName,
-        orderNumber: o?.number || '-',
-        itemDescription: item?.description || item?.name || 'No description',
-        quantity: qty,
+        id: `${orderId}_${index}`,
+        orderId,
+        clientId,
+        client,
+        orderNumber,
+        itemDescription: String(item?.description || item?.name || 'Item sem descrição'),
+        quantity,
         unitCost,
         totalCost,
-        commissionCost: roundMoney(commissionCost),
-        totalCostWithCommission: roundMoney(totalCost + commissionCost),
-        totalValue: roundMoney(totalValue),
+        commissionCost,
+        totalCostWithCommission,
+        totalValue,
+        profit,
         responsible,
-        status: o?.status || '',
-        date: o?.entry_date || '',
+        status,
+        paymentStatus,
+        paymentMethod,
+        date,
         categoryId,
         categoryName,
         costSource
@@ -128,67 +298,191 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  if (costFilters.length > 0) {
+    expandedItems = expandedItems.filter((item) => {
+      if (costFilters.includes('withCost') && item.totalCost <= 0) return false
+      if (costFilters.includes('zeroCost') && item.totalCost > 0) return false
+      return true
+    })
+  }
+
+  if (costSources.length > 0) {
+    expandedItems = expandedItems.filter(item => costSources.includes(item.costSource))
+  }
+
   if (searchTerm) {
-    expandedItems = expandedItems.filter((i: any) =>
-      i.client.toLowerCase().includes(searchTerm)
-      || i.orderNumber.toLowerCase().includes(searchTerm)
-      || i.itemDescription.toLowerCase().includes(searchTerm)
-      || i.responsible.toLowerCase().includes(searchTerm)
+    expandedItems = expandedItems.filter(item =>
+      item.client.toLowerCase().includes(searchTerm)
+      || item.orderNumber.toLowerCase().includes(searchTerm)
+      || item.itemDescription.toLowerCase().includes(searchTerm)
+      || item.responsible.toLowerCase().includes(searchTerm)
+      || item.categoryName.toLowerCase().includes(searchTerm)
     )
   }
 
-  // Group by order if viewMode = 'os'
-  let tableItems: any[] = expandedItems
-  if (viewMode === 'os') {
-    const osMap: Record<string, any> = {}
-    for (const item of expandedItems) {
-      if (!osMap[item.orderId]) {
-        osMap[item.orderId] = { ...item, quantity: 0, totalCost: 0, commissionCost: 0, totalCostWithCommission: 0, totalValue: 0, itemCount: 0 }
-      }
-      const g = osMap[item.orderId]
-      g.quantity += item.quantity
-      g.totalCost += item.totalCost
-      g.commissionCost += item.commissionCost
-      g.totalCostWithCommission += item.totalCostWithCommission
-      g.totalValue += item.totalValue
-      g.itemCount += 1
+  const groupedOrdersMap = new Map<string, GroupedOrderRow>()
+  for (const item of expandedItems) {
+    const existing = groupedOrdersMap.get(item.orderId)
+    if (!existing) {
+      groupedOrdersMap.set(item.orderId, {
+        id: item.orderId,
+        orderId: item.orderId,
+        clientId: item.clientId,
+        client: item.client,
+        orderNumber: item.orderNumber,
+        quantity: item.quantity,
+        totalCost: item.totalCost,
+        commissionCost: item.commissionCost,
+        totalCostWithCommission: item.totalCostWithCommission,
+        totalValue: item.totalValue,
+        profit: item.profit,
+        responsible: item.responsible,
+        status: item.status,
+        paymentStatus: item.paymentStatus,
+        paymentMethod: item.paymentMethod,
+        date: item.date,
+        itemCount: 1
+      })
+      continue
     }
-    tableItems = Object.values(osMap)
+
+    existing.quantity += item.quantity
+    existing.totalCost = roundMoney(existing.totalCost + item.totalCost)
+    existing.commissionCost = roundMoney(existing.commissionCost + item.commissionCost)
+    existing.totalCostWithCommission = roundMoney(existing.totalCostWithCommission + item.totalCostWithCommission)
+    existing.totalValue = roundMoney(existing.totalValue + item.totalValue)
+    existing.profit = roundMoney(existing.profit + item.profit)
+    existing.itemCount += 1
+
+    const currentResponsibles = new Set(existing.responsible.split(',').map(name => name.trim()).filter(Boolean))
+    for (const responsible of item.responsible.split(',')) {
+      const trimmed = responsible.trim()
+      if (trimmed) currentResponsibles.add(trimmed)
+    }
+    existing.responsible = Array.from(currentResponsibles).join(', ')
   }
 
+  const tableItems: Array<ExpandedItemRow | GroupedOrderRow> = viewMode === 'os'
+    ? Array.from(groupedOrdersMap.values())
+    : expandedItems
+
   const factor = sortFactor(sortOrder)
-  tableItems.sort((a: any, b: any) => {
-    if (sortBy === 'client') return a.client.localeCompare(b.client, 'pt-BR', { sensitivity: 'base' }) * factor
-    if (sortBy === 'order') return String(a.orderNumber).localeCompare(String(b.orderNumber)) * factor
-    if (sortBy === 'totalValue') return (a.totalValue - b.totalValue) * factor
-    if (sortBy === 'totalCost') return (a.totalCost - b.totalCost) * factor
-    if (sortBy === 'commissionCost') return (a.commissionCost - b.commissionCost) * factor
-    if (sortBy === 'responsible') return String(a.responsible).localeCompare(String(b.responsible), 'pt-BR') * factor
-    if (sortBy === 'status') return String(a.status).localeCompare(String(b.status)) * factor
-    return String(b?.date || '').localeCompare(String(a?.date || '')) * factor * (sortOrder === 'asc' ? -1 : 1)
+  tableItems.sort((itemA, itemB) => {
+    if (sortBy === 'client') return String(itemA.client).localeCompare(String(itemB.client), 'pt-BR', { sensitivity: 'base' }) * factor
+    if (sortBy === 'orderNumber') return String(itemA.orderNumber).localeCompare(String(itemB.orderNumber), 'pt-BR', { sensitivity: 'base' }) * factor
+    if (sortBy === 'itemDescription') return String('itemDescription' in itemA ? itemA.itemDescription : '').localeCompare(String('itemDescription' in itemB ? itemB.itemDescription : ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    if (sortBy === 'categoryName') return String('categoryName' in itemA ? itemA.categoryName : '').localeCompare(String('categoryName' in itemB ? itemB.categoryName : ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    if (sortBy === 'quantity') return (toNumber(itemA.quantity, 0) - toNumber(itemB.quantity, 0)) * factor
+    if (sortBy === 'totalValue') return (toNumber(itemA.totalValue, 0) - toNumber(itemB.totalValue, 0)) * factor
+    if (sortBy === 'totalCost') return (toNumber(itemA.totalCost, 0) - toNumber(itemB.totalCost, 0)) * factor
+    if (sortBy === 'commissionCost') return (toNumber(itemA.commissionCost, 0) - toNumber(itemB.commissionCost, 0)) * factor
+    if (sortBy === 'profit') return (toNumber(itemA.profit, 0) - toNumber(itemB.profit, 0)) * factor
+    if (sortBy === 'responsible') return String(itemA.responsible).localeCompare(String(itemB.responsible), 'pt-BR', { sensitivity: 'base' }) * factor
+    if (sortBy === 'status') return String(itemA.status).localeCompare(String(itemB.status), 'pt-BR', { sensitivity: 'base' }) * factor
+    if (sortBy === 'paymentStatus') return String(itemA.paymentStatus).localeCompare(String(itemB.paymentStatus), 'pt-BR', { sensitivity: 'base' }) * factor
+    if (sortBy === 'itemCount' && 'itemCount' in itemA && 'itemCount' in itemB) return (itemA.itemCount - itemB.itemCount) * factor
+    return String(itemA.date || '').localeCompare(String(itemB.date || ''), 'pt-BR', { sensitivity: 'base' }) * factor
   })
 
   const summary = {
-    totalRevenue: roundMoney(tableItems.reduce((s, i) => s + i.totalValue, 0)),
-    totalCost: roundMoney(tableItems.reduce((s, i) => s + i.totalCost, 0)),
-    totalCommissionCost: roundMoney(tableItems.reduce((s, i) => s + i.commissionCost, 0)),
+    totalRevenue: roundMoney(expandedItems.reduce((sum, item) => sum + item.totalValue, 0)),
+    totalCost: roundMoney(expandedItems.reduce((sum, item) => sum + item.totalCost, 0)),
+    totalCommissionCost: roundMoney(expandedItems.reduce((sum, item) => sum + item.commissionCost, 0)),
+    totalProfit: roundMoney(expandedItems.reduce((sum, item) => sum + item.profit, 0)),
+    totalQuantity: roundMoney(expandedItems.reduce((sum, item) => sum + item.quantity, 0)),
     itemCount: expandedItems.length,
-    orderCount: filteredOrders.length
+    orderCount: groupedOrdersMap.size
   }
 
   const { data: paginatedItems, pagination } = paginate(tableItems, page, pageSize)
+
+  let details: SalesItemDetailData | null = null
+  if (includeDetails && selectedItemId) {
+    const selectedItem = expandedItems.find(item => item.id === selectedItemId)
+    if (selectedItem) {
+      details = {
+        mode: 'item',
+        id: selectedItem.id,
+        orderId: selectedItem.orderId,
+        orderNumber: selectedItem.orderNumber,
+        client: selectedItem.client,
+        responsible: selectedItem.responsible,
+        status: selectedItem.status,
+        paymentStatus: selectedItem.paymentStatus,
+        paymentMethod: selectedItem.paymentMethod,
+        date: selectedItem.date,
+        categoryName: selectedItem.categoryName,
+        costSource: selectedItem.costSource,
+        itemDescription: selectedItem.itemDescription,
+        quantity: selectedItem.quantity,
+        totalCost: selectedItem.totalCost,
+        commissionCost: selectedItem.commissionCost,
+        totalCostWithCommission: selectedItem.totalCostWithCommission,
+        totalValue: selectedItem.totalValue,
+        profit: selectedItem.profit,
+        itemCount: 1,
+        items: [selectedItem]
+      }
+    }
+  }
+  if (includeDetails && selectedOrderId) {
+    const orderRow = groupedOrdersMap.get(selectedOrderId)
+    const orderItems = expandedItems.filter(item => item.orderId === selectedOrderId)
+    if (orderRow) {
+      details = {
+        mode: 'os',
+        id: orderRow.id,
+        orderId: orderRow.orderId,
+        orderNumber: orderRow.orderNumber,
+        client: orderRow.client,
+        responsible: orderRow.responsible,
+        status: orderRow.status,
+        paymentStatus: orderRow.paymentStatus,
+        paymentMethod: orderRow.paymentMethod,
+        date: orderRow.date,
+        categoryName: orderItems.map(item => item.categoryName).filter(Boolean).join(', '),
+        costSource: orderItems.map(item => item.costSource).filter(Boolean).join(', '),
+        itemDescription: `${orderRow.itemCount} item(ns)`,
+        quantity: orderRow.quantity,
+        totalCost: orderRow.totalCost,
+        commissionCost: orderRow.commissionCost,
+        totalCostWithCommission: orderRow.totalCostWithCommission,
+        totalValue: orderRow.totalValue,
+        profit: orderRow.profit,
+        itemCount: orderRow.itemCount,
+        items: orderItems
+      }
+    }
+  }
 
   return {
     data: {
       salesItemsReport: {
         filters: {
-          availableClients: clients.map((c: any) => ({ value: c.id, label: c.name || 'No name' })),
-          availableOrders: filteredOrders.map((o: any) => ({ value: o.id, label: `OS ${o.number || '-'}` })),
-          availableResponsibles: employees.map((e: any) => ({ id: e.id, name: e.name || '' })),
-          availableStatuses: [...new Set(orders.map((o: any) => o?.status).filter(Boolean))].map(s => ({ value: s, label: s })),
-          availableCategories: categories.map((c: any) => ({ id: c.id, name: c.name || '' }))
+          availableClients: clients
+            .map(client => ({ value: client.id, label: client.name || 'Cliente sem nome' }))
+            .sort((clientA, clientB) => clientA.label.localeCompare(clientB.label, 'pt-BR', { sensitivity: 'base' })),
+          availableOrders: filteredOrders
+            .map(order => ({ value: String(order.id || ''), label: `OS ${order.number || '-'}` }))
+            .sort((orderA, orderB) => orderA.label.localeCompare(orderB.label, 'pt-BR', { sensitivity: 'base' })),
+          availableResponsibles: employees
+            .map(employee => ({ value: employee.id, label: employee.name || 'Sem nome' }))
+            .sort((employeeA, employeeB) => employeeA.label.localeCompare(employeeB.label, 'pt-BR', { sensitivity: 'base' })),
+          availableStatuses: Array.from(new Set(orders.map(order => String(order?.status || '')).filter(Boolean)))
+            .sort((statusA, statusB) => statusA.localeCompare(statusB, 'pt-BR', { sensitivity: 'base' }))
+            .map(status => ({ value: status, label: status })),
+          availableCategories: categories
+            .map(category => ({ value: category.id, label: category.name || 'Sem categoria' }))
+            .sort((categoryA, categoryB) => categoryA.label.localeCompare(categoryB.label, 'pt-BR', { sensitivity: 'base' }))
         },
         summary,
+        details,
+        charts: {
+          topItemsByQuantity: [...expandedItems]
+            .sort((itemA, itemB) => itemB.quantity - itemA.quantity)
+            .slice(0, 10)
+            .map(item => ({ name: item.itemDescription, quantity: item.quantity, revenue: item.totalValue }))
+        },
         table: {
           items: paginatedItems,
           pagination,

@@ -1,135 +1,529 @@
 <script setup lang="ts">
+import type { SortingState } from '@tanstack/vue-table'
+import type { SalesItemsDetailData } from '~/components/reports/sales-items/SalesItemsDetailSlideover.vue'
+import {
+  formatSalesCostSourceLabel,
+  formatSalesOrderStatusLabel,
+  formatSalesPaymentStatusLabel,
+  salesCostSourceColor,
+  salesOrderStatusColor,
+  salesPaymentStatusColor
+} from '~/utils/report-sales-items'
+
+interface SalesItemRow {
+  id: string
+  orderId: string
+  clientId: string | null
+  client: string
+  orderNumber: string
+  itemDescription: string
+  quantity: number
+  totalCost: number
+  commissionCost: number
+  totalCostWithCommission: number
+  totalValue: number
+  profit: number
+  responsible: string
+  status: string
+  paymentStatus: string
+  paymentMethod: string
+  date: string
+  categoryId: string | null
+  categoryName: string
+  costSource: 'item' | 'product' | 'none'
+}
+
+interface SalesOrderRow {
+  id: string
+  orderId: string
+  clientId: string | null
+  client: string
+  orderNumber: string
+  quantity: number
+  totalCost: number
+  commissionCost: number
+  totalCostWithCommission: number
+  totalValue: number
+  profit: number
+  responsible: string
+  status: string
+  paymentStatus: string
+  paymentMethod: string
+  date: string
+  itemCount: number
+}
+
+interface SalesItemsReportResponse {
+  data?: {
+    salesItemsReport?: {
+      filters?: {
+        availableClients?: Array<{ value: string, label: string }>
+        availableOrders?: Array<{ value: string, label: string }>
+        availableResponsibles?: Array<{ value: string, label: string }>
+        availableStatuses?: Array<{ value: string, label: string }>
+        availableCategories?: Array<{ value: string, label: string }>
+      }
+      summary?: {
+        totalQuantity?: number
+        totalRevenue?: number
+        totalCost?: number
+        totalCommissionCost?: number
+        totalProfit?: number
+        itemCount?: number
+        orderCount?: number
+      }
+      details?: SalesItemsDetailData | null
+      charts?: {
+        topItemsByQuantity?: Array<{ name: string, quantity: number, revenue: number }>
+      }
+      table?: {
+        items?: Array<SalesItemRow | SalesOrderRow>
+        pagination?: { totalItems?: number } | null
+      }
+    }
+  }
+}
+
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Itens Vendidos' })
 
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const toast = useToast()
 
 const { dateFrom, dateTo } = useReportDateRange()
 const search = ref('')
 const page = ref(1)
 const pageSize = 20
+const viewMode = ref<'item' | 'os'>('item')
+
+const clientIds = ref<string[]>([])
+const orderIds = ref<string[]>([])
+const responsibleIds = ref<string[]>([])
+const statusFilters = ref<string[]>([])
+const paymentStatusFilters = ref<string[]>([])
+const paymentMethodFilters = ref<string[]>([])
+const categoryIds = ref<string[]>([])
+const costFilters = ref<string[]>([])
+const costSources = ref<string[]>([])
+
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<SalesItemsDetailData | null>(null)
+const exporting = ref<'csv' | 'pdf' | null>(null)
+
+const sorting = ref<SortingState>([{ id: 'date', desc: true }])
+const sortByMap: Record<string, string> = {
+  client: 'client',
+  orderNumber: 'orderNumber',
+  itemDescription: 'itemDescription',
+  categoryName: 'categoryName',
+  quantity: 'quantity',
+  totalValue: 'totalValue',
+  totalCost: 'totalCost',
+  commissionCost: 'commissionCost',
+  profit: 'profit',
+  responsible: 'responsible',
+  status_col: 'status',
+  payment_status_col: 'paymentStatus',
+  date: 'date',
+  itemCount: 'itemCount'
+}
+
+const sortBy = computed(() => sortByMap[sorting.value[0]?.id ?? ''] ?? 'date')
+const sortOrder = computed(() => (sorting.value[0]?.desc === false ? 'asc' : 'desc'))
+
+watch([
+  dateFrom,
+  dateTo,
+  search,
+  viewMode,
+  clientIds,
+  orderIds,
+  responsibleIds,
+  statusFilters,
+  paymentStatusFilters,
+  paymentMethodFilters,
+  categoryIds,
+  costFilters,
+  costSources,
+  sortBy,
+  sortOrder
+], () => {
+  page.value = 1
+})
+
+const queryKey = computed(() =>
+  `report-sales-items-${dateFrom.value}-${dateTo.value}-${search.value}-${page.value}-${viewMode.value}-${clientIds.value.join(',')}-${orderIds.value.join(',')}-${responsibleIds.value.join(',')}-${statusFilters.value.join(',')}-${paymentStatusFilters.value.join(',')}-${paymentMethodFilters.value.join(',')}-${categoryIds.value.join(',')}-${costFilters.value.join(',')}-${costSources.value.join(',')}-${sortBy.value}-${sortOrder.value}`
+)
 
 const { data, status } = await useAsyncData(
-  () => `report-sales-items-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}`,
-  () => requestFetch<{ data: any }>('/api/reports/sales-items', {
+  () => queryKey.value,
+  () => requestFetch<SalesItemsReportResponse>('/api/reports/sales-items', {
     headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, searchTerm: search.value || undefined, page: page.value, pageSize }
+    query: {
+      dateFrom: dateFrom.value,
+      dateTo: dateTo.value,
+      searchTerm: search.value || undefined,
+      page: page.value,
+      pageSize,
+      viewMode: viewMode.value,
+      clientIds: clientIds.value.length ? clientIds.value : undefined,
+      orderIds: orderIds.value.length ? orderIds.value : undefined,
+      responsibleIds: responsibleIds.value.length ? responsibleIds.value : undefined,
+      statusFilters: statusFilters.value.length ? statusFilters.value : undefined,
+      paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
+      paymentMethodFilters: paymentMethodFilters.value.length ? paymentMethodFilters.value : undefined,
+      categoryIds: categoryIds.value.length ? categoryIds.value : undefined,
+      costFilters: costFilters.value.length ? costFilters.value : undefined,
+      costSources: costSources.value.length ? costSources.value : undefined,
+      sortBy: sortBy.value,
+      sortOrder: sortOrder.value
+    }
   }),
-  { watch: [dateFrom, dateTo, page, search] }
+  { watch: [queryKey] }
 )
 
-const items = computed(() => data.value?.data?.salesItemsReport?.table?.items ?? [])
-const summary = computed(() => data.value?.data?.salesItemsReport?.summary ?? {})
-const pagination = computed(() => data.value?.data?.salesItemsReport?.table?.pagination ?? null)
+const report = computed(() => data.value?.data?.salesItemsReport)
+const items = computed<Array<SalesItemRow | SalesOrderRow>>(() => report.value?.table?.items ?? [])
+const summary = computed(() => report.value?.summary ?? {})
+const pagination = computed(() => report.value?.table?.pagination ?? null)
+const filters = computed(() => report.value?.filters ?? {})
+const topItemsChart = computed(() => report.value?.charts?.topItemsByQuantity ?? [])
 
-const chartData = computed(() =>
-  [...items.value]
-    .sort((a, b) => Number(b.quantity ?? 0) - Number(a.quantity ?? 0))
-    .slice(0, 12)
-    .map(it => ({
-      name: String(it.name ?? '?').substring(0, 12),
-      qty: Number(it.quantity ?? 0),
-      revenue: Number(it.totalRevenue ?? it.revenue ?? 0)
-    }))
-)
+const itemColumns = [
+  { accessorKey: 'client', header: 'Cliente' },
+  { accessorKey: 'orderNumber', header: 'OS' },
+  { accessorKey: 'itemDescription', header: 'Item' },
+  { accessorKey: 'categoryName', header: 'Categoria' },
+  { accessorKey: 'responsible', header: 'Responsável' },
+  { id: 'status_col', header: 'Status OS' },
+  { id: 'payment_status_col', header: 'Pgto OS' },
+  { accessorKey: 'costSource', header: 'Origem custo' },
+  { accessorKey: 'quantity', header: 'Qtd.' },
+  { accessorKey: 'date', header: 'Data' },
+  { accessorKey: 'totalValue', header: 'Receita' },
+  { accessorKey: 'totalCost', header: 'Custo' },
+  { accessorKey: 'commissionCost', header: 'Comissão' },
+  { accessorKey: 'profit', header: 'Lucro' },
+  { id: 'actions', header: '', enableSorting: false }
+]
 
-const chartCategories = computed(() => chartData.value.map(d => d.name))
-const chartSeries = computed(() => [
-  { name: 'Receita', data: chartData.value.map(d => d.revenue) },
-  { name: 'Quantidade', data: chartData.value.map(d => d.qty) }
-])
+const orderColumns = [
+  { accessorKey: 'client', header: 'Cliente' },
+  { accessorKey: 'orderNumber', header: 'OS' },
+  { accessorKey: 'itemCount', header: 'Itens' },
+  { accessorKey: 'responsible', header: 'Responsável' },
+  { id: 'status_col', header: 'Status OS' },
+  { id: 'payment_status_col', header: 'Pgto OS' },
+  { accessorKey: 'quantity', header: 'Qtd.' },
+  { accessorKey: 'date', header: 'Data' },
+  { accessorKey: 'totalValue', header: 'Receita' },
+  { accessorKey: 'totalCost', header: 'Custo' },
+  { accessorKey: 'commissionCost', header: 'Comissão' },
+  { accessorKey: 'profit', header: 'Lucro' },
+  { id: 'actions', header: '', enableSorting: false }
+]
+
+const columns = computed(() => (viewMode.value === 'os' ? orderColumns : itemColumns))
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
-const columns = [
-  { accessorKey: 'name', header: 'Item' },
-  { accessorKey: 'category', header: 'Categoria' },
-  { accessorKey: 'quantity', header: 'Qtd.' },
-  { id: 'revenue', header: 'Receita' },
-  { id: 'cost', header: 'Custo' },
-  { id: 'profit', header: 'Lucro' }
-]
+function formatDate(v: string | null | undefined) {
+  if (!v) return '—'
+  const [year, month, day] = v.split('-')
+  if (!year || !month || !day) return '—'
+  return `${day}/${month}/${year}`
+}
+
+function getInitials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return '?'
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
+  return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
+}
+
+async function openDetail(row: SalesItemRow | SalesOrderRow) {
+  detailOpen.value = true
+  detailLoading.value = true
+  detailData.value = null
+
+  try {
+    const response = await $fetch<SalesItemsReportResponse>('/api/reports/sales-items', {
+      query: {
+        dateFrom: dateFrom.value,
+        dateTo: dateTo.value,
+        searchTerm: search.value || undefined,
+        viewMode: viewMode.value,
+        clientIds: clientIds.value.length ? clientIds.value : undefined,
+        orderIds: orderIds.value.length ? orderIds.value : undefined,
+        responsibleIds: responsibleIds.value.length ? responsibleIds.value : undefined,
+        statusFilters: statusFilters.value.length ? statusFilters.value : undefined,
+        paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
+        paymentMethodFilters: paymentMethodFilters.value.length ? paymentMethodFilters.value : undefined,
+        categoryIds: categoryIds.value.length ? categoryIds.value : undefined,
+        costFilters: costFilters.value.length ? costFilters.value : undefined,
+        costSources: costSources.value.length ? costSources.value : undefined,
+        includeDetails: 'true',
+        selectedItemId: viewMode.value === 'item' ? row.id : undefined,
+        selectedOrderId: viewMode.value === 'os' ? row.orderId : undefined
+      }
+    })
+
+    detailData.value = response.data?.salesItemsReport?.details ?? null
+  } catch {
+    toast.add({ title: 'Erro ao carregar detalhes', color: 'error' })
+    detailOpen.value = false
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+async function exportReport(format: 'csv' | 'pdf') {
+  exporting.value = format
+  try {
+    const response = await $fetch<{ success: boolean, data: { fileName: string, contentType: string, base64: string } }>(
+      '/api/reports/export-sales-items',
+      {
+        method: 'POST',
+        body: {
+          format,
+          viewMode: viewMode.value,
+          dateFrom: dateFrom.value,
+          dateTo: dateTo.value,
+          clientIds: clientIds.value.length ? clientIds.value : undefined,
+          orderIds: orderIds.value.length ? orderIds.value : undefined,
+          responsibleIds: responsibleIds.value.length ? responsibleIds.value : undefined,
+          statusFilters: statusFilters.value.length ? statusFilters.value : undefined,
+          paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
+          paymentMethods: paymentMethodFilters.value.length ? paymentMethodFilters.value : undefined,
+          categoryIds: categoryIds.value.length ? categoryIds.value : undefined,
+          costFilter: costFilters.value.length ? costFilters.value : undefined,
+          costSource: costSources.value.length ? costSources.value : undefined,
+          sortBy: sortBy.value,
+          sortOrder: sortOrder.value
+        }
+      }
+    )
+
+    if (response.data?.base64) {
+      const binaryString = atob(response.data.base64)
+      const bytes = new Uint8Array(binaryString.length)
+      for (let index = 0; index < binaryString.length; index++) bytes[index] = binaryString.charCodeAt(index)
+      const blob = new Blob([bytes], { type: response.data.contentType })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = response.data.fileName
+      anchor.click()
+      URL.revokeObjectURL(url)
+    }
+  } catch {
+    toast.add({ title: 'Erro ao exportar relatório', color: 'error' })
+  } finally {
+    exporting.value = null
+  }
+}
 </script>
 
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Itens Vendidos" />
+      <AppPageHeader :title="viewMode === 'os' ? 'Relatório por Ordem de Serviço' : 'Itens Vendidos'" />
     </template>
 
     <template #body>
       <div class="space-y-4 p-4">
-        <!-- Filter card -->
-        <UCard :ui="{ body: 'p-3' }">
-          <div class="space-y-3">
-            <div class="flex items-center gap-2 text-muted">
-              <UIcon name="i-lucide-filter" class="size-4" />
-              <span class="text-sm font-medium">Filtros</span>
-            </div>
-            <div>
-              <p class="mb-1 text-xs font-medium text-muted">Período</p>
-              <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-auto" />
-            </div>
-          </div>
-        </UCard>
-        <!-- Summary cards -->
-        <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <UCard
-          v-for="stat in [
-            { label: 'Total itens', value: summary.totalItems ?? summary.totalQuantity ?? 0, icon: 'i-lucide-package', color: 'text-primary', description: 'unidades vendidas' },
-            { label: 'Receita total', value: formatCurrency(summary.totalRevenue ?? 0), icon: 'i-lucide-trending-up', color: 'text-success', description: 'no período' },
-            { label: 'Lucro total', value: formatCurrency(summary.totalProfit ?? 0), icon: 'i-lucide-circle-dollar-sign', color: 'text-info', description: 'resultado líquido' },
-          ]"
-          :key="stat.label"
-          :ui="{ body: 'p-3 sm:p-4' }"
-        >
-          <div class="flex items-start gap-3">
-            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
-            <div>
-              <p class="text-lg font-bold leading-tight">
-                {{ stat.value }}
-              </p>
-              <p class="text-xs font-medium text-highlighted">
-                {{ stat.label }}
-              </p>
-              <p class="text-xs text-muted">
-                {{ stat.description }}
-              </p>
-            </div>
-          </div>
-        </UCard>
-      </div>
+        <ReportsSalesItemsFilters
+          v-model:date-from="dateFrom"
+          v-model:date-to="dateTo"
+          v-model:client-ids="clientIds"
+          v-model:order-ids="orderIds"
+          v-model:responsible-ids="responsibleIds"
+          v-model:status-filters="statusFilters"
+          v-model:payment-status-filters="paymentStatusFilters"
+          v-model:payment-method-filters="paymentMethodFilters"
+          v-model:category-ids="categoryIds"
+          v-model:cost-filters="costFilters"
+          v-model:cost-sources="costSources"
+          :clients="filters.availableClients ?? []"
+          :orders="filters.availableOrders ?? []"
+          :responsibles="filters.availableResponsibles ?? []"
+          :statuses="filters.availableStatuses ?? []"
+          :categories="filters.availableCategories ?? []"
+        />
+
+        <ReportsSalesItemsSummary
+          :summary="summary"
+          :view-mode="viewMode"
+        />
+
+        <ReportsSalesItemsCharts :items="topItemsChart" />
 
         <AppDataTable
-          :columns="columns"
-          :data="items"
-          :loading="status === 'pending'"
           v-model:page="page"
+          v-model:sorting="sorting"
+          v-model:search-term="search"
+          :columns="columns"
+          :data="items as Record<string, unknown>[]"
+          :loading="status === 'pending'"
           :page-size="pageSize"
           :total="pagination?.totalItems ?? items.length"
           :show-page-size-selector="false"
           show-search
-          v-model:search-term="search"
-          search-placeholder="Buscar item..."
+          search-placeholder="Buscar item, OS, cliente, responsável ou categoria..."
           empty-icon="i-lucide-list-checks"
-          empty-title="Nenhum item encontrado"
-          empty-description="Não há itens vendidos para o período ou busca selecionada."
+          :empty-title="viewMode === 'os' ? 'Nenhuma OS encontrada' : 'Nenhum item encontrado'"
+          :empty-description="viewMode === 'os' ? 'Não há ordens de serviço para os filtros selecionados.' : 'Não há itens vendidos para os filtros selecionados.'"
           @search-change="page = 1"
         >
-          <template #revenue-cell="{ row }">
-            {{ formatCurrency(row.original.totalRevenue ?? row.original.revenue ?? 0) }}
+          <template #toolbar-right>
+            <UTabs
+              :model-value="viewMode"
+              :items="[
+                { label: `Por item (${summary.itemCount ?? 0})`, value: 'item' },
+                { label: `Por OS (${summary.orderCount ?? 0})`, value: 'os' }
+              ]"
+              @update:model-value="value => viewMode = value as 'item' | 'os'"
+            />
+            <UButton
+              icon="i-lucide-file-spreadsheet"
+              label="CSV"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :loading="exporting === 'csv'"
+              @click="exportReport('csv')"
+            />
+            <UButton
+              icon="i-lucide-file-text"
+              label="PDF"
+              color="neutral"
+              variant="outline"
+              size="sm"
+              :loading="exporting === 'pdf'"
+              @click="exportReport('pdf')"
+            />
           </template>
-          <template #cost-cell="{ row }">
-            {{ formatCurrency(row.original.totalCost ?? row.original.cost ?? 0) }}
+
+          <template #client-cell="{ row }">
+            <div class="flex items-center gap-2">
+              <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                <span class="text-xs font-bold text-primary">
+                  {{ getInitials(String(row.original.client ?? '')) }}
+                </span>
+              </div>
+              <span class="truncate font-medium text-highlighted">
+                {{ row.original.client }}
+              </span>
+            </div>
           </template>
+
+          <template #orderNumber-cell="{ row }">
+            <span class="font-mono text-sm text-highlighted">
+              #{{ row.original.orderNumber }}
+            </span>
+          </template>
+
+          <template #itemDescription-cell="{ row }">
+            <div class="min-w-0">
+              <p class="truncate font-medium text-highlighted">
+                {{ row.original.itemDescription }}
+              </p>
+              <p class="truncate text-xs text-muted">
+                {{ row.original.categoryName || 'Sem categoria' }}
+              </p>
+            </div>
+          </template>
+
+          <template #categoryName-cell="{ row }">
+            <span class="text-sm text-highlighted">
+              {{ row.original.categoryName || 'Sem categoria' }}
+            </span>
+          </template>
+
+          <template #responsible-cell="{ row }">
+            <span class="text-sm text-highlighted">
+              {{ row.original.responsible || '—' }}
+            </span>
+          </template>
+
+          <template #status_col-cell="{ row }">
+            <UBadge
+              :color="salesOrderStatusColor(String(row.original.status ?? '')) as any"
+              variant="subtle"
+              size="xs"
+            >
+              {{ formatSalesOrderStatusLabel(String(row.original.status ?? '')) }}
+            </UBadge>
+          </template>
+
+          <template #payment_status_col-cell="{ row }">
+            <UBadge
+              :color="salesPaymentStatusColor(String(row.original.paymentStatus ?? '')) as any"
+              variant="subtle"
+              size="xs"
+            >
+              {{ formatSalesPaymentStatusLabel(String(row.original.paymentStatus ?? '')) }}
+            </UBadge>
+          </template>
+
+          <template #costSource-cell="{ row }">
+            <UBadge
+              :color="salesCostSourceColor(String(row.original.costSource ?? '')) as any"
+              variant="soft"
+              size="xs"
+            >
+              {{ formatSalesCostSourceLabel(String(row.original.costSource ?? '')) }}
+            </UBadge>
+          </template>
+
+          <template #date-cell="{ row }">
+            {{ formatDate(String(row.original.date ?? '')) }}
+          </template>
+
+          <template #totalValue-cell="{ row }">
+            <span class="font-medium text-success">
+              {{ formatCurrency(Number(row.original.totalValue ?? 0)) }}
+            </span>
+          </template>
+
+          <template #totalCost-cell="{ row }">
+            <span class="font-medium text-error">
+              {{ formatCurrency(Number(row.original.totalCost ?? 0)) }}
+            </span>
+          </template>
+
+          <template #commissionCost-cell="{ row }">
+            {{ formatCurrency(Number(row.original.commissionCost ?? 0)) }}
+          </template>
+
           <template #profit-cell="{ row }">
-            <span class="font-medium text-blue-600">{{ formatCurrency(row.original.totalProfit ?? row.original.profit ?? 0) }}</span>
+            <span class="font-medium" :class="Number(row.original.profit ?? 0) >= 0 ? 'text-primary' : 'text-error'">
+              {{ formatCurrency(Number(row.original.profit ?? 0)) }}
+            </span>
+          </template>
+
+          <template #actions-cell="{ row }">
+            <UButton
+              icon="i-lucide-eye"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openDetail(row.original as SalesItemRow | SalesOrderRow)"
+            />
           </template>
         </AppDataTable>
       </div>
+
+      <ReportsSalesItemsDetailSlideover
+        :open="detailOpen"
+        :loading="detailLoading"
+        :data="detailData"
+        @update:open="detailOpen = $event"
+      />
     </template>
   </UDashboardPanel>
 </template>
