@@ -38,7 +38,7 @@ function getInitials(name: string): string {
 }
 
 const sortedEmployees = computed(() =>
-  [...props.employees].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  [...props.employees].filter(e => e?.name).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
 )
 
 const commissionStatusOptions: TagFilterOption[] = [
