@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Client, PersonType } from '~/types/clients'
 
-type Employee = { id: string; name: string }
+type Employee = { id: string, name: string }
 
 const props = defineProps<{
   open: boolean
@@ -130,7 +130,7 @@ const title = computed(() => isEditing.value ? 'Editar cliente' : 'Novo cliente'
 
 const personTypeOptions = [
   { label: 'Pessoa Física', value: 'pf' },
-  { label: 'Pessoa Jurídica', value: 'pj' },
+  { label: 'Pessoa Jurídica', value: 'pj' }
 ]
 
 function emptyForm() {
@@ -150,7 +150,7 @@ function emptyForm() {
     city: '',
     state: '',
     notes: '',
-    responsible_employees: [] as { employee_id: string }[],
+    responsible_employees: [] as { employee_id: string }[]
   }
 }
 
@@ -213,14 +213,13 @@ watch(
         city: props.client.city ?? '',
         state: props.client.state ?? '',
         notes: props.client.notes ?? '',
-        responsible_employees: props.client.responsible_employees ? [...props.client.responsible_employees] : [],
+        responsible_employees: props.client.responsible_employees ? [...props.client.responsible_employees] : []
       })
-    }
-    else {
+    } else {
       Object.assign(form, emptyForm())
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 async function save() {
@@ -248,30 +247,27 @@ async function save() {
       city: form.city || null,
       state: form.state || null,
       notes: form.notes || null,
-      responsible_employees: form.responsible_employees.length > 0 ? form.responsible_employees : null,
+      responsible_employees: form.responsible_employees.length > 0 ? form.responsible_employees : null
     }
 
     if (isEditing.value && props.client) {
       await $fetch(`/api/clients/${props.client.id}`, { method: 'PUT', body })
       toast.add({ title: 'Cliente atualizado', color: 'success' })
-    }
-    else {
+    } else {
       await $fetch('/api/clients', { method: 'POST', body })
       toast.add({ title: 'Cliente criado', color: 'success' })
     }
 
     emit('update:open', false)
     emit('saved')
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar.',
-      color: 'error',
+      color: 'error'
     })
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -293,11 +289,9 @@ async function lookupCep() {
     form.city = String(res.localidade || form.city)
     form.state = String(res.uf || form.state)
     clearError('zip_code')
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Erro ao buscar CEP', color: 'error' })
-  }
-  finally {
+  } finally {
     isLoadingCep.value = false
   }
 }

@@ -13,7 +13,7 @@ export type ServiceOrder = {
   total_amount: number | null
   responsible_name: string | null
   has_commissions: boolean
-  installments_progress: { paid: number; total: number } | null
+  installments_progress: { paid: number, total: number } | null
 }
 
 export type ServiceOrderDetail = {
@@ -29,9 +29,9 @@ export type ServiceOrderDetail = {
     total_amount: number | null
     discount: number | null
     payment_method: string | null
-    items?: { name?: string; description?: string; quantity: number; unit_price: number }[]
+    items?: { name?: string, description?: string, quantity: number, unit_price: number }[]
   }
-  client: { name: string; phone?: string | null } | null
-  vehicle: { brand: string | null; model: string | null; license_plate: string | null } | null
+  client: { name: string, phone?: string | null } | null
+  vehicle: { brand: string | null, model: string | null, license_plate: string | null } | null
   installments?: unknown[]
 }

@@ -10,7 +10,7 @@ defineProps<{
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', {
     style: 'currency',
-    currency: 'BRL',
+    currency: 'BRL'
   })
 }
 </script>
@@ -25,7 +25,7 @@ function formatCurrency(v: number | string) {
           icon: 'i-lucide-trending-up',
           color: 'text-success',
           bg: 'bg-success/10',
-          description: 'no período',
+          description: 'no período'
         },
         {
           label: 'Clientes ativos',
@@ -33,7 +33,7 @@ function formatCurrency(v: number | string) {
           icon: 'i-lucide-users',
           color: 'text-primary',
           bg: 'bg-primary/10',
-          description: 'com movimentação',
+          description: 'com movimentação'
         },
         {
           label: 'Total de OS',
@@ -41,8 +41,8 @@ function formatCurrency(v: number | string) {
           icon: 'i-lucide-clipboard-list',
           color: 'text-info',
           bg: 'bg-info/10',
-          description: 'ordens finalizadas',
-        },
+          description: 'ordens finalizadas'
+        }
       ]"
       :key="stat.label"
       :ui="{ body: 'p-3 sm:p-4' }"
@@ -52,9 +52,15 @@ function formatCurrency(v: number | string) {
           <UIcon :name="stat.icon" :class="[stat.color, 'size-5']" />
         </div>
         <div>
-          <p class="text-lg font-bold leading-tight">{{ stat.value }}</p>
-          <p class="text-xs font-medium text-highlighted">{{ stat.label }}</p>
-          <p class="text-xs text-muted">{{ stat.description }}</p>
+          <p class="text-lg font-bold leading-tight">
+            {{ stat.value }}
+          </p>
+          <p class="text-xs font-medium text-highlighted">
+            {{ stat.label }}
+          </p>
+          <p class="text-xs text-muted">
+            {{ stat.description }}
+          </p>
         </div>
       </div>
     </UCard>

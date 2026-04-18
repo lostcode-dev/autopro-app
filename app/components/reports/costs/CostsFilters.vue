@@ -1,67 +1,67 @@
 <script setup lang="ts">
-import type { TagFilterOption } from "~/components/ui/TagFilter.vue";
+import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
 import {
   formatCostCategoryLabel,
-  getCostCategoryVisual,
-} from "~/utils/report-costs";
+  getCostCategoryVisual
+} from '~/utils/report-costs'
 
 const props = withDefaults(
   defineProps<{
-    categories: string[];
-    dateLabel?: string;
-    categoriesLabel?: string;
-    statusLabel?: string;
+    categories: string[]
+    dateLabel?: string
+    categoriesLabel?: string
+    statusLabel?: string
   }>(),
   {
-    dateLabel: "Período",
-    categoriesLabel: "Categorias",
-    statusLabel: "Status",
-  },
-);
+    dateLabel: 'Período',
+    categoriesLabel: 'Categorias',
+    statusLabel: 'Status'
+  }
+)
 
-const dateFrom = defineModel<string>("dateFrom");
-const dateTo = defineModel<string>("dateTo");
-const selectedCategories = defineModel<string[]>("selectedCategories", {
-  default: () => [],
-});
-const statusFilters = defineModel<string[]>("statusFilters", {
-  default: () => [],
-});
+const dateFrom = defineModel<string>('dateFrom')
+const dateTo = defineModel<string>('dateTo')
+const selectedCategories = defineModel<string[]>('selectedCategories', {
+  default: () => []
+})
+const statusFilters = defineModel<string[]>('statusFilters', {
+  default: () => []
+})
 
 const statusOptions: TagFilterOption[] = [
   {
-    value: "paid",
-    label: "Pagos",
-    color: "success",
-    icon: "i-lucide-circle-check",
+    value: 'paid',
+    label: 'Pagos',
+    color: 'success',
+    icon: 'i-lucide-circle-check'
   },
   {
-    value: "pending",
-    label: "Pendentes",
-    color: "warning",
-    icon: "i-lucide-clock",
-  },
-];
+    value: 'pending',
+    label: 'Pendentes',
+    color: 'warning',
+    icon: 'i-lucide-clock'
+  }
+]
 
 const categoryOptions = computed<TagFilterOption[]>(() =>
   [...props.categories]
     .sort((a, b) =>
       formatCostCategoryLabel(a).localeCompare(
         formatCostCategoryLabel(b),
-        "pt-BR",
-        { sensitivity: "base" },
-      ),
+        'pt-BR',
+        { sensitivity: 'base' }
+      )
     )
     .map((categoryKey, index) => {
-      const visual = getCostCategoryVisual(categoryKey, index);
+      const visual = getCostCategoryVisual(categoryKey, index)
       return {
         value: categoryKey,
         label: formatCostCategoryLabel(categoryKey),
         color: visual.tagColor,
-        icon: visual.icon,
-      };
-    }),
-);
+        icon: visual.icon
+      }
+    })
+)
 </script>
 
 <template>

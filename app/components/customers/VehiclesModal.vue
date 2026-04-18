@@ -92,11 +92,9 @@ async function loadVehicles(clientId: string) {
       query: { client_id: clientId, page_size: 100 }
     })
     vehiclesList.value = result.items ?? []
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Erro ao carregar veículos', color: 'error' })
-  }
-  finally {
+  } finally {
     isLoadingVehicles.value = false
   }
 }
@@ -144,23 +142,20 @@ async function saveVehicle() {
     if (isEditingVehicle.value && editingVehicleId.value) {
       await $fetch(`/api/vehicles/${editingVehicleId.value}`, { method: 'PUT', body })
       toast.add({ title: 'Veículo atualizado', color: 'success' })
-    }
-    else {
+    } else {
       await $fetch('/api/vehicles', { method: 'POST', body })
       toast.add({ title: 'Veículo cadastrado', color: 'success' })
     }
     showVehicleForm.value = false
     await loadVehicles(props.client!.id)
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string } }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || 'Não foi possível salvar',
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     isSavingVehicle.value = false
   }
 }
@@ -172,16 +167,14 @@ async function deleteVehicle(v: Vehicle) {
     await $fetch(`/api/vehicles/${v.id}`, { method: 'DELETE' })
     toast.add({ title: 'Veículo removido', color: 'success' })
     await loadVehicles(props.client!.id)
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string } }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || 'Não foi possível remover',
       color: 'error'
     })
-  }
-  finally {
+  } finally {
     isDeletingVehicle.value = false
   }
 }

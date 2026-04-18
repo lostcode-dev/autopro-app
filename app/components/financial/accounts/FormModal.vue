@@ -44,8 +44,7 @@ watch(
         is_active: props.account.is_active ?? true,
         notes: props.account.notes ?? ''
       })
-    }
-    else {
+    } else {
       Object.assign(form, {
         account_name: '',
         account_type: 'checking',
@@ -84,19 +83,16 @@ async function save() {
     if (isEditing.value) {
       await $fetch(`/api/bank-accounts/${props.account!.id}`, { method: 'PUT', body })
       toast.add({ title: 'Conta atualizada', color: 'success' })
-    }
-    else {
+    } else {
       await $fetch('/api/bank-accounts', { method: 'POST', body })
       toast.add({ title: 'Conta criada', color: 'success' })
     }
     emit('update:open', false)
     emit('saved')
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -141,7 +137,13 @@ const accountTypeOptions = [
             <UInput v-model="form.account_number" class="w-full" />
           </UFormField>
           <UFormField label="Saldo inicial">
-            <UInput v-model="form.initial_balance" type="number" min="0" step="0.01" class="w-full" />
+            <UInput
+              v-model="form.initial_balance"
+              type="number"
+              min="0"
+              step="0.01"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Forma de pagamento preferencial">
             <UInput v-model="form.preferred_payment_method" class="w-full" placeholder="Ex: PIX, TED" />
@@ -157,8 +159,19 @@ const accountTypeOptions = [
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="emit('update:open', false)" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="emit('update:open', false)"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

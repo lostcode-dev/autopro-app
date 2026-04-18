@@ -81,4 +81,3 @@ const links = computed<NavigationMenuItem[][]>(() => [[
     </template>
   </UDashboardPanel>
 </template>
-

@@ -33,8 +33,7 @@ export function useReportDateRange() {
           if (Array.isArray(parsed.paymentStatusFilters)) paymentStatusFilters.value = parsed.paymentStatusFilters
           if (Array.isArray(parsed.selectedEmployees)) selectedEmployees.value = parsed.selectedEmployees
         }
-      }
-      catch {}
+      } catch {}
     }
   }
 
@@ -43,8 +42,7 @@ export function useReportDateRange() {
     if (import.meta.client) {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ from, to, orderStatusFilters: osf, paymentStatusFilters: psf, selectedEmployees: se }))
-      }
-      catch {}
+      } catch {}
     }
   }, { deep: true })
 

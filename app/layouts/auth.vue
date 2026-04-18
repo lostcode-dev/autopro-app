@@ -4,10 +4,8 @@ const { loading: authLoading } = useAuth()
 
 <template>
   <div class="min-h-screen bg-white flex">
-
     <!-- ─── Left panel — brand (desktop only) ─────────────────────────── -->
     <div class="hidden lg:flex lg:w-2/5 xl:w-1/2 flex-col relative overflow-hidden bg-gradient-to-br from-purple-600 to-purple-800">
-
       <!-- Decorative circles -->
       <div class="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-white/5" />
       <div class="pointer-events-none absolute bottom-0 right-0 h-72 w-72 rounded-full bg-purple-900/40 translate-x-1/3 translate-y-1/4" />

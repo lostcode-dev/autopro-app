@@ -135,13 +135,13 @@ async function handleCheckoutCompleted(
     const orgName = `${(profile.display_name as string | null) || (profile.email as string | null) || userEmail || 'Oficina'}`
 
     const { data: org, error: orgError } = await supabase
-    .from('organizations')
-    .insert({
-      name: orgName,
-      email: (profile.email as string | null) || userEmail || null,
-      is_active: true,
-      created_by: (profile.email as string | null) || userEmail || 'webhook'
-    })
+      .from('organizations')
+      .insert({
+        name: orgName,
+        email: (profile.email as string | null) || userEmail || null,
+        is_active: true,
+        created_by: (profile.email as string | null) || userEmail || 'webhook'
+      })
       .select('id')
       .single()
 

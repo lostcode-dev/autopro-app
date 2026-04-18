@@ -13,11 +13,11 @@ const toast = useToast()
 const file = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const isImporting = ref(false)
-const importResult = ref<{ imported: number; errors: { row: number; message: string }[] } | null>(null)
+const importResult = ref<{ imported: number, errors: { row: number, message: string }[] } | null>(null)
 
 const isOpen = computed({
   get: () => props.open,
-  set: (v) => emit('update:open', v),
+  set: v => emit('update:open', v)
 })
 
 watch(() => props.open, (v) => {
@@ -49,7 +49,7 @@ const TEMPLATE_FIELDS = [
   'bairro',
   'cidade',
   'estado',
-  'observacoes',
+  'observacoes'
 ]
 
 const CSV_FIELD_MAP: Record<string, string> = {
@@ -67,7 +67,7 @@ const CSV_FIELD_MAP: Record<string, string> = {
   bairro: 'neighborhood',
   cidade: 'city',
   estado: 'state',
-  observacoes: 'notes',
+  observacoes: 'notes'
 }
 
 function downloadTemplate() {
@@ -86,7 +86,7 @@ function downloadTemplate() {
     '',
     'São Paulo',
     'SP',
-    '',
+    ''
   ]
   const csv = [TEMPLATE_FIELDS.join(','), exampleRow.join(',')].join('\n')
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -102,17 +102,17 @@ function parseCSV(text: string) {
   const lines = text.trim().split(/\r?\n/)
   if (lines.length < 2) return []
 
-  const headers = lines[0]!.split(',').map((h) => h.trim().toLowerCase().replace(/['"]/g, ''))
+  const headers = lines[0]!.split(',').map(h => h.trim().toLowerCase().replace(/['"]/g, ''))
 
   return lines.slice(1).map((line) => {
-    const values = line.split(',').map((v) => v.trim().replace(/^["']|["']$/g, ''))
+    const values = line.split(',').map(v => v.trim().replace(/^["']|["']$/g, ''))
     const row: Record<string, string> = {}
     headers.forEach((header, i) => {
       const apiField = CSV_FIELD_MAP[header] ?? header
       row[apiField] = values[i] ?? ''
     })
     return row
-  }).filter((row) => Object.values(row).some((v) => v !== ''))
+  }).filter(row => Object.values(row).some(v => v !== ''))
 }
 
 async function startImport() {
@@ -130,9 +130,9 @@ async function startImport() {
       return
     }
 
-    const result = await $fetch<{ imported: number; errors: { row: number; message: string }[] }>(
+    const result = await $fetch<{ imported: number, errors: { row: number, message: string }[] }>(
       '/api/clients/batch',
-      { method: 'POST', body: { rows } },
+      { method: 'POST', body: { rows } }
     )
 
     importResult.value = result
@@ -140,7 +140,7 @@ async function startImport() {
     if (result.imported > 0) {
       toast.add({
         title: `${result.imported} cliente(s) importado(s)`,
-        color: 'success',
+        color: 'success'
       })
       emit('imported')
     }
@@ -148,16 +148,14 @@ async function startImport() {
     if (result.errors.length === 0) {
       isOpen.value = false
     }
-  }
-  catch (err: unknown) {
-    const e = err as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (err: unknown) {
+    const e = err as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro na importação',
       description: e?.data?.statusMessage || e?.statusMessage || 'Ocorreu um erro inesperado.',
-      color: 'error',
+      color: 'error'
     })
-  }
-  finally {
+  } finally {
     isImporting.value = false
   }
 }
@@ -237,7 +235,7 @@ async function startImport() {
             accept=".csv,text/csv"
             class="hidden"
             @change="onFileChange"
-          />
+          >
         </div>
 
         <!-- Resultado da importação -->

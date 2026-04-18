@@ -13,7 +13,7 @@ type Vehicle = {
   notes: string | null
 }
 
-type ClientOption = { label: string; value: string }
+type ClientOption = { label: string, value: string }
 
 const props = defineProps<{
   open: boolean
@@ -37,15 +37,13 @@ async function loadClients() {
   if (clientOptions.value.length > 0) return
   isLoadingClients.value = true
   try {
-    const res = await $fetch<{ items: { id: string; name: string }[] }>('/api/clients', {
-      query: { page_size: 500 },
+    const res = await $fetch<{ items: { id: string, name: string }[] }>('/api/clients', {
+      query: { page_size: 500 }
     })
     clientOptions.value = (res.items ?? []).map(c => ({ label: c.name, value: c.id }))
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Erro ao carregar clientes', color: 'error' })
-  }
-  finally {
+  } finally {
     isLoadingClients.value = false
   }
 }
@@ -58,7 +56,7 @@ const fuelTypeOptions = [
   { label: 'Diesel', value: 'diesel' },
   { label: 'GNV', value: 'cng' },
   { label: 'Elétrico', value: 'electric' },
-  { label: 'Híbrido', value: 'hybrid' },
+  { label: 'Híbrido', value: 'hybrid' }
 ]
 
 // ─── Plate mask ───────────────────────────────────────────────────────────────
@@ -102,16 +100,14 @@ async function lookupPlate() {
     if (res.engine) form.engine = res.engine
 
     toast.add({ title: 'Dados preenchidos com base na placa', color: 'success' })
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Não foi possível consultar a placa',
       description: err?.data?.statusMessage || err?.statusMessage || 'Verifique a placa e tente novamente.',
-      color: 'warning',
+      color: 'warning'
     })
-  }
-  finally {
+  } finally {
     isLookingUpPlate.value = false
   }
 }
@@ -145,7 +141,7 @@ function emptyForm() {
     mileage: '' as string | number,
     engine: '',
     fuel_type: 'flex',
-    notes: '',
+    notes: ''
   }
 }
 
@@ -169,14 +165,13 @@ watch(
         mileage: props.vehicle.mileage ?? '',
         engine: props.vehicle.engine ?? '',
         fuel_type: props.vehicle.fuel_type ?? 'flex',
-        notes: props.vehicle.notes ?? '',
+        notes: props.vehicle.notes ?? ''
       })
-    }
-    else {
+    } else {
       Object.assign(form, emptyForm())
     }
   },
-  { immediate: true },
+  { immediate: true }
 )
 
 async function save() {
@@ -198,30 +193,27 @@ async function save() {
       mileage: form.mileage !== '' ? Number(form.mileage) : null,
       engine: form.engine || null,
       fuel_type: form.fuel_type || null,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
 
     if (isEditing.value && props.vehicle) {
       await $fetch(`/api/vehicles/${props.vehicle.id}`, { method: 'PUT', body })
       toast.add({ title: 'Veículo atualizado', color: 'success' })
-    }
-    else {
+    } else {
       await $fetch('/api/vehicles', { method: 'POST', body })
       toast.add({ title: 'Veículo cadastrado', color: 'success' })
     }
 
     emit('update:open', false)
     emit('saved')
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar.',
-      color: 'error',
+      color: 'error'
     })
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }

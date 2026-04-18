@@ -7,7 +7,7 @@ definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Maquininhas' })
 
 type Terminal = Record<string, any>
-type TerminalsResponse = { items: Terminal[]; total: number; page: number; page_size: number }
+type TerminalsResponse = { items: Terminal[], total: number, page: number, page_size: number }
 type ViewMode = 'table' | 'card'
 
 const DEFAULT_PAGE_SIZE = 10
@@ -46,7 +46,7 @@ const DEFAULT_SORT = { id: 'terminal_name', desc: false }
 const sorting = ref<SortingState>(
   typeof route.query.sortBy === 'string' && route.query.sortBy
     ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
-    : [DEFAULT_SORT],
+    : [DEFAULT_SORT]
 )
 
 const requestQuery = computed(() => ({
@@ -54,7 +54,7 @@ const requestQuery = computed(() => ({
   page: page.value,
   page_size: pageSize.value,
   sort_by: sorting.value[0]?.id || undefined,
-  sort_order: sorting.value[0] ? (sorting.value[0].desc ? 'desc' : 'asc') : undefined,
+  sort_order: sorting.value[0] ? (sorting.value[0].desc ? 'desc' : 'asc') : undefined
 }))
 
 const { data, status, refresh } = await useAsyncData(
@@ -66,8 +66,8 @@ const { data, status, refresh } = await useAsyncData(
   },
   {
     watch: [requestQuery],
-    default: () => ({ items: [], total: 0, page: 1, page_size: pageSize.value }),
-  },
+    default: () => ({ items: [], total: 0, page: 1, page_size: pageSize.value })
+  }
 )
 
 const items = computed(() => data.value?.items ?? [])
@@ -81,13 +81,13 @@ function buildManagedQuery() {
     pageSize: pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
     view: viewMode.value !== 'table' ? viewMode.value : undefined,
     sortBy: sorting.value[0]?.id || undefined,
-    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined,
+    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined
   }
 }
 
 async function syncQuery() {
   const nextQuery = Object.fromEntries(
-    Object.entries(route.query).filter(([k]) => !MANAGED_QUERY_KEYS.includes(k as typeof MANAGED_QUERY_KEYS[number])),
+    Object.entries(route.query).filter(([k]) => !MANAGED_QUERY_KEYS.includes(k as typeof MANAGED_QUERY_KEYS[number]))
   ) as Record<string, string | string[] | undefined>
   Object.assign(nextQuery, buildManagedQuery())
   if (JSON.stringify(route.query) === JSON.stringify(nextQuery)) return
@@ -109,8 +109,7 @@ watch(() => route.query, (query) => {
   if (nextSortBy) {
     if (!cur || cur.id !== nextSortBy || cur.desc !== nextSortDesc)
       sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
-  }
-  else if (!cur || cur.id !== DEFAULT_SORT.id || cur.desc !== DEFAULT_SORT.desc) {
+  } else if (!cur || cur.id !== DEFAULT_SORT.id || cur.desc !== DEFAULT_SORT.desc) {
     sorting.value = [DEFAULT_SORT]
   }
 })
@@ -155,12 +154,10 @@ async function remove(t: Terminal) {
     terminalPendingDeletion.value = null
     if (items.value.length === 1 && page.value > 1) page.value -= 1
     await refresh()
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover', color: 'error' })
-  }
-  finally {
+  } finally {
     isDeleting.value = false
   }
 }
@@ -174,11 +171,9 @@ async function confirmBulkDelete() {
     rowSelection.value = {}
     showBulkDeleteModal.value = false
     await refresh()
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Erro ao excluir maquininhas', color: 'error' })
-  }
-  finally {
+  } finally {
     isBulkDeleting.value = false
   }
 }
@@ -188,7 +183,7 @@ const lineColumns = [
   { accessorKey: 'provider_company', header: 'Operadora', enableSorting: true },
   { accessorKey: 'payment_receipt_days', header: 'Prazo (dias)', enableSorting: false },
   { accessorKey: 'is_active', header: 'Status', enableSorting: false },
-  { id: 'actions', header: 'Ações', enableSorting: false },
+  { id: 'actions', header: 'Ações', enableSorting: false }
 ]
 </script>
 
@@ -242,7 +237,13 @@ const lineColumns = [
                   @click="showBulkDeleteModal = true"
                 />
               </UTooltip>
-              <UButton v-if="canUpdate" label="Nova maquininha" icon="i-lucide-plus" size="sm" @click="openCreate" />
+              <UButton
+                v-if="canUpdate"
+                label="Nova maquininha"
+                icon="i-lucide-plus"
+                size="sm"
+                @click="openCreate"
+              />
             </template>
 
             <template #terminal_name-cell="{ row }">
@@ -318,8 +319,22 @@ const lineColumns = [
                         />
                       </div>
                       <div class="flex shrink-0 items-center gap-1">
-                        <UButton v-if="canUpdate" icon="i-lucide-pencil" color="neutral" variant="ghost" size="xs" @click="openEdit(terminal as Terminal)" />
-                        <UButton v-if="canUpdate" icon="i-lucide-trash-2" color="error" variant="ghost" size="xs" @click="requestRemove(terminal as Terminal)" />
+                        <UButton
+                          v-if="canUpdate"
+                          icon="i-lucide-pencil"
+                          color="neutral"
+                          variant="ghost"
+                          size="xs"
+                          @click="openEdit(terminal as Terminal)"
+                        />
+                        <UButton
+                          v-if="canUpdate"
+                          icon="i-lucide-trash-2"
+                          color="error"
+                          variant="ghost"
+                          size="xs"
+                          @click="requestRemove(terminal as Terminal)"
+                        />
                       </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-sm text-muted">

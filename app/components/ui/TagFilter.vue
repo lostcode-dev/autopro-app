@@ -12,7 +12,7 @@ const props = withDefaults(defineProps<{
   options: TagFilterOption[]
   placeholder?: string
 }>(), {
-  placeholder: 'Todos',
+  placeholder: 'Todos'
 })
 
 const emit = defineEmits<{
@@ -34,7 +34,7 @@ function clear() {
 }
 
 const selectedOptions = computed(() =>
-  props.options.filter(o => props.modelValue.includes(o.value)),
+  props.options.filter(o => props.modelValue.includes(o.value))
 )
 
 const hasSelection = computed(() => props.modelValue.length > 0)
@@ -116,7 +116,13 @@ const hasSelection = computed(() => props.modelValue.length > 0)
             </span>
             <span class="text-sm">{{ opt.label }}</span>
           </template>
-          <UBadge v-else :color="opt.color" variant="subtle" size="sm" class="gap-1 shrink-0">
+          <UBadge
+            v-else
+            :color="opt.color"
+            variant="subtle"
+            size="sm"
+            class="gap-1 shrink-0"
+          >
             <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" />
             {{ opt.label }}
           </UBadge>

@@ -30,11 +30,13 @@ const props = defineProps<{
   data: CostCategoryDetailData | null
 }>()
 
+type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
+
 defineEmits<{
   'update:open': [value: boolean]
 }>()
 
-const statusColorMap: Record<string, string> = {
+const statusColorMap: Record<string, BadgeColor> = {
   paid: 'success',
   pending: 'warning'
 }
@@ -146,7 +148,7 @@ const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKe
               <div class="min-w-0 space-y-3">
                 <div class="flex flex-wrap items-center gap-2">
                   <UBadge
-                    :color="(statusColorMap[item.status] ?? 'neutral') as any"
+                    :color="statusColorMap[item.status] ?? 'neutral'"
                     variant="subtle"
                     :label="statusLabelMap[item.status] ?? item.status"
                     size="xs"

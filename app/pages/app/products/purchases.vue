@@ -368,7 +368,6 @@ function formatDate(value: string | null | undefined) {
   return new Intl.DateTimeFormat('pt-BR').format(new Date(`${value}T00:00:00`))
 }
 
-
 const paymentStatusOptions = [
   { label: 'Todos os status', value: 'all' },
   { label: 'Pendentes', value: 'pending' },

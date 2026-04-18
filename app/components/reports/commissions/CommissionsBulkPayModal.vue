@@ -41,8 +41,8 @@ function formatCurrency(v: number) {
 const accountOptions = computed(() =>
   props.accounts.map(a => ({
     value: a.id,
-    label: [a.account_name, a.bank_name].filter(Boolean).join(' — ') || 'Conta',
-  })),
+    label: [a.account_name, a.bank_name].filter(Boolean).join(' — ') || 'Conta'
+  }))
 )
 </script>
 
@@ -56,7 +56,9 @@ const accountOptions = computed(() =>
       <div class="space-y-4">
         <!-- Account selector -->
         <div>
-          <p class="text-sm font-medium text-highlighted mb-1.5">Conta bancária</p>
+          <p class="text-sm font-medium text-highlighted mb-1.5">
+            Conta bancária
+          </p>
           <USelect
             v-model="selectedAccountId"
             :items="accountOptions"
@@ -79,7 +81,9 @@ const accountOptions = computed(() =>
               class="flex items-center gap-3 px-3 py-2.5 text-sm"
             >
               <div class="flex-1 min-w-0">
-                <p class="font-medium text-highlighted truncate">{{ item.employeeName }}</p>
+                <p class="font-medium text-highlighted truncate">
+                  {{ item.employeeName }}
+                </p>
                 <p class="text-xs text-muted">
                   <span v-if="item.osLabel">{{ item.osLabel }} · </span>{{ item.dateLabel }}
                 </p>
@@ -96,7 +100,13 @@ const accountOptions = computed(() =>
         </div>
 
         <div class="flex justify-end gap-3">
-          <UButton label="Cancelar" color="neutral" variant="ghost" :disabled="loading" @click="$emit('update:open', false)" />
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="ghost"
+            :disabled="loading"
+            @click="$emit('update:open', false)"
+          />
           <UButton
             label="Confirmar pagamento"
             color="success"

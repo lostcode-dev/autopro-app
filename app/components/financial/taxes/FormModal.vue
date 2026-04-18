@@ -32,8 +32,7 @@ watch(
         type: props.tax.type ?? '',
         rate: props.tax.rate ?? ''
       })
-    }
-    else {
+    } else {
       Object.assign(form, { name: '', type: '', rate: '' })
     }
   },
@@ -64,19 +63,16 @@ async function save() {
     if (isEditing.value) {
       await $fetch(`/api/taxes/${props.tax!.id}`, { method: 'PUT', body })
       toast.add({ title: 'Imposto atualizado', color: 'success' })
-    }
-    else {
+    } else {
       await $fetch('/api/taxes', { method: 'POST', body })
       toast.add({ title: 'Imposto criado', color: 'success' })
     }
     emit('update:open', false)
     emit('saved')
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -112,14 +108,32 @@ const taxTypeOptions = [
           />
         </UFormField>
         <UFormField label="Alíquota (%)" required>
-          <UInput v-model="form.rate" type="number" min="0" max="100" step="0.01" class="w-full" />
+          <UInput
+            v-model="form.rate"
+            type="number"
+            min="0"
+            max="100"
+            step="0.01"
+            class="w-full"
+          />
         </UFormField>
       </div>
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="emit('update:open', false)" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="emit('update:open', false)"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

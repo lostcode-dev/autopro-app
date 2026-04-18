@@ -28,7 +28,7 @@ const FUEL_MAP: Record<string, string> = {
   'ELETRICO': 'electric',
   'ELÉTRICO': 'electric',
   'HIBRIDO': 'hybrid',
-  'HÍBRIDO': 'hybrid',
+  'HÍBRIDO': 'hybrid'
 }
 
 function mapFuel(raw: string | undefined): string | undefined {
@@ -49,7 +49,7 @@ export default defineEventHandler(async (event) => {
   if (!token) {
     throw createError({
       statusCode: 422,
-      statusMessage: 'Consulta de placa não configurada. Defina WDAPI_TOKEN no arquivo .env.',
+      statusMessage: 'Consulta de placa não configurada. Defina WDAPI_TOKEN no arquivo .env.'
     })
   }
 
@@ -72,6 +72,6 @@ export default defineEventHandler(async (event) => {
     year: year && !Number.isNaN(year) ? year : undefined,
     fuel_type: mapFuel(raw.COMBUSTIVEL),
     color: raw.cor?.trim() || undefined,
-    engine: raw.MOTORIZACAO?.trim() || undefined,
+    engine: raw.MOTORIZACAO?.trim() || undefined
   }
 })

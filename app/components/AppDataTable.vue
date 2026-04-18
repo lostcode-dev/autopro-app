@@ -639,7 +639,6 @@ const emptyHeaderTableClass = 'shrink-0'
           :row-selection-options="selectable ? { enableRowSelection: true } : undefined"
           :ui="tableUi"
         >
-
           <template
             v-for="slotName in forwardedSlotNames"
             :key="slotName"
@@ -648,7 +647,6 @@ const emptyHeaderTableClass = 'shrink-0'
             <slot :name="slotName" v-bind="slotProps ?? {}" />
           </template>
         </UTable>
-
       </div>
     </div>
 

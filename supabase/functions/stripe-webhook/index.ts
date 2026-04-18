@@ -324,12 +324,12 @@ async function ensureOrganization(
     .select('id, organization_id, role_id, display_name, email')
     .eq('user_id', userId)
     .maybeSingle<{
-      id: string
-      organization_id: string | null
-      role_id: string | null
-      display_name: string | null
-      email: string | null
-    }>()
+    id: string
+    organization_id: string | null
+    role_id: string | null
+    display_name: string | null
+    email: string | null
+  }>()
 
   if (!profile) {
     console.error(`[stripe-webhook] User profile not found for user_id=${userId}`)

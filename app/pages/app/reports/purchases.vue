@@ -33,6 +33,8 @@ interface PurchaseCharts {
   byDay: Array<{ name: string, total: number }>
 }
 
+type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
+
 interface PurchaseReportResponse {
   data?: {
     items?: PurchaseReportItem[]
@@ -105,7 +107,7 @@ const pagination = computed<PurchasePagination | null>(() => data.value?.data?.p
 const charts = computed<PurchaseCharts>(() => data.value?.data?.charts ?? { bySupplier: [], byDay: [] })
 const suppliers = computed<PurchaseSupplierOption[]>(() => data.value?.data?.suppliers ?? [])
 
-const payStatusColor: Record<string, string> = {
+const payStatusColor: Record<string, BadgeColor> = {
   pending: 'warning',
   paid: 'success',
   overdue: 'error'
@@ -276,7 +278,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #pay_status-cell="{ row }">
             <UBadge
-              :color="(payStatusColor[String(row.original.paymentStatus ?? row.original.payment_status)] ?? 'neutral') as any"
+              :color="payStatusColor[String(row.original.paymentStatus ?? row.original.payment_status)] ?? 'neutral'"
               variant="subtle"
               :label="payStatusLabel[String(row.original.paymentStatus ?? row.original.payment_status)] ?? String(row.original.paymentStatus ?? row.original.payment_status ?? '—')"
               size="sm"

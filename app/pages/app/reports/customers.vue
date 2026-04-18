@@ -40,22 +40,22 @@ const { data, status } = await useAsyncData(
         orderStatusFilters: orderStatusFilters.value.length ? orderStatusFilters.value : undefined,
         paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
         sortBy: sortBy.value,
-        sortOrder: sortOrder.value,
-      },
+        sortOrder: sortOrder.value
+      }
     }),
   {
-    watch: [dateFrom, dateTo, page, search, orderStatusFilters, paymentStatusFilters, sortBy, sortOrder],
-  },
+    watch: [dateFrom, dateTo, page, search, orderStatusFilters, paymentStatusFilters, sortBy, sortOrder]
+  }
 )
 
 const items = computed(
-  () => (data.value as { data?: { items?: unknown[] } })?.data?.items ?? [],
+  () => (data.value as { data?: { items?: unknown[] } })?.data?.items ?? []
 )
 const summary = computed(
-  () => (data.value as { data?: { summary?: Record<string, number> } })?.data?.summary ?? {},
+  () => (data.value as { data?: { summary?: Record<string, number> } })?.data?.summary ?? {}
 )
 const pagination = computed(
-  () => (data.value as { data?: { pagination?: { totalItems: number } } })?.data?.pagination ?? null,
+  () => (data.value as { data?: { pagination?: { totalItems: number } } })?.data?.pagination ?? null
 )
 
 async function openDetail(clientId: string) {
@@ -70,17 +70,15 @@ async function openDetail(clientId: string) {
           selectedClientId: clientId,
           skipList: 'true',
           dateFrom: dateFrom.value,
-          dateTo: dateTo.value,
-        },
-      },
+          dateTo: dateTo.value
+        }
+      }
     )
     detailData.value = res.data?.selectedCustomerDetail ?? null
-  }
-  catch {
+  } catch {
     toast.add({ title: 'Erro ao carregar detalhes do cliente', color: 'error' })
     isDetailOpen.value = false
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
@@ -88,7 +86,7 @@ async function openDetail(clientId: string) {
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', {
     style: 'currency',
-    currency: 'BRL',
+    currency: 'BRL'
   })
 }
 
@@ -105,7 +103,7 @@ const columns = [
   { accessorKey: 'totalOrders', header: 'OS', enableSorting: false },
   { accessorKey: 'averageTicket', header: 'Ticket médio' },
   { accessorKey: 'lastVisit', header: 'Última visita' },
-  { id: 'actions', header: '' },
+  { id: 'actions', header: '' }
 ]
 </script>
 
@@ -127,16 +125,16 @@ const columns = [
         <ReportsCustomersSummary :summary="summary" />
 
         <AppDataTable
+          v-model:page="page"
+          v-model:sorting="sorting"
+          v-model:search-term="search"
           :columns="columns"
           :data="items as Record<string, unknown>[]"
           :loading="status === 'pending'"
-          v-model:page="page"
-          v-model:sorting="sorting"
           :page-size="pageSize"
           :total="pagination?.totalItems ?? items.length"
           :show-page-size-selector="false"
           show-search
-          v-model:search-term="search"
           search-placeholder="Buscar cliente..."
           empty-icon="i-lucide-users"
           empty-title="Nenhum cliente encontrado"

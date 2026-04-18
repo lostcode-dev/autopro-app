@@ -55,6 +55,8 @@ const props = defineProps<{
   data: SalesItemsDetailData | null
 }>()
 
+type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
+
 defineEmits<{
   'update:open': [value: boolean]
 }>()
@@ -195,7 +197,7 @@ function formatDate(v: string | null) {
                 Origem do custo
               </p>
               <UBadge
-                :color="salesCostSourceColor(props.data.costSource) as any"
+                :color="salesCostSourceColor(props.data.costSource) as BadgeColor"
                 variant="soft"
                 size="xs"
               >
@@ -206,21 +208,21 @@ function formatDate(v: string | null) {
 
           <div class="mt-4 flex flex-wrap gap-2">
             <UBadge
-              :color="salesOrderStatusColor(props.data.status) as any"
+              :color="salesOrderStatusColor(props.data.status) as BadgeColor"
               variant="subtle"
               size="xs"
             >
               {{ formatSalesOrderStatusLabel(props.data.status) }}
             </UBadge>
             <UBadge
-              :color="salesPaymentStatusColor(props.data.paymentStatus) as any"
+              :color="salesPaymentStatusColor(props.data.paymentStatus) as BadgeColor"
               variant="subtle"
               size="xs"
             >
               {{ formatSalesPaymentStatusLabel(props.data.paymentStatus) }}
             </UBadge>
             <UBadge
-              :color="salesPaymentMethodColor(props.data.paymentMethod) as any"
+              :color="salesPaymentMethodColor(props.data.paymentMethod) as BadgeColor"
               variant="soft"
               size="xs"
             >
@@ -252,7 +254,7 @@ function formatDate(v: string | null) {
                     <span>{{ item.categoryName || 'Sem categoria' }}</span>
                     <span>{{ item.quantity }} un</span>
                     <UBadge
-                      :color="salesCostSourceColor(item.costSource) as any"
+                      :color="salesCostSourceColor(item.costSource) as BadgeColor"
                       variant="soft"
                       size="xs"
                     >

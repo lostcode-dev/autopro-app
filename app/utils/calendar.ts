@@ -1,7 +1,7 @@
 export type CalendarView = 'month' | 'week' | 'day'
 
-export const HOUR_START = 0   // 00:00
-export const HOUR_END = 24    // 23:30 (last slot)
+export const HOUR_START = 0 // 00:00
+export const HOUR_END = 24 // 23:30 (last slot)
 export const SLOT_MINUTES = 30
 export const SLOT_HEIGHT_PX = 48
 export const TOTAL_SLOTS = (HOUR_END - HOUR_START) * (60 / SLOT_MINUTES) // 48
@@ -26,13 +26,13 @@ export function isToday(d: Date): boolean {
   )
 }
 
-export function getMonthRange(d: Date): { from: string; to: string } {
+export function getMonthRange(d: Date): { from: string, to: string } {
   const y = d.getFullYear()
   const m = d.getMonth()
   return { from: toISO(new Date(y, m, 1)), to: toISO(new Date(y, m + 1, 0)) }
 }
 
-export function getWeekRange(d: Date): { from: string; to: string } {
+export function getWeekRange(d: Date): { from: string, to: string } {
   const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   const mon = new Date(d)
@@ -42,7 +42,7 @@ export function getWeekRange(d: Date): { from: string; to: string } {
   return { from: toISO(mon), to: toISO(sun) }
 }
 
-export function getDayRange(d: Date): { from: string; to: string } {
+export function getDayRange(d: Date): { from: string, to: string } {
   const iso = toISO(d)
   return { from: iso, to: iso }
 }

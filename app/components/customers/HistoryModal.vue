@@ -39,11 +39,9 @@ watch(() => props.open, async (val) => {
         query: { clientId: props.client.id, limit: 50 }
       })
       historyOrders.value = result.data?.items ?? []
-    }
-    catch {
+    } catch {
       toast.add({ title: 'Erro ao carregar histórico', color: 'error' })
-    }
-    finally {
+    } finally {
       isLoadingHistory.value = false
     }
   }

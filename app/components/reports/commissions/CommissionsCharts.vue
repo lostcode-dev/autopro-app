@@ -24,7 +24,7 @@ function fmt(v: number) {
 const barCategories = computed(() => props.byEmployee.map(e => e.name))
 const barSeries = computed(() => [
   { name: 'Pagas', data: props.byEmployee.map(e => e.paid) },
-  { name: 'Pendentes', data: props.byEmployee.map(e => e.pending) },
+  { name: 'Pendentes', data: props.byEmployee.map(e => e.pending) }
 ])
 
 const donutLabels = computed(() => props.statusDistribution.map(s => s.name))
@@ -38,7 +38,9 @@ const donutColors = computed(() => props.statusDistribution.map(s => s.color))
     <UCard :ui="{ body: 'p-4' }" class="xl:col-span-2">
       <div class="flex items-center gap-2 mb-4">
         <UIcon name="i-lucide-bar-chart-2" class="size-4 text-primary" />
-        <p class="text-sm font-semibold text-highlighted">Comissões por funcionário</p>
+        <p class="text-sm font-semibold text-highlighted">
+          Comissões por funcionário
+        </p>
       </div>
       <ChartsBar
         :categories="barCategories"
@@ -54,7 +56,9 @@ const donutColors = computed(() => props.statusDistribution.map(s => s.color))
     <UCard :ui="{ body: 'p-4' }">
       <div class="flex items-center gap-2 mb-4">
         <UIcon name="i-lucide-pie-chart" class="size-4 text-primary" />
-        <p class="text-sm font-semibold text-highlighted">Distribuição por status</p>
+        <p class="text-sm font-semibold text-highlighted">
+          Distribuição por status
+        </p>
       </div>
       <ChartsDonut
         :labels="donutLabels"

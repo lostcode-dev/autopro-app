@@ -34,8 +34,7 @@ watch(
         payment_receipt_days: props.terminal.payment_receipt_days ?? '',
         is_active: props.terminal.is_active ?? true
       })
-    }
-    else {
+    } else {
       Object.assign(form, {
         terminal_name: '',
         provider_company: '',
@@ -64,19 +63,16 @@ async function save() {
     if (isEditing.value) {
       await $fetch(`/api/payment-terminals/${props.terminal!.id}`, { method: 'PUT', body })
       toast.add({ title: 'Maquininha atualizada', color: 'success' })
-    }
-    else {
+    } else {
       await $fetch('/api/payment-terminals', { method: 'POST', body })
       toast.add({ title: 'Maquininha cadastrada', color: 'success' })
     }
     emit('update:open', false)
     emit('saved')
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -98,7 +94,12 @@ async function save() {
             <UInput v-model="form.provider_company" class="w-full" placeholder="Ex: Stone, Cielo, PagSeguro" />
           </UFormField>
           <UFormField label="Prazo de recebimento (dias)">
-            <UInput v-model="form.payment_receipt_days" type="number" min="0" class="w-full" />
+            <UInput
+              v-model="form.payment_receipt_days"
+              type="number"
+              min="0"
+              class="w-full"
+            />
           </UFormField>
         </div>
         <UCheckbox v-model="form.is_active" label="Ativa" />
@@ -106,8 +107,19 @@ async function save() {
     </template>
     <template #footer>
       <div class="flex justify-end gap-2">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="emit('update:open', false)" />
-        <UButton label="Salvar" color="neutral" :loading="isSaving" :disabled="isSaving" @click="save" />
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="emit('update:open', false)"
+        />
+        <UButton
+          label="Salvar"
+          color="neutral"
+          :loading="isSaving"
+          :disabled="isSaving"
+          @click="save"
+        />
       </div>
     </template>
   </UModal>

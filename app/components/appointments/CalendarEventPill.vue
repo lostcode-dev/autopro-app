@@ -11,7 +11,7 @@ const bgColor = computed(() => {
     scheduled: 'bg-info/20 text-info border border-info/30',
     confirmed: 'bg-success/20 text-success border border-success/30',
     completed: 'bg-neutral/20 text-highlighted border border-default',
-    cancelled: 'bg-error/20 text-error border border-error/30',
+    cancelled: 'bg-error/20 text-error border border-error/30'
   }
   return map[props.appointment.status] ?? map.scheduled
 })

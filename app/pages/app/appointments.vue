@@ -9,7 +9,7 @@ import {
   getDayRange,
   buildMonthGrid,
   buildWeekDays,
-  formatCalendarTitle,
+  formatCalendarTitle
 } from '~/utils/calendar'
 
 definePageMeta({ layout: 'app' })
@@ -59,16 +59,16 @@ const statusFilter = ref(ALL_STATUS_VALUE)
 
 const { data, status, refresh } = await useAsyncData(
   () => `appointments-cal-${calendarView.value}-${visibleRange.value.from}-${visibleRange.value.to}-${statusFilter.value}`,
-  () => requestFetch<{ items: Appointment[]; total: number }>('/api/appointments', {
+  () => requestFetch<{ items: Appointment[], total: number }>('/api/appointments', {
     headers: requestHeaders,
     query: {
       date_from: visibleRange.value.from,
       date_to: visibleRange.value.to,
       status: statusFilter.value !== ALL_STATUS_VALUE ? statusFilter.value : undefined,
-      page_size: 500,
-    },
+      page_size: 500
+    }
   }),
-  { watch: [visibleRange, statusFilter] },
+  { watch: [visibleRange, statusFilter] }
 )
 
 const filteredAppointments = computed(() => data.value?.items ?? [])
@@ -77,13 +77,13 @@ const filteredAppointments = computed(() => data.value?.items ?? [])
 
 const showModal = ref(false)
 const editingAppointment = ref<Appointment | null>(null)
-const formPrefill = ref<{ date?: string; time?: string }>({})
+const formPrefill = ref<{ date?: string, time?: string }>({})
 
-function openCreate(payload?: { date?: Date; time?: string }) {
+function openCreate(payload?: { date?: Date, time?: string }) {
   editingAppointment.value = null
   formPrefill.value = {
     date: payload?.date ? toISO(payload.date) : toISO(currentDate.value),
-    time: payload?.time,
+    time: payload?.time
   }
   showModal.value = true
 }
@@ -94,7 +94,7 @@ function openEdit(appt: Appointment) {
   showModal.value = true
 }
 
-function handleCellClick(payload: { date: Date; time?: string }) {
+function handleCellClick(payload: { date: Date, time?: string }) {
   if (!canCreate.value) return
   openCreate(payload)
 }
@@ -116,7 +116,7 @@ const statusOptions = [
   { label: 'Agendado', value: 'scheduled' },
   { label: 'Confirmado', value: 'confirmed' },
   { label: 'Concluído', value: 'completed' },
-  { label: 'Cancelado', value: 'cancelled' },
+  { label: 'Cancelado', value: 'cancelled' }
 ]
 </script>
 

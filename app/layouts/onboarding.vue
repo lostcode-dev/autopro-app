@@ -33,7 +33,6 @@ async function handleLogout() {
 
 <template>
   <div class="min-h-screen flex flex-col bg-default">
-
     <!-- ─── Header ─────────────────────────────────────────────────────── -->
     <UHeader>
       <template #left>

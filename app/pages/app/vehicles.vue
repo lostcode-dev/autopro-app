@@ -1,98 +1,98 @@
 <script setup lang="ts">
-import { watchDebounced } from "@vueuse/core";
-import type { RowSelectionState, SortingState } from "@tanstack/table-core";
-import { ActionCode } from "~/constants/action-codes";
+import { watchDebounced } from '@vueuse/core'
+import type { RowSelectionState, SortingState } from '@tanstack/table-core'
+import { ActionCode } from '~/constants/action-codes'
 
 type Vehicle = {
-  id: string;
-  client_id: string;
-  license_plate: string | null;
-  brand: string | null;
-  model: string | null;
-  year: number | null;
-  color: string | null;
-  engine: string | null;
-  fuel_type: string | null;
-  mileage: number | null;
-  notes: string | null;
-  clients?: { name: string } | null;
-};
+  id: string
+  client_id: string
+  license_plate: string | null
+  brand: string | null
+  model: string | null
+  year: number | null
+  color: string | null
+  engine: string | null
+  fuel_type: string | null
+  mileage: number | null
+  notes: string | null
+  clients?: { name: string } | null
+}
 
 type ServiceOrder = {
-  id: string;
-  number: string | null;
-  status: string;
-  entry_date: string | null;
-  reported_defect: string | null;
-  total_amount: number | null;
-};
+  id: string
+  number: string | null
+  status: string
+  entry_date: string | null
+  reported_defect: string | null
+  total_amount: number | null
+}
 
 type VehiclesResponse = {
-  items: Vehicle[];
-  total: number;
-  page: number;
-  page_size: number;
-};
+  items: Vehicle[]
+  total: number
+  page: number
+  page_size: number
+}
 
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Veículos" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Veículos' })
 
-type ViewMode = "table" | "card";
+type ViewMode = 'table' | 'card'
 
-const DEFAULT_PAGE_SIZE = 10;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 10
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const MANAGED_QUERY_KEYS = [
-  "search",
-  "page",
-  "pageSize",
-  "view",
-  "sortBy",
-  "sortOrder",
-] as const;
+  'search',
+  'page',
+  'pageSize',
+  'view',
+  'sortBy',
+  'sortOrder'
+] as const
 
-const toast = useToast();
-const workshop = useWorkshopPermissions();
-const requestFetch = useRequestFetch();
+const toast = useToast()
+const workshop = useWorkshopPermissions()
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
-const route = useRoute();
-const router = useRouter();
+  ? useRequestHeaders(['cookie'])
+  : undefined
+const route = useRoute()
+const router = useRouter()
 
-const canRead = computed(() => workshop.can(ActionCode.VEHICLES_READ));
-const canCreate = computed(() => workshop.can(ActionCode.VEHICLES_CREATE));
-const canUpdate = computed(() => workshop.can(ActionCode.VEHICLES_UPDATE));
-const canDelete = computed(() => workshop.can(ActionCode.VEHICLES_DELETE));
+const canRead = computed(() => workshop.can(ActionCode.VEHICLES_READ))
+const canCreate = computed(() => workshop.can(ActionCode.VEHICLES_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.VEHICLES_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.VEHICLES_DELETE))
 
 function parsePage(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1
 }
 
 function parsePageSize(value: unknown) {
-  const parsed = Number(value);
-  return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_PAGE_SIZE;
+  const parsed = Number(value)
+  return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_PAGE_SIZE
 }
 
 function parseView(value: unknown): ViewMode {
-  return value === "card" ? "card" : "table";
+  return value === 'card' ? 'card' : 'table'
 }
 
 const search = ref(
-  typeof route.query.search === "string" ? route.query.search : "",
-);
-const debouncedSearch = ref(search.value);
-const page = ref(parsePage(route.query.page));
-const pageSize = ref(parsePageSize(route.query.pageSize));
-const viewMode = ref<ViewMode>(parseView(route.query.view));
+  typeof route.query.search === 'string' ? route.query.search : ''
+)
+const debouncedSearch = ref(search.value)
+const page = ref(parsePage(route.query.page))
+const pageSize = ref(parsePageSize(route.query.pageSize))
+const viewMode = ref<ViewMode>(parseView(route.query.view))
 
-const DEFAULT_SORT = { id: "brand", desc: false };
+const DEFAULT_SORT = { id: 'brand', desc: false }
 
 const sorting = ref<SortingState>(
-  typeof route.query.sortBy === "string" && route.query.sortBy
-    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === "desc" }]
-    : [DEFAULT_SORT],
-);
+  typeof route.query.sortBy === 'string' && route.query.sortBy
+    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
+    : [DEFAULT_SORT]
+)
 
 const requestQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
@@ -101,10 +101,10 @@ const requestQuery = computed(() => ({
   sort_by: sorting.value[0]?.id || undefined,
   sort_order: sorting.value[0]
     ? sorting.value[0].desc
-      ? "desc"
-      : "asc"
-    : undefined,
-}));
+      ? 'desc'
+      : 'asc'
+    : undefined
+}))
 
 const { data, status, refresh } = await useAsyncData(
   () =>
@@ -115,14 +115,14 @@ const { data, status, refresh } = await useAsyncData(
         items: [],
         total: 0,
         page: 1,
-        page_size: pageSize.value,
-      } satisfies VehiclesResponse;
+        page_size: pageSize.value
+      } satisfies VehiclesResponse
     }
 
-    return requestFetch<VehiclesResponse>("/api/vehicles", {
+    return requestFetch<VehiclesResponse>('/api/vehicles', {
       headers: requestHeaders,
-      query: requestQuery.value,
-    });
+      query: requestQuery.value
+    })
   },
   {
     watch: [requestQuery],
@@ -130,16 +130,16 @@ const { data, status, refresh } = await useAsyncData(
       items: [],
       total: 0,
       page: 1,
-      page_size: pageSize.value,
-    }),
-  },
-);
+      page_size: pageSize.value
+    })
+  }
+)
 
-const vehicleItems = computed(() => data.value?.items ?? []);
-const totalVehicles = computed(() => data.value?.total ?? 0);
+const vehicleItems = computed(() => data.value?.items ?? [])
+const totalVehicles = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(totalVehicles.value / pageSize.value)),
-);
+  Math.max(1, Math.ceil(totalVehicles.value / pageSize.value))
+)
 
 function buildManagedQuery() {
   return {
@@ -147,10 +147,10 @@ function buildManagedQuery() {
     page: page.value > 1 ? String(page.value) : undefined,
     pageSize:
       pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
-    view: viewMode.value !== "table" ? viewMode.value : undefined,
+    view: viewMode.value !== 'table' ? viewMode.value : undefined,
     sortBy: sorting.value[0]?.id || undefined,
-    sortOrder: sorting.value[0]?.desc ? "desc" : undefined,
-  };
+    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined
+  }
 }
 
 async function syncQuery() {
@@ -158,266 +158,266 @@ async function syncQuery() {
     Object.entries(route.query).filter(
       ([key]) =>
         !MANAGED_QUERY_KEYS.includes(
-          key as (typeof MANAGED_QUERY_KEYS)[number],
-        ),
-    ),
-  ) as Record<string, string | string[] | undefined>;
+          key as (typeof MANAGED_QUERY_KEYS)[number]
+        )
+    )
+  ) as Record<string, string | string[] | undefined>
 
-  Object.assign(nextQuery, buildManagedQuery());
+  Object.assign(nextQuery, buildManagedQuery())
 
-  const currentSerialized = JSON.stringify(route.query);
-  const nextSerialized = JSON.stringify(nextQuery);
-  if (currentSerialized === nextSerialized) return;
+  const currentSerialized = JSON.stringify(route.query)
+  const nextSerialized = JSON.stringify(nextQuery)
+  if (currentSerialized === nextSerialized) return
 
-  await router.replace({ query: nextQuery });
+  await router.replace({ query: nextQuery })
 }
 
 watch(
   () => route.query,
   (query) => {
-    const nextSearch = typeof query.search === "string" ? query.search : "";
-    const nextPage = parsePage(query.page);
-    const nextPageSize = parsePageSize(query.pageSize);
-    const nextView = parseView(query.view);
+    const nextSearch = typeof query.search === 'string' ? query.search : ''
+    const nextPage = parsePage(query.page)
+    const nextPageSize = parsePageSize(query.pageSize)
+    const nextView = parseView(query.view)
 
     if (search.value !== nextSearch) {
-      search.value = nextSearch;
-      debouncedSearch.value = nextSearch;
+      search.value = nextSearch
+      debouncedSearch.value = nextSearch
     }
-    if (page.value !== nextPage) page.value = nextPage;
-    if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize;
-    if (viewMode.value !== nextView) viewMode.value = nextView;
+    if (page.value !== nextPage) page.value = nextPage
+    if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize
+    if (viewMode.value !== nextView) viewMode.value = nextView
 
-    const nextSortBy = typeof query.sortBy === "string" ? query.sortBy : "";
-    const nextSortDesc = query.sortOrder === "desc";
-    const currentSort = sorting.value[0];
+    const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : ''
+    const nextSortDesc = query.sortOrder === 'desc'
+    const currentSort = sorting.value[0]
     if (nextSortBy) {
       if (
-        !currentSort ||
-        currentSort.id !== nextSortBy ||
-        currentSort.desc !== nextSortDesc
+        !currentSort
+        || currentSort.id !== nextSortBy
+        || currentSort.desc !== nextSortDesc
       )
-        sorting.value = [{ id: nextSortBy, desc: nextSortDesc }];
+        sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
     } else if (
-      !currentSort ||
-      currentSort.id !== DEFAULT_SORT.id ||
-      currentSort.desc !== DEFAULT_SORT.desc
+      !currentSort
+      || currentSort.id !== DEFAULT_SORT.id
+      || currentSort.desc !== DEFAULT_SORT.desc
     ) {
-      sorting.value = [DEFAULT_SORT];
+      sorting.value = [DEFAULT_SORT]
     }
-  },
-);
+  }
+)
 
 watchDebounced(
   search,
   async (val) => {
-    debouncedSearch.value = val;
-    page.value = 1;
-    await syncQuery();
+    debouncedSearch.value = val
+    page.value = 1
+    await syncQuery()
   },
-  { debounce: 300, maxWait: 800 },
-);
+  { debounce: 300, maxWait: 800 }
+)
 
 watch(page, async () => {
   if (page.value > totalPages.value && totalPages.value > 0)
-    page.value = totalPages.value;
+    page.value = totalPages.value
 
-  await syncQuery();
-});
+  await syncQuery()
+})
 
 watch(pageSize, async () => {
-  page.value = 1;
-  await syncQuery();
-});
+  page.value = 1
+  await syncQuery()
+})
 
-watch(viewMode, syncQuery);
+watch(viewMode, syncQuery)
 
 watch(sorting, async () => {
-  page.value = 1;
-  await syncQuery();
-});
+  page.value = 1
+  await syncQuery()
+})
 
 // ─── Row selection ────────────────────────────────────────────────────────────
 
-const rowSelection = ref<RowSelectionState>({});
+const rowSelection = ref<RowSelectionState>({})
 const selectedIds = computed(() =>
   Object.entries(rowSelection.value)
     .filter(([, selected]) => selected)
-    .map(([id]) => id),
-);
-const selectedCount = computed(() => selectedIds.value.length);
+    .map(([id]) => id)
+)
+const selectedCount = computed(() => selectedIds.value.length)
 
 // ─── Bulk delete ───────────────────────────────────────────────────────────────
 
-const showBulkDeleteModal = ref(false);
-const isBulkDeleting = ref(false);
+const showBulkDeleteModal = ref(false)
+const isBulkDeleting = ref(false)
 
 async function confirmBulkDelete() {
-  if (!selectedIds.value.length || isBulkDeleting.value) return;
-  isBulkDeleting.value = true;
+  if (!selectedIds.value.length || isBulkDeleting.value) return
+  isBulkDeleting.value = true
   try {
     await Promise.all(
-      selectedIds.value.map((id) =>
-        $fetch(`/api/vehicles/${id}`, { method: "DELETE" }),
-      ),
-    );
+      selectedIds.value.map(id =>
+        $fetch(`/api/vehicles/${id}`, { method: 'DELETE' })
+      )
+    )
     toast.add({
       title: `${selectedIds.value.length} veículo(s) removido(s)`,
-      color: "success",
-    });
-    rowSelection.value = {};
-    showBulkDeleteModal.value = false;
-    await refresh();
+      color: 'success'
+    })
+    rowSelection.value = {}
+    showBulkDeleteModal.value = false
+    await refresh()
   } catch {
-    toast.add({ title: "Erro ao excluir veículos", color: "error" });
+    toast.add({ title: 'Erro ao excluir veículos', color: 'error' })
   } finally {
-    isBulkDeleting.value = false;
+    isBulkDeleting.value = false
   }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getVehicleInitial(vehicle: Vehicle): string {
-  return (vehicle.brand ?? vehicle.model ?? "V").trim().charAt(0).toUpperCase();
+  return (vehicle.brand ?? vehicle.model ?? 'V').trim().charAt(0).toUpperCase()
 }
 
 function getVehicleTitle(vehicle: Vehicle): string {
-  return [vehicle.brand, vehicle.model].filter(Boolean).join(" ") || "Veículo";
+  return [vehicle.brand, vehicle.model].filter(Boolean).join(' ') || 'Veículo'
 }
 
 const fuelTypeOptions = [
-  { label: "Gasolina", value: "gasoline" },
-  { label: "Etanol", value: "ethanol" },
-  { label: "Flex", value: "flex" },
-  { label: "Diesel", value: "diesel" },
-  { label: "GNV", value: "cng" },
-  { label: "Elétrico", value: "electric" },
-  { label: "Híbrido", value: "hybrid" },
-];
+  { label: 'Gasolina', value: 'gasoline' },
+  { label: 'Etanol', value: 'ethanol' },
+  { label: 'Flex', value: 'flex' },
+  { label: 'Diesel', value: 'diesel' },
+  { label: 'GNV', value: 'cng' },
+  { label: 'Elétrico', value: 'electric' },
+  { label: 'Híbrido', value: 'hybrid' }
+]
 
 function fuelLabel(value: string | null | undefined): string {
-  return fuelTypeOptions.find((o) => o.value === value)?.label ?? value ?? "—";
+  return fuelTypeOptions.find(o => o.value === value)?.label ?? value ?? '—'
 }
 
 const statusColorMap: Record<string, string> = {
-  estimate: "neutral",
-  open: "info",
-  in_progress: "warning",
-  waiting_for_part: "warning",
-  delivered: "success",
-  cancelled: "error",
-};
+  estimate: 'neutral',
+  open: 'info',
+  in_progress: 'warning',
+  waiting_for_part: 'warning',
+  delivered: 'success',
+  cancelled: 'error'
+}
 
 const statusLabelMap: Record<string, string> = {
-  estimate: "Orçamento",
-  open: "Aberta",
-  in_progress: "Em andamento",
-  waiting_for_part: "Aguardando peça",
-  delivered: "Entregue",
-  cancelled: "Cancelada",
-};
+  estimate: 'Orçamento',
+  open: 'Aberta',
+  in_progress: 'Em andamento',
+  waiting_for_part: 'Aguardando peça',
+  delivered: 'Entregue',
+  cancelled: 'Cancelada'
+}
 
 function formatDate(value: string | null): string {
-  if (!value) return "—";
-  const d = new Date(value + "T00:00:00");
-  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString("pt-BR");
+  if (!value) return '—'
+  const d = new Date(value + 'T00:00:00')
+  return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('pt-BR')
 }
 
 // ─── Modal (create / edit) ─────────────────────────────────────────────────────
 
-const showFormModal = ref(false);
-const editingVehicle = ref<Vehicle | null>(null);
+const showFormModal = ref(false)
+const editingVehicle = ref<Vehicle | null>(null)
 
 function openCreate() {
-  editingVehicle.value = null;
-  showFormModal.value = true;
+  editingVehicle.value = null
+  showFormModal.value = true
 }
 
 function openEdit(v: Vehicle) {
-  editingVehicle.value = v;
-  showFormModal.value = true;
+  editingVehicle.value = v
+  showFormModal.value = true
 }
 
 // ─── Delete ────────────────────────────────────────────────────────────────────
 
-const isDeleting = ref(false);
-const showDeleteModal = ref(false);
-const vehiclePendingDeletion = ref<Vehicle | null>(null);
+const isDeleting = ref(false)
+const showDeleteModal = ref(false)
+const vehiclePendingDeletion = ref<Vehicle | null>(null)
 
 function requestRemove(v: Vehicle) {
-  if (isDeleting.value) return;
-  vehiclePendingDeletion.value = v;
-  showDeleteModal.value = true;
+  if (isDeleting.value) return
+  vehiclePendingDeletion.value = v
+  showDeleteModal.value = true
 }
 
 async function confirmRemove() {
-  if (!vehiclePendingDeletion.value) return;
-  const v = vehiclePendingDeletion.value;
+  if (!vehiclePendingDeletion.value) return
+  const v = vehiclePendingDeletion.value
 
-  if (isDeleting.value) return;
-  isDeleting.value = true;
+  if (isDeleting.value) return
+  isDeleting.value = true
   try {
-    await $fetch(`/api/vehicles/${v.id}`, { method: "DELETE" });
-    toast.add({ title: "Veículo removido", color: "success" });
-    showDeleteModal.value = false;
-    vehiclePendingDeletion.value = null;
+    await $fetch(`/api/vehicles/${v.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Veículo removido', color: 'success' })
+    showDeleteModal.value = false
+    vehiclePendingDeletion.value = null
 
-    if (vehicleItems.value.length === 1 && page.value > 1) page.value -= 1;
+    if (vehicleItems.value.length === 1 && page.value > 1) page.value -= 1
 
-    await refresh();
+    await refresh()
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro",
+      title: 'Erro',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível remover.",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível remover.',
+      color: 'error'
+    })
   } finally {
-    isDeleting.value = false;
+    isDeleting.value = false
   }
 }
 
 // ─── Slideover de detalhes ─────────────────────────────────────────────────────
 
-const showDetails = ref(false);
-const selectedVehicle = ref<Vehicle | null>(null);
-const vehicleOrders = ref<ServiceOrder[]>([]);
-const isLoadingOrders = ref(false);
+const showDetails = ref(false)
+const selectedVehicle = ref<Vehicle | null>(null)
+const vehicleOrders = ref<ServiceOrder[]>([])
+const isLoadingOrders = ref(false)
 
 async function openDetails(v: Vehicle) {
-  selectedVehicle.value = v;
-  showDetails.value = true;
-  vehicleOrders.value = [];
-  isLoadingOrders.value = true;
+  selectedVehicle.value = v
+  showDetails.value = true
+  vehicleOrders.value = []
+  isLoadingOrders.value = true
   try {
     const result = await $fetch<{
-      data: { items: ServiceOrder[] };
-    }>("/api/service-orders", {
-      query: { vehicleId: v.id, limit: 50 },
-    });
-    vehicleOrders.value = result.data.items;
+      data: { items: ServiceOrder[] }
+    }>('/api/service-orders', {
+      query: { vehicleId: v.id, limit: 50 }
+    })
+    vehicleOrders.value = result.data.items
   } catch {
-    vehicleOrders.value = [];
+    vehicleOrders.value = []
   } finally {
-    isLoadingOrders.value = false;
+    isLoadingOrders.value = false
   }
 }
 
 // ─── Table columns ─────────────────────────────────────────────────────────────
 
 const lineColumns = [
-  { accessorKey: "brand", header: "Veículo", enableSorting: true },
-  { accessorKey: "license_plate", header: "Placa", enableSorting: true },
-  { accessorKey: "engine", header: "Motor", enableSorting: false },
-  { id: "client", header: "Cliente", enableSorting: false },
-  { id: "actions", header: "Ações", enableSorting: false },
-];
+  { accessorKey: 'brand', header: 'Veículo', enableSorting: true },
+  { accessorKey: 'license_plate', header: 'Placa', enableSorting: true },
+  { accessorKey: 'engine', header: 'Motor', enableSorting: false },
+  { id: 'client', header: 'Cliente', enableSorting: false },
+  { id: 'actions', header: 'Ações', enableSorting: false }
+]
 </script>
 
 <template>
@@ -657,8 +657,8 @@ const lineColumns = [
                         <UIcon name="i-lucide-user" class="size-4 shrink-0" />
                         <span class="truncate">
                           {{
-                            (vehicle as Vehicle).clients?.name ??
-                            "Cliente não informado"
+                            (vehicle as Vehicle).clients?.name
+                              ?? "Cliente não informado"
                           }}
                         </span>
                       </div>
@@ -718,8 +718,7 @@ const lineColumns = [
     <template #description>
       <p class="text-sm text-muted">
         Tem certeza que deseja excluir
-        <strong class="text-highlighted">{{ selectedCount }} veículo(s)</strong
-        >? Esta ação não pode ser desfeita.
+        <strong class="text-highlighted">{{ selectedCount }} veículo(s)</strong>? Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>
@@ -745,13 +744,12 @@ const lineColumns = [
         <strong class="text-highlighted">
           {{
             vehiclePendingDeletion
-              ? getVehicleTitle(vehiclePendingDeletion) +
-                (vehiclePendingDeletion.license_plate
+              ? getVehicleTitle(vehiclePendingDeletion)
+                + (vehiclePendingDeletion.license_plate
                   ? ` (${vehiclePendingDeletion.license_plate})`
                   : "")
               : "este veículo"
-          }} </strong
-        >? Esta ação não pode ser desfeita.
+          }} </strong>? Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>
@@ -800,31 +798,41 @@ const lineColumns = [
         <!-- Ficha do veículo -->
         <div class="grid grid-cols-2 gap-4 text-sm">
           <div>
-            <p class="text-muted">Ano</p>
+            <p class="text-muted">
+              Ano
+            </p>
             <p class="font-medium text-highlighted">
               {{ selectedVehicle.year ?? "—" }}
             </p>
           </div>
           <div>
-            <p class="text-muted">Cor</p>
+            <p class="text-muted">
+              Cor
+            </p>
             <p class="font-medium text-highlighted">
               {{ selectedVehicle.color ?? "—" }}
             </p>
           </div>
           <div>
-            <p class="text-muted">Motor</p>
+            <p class="text-muted">
+              Motor
+            </p>
             <p class="font-medium text-primary">
               {{ selectedVehicle.engine ?? "—" }}
             </p>
           </div>
           <div>
-            <p class="text-muted">Combustível</p>
+            <p class="text-muted">
+              Combustível
+            </p>
             <p class="font-medium text-highlighted">
               {{ fuelLabel(selectedVehicle.fuel_type) }}
             </p>
           </div>
           <div>
-            <p class="text-muted">Quilometragem</p>
+            <p class="text-muted">
+              Quilometragem
+            </p>
             <p class="font-medium text-highlighted">
               {{
                 selectedVehicle.mileage
@@ -834,7 +842,9 @@ const lineColumns = [
             </p>
           </div>
           <div>
-            <p class="text-muted">Proprietário</p>
+            <p class="text-muted">
+              Proprietário
+            </p>
             <p class="font-semibold text-orange-500">
               {{ selectedVehicle.clients?.name ?? "—" }}
             </p>
@@ -899,7 +909,7 @@ const lineColumns = [
                     R$
                     {{
                       order.total_amount?.toLocaleString("pt-BR", {
-                        minimumFractionDigits: 2,
+                        minimumFractionDigits: 2
                       }) ?? "0,00"
                     }}
                   </p>

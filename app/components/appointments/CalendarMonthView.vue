@@ -48,7 +48,7 @@ function getEventsForDay(day: Date): Appointment[] {
         class="cursor-pointer overflow-hidden border-b border-r border-default/60 p-1 transition-colors hover:bg-elevated"
         :class="{
           'bg-muted/20': !isSameMonth(cell, currentDate),
-          'bg-primary/5': isToday(cell),
+          'bg-primary/5': isToday(cell)
         }"
         @click="emit('cell-click', cell)"
       >

@@ -5,21 +5,21 @@ defineProps<{
   view: CalendarView
   title: string
   statusFilter: string
-  statusOptions: { label: string; value: string }[]
+  statusOptions: { label: string, value: string }[]
 }>()
 
 const emit = defineEmits<{
   'update:view': [v: CalendarView]
   'update:statusFilter': [v: string]
-  prev: []
-  next: []
-  today: []
+  'prev': []
+  'next': []
+  'today': []
 }>()
 
-const viewOptions: { label: string; value: CalendarView }[] = [
+const viewOptions: { label: string, value: CalendarView }[] = [
   { label: 'Mês', value: 'month' },
   { label: 'Semana', value: 'week' },
-  { label: 'Dia', value: 'day' },
+  { label: 'Dia', value: 'day' }
 ]
 </script>
 

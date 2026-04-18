@@ -44,17 +44,17 @@ const activeFiltersCount = computed(() => {
 
 const localType = computed({
   get: () => props.typeFilter,
-  set: (v) => emit('update:typeFilter', v)
+  set: v => emit('update:typeFilter', v)
 })
 
 const localInventory = computed({
   get: () => props.inventoryFilter,
-  set: (v) => emit('update:inventoryFilter', v)
+  set: v => emit('update:inventoryFilter', v)
 })
 
 const localCategory = computed({
   get: () => props.categoryFilter,
-  set: (v) => emit('update:categoryFilter', v)
+  set: v => emit('update:categoryFilter', v)
 })
 </script>
 

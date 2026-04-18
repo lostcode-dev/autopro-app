@@ -54,4 +54,3 @@ const { data: page, status } = await useAsyncData(
     </template>
   </UDashboardPanel>
 </template>
-

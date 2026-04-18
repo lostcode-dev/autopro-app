@@ -4,6 +4,58 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
+interface EmployeeRecord {
+  id: string
+  name?: string | null
+}
+
+interface ServiceOrderRecord {
+  id?: string | null
+  number?: string | number | null
+  status?: string | null
+  payment_status?: string | null
+  client_name?: string | null
+  entry_date?: string | null
+  completion_date?: string | null
+  total_amount?: number | string | null
+}
+
+interface EmployeeFinancialRecord {
+  id: string
+  employee_id?: string | null
+  service_order_id?: string | null
+  reference_date?: string | null
+  amount?: number | string | null
+  status?: string | null
+  record_type?: string | null
+}
+
+interface NormalizedCommissionRecord extends EmployeeFinancialRecord {
+  status: 'paid' | 'pending' | 'cancelled'
+}
+
+interface EnrichedCommissionRecord extends NormalizedCommissionRecord {
+  employee_name: string
+  order_number: string | number
+  order_status: string | null
+  order_payment_status: 'paid' | 'pending' | 'cancelled' | null
+  order_client_name: string | null
+  order_entry_date: string | null
+  order_completion_date: string | null
+  order_total_amount: number
+}
+
+interface CommissionSummary {
+  total: number
+  paid: number
+  pending: number
+  count: number
+  totalCommissions: number
+  totalPaid: number
+  totalPending: number
+  employeeCount: number
+}
+
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -13,12 +65,12 @@ export default defineEventHandler(async (event) => {
 
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
-  const employeeIds = qArr(query.employeeIds)
+  const employeeIds = qArr(query.employeeIds as string | string[] | undefined)
   const employeeId = query.employeeId && query.employeeId !== 'all' ? String(query.employeeId) : null
   const status = query.status && query.status !== 'all' ? normalizeReportStatus(query.status) : null
-  const orderStatusFilters = qArr(query.orderStatusFilters)
-  const paymentStatusFilters = qArr(query.paymentStatusFilters)
-  const paymentMethods = qArr(query.paymentMethods)
+  const orderStatusFilters = qArr(query.orderStatusFilters as string | string[] | undefined)
+  const paymentStatusFilters = qArr(query.paymentStatusFilters as string | string[] | undefined)
+  const paymentMethods = qArr(query.paymentMethods as string | string[] | undefined)
   const recordType = query.recordType && query.recordType !== 'all' ? String(query.recordType) : null
   const searchTerm = String(query.searchTerm || '').trim().toLowerCase()
   const sortBy = ['employee', 'date', 'amount', 'status'].includes(query.sortBy as string) ? String(query.sortBy) : 'date'
@@ -32,14 +84,14 @@ export default defineEventHandler(async (event) => {
     supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null)
   ])
 
-  const records = recordsResult.data || []
-  const orders = ordersResult.data || []
-  const employees = employeesResult.data || []
+  const records = (recordsResult.data ?? []) as EmployeeFinancialRecord[]
+  const orders = (ordersResult.data ?? []) as ServiceOrderRecord[]
+  const employees = (employeesResult.data ?? []) as EmployeeRecord[]
 
-  const employeesMap = new Map<string, any>(employees.map((e: any) => [String(e.id), e]))
-  const ordersMap = new Map<string, any>(orders.map((o: any) => [String(o.id), o]))
+  const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
+  const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))
 
-  const filteredRecords = records.filter((record: any) => {
+  const filteredRecords = records.filter((record) => {
     const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
     const orderEntryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
 
@@ -55,7 +107,7 @@ export default defineEventHandler(async (event) => {
 
     if (paymentStatusFilters.length > 0) {
       const orderPaymentStatus = normalizeReportStatus(order?.payment_status)
-      if (!orderPaymentStatus || !paymentStatusFilters.includes(orderPaymentStatus)) return false
+      if (!paymentStatusFilters.includes(orderPaymentStatus)) return false
     }
 
     const recordStatus = normalizeReportStatus(record?.status)
@@ -67,30 +119,34 @@ export default defineEventHandler(async (event) => {
     }
 
     if (paymentMethods.length > 0) {
-      const method = String(order?.payment_method || '') || 'no_payment'
+      const method = String(order?.payment_method || 'no_payment')
       if (!paymentMethods.includes(method)) return false
     }
 
     if (recordType && record?.record_type !== recordType) return false
 
     if (searchTerm) {
-      const name = String(employeesMap.get(String(record?.employee_id || ''))?.name || '').toLowerCase()
-      if (!name.includes(searchTerm)) return false
+      const employeeName = String(employeesMap.get(String(record?.employee_id || ''))?.name || '').toLowerCase()
+      if (!employeeName.includes(searchTerm)) return false
     }
 
     return true
   })
 
-  const normalizedRecords = filteredRecords.map((record: any) => ({
+  const normalizedRecords: NormalizedCommissionRecord[] = filteredRecords.map(record => ({
     ...record,
     status: normalizeReportStatus(record?.status)
   }))
 
-  const totalCommissions = normalizedRecords.reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
-  const paidCommissions = normalizedRecords.filter((r: any) => r?.status === 'paid').reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
-  const pendingCommissions = normalizedRecords.filter((r: any) => r?.status === 'pending').reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
+  const totalCommissions = normalizedRecords.reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
+  const paidCommissions = normalizedRecords
+    .filter(record => record.status === 'paid')
+    .reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
+  const pendingCommissions = normalizedRecords
+    .filter(record => record.status === 'pending')
+    .reduce((sum, record) => sum + toNumber(record?.amount, 0), 0)
 
-  const summary = {
+  const summary: CommissionSummary = {
     total: totalCommissions,
     paid: paidCommissions,
     pending: pendingCommissions,
@@ -101,17 +157,19 @@ export default defineEventHandler(async (event) => {
     employeeCount: 0
   }
 
-  // Chart: by employee
-  const byEmployee: Record<string, { name: string, total: number, paid: number, pending: number }> = {}
+  const byEmployeeMap: Record<string, { name: string, total: number, paid: number, pending: number }> = {}
   for (const record of normalizedRecords) {
     const employeeName = String(employeesMap.get(String(record?.employee_id || ''))?.name || 'Unknown')
-    if (!byEmployee[employeeName]) byEmployee[employeeName] = { name: employeeName, total: 0, paid: 0, pending: 0 }
+    if (!byEmployeeMap[employeeName]) {
+      byEmployeeMap[employeeName] = { name: employeeName, total: 0, paid: 0, pending: 0 }
+    }
     const amount = toNumber(record?.amount, 0)
-    byEmployee[employeeName].total += amount
-    if (record?.status === 'paid') byEmployee[employeeName].paid += amount
-    else byEmployee[employeeName].pending += amount
+    byEmployeeMap[employeeName].total += amount
+    if (record.status === 'paid') byEmployeeMap[employeeName].paid += amount
+    else byEmployeeMap[employeeName].pending += amount
   }
-  const employeeChartData = Object.values(byEmployee).sort((a, b) => b.total - a.total)
+
+  const employeeChartData = Object.values(byEmployeeMap).sort((employeeA, employeeB) => employeeB.total - employeeA.total)
   summary.employeeCount = employeeChartData.length
 
   const statusDistribution = [
@@ -119,30 +177,36 @@ export default defineEventHandler(async (event) => {
     { name: 'Pendentes', value: pendingCommissions, color: '#f59e0b' }
   ]
 
-  const enrichedRecords = normalizedRecords.map((record: any) => {
+  const enrichedRecords: EnrichedCommissionRecord[] = normalizedRecords.map((record) => {
     const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
     return {
       ...record,
       employee_name: String(employeesMap.get(String(record?.employee_id || ''))?.name || 'Unknown'),
       order_number: order?.number || 'N/A',
       order_status: order?.status || null,
-      order_payment_status: order?.payment_status ? normalizeReportStatus(order?.payment_status) : null,
+      order_payment_status: order?.payment_status ? normalizeReportStatus(order.payment_status) : null,
       order_client_name: order?.client_name || null,
       order_entry_date: order?.entry_date || null,
       order_completion_date: order?.completion_date || null,
-      order_total_amount: toNumber(order?.total_amount, 0),
-      status: normalizeReportStatus(record?.status)
+      order_total_amount: toNumber(order?.total_amount, 0)
     }
   })
 
   const factor = sortFactor(sortOrder)
-  enrichedRecords.sort((a: any, b: any) => {
-    if (sortBy === 'employee') return String(a.employee_name || '').localeCompare(String(b.employee_name || ''), 'pt-BR', { sensitivity: 'base' }) * factor
-    if (sortBy === 'amount') return (toNumber(a?.amount, 0) - toNumber(b?.amount, 0)) * factor
-    if (sortBy === 'status') return String(a?.status || '').localeCompare(String(b?.status || ''), 'pt-BR', { sensitivity: 'base' }) * factor
-    const aDate = String(a?.order_entry_date || a?.reference_date || '')
-    const bDate = String(b?.order_entry_date || b?.reference_date || '')
-    return aDate.localeCompare(bDate) * factor
+  enrichedRecords.sort((recordA, recordB) => {
+    if (sortBy === 'employee') {
+      return String(recordA.employee_name || '').localeCompare(String(recordB.employee_name || ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    }
+    if (sortBy === 'amount') {
+      return (toNumber(recordA?.amount, 0) - toNumber(recordB?.amount, 0)) * factor
+    }
+    if (sortBy === 'status') {
+      return String(recordA?.status || '').localeCompare(String(recordB?.status || ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    }
+
+    const dateA = String(recordA?.order_entry_date || recordA?.reference_date || '')
+    const dateB = String(recordB?.order_entry_date || recordB?.reference_date || '')
+    return dateA.localeCompare(dateB) * factor
   })
 
   const { data: items, pagination } = paginate(enrichedRecords, page, pageSize)
@@ -154,7 +218,10 @@ export default defineEventHandler(async (event) => {
       sort: { sortBy, sortOrder },
       summary,
       charts: { byEmployee: employeeChartData, statusDistribution },
-      employees
+      employees: employees.map(employee => ({
+        value: employee.id,
+        label: employee.name || 'Unknown'
+      }))
     }
   }
 })

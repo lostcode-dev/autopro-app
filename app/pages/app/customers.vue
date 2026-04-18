@@ -1,109 +1,109 @@
 <script setup lang="ts">
-import { watchDebounced } from "@vueuse/core";
-import type { RowSelectionState, SortingState } from "@tanstack/table-core";
-import { ActionCode } from "~/constants/action-codes";
-import type { Client, PersonType } from "~/types/clients";
+import { watchDebounced } from '@vueuse/core'
+import type { RowSelectionState, SortingState } from '@tanstack/table-core'
+import { ActionCode } from '~/constants/action-codes'
+import type { Client, PersonType } from '~/types/clients'
 
 function formatTaxId(taxId: string | null, personType: PersonType): string {
-  if (!taxId) return "-";
-  const digits = taxId.replace(/\D/g, "");
-  if (personType === "pf" && digits.length === 11)
-    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-  if (personType === "pj" && digits.length === 14)
+  if (!taxId) return '-'
+  const digits = taxId.replace(/\D/g, '')
+  if (personType === 'pf' && digits.length === 11)
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  if (personType === 'pj' && digits.length === 14)
     return digits.replace(
       /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
-      "$1.$2.$3/$4-$5",
-    );
-  return taxId;
+      '$1.$2.$3/$4-$5'
+    )
+  return taxId
 }
 
 function formatPhone(phone: string | null): string {
-  if (!phone) return "-";
-  const digits = phone.replace(/\D/g, "");
+  if (!phone) return '-'
+  const digits = phone.replace(/\D/g, '')
   if (digits.length === 10)
-    return digits.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
   if (digits.length === 11)
-    return digits.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-  return phone;
+    return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return phone
 }
 
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Clientes" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Clientes' })
 
-type ViewMode = "table" | "card";
-const ALL_PERSON_TYPES_VALUE = "all";
+type ViewMode = 'table' | 'card'
+const ALL_PERSON_TYPES_VALUE = 'all'
 
 type ClientsResponse = {
-  items: Client[];
-  total: number;
-  page: number;
-  page_size: number;
-};
+  items: Client[]
+  total: number
+  page: number
+  page_size: number
+}
 
-const DEFAULT_PAGE_SIZE = 10;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 10
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const MANAGED_QUERY_KEYS = [
-  "search",
-  "personType",
-  "page",
-  "pageSize",
-  "view",
-  "sortBy",
-  "sortOrder",
-] as const;
+  'search',
+  'personType',
+  'page',
+  'pageSize',
+  'view',
+  'sortBy',
+  'sortOrder'
+] as const
 
-const toast = useToast();
-const workshop = useWorkshopPermissions();
-const requestFetch = useRequestFetch();
+const toast = useToast()
+const workshop = useWorkshopPermissions()
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
-const route = useRoute();
-const router = useRouter();
+  ? useRequestHeaders(['cookie'])
+  : undefined
+const route = useRoute()
+const router = useRouter()
 
-const canRead = computed(() => workshop.can(ActionCode.CUSTOMERS_READ));
-const canCreate = computed(() => workshop.can(ActionCode.CUSTOMERS_CREATE));
-const canUpdate = computed(() => workshop.can(ActionCode.CUSTOMERS_UPDATE));
-const canDelete = computed(() => workshop.can(ActionCode.CUSTOMERS_DELETE));
+const canRead = computed(() => workshop.can(ActionCode.CUSTOMERS_READ))
+const canCreate = computed(() => workshop.can(ActionCode.CUSTOMERS_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.CUSTOMERS_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.CUSTOMERS_DELETE))
 
 function parsePage(value: unknown) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1;
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 1
 }
 
 function parsePageSize(value: unknown) {
-  const parsed = Number(value);
-  return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_PAGE_SIZE;
+  const parsed = Number(value)
+  return PAGE_SIZE_OPTIONS.includes(parsed) ? parsed : DEFAULT_PAGE_SIZE
 }
 
 function parseView(value: unknown): ViewMode {
-  return value === "card" ? "card" : "table";
+  return value === 'card' ? 'card' : 'table'
 }
 
 function parsePersonType(
-  value: unknown,
+  value: unknown
 ): PersonType | typeof ALL_PERSON_TYPES_VALUE {
-  return value === "pf" || value === "pj" ? value : ALL_PERSON_TYPES_VALUE;
+  return value === 'pf' || value === 'pj' ? value : ALL_PERSON_TYPES_VALUE
 }
 
 const search = ref(
-  typeof route.query.search === "string" ? route.query.search : "",
-);
-const debouncedSearch = ref(search.value);
+  typeof route.query.search === 'string' ? route.query.search : ''
+)
+const debouncedSearch = ref(search.value)
 const personTypeFilter = ref<PersonType | typeof ALL_PERSON_TYPES_VALUE>(
-  parsePersonType(route.query.personType),
-);
-const page = ref(parsePage(route.query.page));
-const pageSize = ref(parsePageSize(route.query.pageSize));
-const viewMode = ref<ViewMode>(parseView(route.query.view));
+  parsePersonType(route.query.personType)
+)
+const page = ref(parsePage(route.query.page))
+const pageSize = ref(parsePageSize(route.query.pageSize))
+const viewMode = ref<ViewMode>(parseView(route.query.view))
 
-const DEFAULT_SORT = { id: "name", desc: false };
+const DEFAULT_SORT = { id: 'name', desc: false }
 
 const sorting = ref<SortingState>(
-  typeof route.query.sortBy === "string" && route.query.sortBy
-    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === "desc" }]
-    : [DEFAULT_SORT],
-);
+  typeof route.query.sortBy === 'string' && route.query.sortBy
+    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
+    : [DEFAULT_SORT]
+)
 
 const requestQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
@@ -116,10 +116,10 @@ const requestQuery = computed(() => ({
   sort_by: sorting.value[0]?.id || undefined,
   sort_order: sorting.value[0]
     ? sorting.value[0].desc
-      ? "desc"
-      : "asc"
-    : undefined,
-}));
+      ? 'desc'
+      : 'asc'
+    : undefined
+}))
 
 const { data, status, refresh } = await useAsyncData(
   () =>
@@ -130,14 +130,14 @@ const { data, status, refresh } = await useAsyncData(
         items: [],
         total: 0,
         page: 1,
-        page_size: pageSize.value,
-      } satisfies ClientsResponse;
+        page_size: pageSize.value
+      } satisfies ClientsResponse
     }
 
-    return requestFetch<ClientsResponse>("/api/clients", {
+    return requestFetch<ClientsResponse>('/api/clients', {
       headers: requestHeaders,
-      query: requestQuery.value,
-    });
+      query: requestQuery.value
+    })
   },
   {
     watch: [requestQuery],
@@ -145,16 +145,16 @@ const { data, status, refresh } = await useAsyncData(
       items: [],
       total: 0,
       page: 1,
-      page_size: pageSize.value,
-    }),
-  },
-);
+      page_size: pageSize.value
+    })
+  }
+)
 
-const clientItems = computed(() => data.value?.items ?? []);
-const totalClients = computed(() => data.value?.total ?? 0);
+const clientItems = computed(() => data.value?.items ?? [])
+const totalClients = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(totalClients.value / pageSize.value)),
-);
+  Math.max(1, Math.ceil(totalClients.value / pageSize.value))
+)
 
 function buildManagedQuery() {
   return {
@@ -166,10 +166,10 @@ function buildManagedQuery() {
     page: page.value > 1 ? String(page.value) : undefined,
     pageSize:
       pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
-    view: viewMode.value !== "table" ? viewMode.value : undefined,
+    view: viewMode.value !== 'table' ? viewMode.value : undefined,
     sortBy: sorting.value[0]?.id || undefined,
-    sortOrder: sorting.value[0]?.desc ? "desc" : undefined,
-  };
+    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined
+  }
 }
 
 async function syncQuery() {
@@ -177,92 +177,92 @@ async function syncQuery() {
     Object.entries(route.query).filter(
       ([key]) =>
         !MANAGED_QUERY_KEYS.includes(
-          key as (typeof MANAGED_QUERY_KEYS)[number],
-        ),
-    ),
-  ) as Record<string, string | string[] | undefined>;
+          key as (typeof MANAGED_QUERY_KEYS)[number]
+        )
+    )
+  ) as Record<string, string | string[] | undefined>
 
-  Object.assign(nextQuery, buildManagedQuery());
+  Object.assign(nextQuery, buildManagedQuery())
 
-  const currentSerialized = JSON.stringify(route.query);
-  const nextSerialized = JSON.stringify(nextQuery);
-  if (currentSerialized === nextSerialized) return;
+  const currentSerialized = JSON.stringify(route.query)
+  const nextSerialized = JSON.stringify(nextQuery)
+  if (currentSerialized === nextSerialized) return
 
-  await router.replace({ query: nextQuery });
+  await router.replace({ query: nextQuery })
 }
 
 watch(
   () => route.query,
   (query) => {
-    const nextSearch = typeof query.search === "string" ? query.search : "";
-    const nextPersonType = parsePersonType(query.personType);
-    const nextPage = parsePage(query.page);
-    const nextPageSize = parsePageSize(query.pageSize);
-    const nextView = parseView(query.view);
+    const nextSearch = typeof query.search === 'string' ? query.search : ''
+    const nextPersonType = parsePersonType(query.personType)
+    const nextPage = parsePage(query.page)
+    const nextPageSize = parsePageSize(query.pageSize)
+    const nextView = parseView(query.view)
 
     if (search.value !== nextSearch) {
-      search.value = nextSearch;
-      debouncedSearch.value = nextSearch;
+      search.value = nextSearch
+      debouncedSearch.value = nextSearch
     }
     if (personTypeFilter.value !== nextPersonType)
-      personTypeFilter.value = nextPersonType;
-    if (page.value !== nextPage) page.value = nextPage;
-    if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize;
-    if (viewMode.value !== nextView) viewMode.value = nextView;
+      personTypeFilter.value = nextPersonType
+    if (page.value !== nextPage) page.value = nextPage
+    if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize
+    if (viewMode.value !== nextView) viewMode.value = nextView
 
-    const nextSortBy = typeof query.sortBy === "string" ? query.sortBy : "";
-    const nextSortDesc = query.sortOrder === "desc";
-    const currentSort = sorting.value[0];
+    const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : ''
+    const nextSortDesc = query.sortOrder === 'desc'
+    const currentSort = sorting.value[0]
     if (nextSortBy) {
       if (
-        !currentSort ||
-        currentSort.id !== nextSortBy ||
-        currentSort.desc !== nextSortDesc
+        !currentSort
+        || currentSort.id !== nextSortBy
+        || currentSort.desc !== nextSortDesc
       )
-        sorting.value = [{ id: nextSortBy, desc: nextSortDesc }];
+        sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
     } else if (
-      !currentSort ||
-      currentSort.id !== DEFAULT_SORT.id ||
-      currentSort.desc !== DEFAULT_SORT.desc
+      !currentSort
+      || currentSort.id !== DEFAULT_SORT.id
+      || currentSort.desc !== DEFAULT_SORT.desc
     ) {
-      sorting.value = [DEFAULT_SORT];
+      sorting.value = [DEFAULT_SORT]
     }
-  },
-);
+  }
+)
 
 watchDebounced(
   search,
   async (val) => {
-    debouncedSearch.value = val;
-    page.value = 1;
-    await syncQuery();
+    debouncedSearch.value = val
+    page.value = 1
+    await syncQuery()
   },
-  { debounce: 300, maxWait: 800 },
-);
+  { debounce: 300, maxWait: 800 }
+)
 
 watch(personTypeFilter, async () => {
-  page.value = 1;
-  await syncQuery();
-});
+  page.value = 1
+  await syncQuery()
+})
 
 watch(page, async () => {
   if (page.value > totalPages.value && totalPages.value > 0)
-    page.value = totalPages.value;
+    page.value = totalPages.value
 
-  await syncQuery();
-});
+  await syncQuery()
+})
 
 watch(pageSize, async () => {
-  page.value = 1;
-  await syncQuery();
-});
+  page.value = 1
+  await syncQuery()
+})
 
-watch(viewMode, syncQuery);
+watch(viewMode, syncQuery)
 
 watch(sorting, async () => {
-  page.value = 1;
-  await syncQuery();
-});
+  page.value = 1
+  await syncQuery()
+})
 
 function getClientInitial(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -273,87 +273,87 @@ function getClientInitial(name: string) {
 }
 
 function getPersonTypeLabel(personType: PersonType) {
-  return personType === "pf" ? "PF" : "PJ";
+  return personType === 'pf' ? 'PF' : 'PJ'
 }
 
 function formatContact(client: Client): string {
-  const raw = client.phone || client.mobile_phone;
-  return raw ? formatPhone(raw) : "Telefone não informado";
+  const raw = client.phone || client.mobile_phone
+  return raw ? formatPhone(raw) : 'Telefone não informado'
 }
 
 // Modal
-const showModal = ref(false);
-const selectedClient = ref<Client | null>(null);
-const isDeleting = ref(false);
-const showDeleteModal = ref(false);
-const clientPendingDeletion = ref<Client | null>(null);
+const showModal = ref(false)
+const selectedClient = ref<Client | null>(null)
+const isDeleting = ref(false)
+const showDeleteModal = ref(false)
+const clientPendingDeletion = ref<Client | null>(null)
 
 function openCreate() {
-  selectedClient.value = null;
-  showModal.value = true;
+  selectedClient.value = null
+  showModal.value = true
 }
 
 function openEdit(client: Client) {
-  selectedClient.value = client;
-  showModal.value = true;
+  selectedClient.value = client
+  showModal.value = true
 }
 
 function requestRemove(client: Client) {
-  if (isDeleting.value) return;
+  if (isDeleting.value) return
 
-  clientPendingDeletion.value = client;
-  showDeleteModal.value = true;
+  clientPendingDeletion.value = client
+  showDeleteModal.value = true
 }
 
 async function remove(client: Client) {
-  if (isDeleting.value) return;
+  if (isDeleting.value) return
 
-  isDeleting.value = true;
+  isDeleting.value = true
   try {
-    await $fetch(`/api/clients/${client.id}`, { method: "DELETE" });
-    toast.add({ title: "Cliente removido", color: "success" });
-    showDeleteModal.value = false;
-    clientPendingDeletion.value = null;
+    await $fetch(`/api/clients/${client.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Cliente removido', color: 'success' })
+    showDeleteModal.value = false
+    clientPendingDeletion.value = null
 
-    if (clientItems.value.length === 1 && page.value > 1) page.value -= 1;
+    if (clientItems.value.length === 1 && page.value > 1) page.value -= 1
 
-    await refresh();
+    await refresh()
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro",
+      title: 'Erro',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível remover.",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível remover.',
+      color: 'error'
+    })
   } finally {
-    isDeleting.value = false;
+    isDeleting.value = false
   }
 }
 
 async function confirmRemove() {
-  if (!clientPendingDeletion.value) return;
+  if (!clientPendingDeletion.value) return
 
-  await remove(clientPendingDeletion.value);
+  await remove(clientPendingDeletion.value)
 }
 
 const personTypeFilterOptions = [
-  { label: "Todos os tipos", value: ALL_PERSON_TYPES_VALUE },
-  { label: "Pessoa Física", value: "pf" },
-  { label: "Pessoa Jurídica", value: "pj" },
-];
+  { label: 'Todos os tipos', value: ALL_PERSON_TYPES_VALUE },
+  { label: 'Pessoa Física', value: 'pf' },
+  { label: 'Pessoa Jurídica', value: 'pj' }
+]
 
 const lineColumns = [
   { accessorKey: 'name', header: 'Cliente', enableSorting: true },
   { accessorKey: 'person_type', header: 'Tipo', enableSorting: true },
   { accessorKey: 'tax_id', header: 'CPF/CNPJ', enableSorting: true },
   { accessorKey: 'phone', header: 'Telefone', enableSorting: false },
-  { id: 'actions', header: 'Ações', enableSorting: false },
+  { id: 'actions', header: 'Ações', enableSorting: false }
 ]
 
 // ─── Seleção de linhas ──────────────────────────────────────────────────────
@@ -362,7 +362,7 @@ const rowSelection = ref<RowSelectionState>({})
 const selectedIds = computed(() =>
   Object.entries(rowSelection.value)
     .filter(([, v]) => v)
-    .map(([id]) => id),
+    .map(([id]) => id)
 )
 const selectedCount = computed(() => selectedIds.value.length)
 
@@ -388,8 +388,8 @@ async function exportCsv() {
         page: 1,
         page_size: 2000,
         sort_by: sorting.value[0]?.id || undefined,
-        sort_order: sorting.value[0]?.desc ? 'desc' : 'asc',
-      },
+        sort_order: sorting.value[0]?.desc ? 'desc' : 'asc'
+      }
     })
     const items = all.items
     if (!items.length) {
@@ -399,13 +399,13 @@ async function exportCsv() {
     const headers = [
       'nome', 'tipo_pessoa', 'email', 'telefone', 'celular',
       'cpf_cnpj', 'cep', 'logradouro', 'numero', 'complemento',
-      'bairro', 'cidade', 'estado', 'observacoes',
+      'bairro', 'cidade', 'estado', 'observacoes'
     ]
-    const rows = items.map((c) => [
+    const rows = items.map(c => [
       c.name, c.person_type, c.email, c.phone, c.mobile_phone,
       c.tax_id, c.zip_code, c.street, c.address_number, c.address_complement,
-      c.neighborhood, c.city, c.state, c.notes,
-    ].map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      c.neighborhood, c.city, c.state, c.notes
+    ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
     const csv = [headers.join(','), ...rows].join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -429,7 +429,7 @@ async function confirmBulkDelete() {
   isBulkDeleting.value = true
   try {
     await Promise.all(
-      selectedIds.value.map((id) => $fetch(`/api/clients/${id}`, { method: 'DELETE' })),
+      selectedIds.value.map(id => $fetch(`/api/clients/${id}`, { method: 'DELETE' }))
     )
     toast.add({ title: `${selectedIds.value.length} cliente(s) removido(s)`, color: 'success' })
     rowSelection.value = {}
@@ -584,7 +584,7 @@ function openHistoryModal(client: Client) {
                 {{
                   formatTaxId(
                     row.original.tax_id as string | null,
-                    row.original.person_type as PersonType,
+                    row.original.person_type as PersonType
                   )
                 }}
               </span>
@@ -655,7 +655,7 @@ function openHistoryModal(client: Client) {
                           <UBadge
                             :label="
                               getPersonTypeLabel(
-                                client.person_type as PersonType,
+                                client.person_type as PersonType
                               )
                             "
                             color="neutral"
@@ -729,7 +729,7 @@ function openHistoryModal(client: Client) {
                         <span class="truncate">{{
                           formatTaxId(
                             client.tax_id as string | null,
-                            client.person_type as PersonType,
+                            client.person_type as PersonType
                           ) || "CPF/CNPJ não informado"
                         }}</span>
                       </div>
@@ -780,8 +780,7 @@ function openHistoryModal(client: Client) {
         Tem certeza que deseja excluir
         <strong class="text-highlighted">{{
           clientPendingDeletion?.name || "este cliente"
-        }}</strong
-        >? Esta ação não pode ser desfeita.
+        }}</strong>? Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>

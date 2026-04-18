@@ -296,5 +296,3 @@ function onAdminPageUpdate(page: number) {
     @link-entity="onAdminLinkEntity"
   />
 </template>
-
-

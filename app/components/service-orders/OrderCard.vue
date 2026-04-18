@@ -20,7 +20,7 @@ const statusColorMap: Record<string, string> = {
   waiting_for_part: 'warning',
   completed: 'success',
   delivered: 'success',
-  cancelled: 'error',
+  cancelled: 'error'
 }
 const statusLabelMap: Record<string, string> = {
   estimate: 'Orçamento',
@@ -29,23 +29,23 @@ const statusLabelMap: Record<string, string> = {
   waiting_for_part: 'Aguard. peça',
   completed: 'Concluída',
   delivered: 'Entregue',
-  cancelled: 'Cancelada',
+  cancelled: 'Cancelada'
 }
 const paymentStatusColorMap: Record<string, string> = {
   pending: 'warning',
   paid: 'success',
-  partial: 'info',
+  partial: 'info'
 }
 const paymentStatusLabelMap: Record<string, string> = {
   pending: 'Pendente',
   paid: 'Pago',
-  partial: 'Parcial',
+  partial: 'Parcial'
 }
 
 function formatCurrency(value: number | string | null | undefined) {
   return parseFloat(String(value || 0)).toLocaleString('pt-BR', {
     style: 'currency',
-    currency: 'BRL',
+    currency: 'BRL'
   })
 }
 

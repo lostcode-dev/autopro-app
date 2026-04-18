@@ -1,61 +1,61 @@
 <script setup lang="ts">
-import type { TagFilterOption } from "~/components/ui/TagFilter.vue";
+import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
 
 const props = withDefaults(
   defineProps<{
-    suppliers: Array<{ id: string; name: string }>;
-    dateLabel?: string;
-    statusLabel?: string;
-    suppliersLabel?: string;
+    suppliers: Array<{ id: string, name: string }>
+    dateLabel?: string
+    statusLabel?: string
+    suppliersLabel?: string
   }>(),
   {
-    dateLabel: "Período",
-    statusLabel: "Status do pagamento",
-    suppliersLabel: "Fornecedores",
-  },
-);
+    dateLabel: 'Período',
+    statusLabel: 'Status do pagamento',
+    suppliersLabel: 'Fornecedores'
+  }
+)
 
-const dateFrom = defineModel<string>("dateFrom");
-const dateTo = defineModel<string>("dateTo");
-const paymentStatus = defineModel<string[]>("paymentStatus", {
-  default: () => [],
-});
-const supplierIds = defineModel<string[]>("supplierIds", { default: () => [] });
+const dateFrom = defineModel<string>('dateFrom')
+const dateTo = defineModel<string>('dateTo')
+const paymentStatus = defineModel<string[]>('paymentStatus', {
+  default: () => []
+})
+const supplierIds = defineModel<string[]>('supplierIds', { default: () => [] })
 
 function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return (parts[0]?.charAt(0) ?? "").toUpperCase();
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '').toUpperCase()
   return (
-    (parts[0]?.charAt(0) ?? "") + (parts[parts.length - 1]?.charAt(0) ?? "")
-  ).toUpperCase();
+    (parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')
+  ).toUpperCase()
 }
 
 const paymentStatusOptions: TagFilterOption[] = [
   {
-    value: "pending",
-    label: "Pendente",
-    color: "warning",
-    icon: "i-lucide-clock",
+    value: 'pending',
+    label: 'Pendente',
+    color: 'warning',
+    icon: 'i-lucide-clock'
   },
   {
-    value: "paid",
-    label: "Pago",
-    color: "success",
-    icon: "i-lucide-circle-check",
+    value: 'paid',
+    label: 'Pago',
+    color: 'success',
+    icon: 'i-lucide-circle-check'
   },
   {
-    value: "overdue",
-    label: "Vencido",
-    color: "error",
-    icon: "i-lucide-alert-triangle",
-  },
-];
+    value: 'overdue',
+    label: 'Vencido',
+    color: 'error',
+    icon: 'i-lucide-alert-triangle'
+  }
+]
 
 const sortedSuppliers = computed(() =>
   [...props.suppliers].sort((a, b) =>
-    a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }),
-  ),
-);
+    a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' })
+  )
+)
 </script>
 
 <template>
@@ -77,7 +77,7 @@ const sortedSuppliers = computed(() =>
         />
       </div>
 
-      <div> </div>
+      <div />
 
       <div>
         <p class="mb-1 text-xs font-medium text-muted">
@@ -102,7 +102,7 @@ const sortedSuppliers = computed(() =>
               value: supplier.id,
               label: supplier.name,
               color: 'neutral' as const,
-              initials: getInitials(supplier.name),
+              initials: getInitials(supplier.name)
             }))
           "
           placeholder="Selecionar"

@@ -10,7 +10,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [v: boolean]
-  cancel: [order: ServiceOrder]
+  'cancel': [order: ServiceOrder]
 }>()
 
 const toast = useToast()
@@ -29,15 +29,13 @@ watch(
     try {
       const res = await $fetch<{ data: ServiceOrderDetail }>(`/api/service-orders/${props.order.id}`)
       detail.value = res.data
-    }
-    catch {
+    } catch {
       toast.add({ title: 'Erro ao carregar detalhes', color: 'error' })
       emit('update:open', false)
-    }
-    finally {
+    } finally {
       isLoading.value = false
     }
-  },
+  }
 )
 
 const statusColorMap: Record<string, string> = {
@@ -47,7 +45,7 @@ const statusColorMap: Record<string, string> = {
   waiting_for_part: 'warning',
   completed: 'success',
   delivered: 'success',
-  cancelled: 'error',
+  cancelled: 'error'
 }
 const statusLabelMap: Record<string, string> = {
   estimate: 'Orçamento',
@@ -56,23 +54,23 @@ const statusLabelMap: Record<string, string> = {
   waiting_for_part: 'Aguard. peça',
   completed: 'Concluída',
   delivered: 'Entregue',
-  cancelled: 'Cancelada',
+  cancelled: 'Cancelada'
 }
 const paymentStatusColorMap: Record<string, string> = {
   pending: 'warning',
   paid: 'success',
-  partial: 'info',
+  partial: 'info'
 }
 const paymentStatusLabelMap: Record<string, string> = {
   pending: 'Pendente',
   paid: 'Pago',
-  partial: 'Parcial',
+  partial: 'Parcial'
 }
 
 function formatCurrency(value: number | string | null | undefined) {
   return parseFloat(String(value || 0)).toLocaleString('pt-BR', {
     style: 'currency',
-    currency: 'BRL',
+    currency: 'BRL'
   })
 }
 
@@ -134,23 +132,31 @@ function formatDate(value: string | null | undefined) {
         <UPageCard title="Cliente e Veículo" variant="subtle">
           <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div>
-              <dt class="text-muted">Cliente</dt>
+              <dt class="text-muted">
+                Cliente
+              </dt>
               <dd class="font-medium text-highlighted">
                 {{ detail.client?.name ?? '—' }}
               </dd>
             </div>
             <div>
-              <dt class="text-muted">Telefone</dt>
+              <dt class="text-muted">
+                Telefone
+              </dt>
               <dd>{{ detail.client?.phone ?? '—' }}</dd>
             </div>
             <div>
-              <dt class="text-muted">Veículo</dt>
+              <dt class="text-muted">
+                Veículo
+              </dt>
               <dd class="font-medium text-highlighted">
                 {{ detail.vehicle ? [detail.vehicle.brand, detail.vehicle.model].filter(Boolean).join(' ') : '—' }}
               </dd>
             </div>
             <div>
-              <dt class="text-muted">Placa</dt>
+              <dt class="text-muted">
+                Placa
+              </dt>
               <dd>{{ detail.vehicle?.license_plate ?? '—' }}</dd>
             </div>
           </dl>
@@ -160,21 +166,29 @@ function formatDate(value: string | null | undefined) {
         <UPageCard title="Financeiro" variant="subtle">
           <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
             <div>
-              <dt class="text-muted">Total</dt>
+              <dt class="text-muted">
+                Total
+              </dt>
               <dd class="text-base font-bold text-highlighted">
                 {{ formatCurrency(detail.order.total_amount) }}
               </dd>
             </div>
             <div>
-              <dt class="text-muted">Desconto</dt>
+              <dt class="text-muted">
+                Desconto
+              </dt>
               <dd>{{ formatCurrency(detail.order.discount) }}</dd>
             </div>
             <div>
-              <dt class="text-muted">Forma de pagamento</dt>
+              <dt class="text-muted">
+                Forma de pagamento
+              </dt>
               <dd>{{ detail.order.payment_method ?? '—' }}</dd>
             </div>
             <div>
-              <dt class="text-muted">Parcelas</dt>
+              <dt class="text-muted">
+                Parcelas
+              </dt>
               <dd>{{ detail.installments?.length ?? 0 }}</dd>
             </div>
           </dl>
@@ -188,11 +202,15 @@ function formatDate(value: string | null | undefined) {
         >
           <div class="space-y-2 text-sm">
             <div v-if="detail.order.reported_defect">
-              <p class="text-xs text-muted">Defeito relatado</p>
+              <p class="text-xs text-muted">
+                Defeito relatado
+              </p>
               <p>{{ detail.order.reported_defect }}</p>
             </div>
             <div v-if="detail.order.diagnosis">
-              <p class="text-xs text-muted">Diagnóstico técnico</p>
+              <p class="text-xs text-muted">
+                Diagnóstico técnico
+              </p>
               <p>{{ detail.order.diagnosis }}</p>
             </div>
           </div>
@@ -217,7 +235,9 @@ function formatDate(value: string | null | undefined) {
 
         <!-- Notes -->
         <UPageCard v-if="detail.order.notes" title="Observações" variant="subtle">
-          <p class="text-sm">{{ detail.order.notes }}</p>
+          <p class="text-sm">
+            {{ detail.order.notes }}
+          </p>
         </UPageCard>
 
         <!-- Actions -->

@@ -709,250 +709,247 @@ const lineColumns = [
 
       <div v-else class="p-4">
         <AppDataTable
-            v-model:display-mode="viewMode"
-            v-model:search-term="search"
-            v-model:page="page"
-            v-model:page-size="pageSize"
-            v-model:sorting="sorting"
-            v-model:row-selection="rowSelection"
-            :columns="lineColumns"
-            :data="supplierItems"
-            :loading="status === 'pending'"
-            :loading-variant="viewMode === 'card' ? 'card' : 'row'"
-            :selectable="viewMode === 'table'"
-            :sticky-header="viewMode === 'table'"
-            :get-row-id="(row) => String(row.id ?? '')"
-            :page-size-options="PAGE_SIZE_OPTIONS"
-            :total="totalSuppliers"
-            search-placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
-            :show-search="true"
-            :show-view-mode-toggle="true"
-            card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
-            empty-icon="i-lucide-truck"
-            empty-title="Nenhum fornecedor encontrado"
-            empty-description="Cadastre fornecedores ou ajuste os filtros para continuar."
-          >
-            <template #toolbar-right>
-              <UTooltip text="Exportar fornecedores">
+          v-model:display-mode="viewMode"
+          v-model:search-term="search"
+          v-model:page="page"
+          v-model:page-size="pageSize"
+          v-model:sorting="sorting"
+          v-model:row-selection="rowSelection"
+          :columns="lineColumns"
+          :data="supplierItems"
+          :loading="status === 'pending'"
+          :loading-variant="viewMode === 'card' ? 'card' : 'row'"
+          :selectable="viewMode === 'table'"
+          :sticky-header="viewMode === 'table'"
+          :get-row-id="(row) => String(row.id ?? '')"
+          :page-size-options="PAGE_SIZE_OPTIONS"
+          :total="totalSuppliers"
+          search-placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
+          :show-search="true"
+          :show-view-mode-toggle="true"
+          card-grid-class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+          empty-icon="i-lucide-truck"
+          empty-title="Nenhum fornecedor encontrado"
+          empty-description="Cadastre fornecedores ou ajuste os filtros para continuar."
+        >
+          <template #toolbar-right>
+            <UTooltip text="Exportar fornecedores">
+              <UButton
+                icon="i-lucide-download"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="exportCsv"
+              />
+            </UTooltip>
+
+            <UTooltip text="Importar fornecedores">
+              <UButton
+                v-if="canCreate"
+                label="Importar"
+                icon="i-lucide-upload"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="showImportModal = true"
+              />
+            </UTooltip>
+
+            <UTooltip
+              v-if="canDelete"
+              :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
+            >
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="outline"
+                size="sm"
+                :disabled="selectedCount === 0"
+                @click="showBulkDeleteModal = true"
+              />
+            </UTooltip>
+
+            <UButton
+              v-if="canCreate"
+              label="Novo fornecedor"
+              icon="i-lucide-plus"
+              size="sm"
+              @click="openCreate"
+            />
+          </template>
+
+          <template #filters>
+            <UPopover>
+              <UButton
+                icon="i-lucide-sliders-horizontal"
+                :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
+                color="neutral"
+                variant="outline"
+                size="sm"
+              />
+              <template #content>
+                <div class="w-64 space-y-3 p-3">
+                  <UFormField label="Tipo de pessoa">
+                    <USelectMenu
+                      v-model="personTypeFilter"
+                      :items="personTypeFilterOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                  <UFormField label="Status">
+                    <USelectMenu
+                      v-model="statusFilter"
+                      :items="statusFilterOptions"
+                      value-key="value"
+                      class="w-full"
+                      :search-input="false"
+                    />
+                  </UFormField>
+                </div>
+              </template>
+            </UPopover>
+          </template>
+
+          <template #name-cell="{ row }">
+            <div class="min-w-0 space-y-1">
+              <p class="truncate font-semibold text-highlighted">
+                {{ row.original.name }}
+              </p>
+              <p class="truncate text-xs text-muted">
+                {{ row.original.trade_name || getLocationSummary(row.original as SupplierItem) }}
+              </p>
+            </div>
+          </template>
+
+          <template #person_type-cell="{ row }">
+            <UBadge
+              :label="row.original.person_type === 'pf' ? 'PF' : 'PJ'"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            />
+          </template>
+
+          <template #tax_id-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatTaxId(row.original.tax_id, row.original.person_type) }}
+            </span>
+          </template>
+
+          <template #phone-cell="{ row }">
+            <span class="text-sm text-muted">
+              {{ formatPhone(row.original.phone) }}
+            </span>
+          </template>
+
+          <template #is_active-cell="{ row }">
+            <UBadge
+              :label="row.original.is_active ? 'Ativo' : 'Inativo'"
+              :color="row.original.is_active ? 'success' : 'neutral'"
+              :leading-icon="row.original.is_active ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
+              variant="subtle"
+              size="xs"
+            />
+          </template>
+
+          <template #actions-cell="{ row }">
+            <div class="flex items-center justify-end gap-2">
+              <UTooltip v-if="canUpdate" text="Editar fornecedor">
                 <UButton
-                  icon="i-lucide-download"
+                  icon="i-lucide-pencil"
                   color="neutral"
-                  variant="outline"
-                  size="sm"
-                  @click="exportCsv"
+                  variant="ghost"
+                  size="xs"
+                  @click="openEdit(row.original as SupplierItem)"
                 />
               </UTooltip>
 
-              <UTooltip text="Importar fornecedores">
-                <UButton
-                  v-if="canCreate"
-                  label="Importar"
-                  icon="i-lucide-upload"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                  @click="showImportModal = true"
-                />
-              </UTooltip>
-
-
-              <UTooltip
-                v-if="canDelete"
-                :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Excluir seleção'"
-              >
+              <UTooltip v-if="canDelete" text="Excluir fornecedor">
                 <UButton
                   icon="i-lucide-trash-2"
                   color="error"
-                  variant="outline"
-                  size="sm"
-                  :disabled="selectedCount === 0"
-                  @click="showBulkDeleteModal = true"
+                  variant="ghost"
+                  size="xs"
+                  :loading="isDeleting"
+                  @click="requestRemove(row.original as SupplierItem)"
                 />
               </UTooltip>
+            </div>
+          </template>
 
-            
-
-              <UButton
-                v-if="canCreate"
-                label="Novo fornecedor"
-                icon="i-lucide-plus"
-                size="sm"
-                @click="openCreate"
-              />
-            </template>
-
-            <template #filters>
-              <UPopover>
-                <UButton
-                  icon="i-lucide-sliders-horizontal"
-                  :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                />
-                <template #content>
-                  <div class="w-64 space-y-3 p-3">
-                    <UFormField label="Tipo de pessoa">
-                      <USelectMenu
-                        v-model="personTypeFilter"
-                        :items="personTypeFilterOptions"
-                        value-key="value"
-                        class="w-full"
-                        :search-input="false"
+          <template #card="{ item: supplier }">
+            <UCard class="border border-default/80 shadow-sm">
+              <div class="space-y-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0 space-y-2">
+                    <h3 class="truncate text-base font-semibold text-highlighted">
+                      {{ supplier.name }}
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                      <UBadge
+                        :label="supplier.person_type === 'pf' ? 'Pessoa Física' : 'Pessoa Jurídica'"
+                        color="neutral"
+                        variant="subtle"
+                        size="xs"
                       />
-                    </UFormField>
-                    <UFormField label="Status">
-                      <USelectMenu
-                        v-model="statusFilter"
-                        :items="statusFilterOptions"
-                        value-key="value"
-                        class="w-full"
-                        :search-input="false"
+                      <UBadge
+                        :label="supplier.is_active ? 'Ativo' : 'Inativo'"
+                        :color="supplier.is_active ? 'success' : 'neutral'"
+                        :leading-icon="supplier.is_active ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
+                        variant="subtle"
+                        size="xs"
                       />
-                    </UFormField>
-                  </div>
-                </template>
-              </UPopover>
-            </template>
-
-            <template #name-cell="{ row }">
-              <div class="min-w-0 space-y-1">
-                <p class="truncate font-semibold text-highlighted">
-                  {{ row.original.name }}
-                </p>
-                <p class="truncate text-xs text-muted">
-                  {{ row.original.trade_name || getLocationSummary(row.original as SupplierItem) }}
-                </p>
-              </div>
-            </template>
-
-            <template #person_type-cell="{ row }">
-              <UBadge
-                :label="row.original.person_type === 'pf' ? 'PF' : 'PJ'"
-                color="neutral"
-                variant="subtle"
-                size="xs"
-              />
-            </template>
-
-            <template #tax_id-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatTaxId(row.original.tax_id, row.original.person_type) }}
-              </span>
-            </template>
-
-            <template #phone-cell="{ row }">
-              <span class="text-sm text-muted">
-                {{ formatPhone(row.original.phone) }}
-              </span>
-            </template>
-
-            <template #is_active-cell="{ row }">
-              <UBadge
-                :label="row.original.is_active ? 'Ativo' : 'Inativo'"
-                :color="row.original.is_active ? 'success' : 'neutral'"
-                :leading-icon="row.original.is_active ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
-                variant="subtle"
-                size="xs"
-              />
-            </template>
-
-            <template #actions-cell="{ row }">
-              <div class="flex items-center justify-end gap-2">
-                <UTooltip v-if="canUpdate" text="Editar fornecedor">
-                  <UButton
-                    icon="i-lucide-pencil"
-                    color="neutral"
-                    variant="ghost"
-                    size="xs"
-                    @click="openEdit(row.original as SupplierItem)"
-                  />
-                </UTooltip>
-
-                <UTooltip v-if="canDelete" text="Excluir fornecedor">
-                  <UButton
-                    icon="i-lucide-trash-2"
-                    color="error"
-                    variant="ghost"
-                    size="xs"
-                    :loading="isDeleting"
-                    @click="requestRemove(row.original as SupplierItem)"
-                  />
-                </UTooltip>
-              </div>
-            </template>
-
-            <template #card="{ item: supplier }">
-              <UCard class="border border-default/80 shadow-sm">
-                <div class="space-y-4">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 space-y-2">
-                      <h3 class="truncate text-base font-semibold text-highlighted">
-                        {{ supplier.name }}
-                      </h3>
-                      <div class="flex flex-wrap items-center gap-2">
-                        <UBadge
-                          :label="supplier.person_type === 'pf' ? 'Pessoa Física' : 'Pessoa Jurídica'"
-                          color="neutral"
-                          variant="subtle"
-                          size="xs"
-                        />
-                        <UBadge
-                          :label="supplier.is_active ? 'Ativo' : 'Inativo'"
-                          :color="supplier.is_active ? 'success' : 'neutral'"
-                          :leading-icon="supplier.is_active ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
-                          variant="subtle"
-                          size="xs"
-                        />
-                      </div>
-                    </div>
-
-                    <div class="flex shrink-0 items-center gap-1">
-                      <UTooltip v-if="canUpdate" text="Editar fornecedor">
-                        <UButton
-                          icon="i-lucide-pencil"
-                          color="neutral"
-                          variant="ghost"
-                          size="xs"
-                          @click="openEdit(supplier as SupplierItem)"
-                        />
-                      </UTooltip>
-
-                      <UTooltip v-if="canDelete" text="Excluir fornecedor">
-                        <UButton
-                          icon="i-lucide-trash-2"
-                          color="error"
-                          variant="ghost"
-                          size="xs"
-                          :loading="isDeleting"
-                          @click="requestRemove(supplier as SupplierItem)"
-                        />
-                      </UTooltip>
                     </div>
                   </div>
 
-                  <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
-                      <span class="truncate">{{ formatTaxId(supplier.tax_id, supplier.person_type) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
-                      <span class="truncate">{{ formatPhone(supplier.phone) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
-                      <span class="truncate">{{ supplier.email || 'E-mail não informado' }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                      <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
-                      <span class="truncate">{{ getLocationSummary(supplier as SupplierItem) }}</span>
-                    </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <UTooltip v-if="canUpdate" text="Editar fornecedor">
+                      <UButton
+                        icon="i-lucide-pencil"
+                        color="neutral"
+                        variant="ghost"
+                        size="xs"
+                        @click="openEdit(supplier as SupplierItem)"
+                      />
+                    </UTooltip>
+
+                    <UTooltip v-if="canDelete" text="Excluir fornecedor">
+                      <UButton
+                        icon="i-lucide-trash-2"
+                        color="error"
+                        variant="ghost"
+                        size="xs"
+                        :loading="isDeleting"
+                        @click="requestRemove(supplier as SupplierItem)"
+                      />
+                    </UTooltip>
                   </div>
                 </div>
-              </UCard>
-            </template>
-          </AppDataTable>
+
+                <div class="grid grid-cols-1 gap-2 text-sm text-muted sm:grid-cols-2">
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-id-card" class="size-4 shrink-0" />
+                    <span class="truncate">{{ formatTaxId(supplier.tax_id, supplier.person_type) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-phone" class="size-4 shrink-0" />
+                    <span class="truncate">{{ formatPhone(supplier.phone) }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
+                    <span class="truncate">{{ supplier.email || 'E-mail não informado' }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
+                    <span class="truncate">{{ getLocationSummary(supplier as SupplierItem) }}</span>
+                  </div>
+                </div>
+              </div>
+            </UCard>
+          </template>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { watchDebounced, useVirtualList, useIntersectionObserver } from "@vueuse/core";
-import { ActionCode } from "~/constants/action-codes";
+import { watchDebounced, useVirtualList, useIntersectionObserver } from '@vueuse/core'
+import { ActionCode } from '~/constants/action-codes'
 
 import type { ServiceOrder } from '~/types/service-orders'
 
@@ -15,236 +15,234 @@ type ServiceOrdersApiResponse = {
 
 // ─── Page meta ─────────────────────────────────────────────────────────────────
 
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Ordens de Serviço" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Ordens de Serviço' })
 
 // ─── Permissions ───────────────────────────────────────────────────────────────
 
-const toast = useToast();
-const workshop = useWorkshopPermissions();
-const route = useRoute();
-const router = useRouter();
+const toast = useToast()
+const workshop = useWorkshopPermissions()
+const route = useRoute()
+const router = useRouter()
 
-const canRead = computed(() => workshop.can(ActionCode.ORDERS_READ));
-const canCreate = computed(() => workshop.can(ActionCode.ORDERS_CREATE));
-const canUpdate = computed(() => workshop.can(ActionCode.ORDERS_UPDATE));
-const canDelete = computed(() => workshop.can(ActionCode.ORDERS_DELETE));
-const canCancel = computed(() => workshop.can(ActionCode.ORDERS_CANCEL));
+const canRead = computed(() => workshop.can(ActionCode.ORDERS_READ))
+const canCreate = computed(() => workshop.can(ActionCode.ORDERS_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.ORDERS_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.ORDERS_DELETE))
+const canCancel = computed(() => workshop.can(ActionCode.ORDERS_CANCEL))
 
 // ─── Filters (URL-synced) ──────────────────────────────────────────────────────
 
-const MANAGED_QUERY_KEYS = ["search", "status"] as const;
+const MANAGED_QUERY_KEYS = ['search', 'status'] as const
 
 const search = ref(
-  typeof route.query.search === "string" ? route.query.search : "",
-);
-const debouncedSearch = ref(search.value);
+  typeof route.query.search === 'string' ? route.query.search : ''
+)
+const debouncedSearch = ref(search.value)
 const statusFilter = ref(
-  typeof route.query.status === "string" ? route.query.status : "all",
-);
+  typeof route.query.status === 'string' ? route.query.status : 'all'
+)
 
 async function syncQuery() {
   const next: Record<string, string | undefined> = {
     ...Object.fromEntries(
       Object.entries(route.query).filter(
         ([k]) =>
-          !MANAGED_QUERY_KEYS.includes(k as (typeof MANAGED_QUERY_KEYS)[number]),
-      ),
+          !MANAGED_QUERY_KEYS.includes(k as (typeof MANAGED_QUERY_KEYS)[number])
+      )
     ),
     search: search.value || undefined,
-    status: statusFilter.value !== "all" ? statusFilter.value : undefined,
-  };
-  const cur = JSON.stringify(route.query);
-  if (cur !== JSON.stringify(next)) await router.replace({ query: next });
+    status: statusFilter.value !== 'all' ? statusFilter.value : undefined
+  }
+  const cur = JSON.stringify(route.query)
+  if (cur !== JSON.stringify(next)) await router.replace({ query: next })
 }
 
 // ─── Infinite scroll state ─────────────────────────────────────────────────────
 
-const allOrders = ref<ServiceOrder[]>([]);
-const nextCursor = ref<number | null>(0);
-const isLoadingMore = ref(false);
-const totalFiltered = ref(0);
-const hasMore = computed(() => nextCursor.value !== null);
+const allOrders = ref<ServiceOrder[]>([])
+const nextCursor = ref<number | null>(0)
+const isLoadingMore = ref(false)
+const totalFiltered = ref(0)
+const hasMore = computed(() => nextCursor.value !== null)
 
-const LIMIT = 20;
+const LIMIT = 20
 
 async function loadMore() {
-  if (isLoadingMore.value || !hasMore.value) return;
-  isLoadingMore.value = true;
+  if (isLoadingMore.value || !hasMore.value) return
+  isLoadingMore.value = true
   try {
-    const res = await $fetch<ServiceOrdersApiResponse>("/api/service-orders", {
+    const res = await $fetch<ServiceOrdersApiResponse>('/api/service-orders', {
       query: {
         searchTerm: debouncedSearch.value || undefined,
-        status: statusFilter.value !== "all" ? statusFilter.value : undefined,
+        status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
         cursor: nextCursor.value,
-        limit: LIMIT,
-      },
-    });
-    allOrders.value.push(...res.data.items);
-    nextCursor.value = res.data.nextCursor;
-    totalFiltered.value = res.data.totalFiltered;
+        limit: LIMIT
+      }
+    })
+    allOrders.value.push(...res.data.items)
+    nextCursor.value = res.data.nextCursor
+    totalFiltered.value = res.data.totalFiltered
   } catch {
-    toast.add({ title: "Erro ao carregar ordens", color: "error" });
+    toast.add({ title: 'Erro ao carregar ordens', color: 'error' })
   } finally {
-    isLoadingMore.value = false;
+    isLoadingMore.value = false
   }
 }
 
 function resetAndLoad() {
-  allOrders.value = [];
-  nextCursor.value = 0;
-  totalFiltered.value = 0;
-  loadMore();
+  allOrders.value = []
+  nextCursor.value = 0
+  totalFiltered.value = 0
+  loadMore()
 }
 
 // ─── Virtual list ──────────────────────────────────────────────────────────────
 
 // Altura fixa por item = card (144px) + padding vertical (16px) = 160px
-const ITEM_HEIGHT = 160;
+const ITEM_HEIGHT = 160
 
 const { list: virtualList, containerProps, wrapperProps } = useVirtualList(
   allOrders,
-  { itemHeight: ITEM_HEIGHT, overscan: 6 },
-);
+  { itemHeight: ITEM_HEIGHT, overscan: 6 }
+)
 
 // Sentinel no fim do scroll
-const sentinelRef = ref<HTMLElement | null>(null);
+const sentinelRef = ref<HTMLElement | null>(null)
 useIntersectionObserver(
   sentinelRef,
   ([entry]) => {
     if (entry.isIntersecting && hasMore.value && !isLoadingMore.value)
-      loadMore();
+      loadMore()
   },
-  { root: containerProps.ref, rootMargin: "300px" },
-);
+  { root: containerProps.ref, rootMargin: '300px' }
+)
 
 // ─── Watchers ──────────────────────────────────────────────────────────────────
 
 watchDebounced(
   search,
   async (val) => {
-    debouncedSearch.value = val;
-    await syncQuery();
-    resetAndLoad();
+    debouncedSearch.value = val
+    await syncQuery()
+    resetAndLoad()
   },
-  { debounce: 300, maxWait: 800 },
-);
+  { debounce: 300, maxWait: 800 }
+)
 
 watch(statusFilter, async () => {
-  await syncQuery();
-  resetAndLoad();
-});
+  await syncQuery()
+  resetAndLoad()
+})
 
 watch(
   () => route.query,
   (q) => {
-    const s = typeof q.search === "string" ? q.search : "";
-    const st = typeof q.status === "string" ? q.status : "all";
-    if (search.value !== s) { search.value = s; debouncedSearch.value = s; }
-    if (statusFilter.value !== st) statusFilter.value = st;
-  },
-);
+    const s = typeof q.search === 'string' ? q.search : ''
+    const st = typeof q.status === 'string' ? q.status : 'all'
+    if (search.value !== s) { search.value = s; debouncedSearch.value = s }
+    if (statusFilter.value !== st) statusFilter.value = st
+  }
+)
 
 // Initial load
-if (canRead.value) await loadMore();
+if (canRead.value) await loadMore()
 
 // ─── Detail Slideover ──────────────────────────────────────────────────────────
 
-const showDetail = ref(false);
-const selectedOrder = ref<ServiceOrder | null>(null);
+const showDetail = ref(false)
+const selectedOrder = ref<ServiceOrder | null>(null)
 
 function openDetail(order: ServiceOrder) {
-  selectedOrder.value = order;
-  showDetail.value = true;
+  selectedOrder.value = order
+  showDetail.value = true
 }
 
 function closeDetail() {
-  showDetail.value = false;
-  selectedOrder.value = null;
+  showDetail.value = false
+  selectedOrder.value = null
 }
 
 // ─── Cancel ────────────────────────────────────────────────────────────────────
 
-const isCancelling = ref(false);
-const showCancelModal = ref(false);
-const orderPendingCancel = ref<ServiceOrder | null>(null);
+const isCancelling = ref(false)
+const showCancelModal = ref(false)
+const orderPendingCancel = ref<ServiceOrder | null>(null)
 
 function requestCancel(order: ServiceOrder) {
-  if (isCancelling.value) return;
-  orderPendingCancel.value = order;
-  showCancelModal.value = true;
+  if (isCancelling.value) return
+  orderPendingCancel.value = order
+  showCancelModal.value = true
 }
 
 async function confirmCancel() {
-  if (!orderPendingCancel.value || isCancelling.value) return;
-  const order = orderPendingCancel.value;
-  isCancelling.value = true;
+  if (!orderPendingCancel.value || isCancelling.value) return
+  const order = orderPendingCancel.value
+  isCancelling.value = true
   try {
-    await $fetch(`/api/service-orders/${order.id}/cancel`, { method: "POST" });
-    toast.add({ title: "OS cancelada", color: "success" });
-    showCancelModal.value = false;
-    orderPendingCancel.value = null;
-    if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail();
-    resetAndLoad();
+    await $fetch(`/api/service-orders/${order.id}/cancel`, { method: 'POST' })
+    toast.add({ title: 'OS cancelada', color: 'success' })
+    showCancelModal.value = false
+    orderPendingCancel.value = null
+    if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail()
+    resetAndLoad()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string };
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
-      title: "Erro",
-      description: err?.data?.statusMessage || "Não foi possível cancelar.",
-      color: "error",
-    });
+      title: 'Erro',
+      description: err?.data?.statusMessage || 'Não foi possível cancelar.',
+      color: 'error'
+    })
   } finally {
-    isCancelling.value = false;
+    isCancelling.value = false
   }
 }
 
 // ─── Delete ────────────────────────────────────────────────────────────────────
 
-const isDeleting = ref(false);
-const showDeleteModal = ref(false);
-const orderPendingDeletion = ref<ServiceOrder | null>(null);
+const isDeleting = ref(false)
+const showDeleteModal = ref(false)
+const orderPendingDeletion = ref<ServiceOrder | null>(null)
 
 function requestDelete(order: ServiceOrder) {
-  if (isDeleting.value) return;
-  orderPendingDeletion.value = order;
-  showDeleteModal.value = true;
+  if (isDeleting.value) return
+  orderPendingDeletion.value = order
+  showDeleteModal.value = true
 }
 
 async function confirmDelete() {
-  if (!orderPendingDeletion.value || isDeleting.value) return;
-  const order = orderPendingDeletion.value;
-  isDeleting.value = true;
+  if (!orderPendingDeletion.value || isDeleting.value) return
+  const order = orderPendingDeletion.value
+  isDeleting.value = true
   try {
-    await $fetch(`/api/service-orders/${order.id}`, { method: "DELETE" });
-    toast.add({ title: "OS removida", color: "success" });
-    showDeleteModal.value = false;
-    orderPendingDeletion.value = null;
-    if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail();
-    resetAndLoad();
+    await $fetch(`/api/service-orders/${order.id}`, { method: 'DELETE' })
+    toast.add({ title: 'OS removida', color: 'success' })
+    showDeleteModal.value = false
+    orderPendingDeletion.value = null
+    if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail()
+    resetAndLoad()
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string };
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
-      title: "Erro",
-      description: err?.data?.statusMessage || "Não foi possível remover.",
-      color: "error",
-    });
+      title: 'Erro',
+      description: err?.data?.statusMessage || 'Não foi possível remover.',
+      color: 'error'
+    })
   } finally {
-    isDeleting.value = false;
+    isDeleting.value = false
   }
 }
 
 const statusFilterOptions = [
-  { label: "Todas", value: "all" },
-  { label: "Orçamento", value: "estimate" },
-  { label: "Aberta", value: "open" },
-  { label: "Em andamento", value: "in_progress" },
-  { label: "Aguard. peça", value: "waiting_for_part" },
-  { label: "Concluída", value: "completed" },
-  { label: "Entregue", value: "delivered" },
-  { label: "Cancelada", value: "cancelled" },
-];
-
-
+  { label: 'Todas', value: 'all' },
+  { label: 'Orçamento', value: 'estimate' },
+  { label: 'Aberta', value: 'open' },
+  { label: 'Em andamento', value: 'in_progress' },
+  { label: 'Aguard. peça', value: 'waiting_for_part' },
+  { label: 'Concluída', value: 'completed' },
+  { label: 'Entregue', value: 'delivered' },
+  { label: 'Cancelada', value: 'cancelled' }
+]
 </script>
 
 <template>

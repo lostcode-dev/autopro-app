@@ -21,7 +21,7 @@ function formatCurrency(v: number | string) {
         { label: 'Total comissões', value: formatCurrency(summary.totalCommissions ?? 0), icon: 'i-lucide-trending-up', color: 'text-primary', bg: 'bg-primary/10', description: 'no período' },
         { label: 'Pagas', value: formatCurrency(summary.totalPaid ?? 0), icon: 'i-lucide-circle-check', color: 'text-success', bg: 'bg-success/10', description: 'já quitado' },
         { label: 'Pendentes', value: formatCurrency(summary.totalPending ?? 0), icon: 'i-lucide-clock', color: 'text-warning', bg: 'bg-warning/10', description: 'a receber' },
-        { label: 'Funcionários', value: summary.employeeCount ?? 0, icon: 'i-lucide-users', color: 'text-info', bg: 'bg-info/10', description: 'com comissão' },
+        { label: 'Funcionários', value: summary.employeeCount ?? 0, icon: 'i-lucide-users', color: 'text-info', bg: 'bg-info/10', description: 'com comissão' }
       ]"
       :key="stat.label"
       :ui="{ body: 'p-3 sm:p-4' }"
@@ -31,9 +31,15 @@ function formatCurrency(v: number | string) {
           <UIcon :name="stat.icon" :class="[stat.color, 'size-5']" />
         </div>
         <div>
-          <p class="text-lg font-bold leading-tight">{{ stat.value }}</p>
-          <p class="text-xs font-medium text-highlighted">{{ stat.label }}</p>
-          <p class="text-xs text-muted">{{ stat.description }}</p>
+          <p class="text-lg font-bold leading-tight">
+            {{ stat.value }}
+          </p>
+          <p class="text-xs font-medium text-highlighted">
+            {{ stat.label }}
+          </p>
+          <p class="text-xs text-muted">
+            {{ stat.description }}
+          </p>
         </div>
       </div>
     </UCard>

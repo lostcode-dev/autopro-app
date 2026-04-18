@@ -84,6 +84,8 @@ interface SalesItemsReportResponse {
   }
 }
 
+type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
+
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Itens Vendidos' })
 
@@ -452,7 +454,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #status_col-cell="{ row }">
             <UBadge
-              :color="salesOrderStatusColor(String(row.original.status ?? '')) as any"
+              :color="salesOrderStatusColor(String(row.original.status ?? '')) as BadgeColor"
               variant="subtle"
               size="xs"
             >
@@ -462,7 +464,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #payment_status_col-cell="{ row }">
             <UBadge
-              :color="salesPaymentStatusColor(String(row.original.paymentStatus ?? '')) as any"
+              :color="salesPaymentStatusColor(String(row.original.paymentStatus ?? '')) as BadgeColor"
               variant="subtle"
               size="xs"
             >
@@ -472,7 +474,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #costSource-cell="{ row }">
             <UBadge
-              :color="salesCostSourceColor(String(row.original.costSource ?? '')) as any"
+              :color="salesCostSourceColor(String(row.original.costSource ?? '')) as BadgeColor"
               variant="soft"
               size="xs"
             >

@@ -725,7 +725,7 @@ const lineColumns = [
               { label: 'Total de peças', value: statsData.total, icon: 'i-lucide-box', color: 'text-primary', description: 'no estoque' },
               { label: 'Sem estoque', value: statsData.outOfStock, icon: 'i-lucide-circle-x', color: 'text-error', description: 'itens zerados' },
               { label: 'Estoque baixo', value: statsData.lowStock, icon: 'i-lucide-triangle-alert', color: 'text-warning', description: 'abaixo do mínimo' },
-              { label: 'Disponíveis', value: statsData.available, icon: 'i-lucide-circle-check', color: 'text-success', description: 'acima do mínimo' },
+              { label: 'Disponíveis', value: statsData.available, icon: 'i-lucide-circle-check', color: 'text-success', description: 'acima do mínimo' }
             ]"
             :key="stat.label"
             :ui="{ body: 'p-3 sm:p-4' }"

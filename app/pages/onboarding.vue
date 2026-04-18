@@ -102,7 +102,6 @@ async function submit() {
 
 <template>
   <div class="space-y-8 animate-fade-in">
-
     <!-- Progress indicator -->
     <div class="flex items-center gap-3">
       <div class="flex items-center gap-2">
@@ -232,7 +231,12 @@ async function submit() {
           </UFormField>
 
           <UFormField label="Estado (UF)" class="sm:col-span-1">
-            <UInput v-model="form.state" placeholder="SP" maxlength="2" class="w-full" />
+            <UInput
+              v-model="form.state"
+              placeholder="SP"
+              maxlength="2"
+              class="w-full"
+            />
           </UFormField>
         </div>
       </div>
@@ -271,7 +275,6 @@ async function submit() {
         </div>
       </template>
     </UCard>
-
   </div>
 </template>
 

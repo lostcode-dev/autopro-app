@@ -11,7 +11,7 @@ import {
   scrollToCurrentTime,
   HOUR_START,
   HOUR_END,
-  GRID_HEIGHT,
+  GRID_HEIGHT
 } from '~/utils/calendar'
 
 const props = defineProps<{
@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'cell-click': [payload: { date: Date; time: string }]
+  'cell-click': [payload: { date: Date, time: string }]
   'event-click': [appt: Appointment]
   'day-click': [date: Date]
 }>()
@@ -69,7 +69,7 @@ function onGridClick(day: Date, event: MouseEvent) {
   const m = bounded % 60
   emit('cell-click', {
     date: day,
-    time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`,
+    time: `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   })
 }
 
@@ -79,7 +79,7 @@ function getEventStyle(appt: Appointment): Record<string, string> {
     top: `${minuteFromStart(appt.time)}px`,
     height: '58px',
     left: '2px',
-    right: '2px',
+    right: '2px'
   }
 }
 </script>

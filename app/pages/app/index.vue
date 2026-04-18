@@ -1,81 +1,81 @@
 <script setup lang="ts">
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Dashboard" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Dashboard' })
 
-const requestFetch = useRequestFetch();
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
-const { data: dashStats, status } = await useAsyncData("dashboard-stats", () =>
+const { data: dashStats, status } = await useAsyncData('dashboard-stats', () =>
   requestFetch<{
-    openOrdersCount: number;
-    grossRevenue: number;
-    totalClients: number;
-    todayAppointmentsCount: number;
-    lowStockCount: number;
+    openOrdersCount: number
+    grossRevenue: number
+    totalClients: number
+    todayAppointmentsCount: number
+    lowStockCount: number
     recentOrders: {
-      id: string;
-      number: string | number;
-      status: string;
-      entry_date: string;
-      reported_defect: string | null;
-      total_amount: number;
-      clientName: string;
-      vehicleLabel: string;
-    }[];
+      id: string
+      number: string | number
+      status: string
+      entry_date: string
+      reported_defect: string | null
+      total_amount: number
+      clientName: string
+      vehicleLabel: string
+    }[]
     todaySchedule: {
-      id: string;
-      time: string;
-      status: string;
-      service_type: string;
-      clientName: string;
-      vehicleLabel: string;
-    }[];
-  }>("/api/reports/dashboard-stats", { headers: requestHeaders }),
-);
+      id: string
+      time: string
+      status: string
+      service_type: string
+      clientName: string
+      vehicleLabel: string
+    }[]
+  }>('/api/reports/dashboard-stats', { headers: requestHeaders })
+)
 
 function formatCurrency(value: number) {
-  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function formatDate(value: string) {
-  if (!value) return "—";
-  const [y, m, d] = value.split("-");
-  return `${d}/${m}/${y}`;
+  if (!value) return '—'
+  const [y, m, d] = value.split('-')
+  return `${d}/${m}/${y}`
 }
 
 const statusColorMap: Record<string, string> = {
-  estimate: "neutral",
-  open: "info",
-  in_progress: "warning",
-  waiting_for_part: "warning",
-  completed: "success",
-  delivered: "success",
-  cancelled: "error",
-};
+  estimate: 'neutral',
+  open: 'info',
+  in_progress: 'warning',
+  waiting_for_part: 'warning',
+  completed: 'success',
+  delivered: 'success',
+  cancelled: 'error'
+}
 const statusLabelMap: Record<string, string> = {
-  estimate: "Orçamento",
-  open: "Aberta",
-  in_progress: "Em andamento",
-  waiting_for_part: "Aguard. peça",
-  completed: "Concluída",
-  delivered: "Entregue",
-  cancelled: "Cancelada",
-};
+  estimate: 'Orçamento',
+  open: 'Aberta',
+  in_progress: 'Em andamento',
+  waiting_for_part: 'Aguard. peça',
+  completed: 'Concluída',
+  delivered: 'Entregue',
+  cancelled: 'Cancelada'
+}
 
 const apptStatusColorMap: Record<string, string> = {
-  scheduled: "neutral",
-  confirmed: "success",
-  cancelled: "error",
-  completed: "success",
-};
+  scheduled: 'neutral',
+  confirmed: 'success',
+  cancelled: 'error',
+  completed: 'success'
+}
 const apptStatusLabelMap: Record<string, string> = {
-  scheduled: "Agendado",
-  confirmed: "Confirmado",
-  cancelled: "Cancelado",
-  completed: "Concluído",
-};
+  scheduled: 'Agendado',
+  confirmed: 'Confirmado',
+  cancelled: 'Cancelado',
+  completed: 'Concluído'
+}
 </script>
 
 <template>
@@ -108,7 +108,9 @@ const apptStatusLabelMap: Record<string, string> = {
                   {{ dashStats!.openOrdersCount }}
                 </p>
               </div>
-              <p class="text-xs text-muted">OS em Andamento</p>
+              <p class="text-xs text-muted">
+                OS em Andamento
+              </p>
             </div>
           </UPageCard>
 
@@ -124,7 +126,9 @@ const apptStatusLabelMap: Record<string, string> = {
                 </p>
               </div>
 
-              <p class="text-xs text-muted">Faturamento do Mês</p>
+              <p class="text-xs text-muted">
+                Faturamento do Mês
+              </p>
             </div>
           </UPageCard>
 
@@ -136,7 +140,9 @@ const apptStatusLabelMap: Record<string, string> = {
                   {{ dashStats!.totalClients }}
                 </p>
               </div>
-              <p class="text-xs text-muted">Total de Clientes</p>
+              <p class="text-xs text-muted">
+                Total de Clientes
+              </p>
             </div>
           </UPageCard>
 
@@ -155,7 +161,9 @@ const apptStatusLabelMap: Record<string, string> = {
                   {{ dashStats!.todayAppointmentsCount }}
                 </p>
               </div>
-              <p class="text-xs text-muted">Agendamentos Hoje</p>
+              <p class="text-xs text-muted">
+                Agendamentos Hoje
+              </p>
             </div>
           </UPageCard>
         </div>
@@ -170,7 +178,9 @@ const apptStatusLabelMap: Record<string, string> = {
             class="text-warning text-xl shrink-0"
           />
           <div>
-            <p class="font-semibold text-sm">Atenção ao Estoque</p>
+            <p class="font-semibold text-sm">
+              Atenção ao Estoque
+            </p>
             <p class="text-xs text-muted">
               {{ dashStats!.lowStockCount }} peça{{
                 dashStats!.lowStockCount > 1 ? "s" : ""

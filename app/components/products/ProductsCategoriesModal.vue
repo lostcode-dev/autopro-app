@@ -8,7 +8,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  updated: []
+  'updated': []
 }>()
 
 const toast = useToast()

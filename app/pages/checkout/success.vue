@@ -55,7 +55,6 @@ async function goToApp() {
 
 <template>
   <div class="flex flex-col items-center text-center gap-8 py-8 animate-fade-in">
-
     <!-- Ícone de status -->
     <div class="relative flex items-center justify-center">
       <!-- Anel pulsante -->

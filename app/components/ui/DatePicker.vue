@@ -8,7 +8,7 @@ const props = withDefaults(defineProps<{
 }>(), {
   modelValue: undefined,
   placeholder: 'Selecione uma data',
-  disabled: false,
+  disabled: false
 })
 
 const emit = defineEmits<{
@@ -24,8 +24,7 @@ function isoToCalendarDate(iso: string | null | undefined): CalendarDate | undef
   try {
     const parsed = parseDate(iso)
     return new CalendarDate(parsed.year, parsed.month, parsed.day)
-  }
-  catch {
+  } catch {
     return undefined
   }
 }
@@ -39,7 +38,7 @@ const calendarValue = computed({
   set: (val) => {
     emit('update:modelValue', val ? calendarDateToISO(val) : undefined)
     popoverOpen.value = false
-  },
+  }
 })
 
 const displayValue = computed(() => {
@@ -47,8 +46,7 @@ const displayValue = computed(() => {
   if (!d) return ''
   try {
     return dfShort.format(d.toDate(getLocalTimeZone()))
-  }
-  catch {
+  } catch {
     return ''
   }
 })

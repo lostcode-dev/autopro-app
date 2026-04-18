@@ -4,12 +4,12 @@ import type { Appointment } from '~/types/appointments'
 const props = defineProps<{
   open: boolean
   appointment: Appointment | null
-  prefill?: { date?: string; time?: string }
+  prefill?: { date?: string, time?: string }
 }>()
 
 const emit = defineEmits<{
   'update:open': [v: boolean]
-  saved: []
+  'saved': []
 }>()
 
 const toast = useToast()
@@ -17,8 +17,8 @@ const isSaving = ref(false)
 const isDeleting = ref(false)
 
 // ─── Options ──────────────────────────────────────────────────────────────────
-const clientOptions = ref<{ label: string; value: string }[]>([])
-const vehicleOptions = ref<{ label: string; value: string }[]>([])
+const clientOptions = ref<{ label: string, value: string }[]>([])
+const vehicleOptions = ref<{ label: string, value: string }[]>([])
 const isLoadingClients = ref(false)
 const isLoadingVehicles = ref(false)
 
@@ -26,28 +26,24 @@ async function loadOptions() {
   if (!clientOptions.value.length) {
     isLoadingClients.value = true
     try {
-      const res = await $fetch<{ items: { id: string; name: string }[] }>('/api/clients', {
-        query: { page_size: 500 },
+      const res = await $fetch<{ items: { id: string, name: string }[] }>('/api/clients', {
+        query: { page_size: 500 }
       })
       clientOptions.value = (res.items ?? []).map(c => ({ label: c.name, value: c.id }))
-    }
-    catch { /* silent */ }
-    finally { isLoadingClients.value = false }
+    } catch { /* silent */ } finally { isLoadingClients.value = false }
   }
 
   if (!vehicleOptions.value.length) {
     isLoadingVehicles.value = true
     try {
-      const res = await $fetch<{ items: { id: string; brand: string | null; model: string | null; license_plate: string | null }[] }>('/api/vehicles', {
-        query: { page_size: 500 },
+      const res = await $fetch<{ items: { id: string, brand: string | null, model: string | null, license_plate: string | null }[] }>('/api/vehicles', {
+        query: { page_size: 500 }
       })
       vehicleOptions.value = (res.items ?? []).map(v => ({
         label: [v.brand, v.model, v.license_plate].filter(Boolean).join(' - '),
-        value: v.id,
+        value: v.id
       }))
-    }
-    catch { /* silent */ }
-    finally { isLoadingVehicles.value = false }
+    } catch { /* silent */ } finally { isLoadingVehicles.value = false }
   }
 }
 
@@ -60,14 +56,14 @@ const statusFormOptions = [
   { label: 'Agendado', value: 'scheduled' },
   { label: 'Confirmado', value: 'confirmed' },
   { label: 'Concluído', value: 'completed' },
-  { label: 'Cancelado', value: 'cancelled' },
+  { label: 'Cancelado', value: 'cancelled' }
 ]
 
 const priorityOptions = [
   { label: 'Sem prioridade', value: NO_PRIORITY },
   { label: 'Baixa', value: 'low' },
   { label: 'Média', value: 'medium' },
-  { label: 'Alta', value: 'high' },
+  { label: 'Alta', value: 'high' }
 ]
 
 function emptyForm() {
@@ -79,7 +75,7 @@ function emptyForm() {
     service_type: '',
     priority: NO_PRIORITY,
     status: 'scheduled',
-    notes: '',
+    notes: ''
   }
 }
 
@@ -133,17 +129,16 @@ watch(
         service_type: props.appointment.service_type ?? '',
         priority: props.appointment.priority || NO_PRIORITY,
         status: props.appointment.status ?? 'scheduled',
-        notes: props.appointment.notes ?? '',
+        notes: props.appointment.notes ?? ''
       })
-    }
-    else {
+    } else {
       Object.assign(form, emptyForm())
       if (props.prefill?.date) form.appointment_date = props.prefill.date
       if (props.prefill?.time) form.time = props.prefill.time
     }
     dateDisplay.value = isoToDisplay(form.appointment_date)
     timeDisplay.value = form.time || ''
-  },
+  }
 )
 
 async function save() {
@@ -164,30 +159,27 @@ async function save() {
       service_type: form.service_type,
       priority: form.priority !== NO_PRIORITY ? form.priority : null,
       status: form.status,
-      notes: form.notes || null,
+      notes: form.notes || null
     }
 
     if (isEditing.value && props.appointment) {
       await $fetch(`/api/appointments/${props.appointment.id}`, { method: 'PUT', body })
       toast.add({ title: 'Agendamento atualizado', color: 'success' })
-    }
-    else {
+    } else {
       await $fetch('/api/appointments', { method: 'POST', body })
       toast.add({ title: 'Agendamento criado', color: 'success' })
     }
 
     emit('update:open', false)
     emit('saved')
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar',
-      color: 'error',
+      color: 'error'
     })
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
@@ -200,16 +192,14 @@ async function remove() {
     toast.add({ title: 'Agendamento removido', color: 'success' })
     emit('update:open', false)
     emit('saved')
-  }
-  catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover',
-      color: 'error',
+      color: 'error'
     })
-  }
-  finally {
+  } finally {
     isDeleting.value = false
   }
 }

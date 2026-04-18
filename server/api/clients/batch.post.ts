@@ -42,7 +42,7 @@ export default defineEventHandler(async (event) => {
   if (body.rows.length > 500)
     throw createError({ statusCode: 400, statusMessage: 'Máximo de 500 clientes por importação' })
 
-  const errors: { row: number; message: string }[] = []
+  const errors: { row: number, message: string }[] = []
   const validRows: ReturnType<typeof buildRow>[] = []
 
   for (let i = 0; i < body.rows.length; i++) {
@@ -80,7 +80,7 @@ export default defineEventHandler(async (event) => {
 
   return {
     imported: inserted?.length ?? 0,
-    errors,
+    errors
   }
 })
 
@@ -105,6 +105,6 @@ function buildRow(row: ClientRow, organizationId: string, createdBy: string) {
     state: row.state?.trim()?.toUpperCase() || null,
     notes: row.notes?.trim() || null,
     created_by: createdBy,
-    updated_by: createdBy,
+    updated_by: createdBy
   }
 }
