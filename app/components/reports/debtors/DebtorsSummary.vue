@@ -17,7 +17,7 @@ function formatCurrency(v: number | string) {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
     <UCard
       v-for="stat in [
         { label: 'Total a receber', value: formatCurrency(totals.total ?? 0), icon: 'i-lucide-badge-dollar-sign', color: 'text-primary', bg: 'bg-primary/10', description: 'pendências filtradas' },
