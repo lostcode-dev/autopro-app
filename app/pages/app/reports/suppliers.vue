@@ -68,32 +68,32 @@ const columns = [
     </template>
 
     <template #body>
-      <!-- Summary bar -->
-      <div class="grid grid-cols-3 divide-x divide-default border-b border-default text-center text-sm py-3">
-        <div>
-          <p class="text-muted text-xs">
-            Total em compras
-          </p>
-          <p class="font-bold">
-            {{ formatCurrency(summary.totalPurchased ?? 0) }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Fornecedores ativos
-          </p>
-          <p class="font-bold">
-            {{ summary.supplierCount ?? items.length }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Total de compras
-          </p>
-          <p class="font-bold">
-            {{ summary.purchaseCount ?? 0 }}
-          </p>
-        </div>
+      <!-- Summary cards -->
+      <div class="grid grid-cols-2 gap-3 p-4 pb-0 sm:grid-cols-3">
+        <UCard
+          v-for="stat in [
+            { label: 'Total em compras', value: formatCurrency(summary.totalPurchased ?? 0), icon: 'i-lucide-truck', color: 'text-primary', description: 'no período' },
+            { label: 'Fornecedores ativos', value: summary.supplierCount ?? items.length, icon: 'i-lucide-building-2', color: 'text-info', description: 'com movimentação' },
+            { label: 'Total de compras', value: summary.purchaseCount ?? 0, icon: 'i-lucide-shopping-bag', color: 'text-warning', description: 'transações' },
+          ]"
+          :key="stat.label"
+          :ui="{ body: 'p-3 sm:p-4' }"
+        >
+          <div class="flex items-start gap-3">
+            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
+            <div>
+              <p class="text-lg font-bold leading-tight">
+                {{ stat.value }}
+              </p>
+              <p class="text-xs font-medium text-highlighted">
+                {{ stat.label }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ stat.description }}
+              </p>
+            </div>
+          </div>
+        </UCard>
       </div>
 
       <div class="p-4 space-y-4">

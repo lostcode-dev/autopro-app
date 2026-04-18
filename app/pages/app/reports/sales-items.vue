@@ -74,32 +74,32 @@ const columns = [
     </template>
 
     <template #body>
-      <!-- Summary bar -->
-      <div class="grid grid-cols-3 divide-x divide-default border-b border-default text-center text-sm py-3">
-        <div>
-          <p class="text-muted text-xs">
-            Total itens
-          </p>
-          <p class="font-bold">
-            {{ summary.totalItems ?? summary.totalQuantity ?? 0 }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Receita total
-          </p>
-          <p class="font-bold text-green-600">
-            {{ formatCurrency(summary.totalRevenue ?? 0) }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Lucro total
-          </p>
-          <p class="font-bold text-blue-600">
-            {{ formatCurrency(summary.totalProfit ?? 0) }}
-          </p>
-        </div>
+      <!-- Summary cards -->
+      <div class="grid grid-cols-2 gap-3 p-4 pb-0 sm:grid-cols-3">
+        <UCard
+          v-for="stat in [
+            { label: 'Total itens', value: summary.totalItems ?? summary.totalQuantity ?? 0, icon: 'i-lucide-package', color: 'text-primary', description: 'unidades vendidas' },
+            { label: 'Receita total', value: formatCurrency(summary.totalRevenue ?? 0), icon: 'i-lucide-trending-up', color: 'text-success', description: 'no período' },
+            { label: 'Lucro total', value: formatCurrency(summary.totalProfit ?? 0), icon: 'i-lucide-circle-dollar-sign', color: 'text-info', description: 'resultado líquido' },
+          ]"
+          :key="stat.label"
+          :ui="{ body: 'p-3 sm:p-4' }"
+        >
+          <div class="flex items-start gap-3">
+            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
+            <div>
+              <p class="text-lg font-bold leading-tight">
+                {{ stat.value }}
+              </p>
+              <p class="text-xs font-medium text-highlighted">
+                {{ stat.label }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ stat.description }}
+              </p>
+            </div>
+          </div>
+        </UCard>
       </div>
 
       <div class="p-4 space-y-4">

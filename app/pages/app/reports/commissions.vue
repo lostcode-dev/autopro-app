@@ -75,40 +75,34 @@ const columns = [
     </template>
 
     <template #body>
+      <div class="space-y-4">
       <!-- Summary cards -->
-      <div v-if="summary" class="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-default">
-        <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">
-            {{ formatCurrency(summary.totalCommissions ?? 0) }}
-          </p>
-          <p class="text-xs text-muted">
-            Total comissões
-          </p>
-        </UPageCard>
-        <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">
-            {{ formatCurrency(summary.totalPaid ?? 0) }}
-          </p>
-          <p class="text-xs text-muted">
-            Pago
-          </p>
-        </UPageCard>
-        <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">
-            {{ formatCurrency(summary.totalPending ?? 0) }}
-          </p>
-          <p class="text-xs text-muted">
-            Pendente
-          </p>
-        </UPageCard>
-        <UPageCard variant="subtle" class="text-center">
-          <p class="text-lg font-bold">
-            {{ summary.employeeCount ?? 0 }}
-          </p>
-          <p class="text-xs text-muted">
-            Funcionários
-          </p>
-        </UPageCard>
+      <div class="grid grid-cols-2 gap-3 p-4 pb-0 sm:grid-cols-4">
+        <UCard
+          v-for="stat in [
+            { label: 'Total comissões', value: formatCurrency(summary.totalCommissions ?? 0), icon: 'i-lucide-badge-percent', color: 'text-primary', description: 'no período' },
+            { label: 'Pago', value: formatCurrency(summary.totalPaid ?? 0), icon: 'i-lucide-circle-check', color: 'text-success', description: 'já quitado' },
+            { label: 'Pendente', value: formatCurrency(summary.totalPending ?? 0), icon: 'i-lucide-clock', color: 'text-warning', description: 'a receber' },
+            { label: 'Funcionários', value: summary.employeeCount ?? 0, icon: 'i-lucide-users', color: 'text-info', description: 'com comissão' },
+          ]"
+          :key="stat.label"
+          :ui="{ body: 'p-3 sm:p-4' }"
+        >
+          <div class="flex items-start gap-3">
+            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
+            <div>
+              <p class="text-lg font-bold leading-tight">
+                {{ stat.value }}
+              </p>
+              <p class="text-xs font-medium text-highlighted">
+                {{ stat.label }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ stat.description }}
+              </p>
+            </div>
+          </div>
+        </UCard>
       </div>
 
       <div class="p-4">
@@ -142,6 +136,7 @@ const columns = [
             />
           </template>
         </AppDataTable>
+      </div>
       </div>
     </template>
   </UDashboardPanel>

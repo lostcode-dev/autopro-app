@@ -47,23 +47,32 @@ const columns = [
     </template>
 
     <template #body>
-      <div class="grid grid-cols-2 divide-x divide-default border-b border-default text-center text-sm py-3">
-        <div>
-          <p class="text-muted text-xs">
-            Total em aberto
-          </p>
-          <p class="font-bold text-red-500">
-            {{ formatCurrency(totals.totalPending ?? 0) }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Clientes inadimplentes
-          </p>
-          <p class="font-bold">
-            {{ totals.clientCount ?? 0 }}
-          </p>
-        </div>
+      <div class="space-y-4">
+      <!-- Summary cards -->
+      <div class="grid grid-cols-2 gap-3 p-4 pb-0">
+        <UCard
+          v-for="stat in [
+            { label: 'Total em aberto', value: formatCurrency(totals.totalPending ?? 0), icon: 'i-lucide-triangle-alert', color: 'text-error', description: 'valor pendente' },
+            { label: 'Inadimplentes', value: totals.clientCount ?? 0, icon: 'i-lucide-user-x', color: 'text-warning', description: 'clientes em débito' },
+          ]"
+          :key="stat.label"
+          :ui="{ body: 'p-3 sm:p-4' }"
+        >
+          <div class="flex items-start gap-3">
+            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
+            <div>
+              <p class="text-lg font-bold leading-tight">
+                {{ stat.value }}
+              </p>
+              <p class="text-xs font-medium text-highlighted">
+                {{ stat.label }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ stat.description }}
+              </p>
+            </div>
+          </div>
+        </UCard>
       </div>
 
       <div class="p-4">
@@ -90,6 +99,7 @@ const columns = [
             {{ formatDate(row.original.lastOrderDate ?? row.original.lastVisit) }}
           </template>
         </AppDataTable>
+      </div>
       </div>
     </template>
   </UDashboardPanel>

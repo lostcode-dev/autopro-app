@@ -81,32 +81,33 @@ const columns = [
     </template>
 
     <template #body>
-      <!-- Summary -->
-      <div class="grid grid-cols-3 divide-x divide-default border-b border-default text-center text-sm py-3">
-        <div>
-          <p class="text-muted text-xs">
-            Receita total
-          </p>
-          <p class="font-bold">
-            {{ formatCurrency(summary.totalRevenue ?? 0) }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Clientes ativos
-          </p>
-          <p class="font-bold">
-            {{ summary.totalActiveClients ?? 0 }}
-          </p>
-        </div>
-        <div>
-          <p class="text-muted text-xs">
-            Total de OS
-          </p>
-          <p class="font-bold">
-            {{ summary.totalOrders ?? 0 }}
-          </p>
-        </div>
+      <div class="space-y-4">
+      <!-- Summary cards -->
+      <div class="grid grid-cols-2 gap-3 p-4 pb-0 sm:grid-cols-3">
+        <UCard
+          v-for="stat in [
+            { label: 'Receita total', value: formatCurrency(summary.totalRevenue ?? 0), icon: 'i-lucide-trending-up', color: 'text-success', description: 'no período' },
+            { label: 'Clientes ativos', value: summary.totalActiveClients ?? 0, icon: 'i-lucide-users', color: 'text-primary', description: 'com movimentação' },
+            { label: 'Total de OS', value: summary.totalOrders ?? 0, icon: 'i-lucide-clipboard-list', color: 'text-info', description: 'ordens finalizadas' },
+          ]"
+          :key="stat.label"
+          :ui="{ body: 'p-3 sm:p-4' }"
+        >
+          <div class="flex items-start gap-3">
+            <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
+            <div>
+              <p class="text-lg font-bold leading-tight">
+                {{ stat.value }}
+              </p>
+              <p class="text-xs font-medium text-highlighted">
+                {{ stat.label }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ stat.description }}
+              </p>
+            </div>
+          </div>
+        </UCard>
       </div>
 
       <div class="p-4">
@@ -139,6 +140,7 @@ const columns = [
             {{ formatDate(row.original.lastVisit) }}
           </template>
         </AppDataTable>
+      </div>
       </div>
     </template>
   </UDashboardPanel>
