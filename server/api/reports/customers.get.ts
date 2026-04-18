@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
 
-  const sortBy = ['name', 'totalSpent', 'totalPaid', 'lastVisit'].includes(query.sortBy as string) ? String(query.sortBy) : 'totalSpent'
+  const sortBy = ['name', 'totalSpent', 'totalPaid', 'lastVisit', 'averageTicket'].includes(query.sortBy as string) ? String(query.sortBy) : 'totalSpent'
   const sortOrder: 'asc' | 'desc' = query.sortOrder === 'asc' ? 'asc' : 'desc'
   const page = Math.max(1, Math.floor(toNumber(query.page, 1)))
   const pageSize = Math.min(100, Math.max(1, Math.floor(toNumber(query.pageSize, 10))))
@@ -61,7 +61,8 @@ export default defineEventHandler(async (event) => {
 
   let items = Object.entries(groupedByClient).map(([clientId, stats]) => {
     const client = clientsMap.get(clientId)
-    return { id: clientId, name: client?.name || 'Unknown', ...stats }
+    const averageTicket = stats.totalOrders > 0 ? stats.totalSpent / stats.totalOrders : 0
+    return { id: clientId, name: client?.name || 'Unknown', ...stats, averageTicket }
   })
 
   if (searchTerm) items = items.filter(i => i.name.toLowerCase().includes(searchTerm))
@@ -71,6 +72,7 @@ export default defineEventHandler(async (event) => {
     if (sortBy === 'name') return a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' }) * factor
     if (sortBy === 'totalPaid') return (a.totalPaid - b.totalPaid) * factor
     if (sortBy === 'lastVisit') return String(a.lastVisit || '').localeCompare(String(b.lastVisit || '')) * factor
+    if (sortBy === 'averageTicket') return (a.averageTicket - b.averageTicket) * factor
     return (a.totalSpent - b.totalSpent) * factor
   })
 
