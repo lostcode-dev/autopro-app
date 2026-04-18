@@ -22,13 +22,6 @@ interface SupplierRecord {
 
 interface OrganizationRecord {
   name?: string | null
-  tax_id?: string | null
-  phone?: string | null
-  whatsapp?: string | null
-  email?: string | null
-  website?: string | null
-  city?: string | null
-  state?: string | null
 }
 
 interface PurchaseReportItem extends PurchaseRecord {
@@ -52,14 +45,6 @@ function formatDateTime(value: Date) {
   }).format(value)
 }
 
-function formatPhone(value?: string | null) {
-  if (!value) return null
-  const digits = value.replace(/\D/g, '')
-  if (digits.length === 10) return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
-  if (digits.length === 11) return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
-  return value
-}
-
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -81,7 +66,7 @@ export default defineEventHandler(async (event) => {
     supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null),
     supabase
       .from('organizations')
-      .select('name, tax_id, phone, whatsapp, email, website, city, state')
+      .select('name')
       .eq('id', organizationId)
       .maybeSingle()
   ])
@@ -128,16 +113,6 @@ export default defineEventHandler(async (event) => {
     .filter(purchase => purchase.paymentStatus === 'paid')
     .reduce((sum: number, purchase) => sum + toNumber(purchase?.total_amount, 0), 0)
   const generatedAt = formatDateTime(new Date())
-  const companyPrimaryParts = [
-    organization?.tax_id || null,
-    formatPhone(organization?.phone),
-    formatPhone(organization?.whatsapp)
-  ].filter(Boolean)
-  const companySecondaryParts = [
-    organization?.email || null,
-    organization?.website || null,
-    organization?.city || organization?.state ? [organization?.city, organization?.state].filter(Boolean).join('/') : null
-  ].filter(Boolean)
 
   const data = await buildReportDownloadData({
     format,
@@ -171,10 +146,6 @@ export default defineEventHandler(async (event) => {
         left: `Gerado em: ${generatedAt}`,
         right: organization?.name || ''
       }
-    ],
-    footerNotes: [
-      companyPrimaryParts.join(' | '),
-      companySecondaryParts.join(' | ')
     ].filter(Boolean)
   })
 
