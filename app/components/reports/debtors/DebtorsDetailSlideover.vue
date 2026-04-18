@@ -60,7 +60,7 @@ function formatDate(v: string | null) {
 }
 
 function formatPhone(phone: string | null | undefined) {
-  if (!phone) return 'â€”'
+  if (!phone) return '—'
   const digits = phone.replace(/\D/g, '')
   if (digits.length === 10) return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
   if (digits.length === 11) return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
@@ -87,25 +87,35 @@ const sortedItems = computed(() =>
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div v-if="loading" class="flex items-center gap-3">
-        <USkeleton class="h-10 w-10 rounded-full shrink-0" />
-        <div class="space-y-1.5">
-          <USkeleton class="h-5 w-40" />
-          <USkeleton class="h-3.5 w-24" />
+      <div class="flex items-start justify-between gap-3">
+        <div v-if="loading" class="flex items-center gap-3">
+          <USkeleton class="h-10 w-10 rounded-full shrink-0" />
+          <div class="space-y-1.5">
+            <USkeleton class="h-5 w-40" />
+            <USkeleton class="h-3.5 w-24" />
+          </div>
         </div>
-      </div>
-      <div v-else-if="data" class="flex items-center gap-3">
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-sm font-bold text-white shadow-sm">
-          {{ getInitials(data.clientName) }}
+        <div v-else-if="data" class="flex items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-sm font-bold text-white shadow-sm">
+            {{ getInitials(data.clientName) }}
+          </div>
+          <div>
+            <h2 class="text-base font-bold leading-tight text-highlighted">
+              {{ data.mode === 'orders' && data.orderNumber ? `OS #${data.orderNumber}` : data.clientName }}
+            </h2>
+            <p class="mt-0.5 text-xs text-muted">
+              {{ data.mode === 'orders' ? data.clientName : `${data.pendingItems.length} pendência${data.pendingItems.length !== 1 ? 's' : ''}` }}
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 class="text-base font-bold leading-tight text-highlighted">
-            {{ data.mode === 'orders' && data.orderNumber ? `OS #${data.orderNumber}` : data.clientName }}
-          </h2>
-          <p class="mt-0.5 text-xs text-muted">
-            {{ data.mode === 'orders' ? data.clientName : `${data.pendingItems.length} pendência${data.pendingItems.length !== 1 ? 's' : ''}` }}
-          </p>
-        </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          class="shrink-0"
+          @click="$emit('update:open', false)"
+        />
       </div>
     </template>
 
@@ -126,7 +136,7 @@ const sortedItems = computed(() =>
 
       <div v-else-if="data" class="space-y-4 p-4">
         <UCard :ui="{ body: 'p-4' }">
-          <div class="flex items-center gap-2 mb-3">
+          <div class="mb-3 flex items-center gap-2">
             <UIcon name="i-lucide-contact" class="size-4 text-primary" />
             <p class="text-sm font-semibold text-highlighted">
               Informações
@@ -164,8 +174,8 @@ const sortedItems = computed(() =>
 
         <div class="grid grid-cols-3 gap-3">
           <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
-            <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-error/10">
-              <UIcon name="i-lucide-wallet-cards" class="size-4 text-error" />
+            <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-neutral/10">
+              <UIcon name="i-lucide-wallet-cards" class="size-4 text-highlighted" />
             </div>
             <p class="text-sm font-bold leading-tight text-highlighted">
               {{ formatCurrency(data.totalOwed) }}
@@ -216,13 +226,13 @@ const sortedItems = computed(() =>
             <div
               v-for="item in sortedItems"
               :key="`${item.type}-${item.id}`"
-              class="flex items-start gap-3 px-4 py-3 text-sm hover:bg-elevated/40 transition-colors duration-100"
+              class="flex items-start gap-3 px-4 py-3 text-sm transition-colors duration-100 hover:bg-elevated/40"
             >
               <div class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-error/10">
                 <UIcon :name="debtorStatusIcon(item.status)" class="size-3.5 text-error" />
               </div>
 
-              <div class="flex-1 min-w-0">
+              <div class="min-w-0 flex-1">
                 <div class="flex flex-wrap items-center gap-2">
                   <p class="font-semibold leading-tight text-highlighted">
                     {{ item.number }}
