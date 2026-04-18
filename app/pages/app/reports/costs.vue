@@ -48,18 +48,24 @@ const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Custos e Lucro">
-        <template #right>
-          <div class="flex items-center gap-2">
-            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
-            <span class="text-muted text-sm">até</span>
-            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
-          </div>
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Custos e Lucro" />
     </template>
 
     <template #body>
+      <div class="p-4 pb-0">
+        <!-- Filter card -->
+        <UCard :ui="{ body: 'p-3' }">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2 shrink-0 text-muted">
+              <UIcon name="i-lucide-filter" class="size-4" />
+              <span class="text-sm font-medium">Filtros</span>
+            </div>
+            <UiDatePicker v-model="dateFrom" placeholder="Data inicial" class="w-44" />
+            <span class="text-muted text-sm">até</span>
+            <UiDatePicker v-model="dateTo" placeholder="Data final" class="w-44" />
+          </div>
+        </UCard>
+      </div>
       <div v-if="status === 'pending'" class="p-6 space-y-4">
         <USkeleton v-for="i in 6" :key="i" class="h-20 rounded-xl" />
       </div>

@@ -53,31 +53,25 @@ const columns = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Relatório de Comissões">
-        <template #right>
-          <div class="flex items-center gap-2">
-            <UInput
-              v-model="dateFrom"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
-            <span class="text-muted text-sm">até</span>
-            <UInput
-              v-model="dateTo"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
-          </div>
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Relatório de Comissões" />
     </template>
 
     <template #body>
-      <div class="space-y-4">
-      <!-- Summary cards -->
-      <div class="grid grid-cols-2 gap-3 p-4 pb-0 sm:grid-cols-4">
+      <div class="space-y-4 p-4">
+        <!-- Filter card -->
+        <UCard :ui="{ body: 'p-3' }">
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2 shrink-0 text-muted">
+              <UIcon name="i-lucide-filter" class="size-4" />
+              <span class="text-sm font-medium">Filtros</span>
+            </div>
+            <UiDatePicker v-model="dateFrom" placeholder="Data inicial" class="w-44" />
+            <span class="text-muted text-sm">até</span>
+            <UiDatePicker v-model="dateTo" placeholder="Data final" class="w-44" />
+          </div>
+        </UCard>
+        <!-- Summary cards -->
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <UCard
           v-for="stat in [
             { label: 'Total comissões', value: formatCurrency(summary.totalCommissions ?? 0), icon: 'i-lucide-badge-percent', color: 'text-primary', description: 'no período' },
@@ -105,7 +99,6 @@ const columns = [
         </UCard>
       </div>
 
-      <div class="p-4">
         <AppDataTable
           :columns="columns"
           :data="items"
@@ -136,7 +129,6 @@ const columns = [
             />
           </template>
         </AppDataTable>
-      </div>
       </div>
     </template>
   </UDashboardPanel>
