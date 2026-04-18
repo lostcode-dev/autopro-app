@@ -96,19 +96,27 @@ export function sortFactor(order: 'asc' | 'desc'): 1 | -1 {
 
 // ─── Status helpers ──────────────────────────────────────────────────────────
 
+export function normalizeReportStatus(value: unknown): 'paid' | 'pending' | 'cancelled' {
+  const status = String(value || '').trim().toLowerCase()
+  if (status === 'paid') return 'paid'
+  if (status === 'cancelled') return 'cancelled'
+  if (['partial', 'overdue', 'pending'].includes(status)) return 'pending'
+  return 'pending'
+}
+
 export function normalizeStatusFilters(value: unknown): string[] {
-  const allowed = new Set(['pago', 'pendente'])
+  const allowed = new Set(['paid', 'pending', 'cancelled'])
   if (Array.isArray(value)) {
-    return Array.from(new Set(value.map(item => String(item || '').toLowerCase()).filter(item => allowed.has(item))))
+    return Array.from(new Set(value.map(item => normalizeReportStatus(item)).filter(item => allowed.has(item))))
   }
-  const normalized = String(value || 'todos').toLowerCase()
-  if (!normalized || normalized === 'todos') return []
-  return Array.from(new Set(normalized.split(',').map(item => item.trim()).filter(item => allowed.has(item))))
+  const normalized = String(value || 'all').toLowerCase()
+  if (!normalized || normalized === 'all') return []
+  return Array.from(new Set(normalized.split(',').map(item => normalizeReportStatus(item.trim())).filter(item => allowed.has(item))))
 }
 
 export function matchesStatusFilters(value: unknown, filters: string[]): boolean {
   if (!Array.isArray(filters) || filters.length === 0) return true
-  const status = String(value || '').toLowerCase() === 'pago' ? 'pago' : 'pendente'
+  const status = normalizeReportStatus(value)
   return filters.includes(status)
 }
 
@@ -207,7 +215,7 @@ export function formatOptionalDate(value: unknown): string {
 // ─── Purchase payment status ──────────────────────────────────────────────────
 
 export function getPurchasePaymentStatus(purchase: any): string {
-  if (purchase?.payment_status === 'paid') return 'paid'
+  if (normalizeReportStatus(purchase?.payment_status) === 'paid') return 'paid'
   if (purchase?.due_date) {
     const due = new Date(`${purchase.due_date}T00:00:00`)
     if (!Number.isNaN(due.getTime()) && due < new Date()) return 'overdue'

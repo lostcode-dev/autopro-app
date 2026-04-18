@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
-import { toNumber, qArr, parseDateStart, parseDateEnd, roundMoney, paginate, sortFactor } from '../../utils/report-helpers'
+import { toNumber, qArr, parseDateStart, parseDateEnd, roundMoney, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event) => {
   let filteredOrders = orders.filter((o: any) => {
     if (o?.status === 'cancelled') return false
     if (statusFilters.length > 0 && !statusFilters.includes(String(o?.status || ''))) return false
-    if (paymentStatusFilters.length > 0 && !paymentStatusFilters.includes(String(o?.payment_status || ''))) return false
+    if (paymentStatusFilters.length > 0 && !paymentStatusFilters.includes(normalizeReportStatus(o?.payment_status))) return false
     if (paymentMethodFilters.length > 0 && !paymentMethodFilters.includes(String(o?.payment_method || 'no_payment'))) return false
     if (clientIds.length > 0 && !clientIds.includes(String(o?.client_id || ''))) return false
     if (orderIds.length > 0 && !orderIds.includes(String(o?.id || ''))) return false

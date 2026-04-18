@@ -168,7 +168,7 @@ const reports = [
         <USkeleton class="h-32 rounded-xl" />
       </div>
 
-      <div v-else class="p-4 space-y-5">
+      <div v-else class="p-4 space-y-5 pt-0">
         <!-- KPI Cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <UPageCard

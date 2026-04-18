@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
-import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor } from '../../utils/report-helpers'
+import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
   // From service orders (non-installment, unpaid)
   for (const order of orders) {
     if (order?.status === 'cancelled' || order?.status === 'estimate') continue
-    if (order?.payment_status !== 'pending' && order?.payment_status !== 'partial') continue
+    if (normalizeReportStatus(order?.payment_status) !== 'pending') continue
     if (order?.is_installment) continue
 
     const clientId = String(order?.client_id || '')
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
 
   // From installments
   for (const installment of installments) {
-    if (installment?.status !== 'pendente' && installment?.status !== 'atrasado') continue
+    if (!['pending', 'overdue'].includes(String(installment?.status || '').toLowerCase())) continue
 
     const order = orders.find((o: any) => String(o?.id) === String(installment?.service_order_id))
     if (!order) continue

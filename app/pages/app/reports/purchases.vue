@@ -48,8 +48,8 @@ function formatDate(v: string) {
   return `${d}/${m}/${y}`
 }
 
-const payStatusColor: Record<string, string> = { pending: 'warning', paid: 'success' }
-const payStatusLabel: Record<string, string> = { pending: 'Pendente', paid: 'Pago' }
+const payStatusColor: Record<string, string> = { pending: 'warning', paid: 'success', overdue: 'error' }
+const payStatusLabel: Record<string, string> = { pending: 'Pendente', paid: 'Pago', overdue: 'Vencido' }
 
 const columns = [
   { id: 'supplier', header: 'Fornecedor' },
@@ -142,9 +142,9 @@ const columns = [
           </template>
           <template #pay_status-cell="{ row }">
             <UBadge
-              :color="payStatusColor[row.original.payment_status ?? row.original.paymentStatus] ?? 'neutral'"
+              :color="payStatusColor[row.original.paymentStatus ?? row.original.payment_status] ?? 'neutral'"
               variant="subtle"
-              :label="payStatusLabel[row.original.payment_status ?? row.original.paymentStatus] ?? (row.original.payment_status ?? '—')"
+              :label="payStatusLabel[row.original.paymentStatus ?? row.original.payment_status] ?? (row.original.paymentStatus ?? row.original.payment_status ?? '—')"
               size="sm"
             />
           </template>

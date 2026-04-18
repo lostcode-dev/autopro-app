@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
-import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor } from '../../utils/report-helpers'
+import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const dateTo = parseDateEnd(query.dateTo as string)
   const employeeIds = qArr(query.employeeIds)
   const employeeId = query.employeeId && query.employeeId !== 'all' ? String(query.employeeId) : null
-  const status = query.status && query.status !== 'all' ? String(query.status) : null
+  const status = query.status && query.status !== 'all' ? normalizeReportStatus(query.status) : null
   const orderStatusFilters = qArr(query.orderStatusFilters)
   const paymentStatusFilters = qArr(query.paymentStatusFilters)
   const paymentMethods = qArr(query.paymentMethods)
@@ -54,11 +54,12 @@ export default defineEventHandler(async (event) => {
     }
 
     if (paymentStatusFilters.length > 0) {
-      const orderPaymentStatus = String(order?.payment_status || '')
+      const orderPaymentStatus = normalizeReportStatus(order?.payment_status)
       if (!orderPaymentStatus || !paymentStatusFilters.includes(orderPaymentStatus)) return false
     }
 
-    if (status && record?.status !== status) return false
+    const recordStatus = normalizeReportStatus(record?.status)
+    if (status && recordStatus !== status) return false
 
     if (orderStatusFilters.length > 0) {
       const orderStatus = String(order?.status || '')
@@ -80,46 +81,57 @@ export default defineEventHandler(async (event) => {
     return true
   })
 
-  const totalCommissions = filteredRecords.reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
-  const paidCommissions = filteredRecords.filter((r: any) => r?.status === 'pago').reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
-  const pendingCommissions = filteredRecords.filter((r: any) => r?.status === 'pendente').reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
+  const normalizedRecords = filteredRecords.map((record: any) => ({
+    ...record,
+    status: normalizeReportStatus(record?.status)
+  }))
+
+  const totalCommissions = normalizedRecords.reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
+  const paidCommissions = normalizedRecords.filter((r: any) => r?.status === 'paid').reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
+  const pendingCommissions = normalizedRecords.filter((r: any) => r?.status === 'pending').reduce((sum: number, r: any) => sum + toNumber(r?.amount, 0), 0)
 
   const summary = {
     total: totalCommissions,
     paid: paidCommissions,
     pending: pendingCommissions,
-    count: filteredRecords.length
+    count: normalizedRecords.length,
+    totalCommissions,
+    totalPaid: paidCommissions,
+    totalPending: pendingCommissions,
+    employeeCount: 0
   }
 
   // Chart: by employee
   const byEmployee: Record<string, { name: string, total: number, paid: number, pending: number }> = {}
-  for (const record of filteredRecords) {
+  for (const record of normalizedRecords) {
     const employeeName = String(employeesMap.get(String(record?.employee_id || ''))?.name || 'Unknown')
     if (!byEmployee[employeeName]) byEmployee[employeeName] = { name: employeeName, total: 0, paid: 0, pending: 0 }
     const amount = toNumber(record?.amount, 0)
     byEmployee[employeeName].total += amount
-    if (record?.status === 'pago') byEmployee[employeeName].paid += amount
+    if (record?.status === 'paid') byEmployee[employeeName].paid += amount
     else byEmployee[employeeName].pending += amount
   }
   const employeeChartData = Object.values(byEmployee).sort((a, b) => b.total - a.total)
+  summary.employeeCount = employeeChartData.length
 
   const statusDistribution = [
     { name: 'Pagas', value: paidCommissions, color: '#22c55e' },
     { name: 'Pendentes', value: pendingCommissions, color: '#f59e0b' }
   ]
 
-  const enrichedRecords = filteredRecords.map((record: any) => {
+  const enrichedRecords = normalizedRecords.map((record: any) => {
     const order = record?.service_order_id ? ordersMap.get(String(record.service_order_id)) : null
     return {
       ...record,
       employee_name: String(employeesMap.get(String(record?.employee_id || ''))?.name || 'Unknown'),
       order_number: order?.number || 'N/A',
       order_status: order?.status || null,
-      order_payment_status: order?.payment_status || null,
+      order_payment_status: order?.payment_status ? normalizeReportStatus(order?.payment_status) : null,
       order_client_name: order?.client_name || null,
       order_entry_date: order?.entry_date || null,
       order_completion_date: order?.completion_date || null,
-      order_total_amount: toNumber(order?.total_amount, 0)
+      order_total_amount: toNumber(order?.total_amount, 0),
+      status: normalizeReportStatus(record?.status)
     }
   })
 

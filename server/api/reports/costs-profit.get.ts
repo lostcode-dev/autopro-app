@@ -5,7 +5,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import {
   parseDateStart, parseDateEnd, toNumber, qArr, formatDateKey, formatDayLabel,
   normalizeStatusFilters, matchesStatusFilters, paginate, sortFactor,
-  getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel
+  getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel, normalizeReportStatus
 } from '../../utils/report-helpers'
 
 function normalizeCategoryName(category: string) {
@@ -21,7 +21,7 @@ function calculatePeriodData(orders: any[], transactions: any[], start: Date, en
   const periodCosts = transactions.filter((t: any) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
     const isCost = t?.type === 'expense'
-    const isCancelled = String(t?.status || '').toLowerCase() === 'cancelado'
+    const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
     return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && matchesStatusFilters(t?.status, statusFilters) && dueDate >= start && dueDate <= end
   })
   const revenue = periodOrders.reduce((acc: number, o: any) => acc + toNumber(o?.total_amount, 0), 0)
@@ -85,8 +85,8 @@ export default defineEventHandler(async (event) => {
 
   const expenseList = transactions.filter((t: any) => {
     if (t?.type !== 'expense') return false
-    const st = String(t?.status || '').toLowerCase()
-    if (st === 'cancelado') return false
+    const st = normalizeReportStatus(t?.status)
+    if (st === 'cancelled') return false
     if (statusFilters.length > 0 && !statusFilters.includes(st)) return false
     return true
   })
@@ -175,7 +175,7 @@ export default defineEventHandler(async (event) => {
       totalValue: totalCategoryValue,
       items: categoryEntries.map((t: any) => ({
         id: t?.id, description: t?.description || 'No description', category: String(t?.category || 'other'),
-        amount: toNumber(t?.amount, 0), status: String(t?.status || 'pending').toLowerCase(),
+        amount: toNumber(t?.amount, 0), status: normalizeReportStatus(t?.status),
         type: String(t?.type || 'expense').toLowerCase(), due_date: t?.due_date || null,
         recurrence: t?.recurrence || null, is_installment: Boolean(t?.is_installment),
         current_installment: t?.current_installment ?? null, installment_count: t?.installment_count ?? null,

@@ -2,7 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
-import { parseDateStart, parseDateEnd, toNumber, formatDateKey, formatDayLabel } from '../../utils/report-helpers'
+import { parseDateStart, parseDateEnd, toNumber, formatDateKey, formatDayLabel, normalizeReportStatus } from '../../utils/report-helpers'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
   const costsInPeriod = transactions.filter((t: any) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
-    return dueDate && !Number.isNaN(dueDate.getTime()) && t?.type === 'expense' && t?.status === 'pago' && dueDate >= dateFrom && dueDate <= dateTo
+    return dueDate && !Number.isNaN(dueDate.getTime()) && t?.type === 'expense' && normalizeReportStatus(t?.status) === 'paid' && dueDate >= dateFrom && dueDate <= dateTo
   })
 
   const grossRevenue = completedOrders.reduce((sum: number, o: any) => sum + toNumber(o?.total_amount, 0), 0)
