@@ -5,20 +5,31 @@ useSeoMeta({ title: 'Relatório de Clientes' })
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const now = new Date()
-const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-const dateFrom = ref(defaultFrom)
-const dateTo = ref(defaultTo)
+const { dateFrom, dateTo } = useReportDateRange()
 const search = ref('')
 const page = ref(1)
 const pageSize = 20
 const selectedClientId = ref<string | null>(null)
+const orderStatusFilters = ref<string[]>([])
+const paymentStatusFilters = ref<string[]>([])
+
+const orderStatusOptions = [
+  { value: 'open', label: 'Aberta', color: 'info' as const, icon: 'i-lucide-circle-dot' },
+  { value: 'in_progress', label: 'Em andamento', color: 'warning' as const, icon: 'i-lucide-wrench' },
+  { value: 'waiting_for_part', label: 'Aguard. peça', color: 'warning' as const, icon: 'i-lucide-package-search' },
+  { value: 'completed', label: 'Concluída', color: 'success' as const, icon: 'i-lucide-check-circle-2' },
+  { value: 'delivered', label: 'Entregue', color: 'success' as const, icon: 'i-lucide-truck' },
+  { value: 'estimate', label: 'Orçamento', color: 'neutral' as const, icon: 'i-lucide-file-text' },
+]
+
+const paymentStatusOptions = [
+  { value: 'pending', label: 'Pendente', color: 'warning' as const, icon: 'i-lucide-clock' },
+  { value: 'paid', label: 'Pago', color: 'success' as const, icon: 'i-lucide-circle-check' },
+  { value: 'partial', label: 'Parcial', color: 'info' as const, icon: 'i-lucide-split' },
+]
 
 const { data, status } = await useAsyncData(
-  () => `report-customers-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}`,
+  () => `report-customers-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}-${orderStatusFilters.value.join(',')}-${paymentStatusFilters.value.join(',')}`,
   () => requestFetch<{ data: any }>('/api/reports/customers', {
     headers: requestHeaders,
     query: {
@@ -27,10 +38,12 @@ const { data, status } = await useAsyncData(
       page: page.value,
       pageSize,
       searchTerm: search.value || undefined,
-      selectedClientId: selectedClientId.value || undefined
+      selectedClientId: selectedClientId.value || undefined,
+      orderStatusFilters: orderStatusFilters.value.length ? orderStatusFilters.value : undefined,
+      paymentStatusFilters: paymentStatusFilters.value.length ? paymentStatusFilters.value : undefined,
     }
   }),
-  { watch: [dateFrom, dateTo, page, search] }
+  { watch: [dateFrom, dateTo, page, search, orderStatusFilters, paymentStatusFilters] }
 )
 
 const items = computed(() => data.value?.data?.items ?? [])
@@ -72,6 +85,16 @@ const columns = [
               <span class="text-sm font-medium">Filtros</span>
             </div>
             <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-72" />
+            <UiTagFilter
+              v-model="orderStatusFilters"
+              :options="orderStatusOptions"
+              placeholder="Status da OS"
+            />
+            <UiTagFilter
+              v-model="paymentStatusFilters"
+              :options="paymentStatusOptions"
+              placeholder="Pagamento"
+            />
           </div>
         </UCard>
         <!-- Summary cards -->

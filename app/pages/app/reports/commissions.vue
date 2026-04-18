@@ -5,13 +5,7 @@ useSeoMeta({ title: 'Relatório de Comissões' })
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const now = new Date()
-const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-const dateFrom = ref(defaultFrom)
-const dateTo = ref(defaultTo)
+const { dateFrom, dateTo } = useReportDateRange()
 const page = ref(1)
 const pageSize = 20
 
