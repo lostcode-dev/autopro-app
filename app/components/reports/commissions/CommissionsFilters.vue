@@ -2,7 +2,7 @@
 import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
 
 export interface CommissionsFiltersProps {
-  employees: Array<{ id: string, name: string }>
+  employees: Array<{ value: string, label: string }>
   dateLabel?: string
   employeesLabel?: string
   commissionStatusLabel?: string
@@ -38,7 +38,9 @@ function getInitials(name: string): string {
 }
 
 const sortedEmployees = computed(() =>
-  [...props.employees].filter(e => e?.name).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+  [...props.employees]
+    .filter(employee => employee?.label)
+    .sort((employeeA, employeeB) => employeeA.label.localeCompare(employeeB.label, 'pt-BR'))
 )
 
 const commissionStatusOptions: TagFilterOption[] = [
@@ -106,7 +108,12 @@ const paymentMethodOptions: TagFilterOption[] = [
           </p>
           <UiTagFilter
             v-model="selectedEmployees"
-            :options="sortedEmployees.map(e => ({ value: e.id, label: e.name, color: 'neutral' as const, initials: getInitials(e.name) }))"
+            :options="sortedEmployees.map(employee => ({
+              value: employee.value,
+              label: employee.label,
+              color: 'neutral' as const,
+              initials: getInitials(employee.label)
+            }))"
             placeholder="Selecionar"
             class="w-full"
           />

@@ -104,6 +104,23 @@ const bulkDeleteLoading = ref(false)
 
 // Export
 const exporting = ref<'csv' | 'pdf' | null>(null)
+const hasSelection = computed(() => selectedIds.value.length > 0)
+const hasPendingSelection = computed(() => bulkPayItems.value.length > 0)
+
+const exportItems = computed(() => [[
+  {
+    label: 'Exportar CSV',
+    icon: 'i-lucide-file-spreadsheet',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('csv')
+  },
+  {
+    label: 'Exportar PDF',
+    icon: 'i-lucide-file-text',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('pdf')
+  }
+]])
 
 // Reset page on filter changes
 watch(
@@ -194,8 +211,6 @@ function formatDate(v: string) {
 }
 
 // Selection
-const pendingItems = computed(() => items.value.filter(item => item.status === 'pending'))
-
 const allSelected = computed(
   () => items.value.length > 0 && items.value.every(item => selectedIds.value.includes(item.id))
 )
@@ -396,58 +411,41 @@ async function exportReport(format: 'csv' | 'pdf') {
           empty-title="Nenhuma comissão encontrada"
           empty-description="Não há comissões registradas para o período selecionado."
         >
-          <template #filters>
-            <template v-if="selectedIds.length > 0 && (canUpdate || canDelete)">
-              <p class="shrink-0 text-sm font-medium text-highlighted">
-                {{ selectedIds.length }} selecionada{{ selectedIds.length !== 1 ? 's' : '' }}
-                <span v-if="bulkPayItems.length > 0"> &mdash; {{ formatCurrency(bulkPayTotal) }} a pagar</span>
-              </p>
-              <div class="h-4 w-px shrink-0 bg-border" />
-              <UButton
-                label="Limpar"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                @click="selectedIds = []"
-              />
-              <UButton
-                v-if="canUpdate && bulkPayItems.length > 0"
-                label="Pagar"
-                color="success"
-                icon="i-lucide-credit-card"
-                size="xs"
-                @click="openBulkPay"
-              />
-              <UButton
-                v-if="canDelete"
-                label="Excluir"
-                color="error"
-                icon="i-lucide-trash-2"
-                size="xs"
-                @click="bulkDeleteOpen = true"
-              />
-            </template>
-          </template>
-
           <template #toolbar-right>
             <UButton
-              icon="i-lucide-file-spreadsheet"
-              label="CSV"
-              color="neutral"
-              variant="outline"
+              v-if="canUpdate"
+              label="Pagar"
+              color="success"
+              icon="i-lucide-credit-card"
               size="sm"
-              :loading="exporting === 'csv'"
-              @click="exportReport('csv')"
+              :disabled="!hasPendingSelection"
+              @click="openBulkPay"
             />
             <UButton
-              icon="i-lucide-file-text"
-              label="PDF"
-              color="neutral"
-              variant="outline"
+              v-if="canDelete"
+              label="Excluir"
+              color="error"
+              icon="i-lucide-trash-2"
               size="sm"
-              :loading="exporting === 'pdf'"
-              @click="exportReport('pdf')"
+              :disabled="!hasSelection"
+              @click="bulkDeleteOpen = true"
             />
+            <UTooltip text="Exportar relatório">
+              <UDropdownMenu
+                :items="exportItems"
+                :content="{ align: 'end' }"
+                :ui="{ content: 'min-w-44' }"
+              >
+                <UButton
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  square
+                  :loading="exporting !== null"
+                />
+              </UDropdownMenu>
+            </UTooltip>
           </template>
 
           <!-- Select all header -->

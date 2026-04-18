@@ -111,6 +111,16 @@ function formatDate(v: string) {
   return `${d}/${m}/${y}`
 }
 
+function formatPhone(phone?: string) {
+  if (!phone) return '—'
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10)
+    return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  if (digits.length === 11)
+    return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return phone
+}
+
 function clientInitial(name?: string) {
   const parts = (name ?? '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -145,7 +155,7 @@ function clientInitial(name?: string) {
               {{ data.client?.name ?? '—' }}
             </h2>
             <p class="mt-0.5 text-xs text-muted">
-              {{ data.client?.email ?? data.client?.phone ?? '-' }}
+              {{ data.client?.email ?? formatPhone(data.client?.phone) }}
             </p>
           </div>
         </div>
@@ -191,7 +201,7 @@ function clientInitial(name?: string) {
                   Telefone
                 </p>
                 <p class="font-medium text-highlighted">
-                  {{ data.client.phone }}
+                  {{ formatPhone(data.client.phone) }}
                 </p>
               </div>
             </div>
