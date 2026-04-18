@@ -3,6 +3,7 @@ import { watchDebounced } from '@vueuse/core'
 import type { RowSelectionState, SortingState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 import type { ProductCategory } from '~/types/products'
+import { generateCode } from '~/utils'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Estoque' })
@@ -204,6 +205,14 @@ const { data: suppliersData } = await useAsyncData(
 const partItems = computed(() => data.value?.items ?? [])
 const totalParts = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() => Math.max(1, Math.ceil(totalParts.value / pageSize.value)))
+
+const statsData = computed(() => {
+  const items = partItems.value
+  const outOfStock = items.filter(i => i.stock_quantity <= 0).length
+  const lowStock = items.filter(i => i.stock_quantity > 0 && i.stock_quantity <= (i.minimum_quantity ?? 0)).length
+  const available = items.filter(i => i.stock_quantity > (i.minimum_quantity ?? 0)).length
+  return { total: totalParts.value, outOfStock, lowStock, available }
+})
 const categoriesList = computed(() => categoriesData.value?.items ?? [])
 const categoryOptions = computed(() => [
   { label: 'Todas as categorias', value: 'all' },
@@ -709,7 +718,35 @@ const lineColumns = [
         </p>
       </div>
 
-      <div v-else class="p-4">
+      <div v-else class="space-y-4 p-4">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <UCard
+            v-for="stat in [
+              { label: 'Total de peças', value: statsData.total, icon: 'i-lucide-box', color: 'text-primary', description: 'no estoque' },
+              { label: 'Sem estoque', value: statsData.outOfStock, icon: 'i-lucide-circle-x', color: 'text-error', description: 'itens zerados' },
+              { label: 'Estoque baixo', value: statsData.lowStock, icon: 'i-lucide-triangle-alert', color: 'text-warning', description: 'abaixo do mínimo' },
+              { label: 'Disponíveis', value: statsData.available, icon: 'i-lucide-circle-check', color: 'text-success', description: 'acima do mínimo' },
+            ]"
+            :key="stat.label"
+            :ui="{ body: 'p-3 sm:p-4' }"
+          >
+            <div class="flex items-start gap-3">
+              <UIcon :name="stat.icon" :class="stat.color" class="mt-0.5 size-5 shrink-0" />
+              <div>
+                <p class="text-lg font-bold leading-tight">
+                  {{ stat.value }}
+                </p>
+                <p class="text-xs font-medium text-highlighted">
+                  {{ stat.label }}
+                </p>
+                <p class="text-xs text-muted">
+                  {{ stat.description }}
+                </p>
+              </div>
+            </div>
+          </UCard>
+        </div>
+
         <AppDataTable
           v-model:display-mode="viewMode"
           v-model:search-term="search"
