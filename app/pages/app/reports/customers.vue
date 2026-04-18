@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { CustomerDetailData } from '~/components/reports/customers/CustomersDetailSlideover.vue'
-import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Relatório de Clientes' })
@@ -26,21 +25,6 @@ const isDetailOpen = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<CustomerDetailData | null>(null)
 const toast = useToast()
-
-const orderStatusOptions: TagFilterOption[] = [
-  { value: 'open', label: 'Aberta', color: 'info', icon: 'i-lucide-circle-dot' },
-  { value: 'in_progress', label: 'Em andamento', color: 'warning', icon: 'i-lucide-wrench' },
-  { value: 'waiting_for_part', label: 'Aguard. peça', color: 'warning', icon: 'i-lucide-package-search' },
-  { value: 'completed', label: 'Concluída', color: 'success', icon: 'i-lucide-check-circle-2' },
-  { value: 'delivered', label: 'Entregue', color: 'success', icon: 'i-lucide-truck' },
-  { value: 'estimate', label: 'Orçamento', color: 'neutral', icon: 'i-lucide-file-text' },
-]
-
-const paymentStatusOptions: TagFilterOption[] = [
-  { value: 'pending', label: 'Pendente', color: 'warning', icon: 'i-lucide-clock' },
-  { value: 'paid', label: 'Pago', color: 'success', icon: 'i-lucide-circle-check' },
-  { value: 'partial', label: 'Parcial', color: 'info', icon: 'i-lucide-split' },
-]
 
 const { data, status } = await useAsyncData(
   () => `report-customers-${dateFrom.value}-${dateTo.value}-${page.value}-${search.value}-${orderStatusFilters.value.join(',')}-${paymentStatusFilters.value.join(',')}-${sortBy.value}-${sortOrder.value}`,
@@ -138,8 +122,6 @@ const columns = [
           v-model:date-to="dateTo"
           v-model:order-status-filters="orderStatusFilters"
           v-model:payment-status-filters="paymentStatusFilters"
-          :order-status-options="orderStatusOptions"
-          :payment-status-options="paymentStatusOptions"
         />
 
         <ReportsCustomersSummary :summary="summary" />

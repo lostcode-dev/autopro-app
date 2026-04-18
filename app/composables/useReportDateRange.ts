@@ -16,6 +16,7 @@ export function useReportDateRange() {
   const dateTo = useState<string>('report:dateTo', defaultTo)
   const orderStatusFilters = useState<string[]>('report:orderStatusFilters', () => [])
   const paymentStatusFilters = useState<string[]>('report:paymentStatusFilters', () => [])
+  const selectedEmployees = useState<string[]>('report:selectedEmployees', () => [])
 
   // Restore from localStorage once per client session
   if (import.meta.client) {
@@ -30,6 +31,7 @@ export function useReportDateRange() {
           if (parsed.to) dateTo.value = parsed.to
           if (Array.isArray(parsed.orderStatusFilters)) orderStatusFilters.value = parsed.orderStatusFilters
           if (Array.isArray(parsed.paymentStatusFilters)) paymentStatusFilters.value = parsed.paymentStatusFilters
+          if (Array.isArray(parsed.selectedEmployees)) selectedEmployees.value = parsed.selectedEmployees
         }
       }
       catch {}
@@ -37,14 +39,14 @@ export function useReportDateRange() {
   }
 
   // Persist changes to localStorage
-  watch([dateFrom, dateTo, orderStatusFilters, paymentStatusFilters], ([from, to, osf, psf]) => {
+  watch([dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees], ([from, to, osf, psf, se]) => {
     if (import.meta.client) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({ from, to, orderStatusFilters: osf, paymentStatusFilters: psf }))
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ from, to, orderStatusFilters: osf, paymentStatusFilters: psf, selectedEmployees: se }))
       }
       catch {}
     }
   }, { deep: true })
 
-  return { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters }
+  return { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees }
 }

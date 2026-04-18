@@ -3,7 +3,8 @@ export interface TagFilterOption {
   value: string
   label: string
   color: 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
-  icon: string
+  icon?: string
+  initials?: string
 }
 
 const props = withDefaults(defineProps<{
@@ -55,17 +56,27 @@ const hasSelection = computed(() => props.modelValue.length > 0)
 
       <!-- Tags inline (up to 2) -->
       <template v-else-if="selectedOptions.length <= 2">
-        <UBadge
-          v-for="opt in selectedOptions"
-          :key="opt.value"
-          :color="opt.color"
-          variant="subtle"
-          size="xs"
-          class="gap-1"
-        >
-          <UIcon :name="opt.icon" class="size-3" />
-          {{ opt.label }}
-        </UBadge>
+        <template v-for="opt in selectedOptions" :key="opt.value">
+          <span
+            v-if="opt.initials"
+            class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary"
+          >
+            <span class="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[9px] font-bold">
+              {{ opt.initials }}
+            </span>
+            {{ opt.label }}
+          </span>
+          <UBadge
+            v-else
+            :color="opt.color"
+            variant="subtle"
+            size="xs"
+            class="gap-1"
+          >
+            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" />
+            {{ opt.label }}
+          </UBadge>
+        </template>
       </template>
 
       <!-- Overflow: show count -->
@@ -99,8 +110,14 @@ const hasSelection = computed(() => props.modelValue.length > 0)
           :class="modelValue.includes(opt.value) ? 'bg-elevated' : ''"
           @click="toggle(opt.value)"
         >
-          <UBadge :color="opt.color" variant="subtle" size="sm" class="gap-1 shrink-0">
-            <UIcon :name="opt.icon" class="size-3" />
+          <template v-if="opt.initials">
+            <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+              {{ opt.initials }}
+            </span>
+            <span class="text-sm">{{ opt.label }}</span>
+          </template>
+          <UBadge v-else :color="opt.color" variant="subtle" size="sm" class="gap-1 shrink-0">
+            <UIcon v-if="opt.icon" :name="opt.icon" class="size-3" />
             {{ opt.label }}
           </UBadge>
           <UIcon

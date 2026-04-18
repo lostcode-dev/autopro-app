@@ -3,12 +3,24 @@ import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
 
 export interface CommissionsFiltersProps {
   employees: Array<{ id: string; name: string }>
-  orderStatusOptions: TagFilterOption[]
-  paymentStatusOptions: TagFilterOption[]
-  paymentMethodOptions: TagFilterOption[]
+  dateLabel?: string
+  employeesLabel?: string
+  commissionStatusLabel?: string
+  recordTypeLabel?: string
+  orderStatusLabel?: string
+  paymentStatusLabel?: string
+  paymentMethodLabel?: string
 }
 
-defineProps<CommissionsFiltersProps>()
+const props = withDefaults(defineProps<CommissionsFiltersProps>(), {
+  dateLabel: 'Período',
+  employeesLabel: 'Funcionários',
+  commissionStatusLabel: 'Status comissão',
+  recordTypeLabel: 'Tipo',
+  orderStatusLabel: 'Status da OS',
+  paymentStatusLabel: 'Pagamento da OS',
+  paymentMethodLabel: 'Forma de pagamento',
+})
 
 const dateFrom = defineModel<string>('dateFrom')
 const dateTo = defineModel<string>('dateTo')
@@ -19,6 +31,16 @@ const orderStatusFilters = defineModel<string[]>('orderStatusFilters', { default
 const paymentStatusFilters = defineModel<string[]>('paymentStatusFilters', { default: () => [] })
 const paymentMethods = defineModel<string[]>('paymentMethods', { default: () => [] })
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '').toUpperCase()
+  return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
+}
+
+const sortedEmployees = computed(() =>
+  [...props.employees].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')),
+)
+
 const commissionStatusOptions: TagFilterOption[] = [
   { value: 'paid', label: 'Pagas', color: 'success', icon: 'i-lucide-circle-check' },
   { value: 'pending', label: 'Pendentes', color: 'warning', icon: 'i-lucide-clock' },
@@ -27,6 +49,30 @@ const commissionStatusOptions: TagFilterOption[] = [
 const recordTypeOptions: TagFilterOption[] = [
   { value: 'commission', label: 'Comissões', color: 'primary', icon: 'i-lucide-badge-percent' },
   { value: 'bonus', label: 'Bônus', color: 'info', icon: 'i-lucide-gift' },
+]
+
+const orderStatusOptions: TagFilterOption[] = [
+  { value: 'open', label: 'Aberta', color: 'info', icon: 'i-lucide-circle-dot' },
+  { value: 'in_progress', label: 'Em andamento', color: 'warning', icon: 'i-lucide-wrench' },
+  { value: 'waiting_for_part', label: 'Aguard. peça', color: 'warning', icon: 'i-lucide-package-search' },
+  { value: 'completed', label: 'Concluída', color: 'success', icon: 'i-lucide-check-circle-2' },
+  { value: 'delivered', label: 'Entregue', color: 'success', icon: 'i-lucide-truck' },
+  { value: 'estimate', label: 'Orçamento', color: 'neutral', icon: 'i-lucide-file-text' },
+]
+
+const paymentStatusOptions: TagFilterOption[] = [
+  { value: 'pending', label: 'Pendente', color: 'warning', icon: 'i-lucide-clock' },
+  { value: 'paid', label: 'Pago', color: 'success', icon: 'i-lucide-circle-check' },
+  { value: 'partial', label: 'Parcial', color: 'info', icon: 'i-lucide-split' },
+]
+
+const paymentMethodOptions: TagFilterOption[] = [
+  { value: 'cash', label: 'Dinheiro', color: 'neutral', icon: 'i-lucide-banknote' },
+  { value: 'pix', label: 'Pix', color: 'success', icon: 'i-lucide-zap' },
+  { value: 'credit_card', label: 'Cartão Crédito', color: 'primary', icon: 'i-lucide-credit-card' },
+  { value: 'debit_card', label: 'Cartão Débito', color: 'info', icon: 'i-lucide-credit-card' },
+  { value: 'bank_transfer', label: 'Transferência', color: 'neutral', icon: 'i-lucide-landmark' },
+  { value: 'no_payment_method', label: 'Sem pagamento', color: 'error', icon: 'i-lucide-ban' },
 ]
 </script>
 
@@ -40,7 +86,7 @@ const recordTypeOptions: TagFilterOption[] = [
 
       <!-- Row 1: date range -->
       <div>
-        <p class="mb-1 text-xs font-medium text-muted">Período</p>
+        <p class="mb-1 text-xs font-medium text-muted">{{ props.dateLabel }}</p>
         <UiDateRangePicker
           v-model:from="dateFrom"
           v-model:to="dateTo"
@@ -51,16 +97,16 @@ const recordTypeOptions: TagFilterOption[] = [
       <!-- Row 2: employee + commission status + record type -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <p class="mb-1 text-xs font-medium text-muted">Funcionários</p>
+          <p class="mb-1 text-xs font-medium text-muted">{{ props.employeesLabel }}</p>
           <UiTagFilter
             v-model="selectedEmployees"
-            :options="employees.map(e => ({ value: e.id, label: e.name, color: 'neutral' as const, icon: 'i-lucide-user' }))"
+            :options="sortedEmployees.map(e => ({ value: e.id, label: e.name, color: 'neutral' as const, initials: getInitials(e.name) }))"
             placeholder="Selecionar"
             class="w-full"
           />
         </div>
         <div>
-          <p class="mb-1 text-xs font-medium text-muted">Status comissão</p>
+          <p class="mb-1 text-xs font-medium text-muted">{{ props.commissionStatusLabel }}</p>
           <UiTagFilter
             v-model="commissionStatus"
             :options="commissionStatusOptions"
@@ -69,7 +115,7 @@ const recordTypeOptions: TagFilterOption[] = [
           />
         </div>
         <div>
-          <p class="mb-1 text-xs font-medium text-muted">Tipo</p>
+          <p class="mb-1 text-xs font-medium text-muted">{{ props.recordTypeLabel }}</p>
           <UiTagFilter
             v-model="recordType"
             :options="recordTypeOptions"
@@ -82,7 +128,7 @@ const recordTypeOptions: TagFilterOption[] = [
       <!-- Row 3: OS status + payment status + payment method -->
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
-          <p class="mb-1 text-xs font-medium text-muted">Status da OS</p>
+          <p class="mb-1 text-xs font-medium text-muted">{{ props.orderStatusLabel }}</p>
           <UiTagFilter
             v-model="orderStatusFilters"
             :options="orderStatusOptions"
@@ -91,7 +137,7 @@ const recordTypeOptions: TagFilterOption[] = [
           />
         </div>
         <div>
-          <p class="mb-1 text-xs font-medium text-muted">Pagamento da OS</p>
+          <p class="mb-1 text-xs font-medium text-muted">{{ props.paymentStatusLabel }}</p>
           <UiTagFilter
             v-model="paymentStatusFilters"
             :options="paymentStatusOptions"
@@ -100,7 +146,7 @@ const recordTypeOptions: TagFilterOption[] = [
           />
         </div>
         <div>
-          <p class="mb-1 text-xs font-medium text-muted">Forma de pagamento</p>
+          <p class="mb-1 text-xs font-medium text-muted">{{ props.paymentMethodLabel }}</p>
           <UiTagFilter
             v-model="paymentMethods"
             :options="paymentMethodOptions"

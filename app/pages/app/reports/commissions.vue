@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
-import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
@@ -12,10 +11,9 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 const { can } = useWorkshopPermissions()
 const toast = useToast()
 
-const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters } = useReportDateRange()
+const { dateFrom, dateTo, orderStatusFilters, paymentStatusFilters, selectedEmployees } = useReportDateRange()
 
 // Filter state
-const selectedEmployees = ref<string[]>([])
 const commissionStatus = ref<string[]>([])
 const recordType = ref<string[]>([])
 const paymentMethods = ref<string[]>([])
@@ -40,9 +38,21 @@ const bulkPayOpen = ref(false)
 const bankAccounts = ref<Array<{ id: string; account_name?: string; bank_name?: string }>>([])
 const bulkPayLoading = ref(false)
 
+interface CommissionDeleteTarget {
+  id: string
+  employeeName: string
+  amount: number
+  referenceDate: string
+  orderNumber: string | null
+}
+
 // Delete confirm
-const deleteTarget = ref<string | null>(null)
+const deleteTarget = ref<CommissionDeleteTarget | null>(null)
 const deleteLoading = ref(false)
+
+// Bulk delete
+const bulkDeleteOpen = ref(false)
+const bulkDeleteLoading = ref(false)
 
 // Export
 const exporting = ref<'csv' | 'pdf' | null>(null)
@@ -86,30 +96,6 @@ const charts = computed(() => data.value?.data?.charts ?? { byEmployee: [], stat
 const employees = computed(() => data.value?.data?.employees ?? [])
 
 // Status maps
-const orderStatusOptions: TagFilterOption[] = [
-  { value: 'open', label: 'Aberta', color: 'info', icon: 'i-lucide-circle-dot' },
-  { value: 'in_progress', label: 'Em andamento', color: 'warning', icon: 'i-lucide-wrench' },
-  { value: 'waiting_for_part', label: 'Aguard. peça', color: 'warning', icon: 'i-lucide-package-search' },
-  { value: 'completed', label: 'Concluída', color: 'success', icon: 'i-lucide-check-circle-2' },
-  { value: 'delivered', label: 'Entregue', color: 'success', icon: 'i-lucide-truck' },
-  { value: 'estimate', label: 'Orçamento', color: 'neutral', icon: 'i-lucide-file-text' },
-]
-
-const paymentStatusOptions: TagFilterOption[] = [
-  { value: 'pending', label: 'Pendente', color: 'warning', icon: 'i-lucide-clock' },
-  { value: 'paid', label: 'Pago', color: 'success', icon: 'i-lucide-circle-check' },
-  { value: 'partial', label: 'Parcial', color: 'info', icon: 'i-lucide-split' },
-]
-
-const paymentMethodOptions: TagFilterOption[] = [
-  { value: 'cash', label: 'Dinheiro', color: 'neutral', icon: 'i-lucide-banknote' },
-  { value: 'pix', label: 'Pix', color: 'success', icon: 'i-lucide-zap' },
-  { value: 'credit_card', label: 'Cartão Crédito', color: 'primary', icon: 'i-lucide-credit-card' },
-  { value: 'debit_card', label: 'Cartão Débito', color: 'info', icon: 'i-lucide-credit-card' },
-  { value: 'bank_transfer', label: 'Transferência', color: 'neutral', icon: 'i-lucide-landmark' },
-  { value: 'no_payment_method', label: 'Sem pagamento', color: 'error', icon: 'i-lucide-ban' },
-]
-
 const commissionStatusColorMap: Record<string, string> = { pending: 'warning', paid: 'success', cancelled: 'error' }
 const commissionStatusLabelMap: Record<string, string> = { pending: 'Pendente', paid: 'Pago', cancelled: 'Cancelado' }
 
@@ -143,6 +129,12 @@ const columns = computed(() => [
 ])
 
 // Helpers
+function getInitials(name: string): string {
+  const parts = (name ?? '').trim().split(/\s+/)
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
+  return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
+}
+
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -156,21 +148,20 @@ function formatDate(v: string) {
 // Selection
 const pendingItems = computed(() => items.value.filter((i: any) => i.status === 'pending'))
 
-const allPendingSelected = computed(
-  () => pendingItems.value.length > 0 && pendingItems.value.every((i: any) => selectedIds.value.includes(i.id)),
+const allSelected = computed(
+  () => items.value.length > 0 && items.value.every((i: any) => selectedIds.value.includes(i.id)),
 )
 
 function toggleSelectAll() {
-  if (allPendingSelected.value) {
+  if (allSelected.value) {
     selectedIds.value = []
   }
   else {
-    selectedIds.value = pendingItems.value.map((i: any) => i.id)
+    selectedIds.value = items.value.map((i: any) => i.id)
   }
 }
 
-function toggleSelectRow(id: string, status: string) {
-  if (status !== 'pending') return
+function toggleSelectRow(id: string) {
   if (selectedIds.value.includes(id)) {
     selectedIds.value = selectedIds.value.filter(v => v !== id)
   }
@@ -179,10 +170,10 @@ function toggleSelectRow(id: string, status: string) {
   }
 }
 
-// Bulk pay
+// Bulk pay — only pending commissions from selection are sent to backend
 const bulkPayItems = computed(() =>
   items.value
-    .filter((i: any) => selectedIds.value.includes(i.id))
+    .filter((i: any) => selectedIds.value.includes(i.id) && i.status === 'pending')
     .map((i: any) => ({
       id: i.id,
       employeeName: i.employee_name,
@@ -206,10 +197,11 @@ async function openBulkPay() {
 
 async function handleBulkPay(accountId: string) {
   bulkPayLoading.value = true
+  const pendingIds = bulkPayItems.value.map((i: any) => i.id)
   try {
     await $fetch('/api/financial/pay-commissions-bulk', {
       method: 'POST',
-      body: { registroIds: selectedIds.value, contaBancariaId: accountId },
+      body: { registroIds: pendingIds, contaBancariaId: accountId },
     })
     toast.add({ title: 'Comissões pagas com sucesso!', color: 'success' })
     selectedIds.value = []
@@ -239,7 +231,7 @@ async function payCommission(id: string) {
 async function confirmDelete() {
   if (!deleteTarget.value) return
   deleteLoading.value = true
-  const targetId = deleteTarget.value
+  const targetId = deleteTarget.value.id
   try {
     await $fetch(`/api/reports/commissions/${targetId}`, { method: 'DELETE' })
     toast.add({ title: 'Comissão excluída', color: 'success' })
@@ -252,6 +244,33 @@ async function confirmDelete() {
   }
   finally {
     deleteLoading.value = false
+  }
+}
+
+function setDeleteTarget(row: any) {
+  deleteTarget.value = {
+    id: row.id,
+    employeeName: row.employee_name,
+    amount: row.amount,
+    referenceDate: row.reference_date,
+    orderNumber: row.order_number ?? null,
+  }
+}
+
+async function handleBulkDelete() {
+  bulkDeleteLoading.value = true
+  try {
+    await Promise.all(selectedIds.value.map(id => $fetch(`/api/reports/commissions/${id}`, { method: 'DELETE' })))
+    toast.add({ title: `${selectedIds.value.length} comissões excluídas`, color: 'success' })
+    selectedIds.value = []
+    bulkDeleteOpen.value = false
+    await refresh()
+  }
+  catch {
+    toast.add({ title: 'Erro ao excluir comissões', color: 'error' })
+  }
+  finally {
+    bulkDeleteLoading.value = false
   }
 }
 
@@ -303,30 +322,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Relatório de Comissões">
-        <template #right>
-          <div class="flex items-center gap-2">
-            <UButton
-              icon="i-lucide-file-spreadsheet"
-              label="CSV"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              :loading="exporting === 'csv'"
-              @click="exportReport('csv')"
-            />
-            <UButton
-              icon="i-lucide-file-text"
-              label="PDF"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              :loading="exporting === 'pdf'"
-              @click="exportReport('pdf')"
-            />
-          </div>
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Relatório de Comissões" />
     </template>
 
     <template #body>
@@ -341,9 +337,6 @@ async function exportReport(format: 'csv' | 'pdf') {
           v-model:payment-status-filters="paymentStatusFilters"
           v-model:payment-methods="paymentMethods"
           :employees="employees"
-          :order-status-options="orderStatusOptions"
-          :payment-status-options="paymentStatusOptions"
-          :payment-method-options="paymentMethodOptions"
         />
 
         <ReportsCommissionsStats :summary="summary" />
@@ -353,36 +346,58 @@ async function exportReport(format: 'csv' | 'pdf') {
           :status-distribution="charts.statusDistribution"
         />
 
-        <!-- Bulk pay action bar -->
-        <Transition
-          enter-active-class="transition ease-out duration-150"
-          enter-from-class="opacity-0 -translate-y-1"
-          enter-to-class="opacity-100 translate-y-0"
-          leave-active-class="transition ease-in duration-100"
-          leave-from-class="opacity-100 translate-y-0"
-          leave-to-class="opacity-0 -translate-y-1"
-        >
-          <div
-            v-if="selectedIds.length > 0 && canUpdate"
-            class="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/10 px-4 py-3"
-          >
-            <p class="text-sm font-medium text-highlighted">
-              {{ selectedIds.length }} comissão{{ selectedIds.length !== 1 ? 'ões' : '' }}
-              selecionada{{ selectedIds.length !== 1 ? 's' : '' }}
-              — total {{ formatCurrency(bulkPayTotal) }}
-            </p>
-            <div class="flex items-center gap-2">
-              <UButton label="Limpar" color="neutral" variant="ghost" size="sm" @click="selectedIds = []" />
+        <!-- Toolbar -->
+        <div class="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-default bg-elevated/50 px-3 py-2">
+          <div class="flex min-w-0 items-center gap-2">
+            <template v-if="selectedIds.length > 0 && (canUpdate || canDelete)">
+              <p class="shrink-0 text-sm font-medium text-highlighted">
+                {{ selectedIds.length }} selecionada{{ selectedIds.length !== 1 ? 's' : '' }}
+                <span v-if="bulkPayItems.length > 0"> &mdash; {{ formatCurrency(bulkPayTotal) }} a pagar</span>
+              </p>
+              <div class="h-4 w-px shrink-0 bg-border" />
+              <UButton label="Limpar" color="neutral" variant="ghost" size="xs" @click="selectedIds = []" />
               <UButton
-                label="Pagar selecionadas"
+                v-if="canUpdate && bulkPayItems.length > 0"
+                label="Pagar"
                 color="success"
                 icon="i-lucide-credit-card"
-                size="sm"
+                size="xs"
                 @click="openBulkPay"
               />
-            </div>
+              <UButton
+                v-if="canDelete"
+                label="Excluir"
+                color="error"
+                icon="i-lucide-trash-2"
+                size="xs"
+                @click="bulkDeleteOpen = true"
+              />
+            </template>
+            <p v-else-if="items.length > 0" class="text-xs text-muted">
+              {{ pagination?.totalItems ?? items.length }} registro{{ (pagination?.totalItems ?? items.length) !== 1 ? 's' : '' }}
+            </p>
           </div>
-        </Transition>
+          <div class="flex shrink-0 items-center gap-2">
+            <UButton
+              icon="i-lucide-file-spreadsheet"
+              label="CSV"
+              color="neutral"
+              variant="outline"
+              size="xs"
+              :loading="exporting === 'csv'"
+              @click="exportReport('csv')"
+            />
+            <UButton
+              icon="i-lucide-file-text"
+              label="PDF"
+              color="neutral"
+              variant="outline"
+              size="xs"
+              :loading="exporting === 'pdf'"
+              @click="exportReport('pdf')"
+            />
+          </div>
+        </div>
 
         <AppDataTable
           :columns="columns"
@@ -400,8 +415,8 @@ async function exportReport(format: 'csv' | 'pdf') {
           <!-- Select all header -->
           <template #select-header>
             <UCheckbox
-              :model-value="allPendingSelected"
-              :disabled="pendingItems.length === 0"
+              :model-value="allSelected"
+              :disabled="items.length === 0"
               @update:model-value="toggleSelectAll"
             />
           </template>
@@ -409,9 +424,8 @@ async function exportReport(format: 'csv' | 'pdf') {
           <!-- Select row cell -->
           <template #select-cell="{ row }">
             <UCheckbox
-              v-if="(row.original as any).status === 'pending'"
               :model-value="selectedIds.includes((row.original as any).id)"
-              @update:model-value="toggleSelectRow((row.original as any).id, (row.original as any).status)"
+              @update:model-value="toggleSelectRow((row.original as any).id)"
             />
           </template>
 
@@ -419,7 +433,7 @@ async function exportReport(format: 'csv' | 'pdf') {
             <div class="flex items-center gap-2">
               <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <span class="text-xs font-bold text-primary">
-                  {{ String((row.original as any).employee_name ?? '?')[0]?.toUpperCase() }}
+                  {{ getInitials((row.original as any).employee_name ?? '') }}
                 </span>
               </div>
               <span class="truncate font-medium text-highlighted">{{ (row.original as any).employee_name }}</span>
@@ -478,24 +492,24 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #actions-cell="{ row }">
             <div class="flex items-center justify-end gap-1">
-              <UButton
-                v-if="canUpdate && (row.original as any).status === 'pending'"
-                icon="i-lucide-circle-check"
-                color="success"
-                variant="ghost"
-                size="xs"
-                title="Marcar como pago"
-                @click="payCommission((row.original as any).id)"
-              />
-              <UButton
-                v-if="canDelete"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                title="Excluir comissão"
-                @click="deleteTarget = (row.original as any).id"
-              />
+              <UTooltip v-if="canUpdate && (row.original as any).status === 'pending'" text="Marcar como pago">
+                <UButton
+                  icon="i-lucide-circle-check"
+                  color="success"
+                  variant="ghost"
+                  size="xs"
+                  @click="payCommission((row.original as any).id)"
+                />
+              </UTooltip>
+              <UTooltip v-if="canDelete" text="Excluir comissão">
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  @click="setDeleteTarget(row.original)"
+                />
+              </UTooltip>
             </div>
           </template>
         </AppDataTable>
@@ -517,11 +531,54 @@ async function exportReport(format: 'csv' | 'pdf') {
   <AppConfirmModal
     :open="deleteTarget !== null"
     title="Excluir comissão"
-    description="Tem certeza que deseja excluir esta comissão? Esta ação não pode ser desfeita."
     confirm-label="Excluir"
     confirm-color="error"
     :loading="deleteLoading"
     @update:open="v => !v && (deleteTarget = null)"
     @confirm="confirmDelete"
-  />
+  >
+    <template #description>
+      <div class="space-y-3">
+        <p class="text-sm text-muted">Esta ação não pode ser desfeita.</p>
+        <div class="rounded-lg bg-elevated p-3 space-y-1.5 text-sm">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-muted">Funcionário</span>
+            <span class="font-medium text-highlighted">{{ deleteTarget?.employeeName }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-muted">Referência</span>
+            <span class="font-medium">{{ deleteTarget ? formatDate(deleteTarget.referenceDate) : '—' }}</span>
+          </div>
+          <div v-if="deleteTarget?.orderNumber" class="flex items-center justify-between gap-2">
+            <span class="text-muted">OS</span>
+            <span class="font-mono font-medium">#{{ deleteTarget.orderNumber }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-muted">Valor</span>
+            <span class="font-bold text-error">{{ deleteTarget ? formatCurrency(deleteTarget.amount) : '—' }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
+  </AppConfirmModal>
+
+  <!-- Bulk delete confirm modal -->
+  <AppConfirmModal
+    :open="bulkDeleteOpen"
+    title="Excluir comissões selecionadas"
+    confirm-label="Excluir tudo"
+    confirm-color="error"
+    :loading="bulkDeleteLoading"
+    @update:open="v => !v && (bulkDeleteOpen = false)"
+    @confirm="handleBulkDelete"
+  >
+    <template #description>
+      <div class="space-y-2">
+        <p class="text-sm text-muted">Esta ação não pode ser desfeita.</p>
+        <p class="text-sm font-medium text-highlighted">
+          {{ selectedIds.length }} comissão{{ selectedIds.length !== 1 ? 'ões' : '' }} serão excluídas permanentemente.
+        </p>
+      </div>
+    </template>
+  </AppConfirmModal>
 </template>
