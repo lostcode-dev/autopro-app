@@ -42,11 +42,11 @@ function tip(d: Record<string, any>, b: Bar) {
     Sem dados para o período
   </div>
   <div v-else class="space-y-1">
-    <div class="flex items-end gap-px" :style="`height: ${chartH}px`">
+    <div class="flex items-end gap-px overflow-hidden" :style="`height: ${chartH}px`">
       <div
         v-for="d in data"
         :key="d.name"
-        class="flex-1 flex items-end gap-px min-w-0"
+        class="h-full flex-1 flex items-end gap-px min-w-0"
       >
         <div
           v-for="b in bars"

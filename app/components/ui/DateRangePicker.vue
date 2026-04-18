@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { CalendarDate, DateFormatter, getLocalTimeZone, parseDate, today } from '@internationalized/date'
 import type { DateRange, DateValue } from '@internationalized/date'
+import { breakpointsTailwind, useBreakpoints } from '@vueuse/core'
 
 const props = withDefaults(defineProps<{
   from?: string | null
@@ -22,6 +23,9 @@ const emit = defineEmits<{
 const popoverOpen = ref(false)
 const dfShort = new DateFormatter('pt-BR', { dateStyle: 'short' })
 const tz = getLocalTimeZone()
+
+const breakpoints = useBreakpoints(breakpointsTailwind)
+const isDesktop = breakpoints.greaterOrEqual('sm')
 
 function isoToCalendarDate(iso: string | null | undefined): CalendarDate | undefined {
   if (!iso) return undefined
@@ -129,7 +133,7 @@ function clear() {
   <UPopover
     v-model:open="popoverOpen"
     :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
-    :ui="{ content: 'z-[260] w-auto max-w-[min(95vw,46rem)] rounded-xl border border-default bg-default p-0 shadow-xl' }"
+    :ui="{ content: 'z-[260] w-auto max-w-[min(95vw,46rem)] rounded-xl border border-default bg-default p-0 shadow-xl overflow-hidden' }"
     :modal="true"
   >
     <UButton
@@ -176,7 +180,7 @@ function clear() {
           <UCalendar
             v-model="calendarValue"
             range
-            :number-of-months="2"
+            :number-of-months="1"
             :maximum-days="92"
             color="primary"
           />
