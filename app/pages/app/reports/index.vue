@@ -72,12 +72,15 @@ const kpis = computed(() => [
     <template #body>
       <div class="p-4 pb-0">
         <UCard :ui="{ body: 'p-3' }">
-          <div class="grid grid-cols-2 gap-2 sm:gap-3">
-            <div class="flex items-center gap-2 shrink-0 text-muted col-span-2">
+          <div class="space-y-3">
+            <div class="flex items-center gap-2 text-muted">
               <UIcon name="i-lucide-filter" class="size-4" />
               <span class="text-sm font-medium">Filtros</span>
             </div>
-            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full" />
+            <div>
+              <p class="mb-1 text-xs font-medium text-muted">Período</p>
+              <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-auto" />
+            </div>
           </div>
         </UCard>
       </div>

@@ -70,12 +70,15 @@ const columns = [
       <div class="space-y-4 p-4">
         <!-- Filter card -->
         <UCard :ui="{ body: 'p-3' }">
-          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
-            <div class="flex items-center gap-2 shrink-0 text-muted">
+          <div class="space-y-3">
+            <div class="flex items-center gap-2 text-muted">
               <UIcon name="i-lucide-filter" class="size-4" />
               <span class="text-sm font-medium">Filtros</span>
             </div>
-            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-72" />
+            <div>
+              <p class="mb-1 text-xs font-medium text-muted">Período</p>
+              <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-auto" />
+            </div>
           </div>
         </UCard>
         <!-- Summary cards -->
