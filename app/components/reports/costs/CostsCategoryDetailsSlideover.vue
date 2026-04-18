@@ -59,7 +59,23 @@ function formatDate(v: string | null) {
 
 function formatRecurrence(value: string | null) {
   if (!value) return 'Não recorrente'
-  return String(value).replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
+  const recurrenceLabelMap: Record<string, string> = {
+    daily: 'Diária',
+    weekly: 'Semanal',
+    biweekly: 'Quinzenal',
+    monthly: 'Mensal',
+    bimonthly: 'Bimestral',
+    quarterly: 'Trimestral',
+    semiannual: 'Semestral',
+    yearly: 'Anual',
+    annually: 'Anual',
+    nao_recorrente: 'Não recorrente',
+    non_recurring: 'Não recorrente'
+  }
+
+  const normalizedValue = String(value).trim().toLowerCase()
+  if (recurrenceLabelMap[normalizedValue]) return recurrenceLabelMap[normalizedValue]
+  return normalizedValue.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase())
 }
 
 const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKey ?? 'other'))

@@ -132,6 +132,12 @@ function formatPercent(v: number | string) {
   return `${parseFloat(String(v || 0)).toFixed(1)}%`
 }
 
+function normalizePercent(v: number | string) {
+  const value = Number.parseFloat(String(v || 0))
+  if (!Number.isFinite(value)) return 0
+  return Math.min(100, Math.max(0, value))
+}
+
 async function loadCategoryDetails() {
   if (!selectedCategory.value) return
 
@@ -244,13 +250,23 @@ watch([dateFrom, dateTo, search, selectedCategories, statusFilters], async () =>
           </template>
 
           <template #amount-cell="{ row }">
-            <span class="font-medium text-error">
+            <span class="font-medium text-highlighted">
               {{ formatCurrency(Number(row.original.amount ?? 0)) }}
             </span>
           </template>
 
           <template #percentage-cell="{ row }">
-            {{ formatPercent(Number(row.original.percentage ?? 0)) }}
+            <div class="flex min-w-[180px] items-center gap-3">
+              <UProgress
+                :model-value="normalizePercent(Number(row.original.percentage ?? 0))"
+                :max="100"
+                size="sm"
+                class="flex-1"
+              />
+              <span class="w-12 shrink-0 text-right text-sm font-medium text-highlighted">
+                {{ formatPercent(Number(row.original.percentage ?? 0)) }}
+              </span>
+            </div>
           </template>
 
           <template #actions-cell="{ row }">
