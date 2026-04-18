@@ -33,11 +33,19 @@ function clear() {
   emit('update:modelValue', [])
 }
 
+const optionsMap = computed(() =>
+  new Map(props.options.map(option => [option.value, option]))
+)
+
 const selectedOptions = computed(() =>
-  props.options.filter(o => props.modelValue.includes(o.value))
+  props.modelValue
+    .map(value => optionsMap.value.get(value))
+    .filter((option): option is TagFilterOption => Boolean(option))
 )
 
 const hasSelection = computed(() => props.modelValue.length > 0)
+const hasResolvedSelection = computed(() => selectedOptions.value.length > 0)
+const unresolvedSelectionCount = computed(() => props.modelValue.length - selectedOptions.value.length)
 </script>
 
 <template>
@@ -55,7 +63,7 @@ const hasSelection = computed(() => props.modelValue.length > 0)
       <span v-if="!hasSelection" class="text-dimmed">{{ placeholder }}</span>
 
       <!-- Tags inline (up to 2) -->
-      <template v-else-if="selectedOptions.length <= 2">
+      <template v-else-if="hasResolvedSelection && selectedOptions.length <= 2">
         <template v-for="opt in selectedOptions" :key="opt.value">
           <span
             v-if="opt.initials"
@@ -77,6 +85,12 @@ const hasSelection = computed(() => props.modelValue.length > 0)
             {{ opt.label }}
           </UBadge>
         </template>
+      </template>
+
+      <template v-else-if="unresolvedSelectionCount > 0">
+        <UBadge color="primary" variant="subtle" size="xs">
+          {{ props.modelValue.length }} selecionado{{ props.modelValue.length !== 1 ? 's' : '' }}
+        </UBadge>
       </template>
 
       <!-- Overflow: show count -->

@@ -13,6 +13,7 @@
  */
 
 const LS_KEY = 'autopro:report-params'
+const EMPTY_ARRAY_SENTINEL = '__empty__'
 
 type ParamValue = string | number | string[]
 
@@ -32,16 +33,22 @@ function lsSet(key: string, value: ParamValue) {
     const obj = lsGet()
     obj[key] = value
     localStorage.setItem(LS_KEY, JSON.stringify(obj))
-  } catch {}
+  } catch {
+    return
+  }
 }
 
 function lsRemove(key: string) {
   if (!import.meta.client) return
   try {
     const obj = lsGet()
-    delete obj[key]
-    localStorage.setItem(LS_KEY, JSON.stringify(obj))
-  } catch {}
+    const next = Object.fromEntries(
+      Object.entries(obj).filter(([entryKey]) => entryKey !== key)
+    )
+    localStorage.setItem(LS_KEY, JSON.stringify(next))
+  } catch {
+    return
+  }
 }
 
 /** Coerce a raw query param string to the same shape as `defaultValue` */
@@ -49,6 +56,10 @@ function coerce<T extends ParamValue>(raw: string | string[] | null | undefined,
   if (raw === null || raw === undefined) return defaultValue
 
   if (Array.isArray(defaultValue)) {
+    if (raw === EMPTY_ARRAY_SENTINEL) {
+      return [] as unknown as T
+    }
+
     const arr = Array.isArray(raw) ? raw : raw.split(',').filter(Boolean)
     return arr as unknown as T
   }
@@ -61,13 +72,18 @@ function coerce<T extends ParamValue>(raw: string | string[] | null | undefined,
 
 /** Serialize to a query-param string (arrays → comma-separated) */
 function serialize(value: ParamValue): string {
-  if (Array.isArray(value)) return value.join(',')
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(',') : EMPTY_ARRAY_SENTINEL
+  }
   return String(value)
 }
 
 /** True if the value is "empty" (equals default / empty array) */
 function isEmpty<T extends ParamValue>(value: T, defaultValue: T): boolean {
-  if (Array.isArray(value)) return value.length === 0
+  if (Array.isArray(value) && Array.isArray(defaultValue)) {
+    if (value.length !== defaultValue.length) return false
+    return value.every((item, index) => item === defaultValue[index])
+  }
   return value === defaultValue
 }
 
@@ -101,17 +117,29 @@ export function useReportQueryParam<T extends ParamValue>(key: string, defaultVa
     (value) => {
       if (!import.meta.client) return
 
-      const query = { ...route.query }
+      const queryWithoutKey = Object.fromEntries(
+        Object.entries(route.query).filter(([entryKey]) => entryKey !== key)
+      )
+      const isExplicitEmptyArray = Array.isArray(value)
+        && Array.isArray(defaultValue)
+        && value.length === 0
+        && defaultValue.length > 0
 
-      if (isEmpty(value, defaultValue)) {
-        delete query[key]
-        lsRemove(key)
-      } else {
-        query[key] = serialize(value)
+      if (isExplicitEmptyArray) {
         lsSet(key, value)
+        router.replace({ query: queryWithoutKey })
+      } else if (isEmpty(value, defaultValue)) {
+        lsRemove(key)
+        router.replace({ query: queryWithoutKey })
+      } else {
+        lsSet(key, value)
+        router.replace({
+          query: {
+            ...queryWithoutKey,
+            [key]: serialize(value)
+          }
+        })
       }
-
-      router.replace({ query })
     },
     { deep: true }
   )
