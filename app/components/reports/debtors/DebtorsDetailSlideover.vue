@@ -74,9 +74,37 @@ function getInitials(name?: string) {
   return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
 }
 
+function formatPendingItemType(type: string) {
+  return type === 'installment' ? 'Parcela' : 'OS'
+}
+
+function pendingItemTypeColor(type: string): 'neutral' | 'info' {
+  return type === 'installment' ? 'info' : 'neutral'
+}
+
 const sortedItems = computed(() =>
-  [...(props.data?.pendingItems ?? [])].sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))
+  [...(props.data?.pendingItems ?? [])].sort((a, b) => {
+    const overdueScore = Number(b.daysOverdue > 0) - Number(a.daysOverdue > 0)
+    if (overdueScore !== 0) return overdueScore
+    return String(a.dueDate || '').localeCompare(String(b.dueDate || ''))
+  })
 )
+
+const overdueItemsCount = computed(() =>
+  sortedItems.value.filter(item => item.daysOverdue > 0).length
+)
+
+const currentItemsCount = computed(() =>
+  sortedItems.value.filter(item => item.daysOverdue <= 0).length
+)
+
+const headerSubtitle = computed(() => {
+  if (!props.data) return ''
+  if (props.data.mode === 'orders') {
+    return `${props.data.clientName} • ${props.data.pendingItems.length} pendência${props.data.pendingItems.length !== 1 ? 's' : ''}`
+  }
+  return `${props.data.pendingItems.length} pendência${props.data.pendingItems.length !== 1 ? 's' : ''} • ${overdueItemsCount.value} em atraso`
+})
 </script>
 
 <template>
@@ -104,7 +132,7 @@ const sortedItems = computed(() =>
               {{ data.mode === 'orders' && data.orderNumber ? `OS #${data.orderNumber}` : data.clientName }}
             </h2>
             <p class="mt-0.5 text-xs text-muted">
-              {{ data.mode === 'orders' ? data.clientName : `${data.pendingItems.length} pendência${data.pendingItems.length !== 1 ? 's' : ''}` }}
+              {{ headerSubtitle }}
             </p>
           </div>
         </div>
@@ -122,7 +150,8 @@ const sortedItems = computed(() =>
     <template #body>
       <div v-if="loading" class="space-y-4 p-4">
         <USkeleton class="h-28 w-full rounded-xl" />
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <USkeleton class="h-24 w-full rounded-xl" />
           <USkeleton class="h-24 w-full rounded-xl" />
           <USkeleton class="h-24 w-full rounded-xl" />
           <USkeleton class="h-24 w-full rounded-xl" />
@@ -155,6 +184,27 @@ const sortedItems = computed(() =>
                 size="xs"
               />
             </div>
+            <div v-if="data.mode === 'orders' && data.orderNumber" class="flex items-center justify-between gap-3 text-sm">
+              <div class="flex items-center gap-2">
+                <UIcon name="i-lucide-file-text" class="size-4 text-primary" />
+                <span class="text-muted">OS</span>
+              </div>
+              <span class="font-medium text-highlighted">#{{ data.orderNumber }}</span>
+            </div>
+            <div v-if="data.mode === 'orders'" class="flex items-center justify-between gap-3 text-sm">
+              <div class="flex items-center gap-2">
+                <UIcon name="i-lucide-user-round" class="size-4 text-primary" />
+                <span class="text-muted">Cliente</span>
+              </div>
+              <span class="font-medium text-highlighted">{{ data.clientName }}</span>
+            </div>
+            <div class="flex items-center justify-between gap-3 text-sm">
+              <div class="flex items-center gap-2">
+                <UIcon name="i-lucide-receipt-text" class="size-4 text-info" />
+                <span class="text-muted">Pendências</span>
+              </div>
+              <span class="font-medium text-highlighted">{{ data.pendingItems.length }}</span>
+            </div>
             <div v-if="data.phone" class="flex items-center justify-between gap-3 text-sm">
               <div class="flex items-center gap-2">
                 <UIcon name="i-lucide-phone" class="size-4 text-info" />
@@ -167,12 +217,12 @@ const sortedItems = computed(() =>
                 <UIcon name="i-lucide-mail" class="size-4 text-primary" />
                 <span class="text-muted">E-mail</span>
               </div>
-              <span class="font-medium text-highlighted">{{ data.email }}</span>
+              <span class="font-medium text-highlighted break-all text-right">{{ data.email }}</span>
             </div>
           </div>
         </UCard>
 
-        <div class="grid grid-cols-3 gap-3">
+        <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
             <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-neutral/10">
               <UIcon name="i-lucide-wallet-cards" class="size-4 text-highlighted" />
@@ -185,14 +235,25 @@ const sortedItems = computed(() =>
             </p>
           </div>
           <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
-            <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-warning/10">
-              <UIcon name="i-lucide-clock-3" class="size-4 text-warning" />
+            <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-error/10">
+              <UIcon name="i-lucide-triangle-alert" class="size-4 text-error" />
             </div>
             <p class="text-sm font-bold leading-tight text-highlighted">
-              {{ data.daysOverdue }}
+              {{ overdueItemsCount }}
             </p>
             <p class="mt-0.5 text-xs text-muted">
-              Dias de atraso
+              Itens em atraso
+            </p>
+          </div>
+          <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
+            <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-success/10">
+              <UIcon name="i-lucide-calendar-check-2" class="size-4 text-success" />
+            </div>
+            <p class="text-sm font-bold leading-tight text-highlighted">
+              {{ currentItemsCount }}
+            </p>
+            <p class="mt-0.5 text-xs text-muted">
+              Itens no prazo
             </p>
           </div>
           <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
@@ -208,7 +269,7 @@ const sortedItems = computed(() =>
           </div>
         </div>
 
-        <UCard v-if="sortedItems.length" :ui="{ body: 'p-0' }">
+        <UCard v-if="sortedItems.length" :ui="{ body: 'p-0 sm:p-2' }">
           <div class="flex items-center gap-2 border-b border-default px-4 py-3">
             <UIcon name="i-lucide-history" class="size-4 text-primary" />
             <p class="text-sm font-semibold text-highlighted">
@@ -237,6 +298,13 @@ const sortedItems = computed(() =>
                   <p class="font-semibold leading-tight text-highlighted">
                     {{ item.number }}
                   </p>
+                  <UBadge
+                    :color="pendingItemTypeColor(item.type)"
+                    variant="outline"
+                    size="xs"
+                  >
+                    {{ formatPendingItemType(item.type) }}
+                  </UBadge>
                   <UBadge
                     :color="debtorStatusColor(item.status)"
                     variant="subtle"
@@ -270,11 +338,11 @@ const sortedItems = computed(() =>
               </div>
 
               <div class="shrink-0 text-right">
-                <p class="text-sm font-bold text-error">
+                <p class="text-sm font-bold text-highlighted">
                   {{ formatCurrency(item.amount) }}
                 </p>
                 <p v-if="item.daysOverdue > 0" class="text-xs text-muted">
-                  {{ item.daysOverdue }} dia(s)
+                  {{ item.daysOverdue }} dia(s) de atraso
                 </p>
               </div>
             </div>

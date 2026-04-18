@@ -342,7 +342,7 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
           </template>
 
           <template #totalOwed-cell="{ row }">
-            <span class="font-medium text-error">{{ formatCurrency(Number(row.original.totalOwed ?? 0)) }}</span>
+            <span class="font-medium">{{ formatCurrency(Number(row.original.totalOwed ?? 0)) }}</span>
           </template>
 
           <template #status_col-cell="{ row }">
