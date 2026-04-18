@@ -105,7 +105,7 @@ const columns = [
         </UCard>
       </div>
         <!-- Chart -->
-        <UPageCard v-if="chartData.length" variant="subtle">
+        <UPageCard v-if="chartData.length" variant="subtle" class="overflow-hidden">
           <template #header>
             <p class="text-sm font-semibold">
               Compras por dia

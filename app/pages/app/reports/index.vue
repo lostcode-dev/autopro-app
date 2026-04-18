@@ -151,7 +151,7 @@ const reports = [
       <div class="p-4 pb-0">
         <!-- Filter card -->
         <UCard :ui="{ body: 'p-3' }">
-          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
+          <div class="grid gap-2 sm:gap-3">
             <div class="flex items-center gap-2 shrink-0 text-muted">
               <UIcon name="i-lucide-filter" class="size-4" />
               <span class="text-sm font-medium">Filtros</span>
@@ -190,7 +190,7 @@ const reports = [
         </div>
 
         <!-- Revenue vs Cost Chart -->
-        <UPageCard variant="subtle">
+        <UPageCard variant="subtle" class="overflow-hidden">
           <template #header>
             <p class="text-sm font-semibold">Faturamento vs Custo</p>
           </template>
@@ -221,7 +221,7 @@ const reports = [
                 :label="`${item.count}×`"
                 color="primary"
                 variant="subtle"
-                size="xs"
+                size="sm"
               />
             </div>
           </div>

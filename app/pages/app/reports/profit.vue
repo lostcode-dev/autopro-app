@@ -119,7 +119,7 @@ const topOrderColumns = [
         </div>
 
         <!-- Evolution Chart -->
-        <UPageCard v-if="evolution.length" variant="subtle">
+        <UPageCard v-if="evolution.length" variant="subtle" class="overflow-hidden">
           <template #header>
             <p class="text-sm font-semibold">
               Evolução do período

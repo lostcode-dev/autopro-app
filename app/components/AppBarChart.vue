@@ -41,7 +41,7 @@ function tip(d: Record<string, any>, b: Bar) {
   <div v-if="!data.length" class="flex items-center justify-center text-muted text-sm" :style="`height: ${height ?? 180}px`">
     Sem dados para o período
   </div>
-  <div v-else class="space-y-1">
+  <div v-else class="w-full min-w-0 overflow-hidden space-y-1">
     <div class="flex items-end gap-px overflow-hidden" :style="`height: ${chartH}px`">
       <div
         v-for="d in data"
@@ -57,7 +57,7 @@ function tip(d: Record<string, any>, b: Bar) {
         />
       </div>
     </div>
-    <div class="flex gap-px">
+    <div class="flex gap-px min-w-0 overflow-hidden">
       <span
         v-for="(d, i) in data"
         :key="d.name"
