@@ -14,13 +14,12 @@ function formatCurrency(v: number | string) {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+  <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
     <UCard
       v-for="stat in [
         { label: 'Total comprado', value: formatCurrency(summary.totalPurchased ?? 0), icon: 'i-lucide-shopping-cart', color: 'text-primary', bg: 'bg-primary/10', description: 'no período' },
         { label: 'Total pago', value: formatCurrency(summary.totalPaid ?? 0), icon: 'i-lucide-circle-check', color: 'text-success', bg: 'bg-success/10', description: 'já quitado' },
         { label: 'Pendente', value: formatCurrency(summary.totalPending ?? 0), icon: 'i-lucide-clock', color: 'text-warning', bg: 'bg-warning/10', description: 'a pagar' },
-        { label: 'Compras', value: summary.count ?? 0, icon: 'i-lucide-receipt-text', color: 'text-info', bg: 'bg-info/10', description: 'no período' }
       ]"
       :key="stat.label"
       :ui="{ body: 'p-3 sm:p-4' }"

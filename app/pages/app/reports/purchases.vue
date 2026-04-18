@@ -60,6 +60,20 @@ const supplierIds = useReportQueryParam('suppliers', [] as string[])
 const page = useReportQueryParam('page', 1)
 const pageSize = 20
 const exporting = ref<'csv' | 'pdf' | null>(null)
+const exportItems = computed(() => [[
+  {
+    label: 'Exportar CSV',
+    icon: 'i-lucide-file-spreadsheet',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('csv')
+  },
+  {
+    label: 'Exportar PDF',
+    icon: 'i-lucide-file-text',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('pdf')
+  }
+]])
 
 const sortByParam = useReportQueryParam('sortBy', 'purchase_date')
 const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
@@ -234,24 +248,22 @@ async function exportReport(format: 'csv' | 'pdf') {
           @search-change="page = 1"
         >
           <template #toolbar-right>
-            <UButton
-              icon="i-lucide-file-spreadsheet"
-              label="CSV"
-              color="neutral"
-              variant="outline"
-              size="xs"
-              :loading="exporting === 'csv'"
-              @click="exportReport('csv')"
-            />
-            <UButton
-              icon="i-lucide-file-text"
-              label="PDF"
-              color="neutral"
-              variant="outline"
-              size="xs"
-              :loading="exporting === 'pdf'"
-              @click="exportReport('pdf')"
-            />
+            <UTooltip text="Exportar relatório">
+              <UDropdownMenu
+                :items="exportItems"
+                :content="{ align: 'end' }"
+                :ui="{ content: 'min-w-44' }"
+              >
+                <UButton
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  square
+                  :loading="exporting !== null"
+                />
+              </UDropdownMenu>
+            </UTooltip>
           </template>
 
           <template #supplier-cell="{ row }">
