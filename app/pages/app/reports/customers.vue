@@ -135,7 +135,7 @@ const columns = [
 
     <template #body>
       <div class="space-y-4 p-4">
-        <ReportsCustomersCustomersFilters
+        <ReportsCustomersFilters
           v-model:date-from="dateFrom"
           v-model:date-to="dateTo"
           v-model:order-status-filters="orderStatusFilters"
@@ -144,7 +144,7 @@ const columns = [
           :payment-status-options="paymentStatusOptions"
         />
 
-        <ReportsCustomersCustomersSummary :summary="summary" />
+        <ReportsCustomersSummary :summary="summary" />
 
         <AppDataTable
           :columns="columns"
@@ -187,7 +187,7 @@ const columns = [
         </AppDataTable>
       </div>
 
-      <ReportsCustomersCustomersDetailSlideover
+      <ReportsCustomersDetailSlideover
         :open="isDetailOpen"
         :loading="detailLoading"
         :data="detailData"
