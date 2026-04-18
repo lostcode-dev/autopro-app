@@ -59,7 +59,7 @@ const hasSelection = computed(() => props.modelValue.length > 0)
         <template v-for="opt in selectedOptions" :key="opt.value">
           <span
             v-if="opt.initials"
-            class="inline-flex items-left gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary"
+            class="inline-flex items-start gap-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary"
           >
             <span class="inline-flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/20 text-[9px] font-bold">
               {{ opt.initials }}
@@ -106,7 +106,7 @@ const hasSelection = computed(() => props.modelValue.length > 0)
           v-for="opt in options"
           :key="opt.value"
           type="button"
-          class="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-elevated"
+          class="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-elevated"
           :class="modelValue.includes(opt.value) ? 'bg-elevated' : ''"
           @click="toggle(opt.value)"
         >
