@@ -146,8 +146,20 @@ const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
           </div>
         </UPageCard>
 
-        <div v-if="!data?.data" class="text-center text-muted py-8">
-          <p>Nenhum dado disponível para o período selecionado.</p>
+        <div v-if="!data?.data" class="flex min-h-48 items-center justify-center rounded-[1.25rem] border border-default/90 bg-default p-10 text-center">
+          <div class="max-w-sm space-y-3">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-default/80 bg-elevated/60 text-primary">
+              <UIcon name="i-lucide-trending-up" class="h-5 w-5" />
+            </div>
+            <div class="space-y-1.5">
+              <p class="text-sm font-semibold text-highlighted">
+                Nenhum dado disponível
+              </p>
+              <p class="text-sm text-muted">
+                Não há dados de custos e lucro para o período selecionado.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </template>

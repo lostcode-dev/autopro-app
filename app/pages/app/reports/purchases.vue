@@ -124,16 +124,17 @@ const columns = [
           />
         </UPageCard>
 
-        <!-- Table -->
-        <div v-if="status === 'pending'" class="space-y-3">
-          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-        </div>
-
-        <UTable
-          v-else
+        <AppDataTable
           :columns="columns"
           :data="items"
-          class="min-h-0"
+          :loading="status === 'pending'"
+          v-model:page="page"
+          :page-size="pageSize"
+          :total="pagination?.totalItems ?? items.length"
+          :show-page-size-selector="false"
+          empty-icon="i-lucide-shopping-cart"
+          empty-title="Nenhuma compra encontrada"
+          empty-description="Não há compras registradas para o período selecionado."
         >
           <template #supplier-cell="{ row }">
             {{ row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '—' }}
@@ -152,11 +153,7 @@ const columns = [
               size="sm"
             />
           </template>
-        </UTable>
-
-        <div v-if="pagination && pagination.totalPages > 1" class="flex justify-center pt-2">
-          <UPagination v-model="page" :page-count="pageSize" :total="pagination.totalItems" />
-        </div>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>

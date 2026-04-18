@@ -118,25 +118,21 @@ const columns = [
           />
         </UPageCard>
 
-        <!-- Search -->
-        <UInput
-          v-model="search"
-          placeholder="Buscar item..."
-          icon="i-lucide-search"
-          class="w-72"
-          @update:model-value="page = 1"
-        />
-
-        <!-- Table -->
-        <div v-if="status === 'pending'" class="space-y-3">
-          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-        </div>
-
-        <UTable
-          v-else
+        <AppDataTable
           :columns="columns"
           :data="items"
-          class="min-h-0"
+          :loading="status === 'pending'"
+          v-model:page="page"
+          :page-size="pageSize"
+          :total="pagination?.totalItems ?? items.length"
+          :show-page-size-selector="false"
+          show-search
+          v-model:search-term="search"
+          search-placeholder="Buscar item..."
+          empty-icon="i-lucide-list-checks"
+          empty-title="Nenhum item encontrado"
+          empty-description="Não há itens vendidos para o período ou busca selecionada."
+          @search-change="page = 1"
         >
           <template #revenue-cell="{ row }">
             {{ formatCurrency(row.original.totalRevenue ?? row.original.revenue ?? 0) }}
@@ -147,11 +143,7 @@ const columns = [
           <template #profit-cell="{ row }">
             <span class="font-medium text-blue-600">{{ formatCurrency(row.original.totalProfit ?? row.original.profit ?? 0) }}</span>
           </template>
-        </UTable>
-
-        <div v-if="pagination && pagination.totalPages > 1" class="flex justify-center pt-2">
-          <UPagination v-model="page" :page-count="pageSize" :total="pagination.totalItems" />
-        </div>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>

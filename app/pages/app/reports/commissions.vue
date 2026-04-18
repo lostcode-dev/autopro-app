@@ -111,37 +111,37 @@ const columns = [
         </UPageCard>
       </div>
 
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="items"
-        class="min-h-0 flex-1"
-      >
-        <template #order_entry_date-cell="{ row }">
-          {{ formatDate(row.original.order_entry_date) }}
-        </template>
-        <template #amount-cell="{ row }">
-          <span class="font-medium">{{ formatCurrency(row.original.amount) }}</span>
-        </template>
-        <template #order_total-cell="{ row }">
-          {{ formatCurrency(row.original.order_total_amount) }}
-        </template>
-        <template #status_col-cell="{ row }">
-          <UBadge
-            :color="statusColorMap[row.original.status] ?? 'neutral'"
-            variant="subtle"
-            :label="statusLabelMap[row.original.status] ?? row.original.status"
-            size="sm"
-          />
-        </template>
-      </UTable>
-
-      <div v-if="pagination && pagination.totalPages > 1" class="flex justify-center p-4 border-t border-default">
-        <UPagination v-model="page" :page-count="pageSize" :total="pagination.totalItems" />
+      <div class="p-4">
+        <AppDataTable
+          :columns="columns"
+          :data="items"
+          :loading="status === 'pending'"
+          v-model:page="page"
+          :page-size="pageSize"
+          :total="pagination?.totalItems ?? items.length"
+          :show-page-size-selector="false"
+          empty-icon="i-lucide-badge-percent"
+          empty-title="Nenhuma comissão encontrada"
+          empty-description="Não há comissões registradas para o período selecionado."
+        >
+          <template #order_entry_date-cell="{ row }">
+            {{ formatDate(row.original.order_entry_date) }}
+          </template>
+          <template #amount-cell="{ row }">
+            <span class="font-medium">{{ formatCurrency(row.original.amount) }}</span>
+          </template>
+          <template #order_total-cell="{ row }">
+            {{ formatCurrency(row.original.order_total_amount) }}
+          </template>
+          <template #status_col-cell="{ row }">
+            <UBadge
+              :color="statusColorMap[row.original.status] ?? 'neutral'"
+              variant="subtle"
+              :label="statusLabelMap[row.original.status] ?? row.original.status"
+              size="sm"
+            />
+          </template>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>

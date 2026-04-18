@@ -109,43 +109,36 @@ const columns = [
         </div>
       </div>
 
-      <!-- Search -->
-      <div class="p-4 border-b border-default">
-        <UInput
-          v-model="search"
-          placeholder="Buscar cliente..."
-          icon="i-lucide-search"
-          class="w-72"
-          @update:model-value="page = 1"
-        />
-      </div>
-
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="items"
-        class="min-h-0 flex-1"
-      >
-        <template #totalSpent-cell="{ row }">
-          <span class="font-medium">{{ formatCurrency(row.original.totalSpent) }}</span>
-        </template>
-        <template #totalPaid-cell="{ row }">
-          {{ formatCurrency(row.original.totalPaid) }}
-        </template>
-        <template #averageTicket-cell="{ row }">
-          {{ formatCurrency(row.original.averageTicket ?? 0) }}
-        </template>
-        <template #lastVisit-cell="{ row }">
-          {{ formatDate(row.original.lastVisit) }}
-        </template>
-      </UTable>
-
-      <div v-if="pagination && pagination.totalPages > 1" class="flex justify-center p-4 border-t border-default">
-        <UPagination v-model="page" :page-count="pageSize" :total="pagination.totalItems" />
+      <div class="p-4">
+        <AppDataTable
+          :columns="columns"
+          :data="items"
+          :loading="status === 'pending'"
+          v-model:page="page"
+          :page-size="pageSize"
+          :total="pagination?.totalItems ?? items.length"
+          :show-page-size-selector="false"
+          show-search
+          v-model:search-term="search"
+          search-placeholder="Buscar cliente..."
+          empty-icon="i-lucide-users"
+          empty-title="Nenhum cliente encontrado"
+          empty-description="Não há clientes com movimentação no período selecionado."
+          @search-change="page = 1"
+        >
+          <template #totalSpent-cell="{ row }">
+            <span class="font-medium">{{ formatCurrency(row.original.totalSpent) }}</span>
+          </template>
+          <template #totalPaid-cell="{ row }">
+            {{ formatCurrency(row.original.totalPaid) }}
+          </template>
+          <template #averageTicket-cell="{ row }">
+            {{ formatCurrency(row.original.averageTicket ?? 0) }}
+          </template>
+          <template #lastVisit-cell="{ row }">
+            {{ formatDate(row.original.lastVisit) }}
+          </template>
+        </AppDataTable>
       </div>
     </template>
   </UDashboardPanel>

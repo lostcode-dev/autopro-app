@@ -158,13 +158,18 @@ const topOrderColumns = [
         </UPageCard>
 
         <!-- Top profitable orders -->
-        <UPageCard v-if="topOrders.length" variant="subtle">
-          <template #header>
-            <p class="text-sm font-semibold">
-              Ordens mais lucrativas
-            </p>
-          </template>
-          <UTable :columns="topOrderColumns" :data="topOrders" class="min-h-0">
+        <div class="space-y-2">
+          <p class="px-1 text-sm font-semibold">
+            Ordens mais lucrativas
+          </p>
+          <AppDataTable
+            :columns="topOrderColumns"
+            :data="topOrders"
+            :show-footer="false"
+            empty-icon="i-lucide-trophy"
+            empty-title="Nenhuma OS encontrada"
+            empty-description="Não há ordens lucrativas para exibir no período."
+          >
             <template #revenue-cell="{ row }">
               {{ formatCurrency(row.original.revenue ?? 0) }}
             </template>
@@ -177,8 +182,8 @@ const topOrderColumns = [
             <template #margin-cell="{ row }">
               {{ formatPercent(row.original.margin ?? 0) }}
             </template>
-          </UTable>
-        </UPageCard>
+          </AppDataTable>
+        </div>
       </div>
     </template>
   </UDashboardPanel>
