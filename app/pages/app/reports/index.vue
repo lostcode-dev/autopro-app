@@ -166,10 +166,10 @@ const kpis = computed(() => [
           </UCard>
         </div>
 
-        <div class="grid gap-4 grid-cols-1 md:grid-cols-6">
+        <div class="grid gap-4 grid-cols-1 md:grid-cols-6 items-stretch">
           <!-- Revenue vs Cost Chart -->
-          <div class="md:col-span-4">
-            <UCard>
+          <div class="md:col-span-4 flex flex-col">
+            <UCard class="flex-1">
               <template #header>
                 <div class="flex items-center gap-2">
                   <UIcon
@@ -192,8 +192,8 @@ const kpis = computed(() => [
           </div>
 
           <!-- Top Items -->
-          <div class="md:col-span-2">
-            <UCard v-if="topItems.length">
+          <div class="md:col-span-2 flex flex-col">
+            <UCard v-if="topItems.length" class="flex-1">
               <template #header>
                 <div class="flex items-center gap-2">
                   <UIcon
