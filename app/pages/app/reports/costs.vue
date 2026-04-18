@@ -17,12 +17,23 @@ const { data, status } = await useAsyncData(
   () => `report-costs-${dateFrom.value}-${dateTo.value}`,
   () => requestFetch<{ data: any }>('/api/reports/costs-profit', {
     headers: requestHeaders,
-    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, includeReport: 'true', includeProfitReport: 'true' }
+    query: { dateFrom: dateFrom.value, dateTo: dateTo.value, includeReport: 'true' }
   }),
   { watch: [dateFrom, dateTo] }
 )
 
-const report = computed(() => data.value?.data?.costsReport ?? data.value?.data ?? {})
+const costsReport = computed(() => data.value?.data?.costsReport ?? {})
+const summary = computed(() => costsReport.value?.summary ?? {})
+const categories = computed(() => costsReport.value?.charts?.categories ?? [])
+const evolution = computed(() => costsReport.value?.charts?.evolution ?? [])
+
+const maxCategoryAmount = computed(() =>
+  Math.max(1, ...categories.value.map((c: any) => Number(c.amount ?? 0)))
+)
+
+function catPct(amount: number) {
+  return Math.max(2, Math.round((amount / maxCategoryAmount.value) * 100))
+}
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -30,6 +41,8 @@ function formatCurrency(v: number | string) {
 function formatPercent(v: number) {
   return `${parseFloat(String(v || 0)).toFixed(1)}%`
 }
+
+const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
 </script>
 
 <template>
@@ -38,19 +51,9 @@ function formatPercent(v: number) {
       <AppPageHeader title="Custos e Lucro">
         <template #right>
           <div class="flex items-center gap-2">
-            <UInput
-              v-model="dateFrom"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
+            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
             <span class="text-muted text-sm">até</span>
-            <UInput
-              v-model="dateTo"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
+            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
           </div>
         </template>
       </AppPageHeader>
@@ -62,10 +65,11 @@ function formatPercent(v: number) {
       </div>
 
       <div v-else class="p-4 space-y-4">
+        <!-- KPI cards -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-green-600">
-              {{ formatCurrency(report.grossRevenue ?? report.totalRevenue ?? 0) }}
+              {{ formatCurrency(summary.totalRevenue ?? summary.grossRevenue ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Receita bruta
@@ -73,7 +77,7 @@ function formatPercent(v: number) {
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-red-500">
-              {{ formatCurrency(report.totalCosts ?? 0) }}
+              {{ formatCurrency(summary.totalCosts ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Custos totais
@@ -81,7 +85,7 @@ function formatPercent(v: number) {
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-blue-600">
-              {{ formatCurrency(report.netProfit ?? 0) }}
+              {{ formatCurrency(summary.netProfit ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Lucro líquido
@@ -89,7 +93,7 @@ function formatPercent(v: number) {
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold">
-              {{ formatPercent(report.profitMargin ?? 0) }}
+              {{ formatPercent(summary.profitMargin ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Margem de lucro
@@ -97,18 +101,49 @@ function formatPercent(v: number) {
           </UPageCard>
         </div>
 
-        <!-- Cost breakdown if available -->
-        <UPageCard v-if="report.costBreakdown" title="Detalhamento de Custos" variant="subtle">
-          <dl class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
-            <div v-for="(value, key) in report.costBreakdown" :key="key">
-              <dt class="text-muted text-xs">
-                {{ key }}
-              </dt>
-              <dd class="font-medium">
-                {{ formatCurrency(value) }}
-              </dd>
+        <!-- Cost evolution chart -->
+        <UPageCard v-if="evolution.length" variant="subtle">
+          <template #header>
+            <p class="text-sm font-semibold">
+              Evolução de custos
+            </p>
+          </template>
+          <AppBarChart
+            :data="evolution"
+            :bars="chartBars"
+            :height="200"
+            :format-value="formatCurrency"
+          />
+        </UPageCard>
+
+        <!-- Category breakdown -->
+        <UPageCard v-if="categories.length" variant="subtle">
+          <template #header>
+            <p class="text-sm font-semibold">
+              Custos por categoria
+            </p>
+          </template>
+          <div class="space-y-3">
+            <div
+              v-for="cat in categories"
+              :key="cat.categoryKey"
+              class="space-y-1"
+            >
+              <div class="flex items-center justify-between text-sm">
+                <span class="truncate max-w-45">{{ cat.category }}</span>
+                <div class="flex items-center gap-3 shrink-0">
+                  <span class="text-muted text-xs">{{ formatPercent(cat.percentage ?? 0) }}</span>
+                  <span class="font-medium text-xs w-24 text-right">{{ formatCurrency(cat.amount ?? 0) }}</span>
+                </div>
+              </div>
+              <div class="h-1.5 bg-elevated rounded-full overflow-hidden">
+                <div
+                  class="h-full bg-red-400 rounded-full transition-all duration-300"
+                  :style="{ width: catPct(cat.amount ?? 0) + '%' }"
+                />
+              </div>
             </div>
-          </dl>
+          </div>
         </UPageCard>
 
         <div v-if="!data?.data" class="text-center text-muted py-8">
@@ -118,5 +153,3 @@ function formatPercent(v: number) {
     </template>
   </UDashboardPanel>
 </template>
-
-

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, ref, resolveComponent, useSlots, watch } from 'vue'
+import { computed, h, onMounted, ref, resolveComponent, useSlots, watch } from 'vue'
 import type { Cell, ColumnDef, Header, HeaderContext, Row, RowSelectionState, SortingState } from '@tanstack/vue-table'
 
 type TableRowData = Record<string, unknown>
@@ -88,10 +88,22 @@ const slots = useSlots()
 const UCheckbox = resolveComponent('UCheckbox')
 const UIcon = resolveComponent('UIcon')
 
+const route = useRoute()
+const viewModeStorageKey = computed(() => `datatable-view:${route.path}`)
+
 const internalSorting = ref<SortingState>(props.sorting)
 const internalRowSelection = ref<RowSelectionState>(props.rowSelection)
 const internalDisplayMode = ref<DisplayMode>(props.displayMode)
 const internalSearchTerm = ref(props.searchTerm)
+
+onMounted(() => {
+  if (!props.showViewModeToggle) return
+  const saved = localStorage.getItem(viewModeStorageKey.value)
+  if (saved === 'table' || saved === 'card') {
+    internalDisplayMode.value = saved
+    emit('update:displayMode', saved)
+  }
+})
 
 const currentDisplayMode = computed({
   get: () => props.displayMode ?? internalDisplayMode.value,
@@ -99,6 +111,9 @@ const currentDisplayMode = computed({
     internalDisplayMode.value = value
     emit('update:displayMode', value)
     emit('display-mode-change', value)
+    if (props.showViewModeToggle) {
+      localStorage.setItem(viewModeStorageKey.value, value)
+    }
   }
 })
 

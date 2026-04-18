@@ -28,6 +28,23 @@ const items = computed(() => data.value?.data?.items ?? [])
 const summary = computed(() => data.value?.data?.summary ?? {})
 const pagination = computed(() => data.value?.data?.pagination ?? null)
 
+const chartData = computed(() => {
+  const byDate: Record<string, number> = {}
+  for (const item of items.value) {
+    const date = String(item.purchase_date ?? '')
+    if (!date) continue
+    byDate[date] = (byDate[date] ?? 0) + Number(item.total_amount ?? 0)
+  }
+  return Object.entries(byDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, amount]) => {
+      const [, m, d] = date.split('-')
+      return { name: `${d}/${m}`, amount }
+    })
+})
+
+const chartBars = [{ key: 'amount', label: 'Total comprado', color: '#a78bfa' }]
+
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -54,25 +71,16 @@ const columns = [
       <AppPageHeader title="Relatório de Compras">
         <template #right>
           <div class="flex items-center gap-2">
-            <UInput
-              v-model="dateFrom"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
+            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
             <span class="text-muted text-sm">até</span>
-            <UInput
-              v-model="dateTo"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
+            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
           </div>
         </template>
       </AppPageHeader>
     </template>
 
     <template #body>
+      <!-- Summary bar -->
       <div class="grid grid-cols-3 divide-x divide-default border-b border-default text-center text-sm py-3">
         <div>
           <p class="text-muted text-xs">
@@ -100,40 +108,56 @@ const columns = [
         </div>
       </div>
 
-      <div v-if="status === 'pending'" class="p-4 space-y-3">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
-      </div>
-
-      <UTable
-        v-else
-        :columns="columns"
-        :data="items"
-        class="min-h-0 flex-1"
-      >
-        <template #supplier-cell="{ row }">
-          {{ row.original.suppliers?.name ?? row.original.supplier_name ?? '—' }}
-        </template>
-        <template #purchase_date-cell="{ row }">
-          {{ formatDate(row.original.purchase_date) }}
-        </template>
-        <template #total_amount-cell="{ row }">
-          <span class="font-medium">{{ formatCurrency(row.original.total_amount) }}</span>
-        </template>
-        <template #pay_status-cell="{ row }">
-          <UBadge
-            :color="payStatusColor[row.original.payment_status] ?? 'neutral'"
-            variant="subtle"
-            :label="payStatusLabel[row.original.payment_status] ?? row.original.payment_status"
-            size="sm"
+      <div class="p-4 space-y-4">
+        <!-- Chart -->
+        <UPageCard v-if="chartData.length" variant="subtle">
+          <template #header>
+            <p class="text-sm font-semibold">
+              Compras por dia
+            </p>
+          </template>
+          <AppBarChart
+            :data="chartData"
+            :bars="chartBars"
+            :height="200"
+            :format-value="formatCurrency"
           />
-        </template>
-      </UTable>
+        </UPageCard>
 
-      <div v-if="pagination && pagination.totalPages > 1" class="flex justify-center p-4 border-t border-default">
-        <UPagination v-model="page" :page-count="pageSize" :total="pagination.totalItems" />
+        <!-- Table -->
+        <div v-if="status === 'pending'" class="space-y-3">
+          <USkeleton v-for="i in 8" :key="i" class="h-10 w-full" />
+        </div>
+
+        <UTable
+          v-else
+          :columns="columns"
+          :data="items"
+          class="min-h-0"
+        >
+          <template #supplier-cell="{ row }">
+            {{ row.original.suppliers?.name ?? row.original.supplierName ?? row.original.supplier_name ?? '—' }}
+          </template>
+          <template #purchase_date-cell="{ row }">
+            {{ formatDate(row.original.purchase_date) }}
+          </template>
+          <template #total_amount-cell="{ row }">
+            <span class="font-medium">{{ formatCurrency(row.original.total_amount) }}</span>
+          </template>
+          <template #pay_status-cell="{ row }">
+            <UBadge
+              :color="payStatusColor[row.original.payment_status ?? row.original.paymentStatus] ?? 'neutral'"
+              variant="subtle"
+              :label="payStatusLabel[row.original.payment_status ?? row.original.paymentStatus] ?? (row.original.payment_status ?? '—')"
+              size="sm"
+            />
+          </template>
+        </UTable>
+
+        <div v-if="pagination && pagination.totalPages > 1" class="flex justify-center pt-2">
+          <UPagination v-model="page" :page-count="pageSize" :total="pagination.totalItems" />
+        </div>
       </div>
     </template>
   </UDashboardPanel>
 </template>
-
-

@@ -25,8 +25,9 @@ const { data, status } = await useAsyncData(
 const profitReport = computed(() => data.value?.data?.profitReport ?? {})
 const current = computed(() => profitReport.value?.currentData ?? {})
 const previous = computed(() => profitReport.value?.previousData ?? {})
-const variations = computed(() => profitReport.value?.variations ?? {})
+const variations = computed(() => profitReport.value?.variations ?? null)
 const evolution = computed(() => profitReport.value?.evolutionData ?? [])
+const topOrders = computed(() => profitReport.value?.topProfitableOrders ?? [])
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -41,10 +42,23 @@ function variationIcon(v: number) {
   return v >= 0 ? 'i-lucide-trending-up' : 'i-lucide-trending-down'
 }
 
-const evolutionColumns = [
-  { accessorKey: 'label', header: 'Período' },
+const variationLabels: Record<string, string> = {
+  revenue: 'Receita',
+  costs: 'Custos',
+  profit: 'Lucro',
+  margin: 'Margem'
+}
+
+const chartBars = [
+  { key: 'revenue', label: 'Receita', color: '#22c55e' },
+  { key: 'costs', label: 'Custos', color: '#f87171' },
+  { key: 'profit', label: 'Lucro', color: '#3b82f6' }
+]
+
+const topOrderColumns = [
+  { accessorKey: 'number', header: 'OS' },
   { id: 'revenue', header: 'Receita' },
-  { id: 'costs', header: 'Custos' },
+  { id: 'cost', header: 'Custo' },
   { id: 'profit', header: 'Lucro' },
   { id: 'margin', header: 'Margem' }
 ]
@@ -56,19 +70,9 @@ const evolutionColumns = [
       <AppPageHeader title="Relatório de Lucro">
         <template #right>
           <div class="flex items-center gap-2">
-            <UInput
-              v-model="dateFrom"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
+            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
             <span class="text-muted text-sm">até</span>
-            <UInput
-              v-model="dateTo"
-              type="date"
-              size="sm"
-              class="w-36"
-            />
+            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
           </div>
         </template>
       </AppPageHeader>
@@ -84,7 +88,7 @@ const evolutionColumns = [
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-green-600">
-              {{ formatCurrency(current.grossRevenue ?? 0) }}
+              {{ formatCurrency(current.revenue ?? current.grossRevenue ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Receita bruta
@@ -92,7 +96,7 @@ const evolutionColumns = [
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-red-500">
-              {{ formatCurrency(current.totalCosts ?? 0) }}
+              {{ formatCurrency(current.costs ?? current.totalCosts ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Custos
@@ -100,7 +104,7 @@ const evolutionColumns = [
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-blue-600">
-              {{ formatCurrency(current.netProfit ?? 0) }}
+              {{ formatCurrency(current.profit ?? current.netProfit ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Lucro líquido
@@ -116,14 +120,34 @@ const evolutionColumns = [
           </UPageCard>
         </div>
 
-        <!-- vs previous period -->
-        <UPageCard v-if="variations && Object.keys(variations).length" title="Variação vs. período anterior" variant="subtle">
-          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+        <!-- Evolution Chart -->
+        <UPageCard v-if="evolution.length" variant="subtle">
+          <template #header>
+            <p class="text-sm font-semibold">
+              Evolução do período
+            </p>
+          </template>
+          <AppBarChart
+            :data="evolution"
+            :bars="chartBars"
+            :height="220"
+            :format-value="formatCurrency"
+          />
+        </UPageCard>
+
+        <!-- Variation vs previous period -->
+        <UPageCard v-if="variations" variant="subtle">
+          <template #header>
+            <p class="text-sm font-semibold">
+              Variação vs. período anterior
+            </p>
+          </template>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div v-for="(val, key) in variations" :key="key" class="flex items-center gap-2">
               <UIcon :name="variationIcon(Number(val))" :class="variationColor(Number(val))" />
               <div>
                 <p class="text-muted text-xs">
-                  {{ key }}
+                  {{ variationLabels[String(key)] ?? key }}
                 </p>
                 <p :class="['font-medium', variationColor(Number(val))]">
                   {{ formatPercent(Number(val)) }}
@@ -133,20 +157,25 @@ const evolutionColumns = [
           </div>
         </UPageCard>
 
-        <!-- Evolution table -->
-        <UPageCard v-if="evolution.length" title="Evolução" variant="subtle">
-          <UTable :columns="evolutionColumns" :data="evolution" class="min-h-0">
+        <!-- Top profitable orders -->
+        <UPageCard v-if="topOrders.length" variant="subtle">
+          <template #header>
+            <p class="text-sm font-semibold">
+              Ordens mais lucrativas
+            </p>
+          </template>
+          <UTable :columns="topOrderColumns" :data="topOrders" class="min-h-0">
             <template #revenue-cell="{ row }">
-              {{ formatCurrency(row.original.grossRevenue ?? row.original.revenue ?? 0) }}
+              {{ formatCurrency(row.original.revenue ?? 0) }}
             </template>
-            <template #costs-cell="{ row }">
-              {{ formatCurrency(row.original.totalCosts ?? row.original.costs ?? 0) }}
+            <template #cost-cell="{ row }">
+              {{ formatCurrency(row.original.cost ?? 0) }}
             </template>
             <template #profit-cell="{ row }">
-              <span class="font-medium">{{ formatCurrency(row.original.netProfit ?? row.original.profit ?? 0) }}</span>
+              <span class="font-medium text-blue-600">{{ formatCurrency(row.original.profit ?? 0) }}</span>
             </template>
             <template #margin-cell="{ row }">
-              {{ formatPercent(row.original.profitMargin ?? row.original.margin ?? 0) }}
+              {{ formatPercent(row.original.margin ?? 0) }}
             </template>
           </UTable>
         </UPageCard>
@@ -154,5 +183,3 @@ const evolutionColumns = [
     </template>
   </UDashboardPanel>
 </template>
-
-
