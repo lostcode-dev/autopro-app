@@ -1,119 +1,116 @@
 <script setup lang="ts">
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Relatórios - Visão Geral" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Relatórios - Visão Geral' })
 
-const requestFetch = useRequestFetch();
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
-const now = new Date();
-const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-
-const { dateFrom, dateTo } = useReportDateRange();
+const { dateFrom, dateTo } = useReportDateRange()
 
 interface ChartPoint {
-  name: string;
-  revenue: number;
-  cost: number;
+  name: string
+  revenue: number
+  cost: number
 }
 interface TopItem {
-  name: string;
-  count: number;
+  name: string
+  count: number
 }
 interface Overview {
-  grossRevenue: number;
-  totalCosts: number;
-  netProfit: number;
-  profitMargin: number;
-  averageTicket: number;
-  activeClients: number;
-  totalOrders: number;
-  newClients: number;
-  chartData: ChartPoint[];
-  topItems: TopItem[];
+  grossRevenue: number
+  totalCosts: number
+  netProfit: number
+  profitMargin: number
+  averageTicket: number
+  activeClients: number
+  totalOrders: number
+  newClients: number
+  chartData: ChartPoint[]
+  topItems: TopItem[]
 }
 
 const { data, status } = await useAsyncData(
   () => `report-overview-${dateFrom.value}-${dateTo.value}`,
   () =>
-    requestFetch<{ data: { overview: Overview } }>("/api/reports/overview", {
+    requestFetch<{ data: { overview: Overview } }>('/api/reports/overview', {
       headers: requestHeaders,
-      query: { dateFrom: dateFrom.value, dateTo: dateTo.value },
+      query: { dateFrom: dateFrom.value, dateTo: dateTo.value }
     }),
-  { watch: [dateFrom, dateTo] },
-);
+  { watch: [dateFrom, dateTo] }
+)
 
-const overview = computed(() => data.value?.data?.overview);
-const chartData = computed(() => overview.value?.chartData ?? []);
-const topItems = computed(() => overview.value?.topItems ?? []);
+const overview = computed(() => data.value?.data?.overview)
+const chartData = computed(() => overview.value?.chartData ?? [])
+const topItems = computed(() => overview.value?.topItems ?? [])
 
-const barCategories = computed(() => chartData.value.map((d) => d.name));
+const barCategories = computed(() => chartData.value.map(d => d.name))
 const barSeries = computed(() => [
-  { name: "Faturamento", data: chartData.value.map((d) => d.revenue) },
-  { name: "Custo", data: chartData.value.map((d) => d.cost) },
-]);
+  { name: 'Faturamento', data: chartData.value.map(d => d.revenue) },
+  { name: 'Custo', data: chartData.value.map(d => d.cost) }
+])
 
 function formatCurrency(v: number | string) {
-  return parseFloat(String(v || 0)).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
+  return parseFloat(String(v || 0)).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  })
 }
 function formatPercent(v: number) {
-  return `${parseFloat(String(v || 0)).toFixed(1)}%`;
+  return `${parseFloat(String(v || 0)).toFixed(1)}%`
 }
 
 const kpis = computed(() => [
   {
-    label: "Receita bruta",
+    label: 'Receita bruta',
     value: formatCurrency(overview.value?.grossRevenue ?? 0),
-    icon: "i-lucide-trending-up",
-    color: "text-green-600",
+    icon: 'i-lucide-trending-up',
+    color: 'text-green-600'
   },
   {
-    label: "Custos totais",
+    label: 'Custos totais',
     value: formatCurrency(overview.value?.totalCosts ?? 0),
-    icon: "i-lucide-receipt",
-    color: "text-red-500",
+    icon: 'i-lucide-receipt',
+    color: 'text-red-500'
   },
   {
-    label: "Lucro líquido",
+    label: 'Lucro líquido',
     value: formatCurrency(overview.value?.netProfit ?? 0),
-    icon: "i-lucide-circle-dollar-sign",
-    color: "text-blue-600",
+    icon: 'i-lucide-circle-dollar-sign',
+    color: 'text-blue-600'
   },
   {
-    label: "Margem de lucro",
+    label: 'Margem de lucro',
     value: formatPercent(overview.value?.profitMargin ?? 0),
-    icon: "i-lucide-percent",
-    color: "text-purple-600",
+    icon: 'i-lucide-percent',
+    color: 'text-purple-600'
   },
   {
-    label: "Ticket médio",
+    label: 'Ticket médio',
     value: formatCurrency(overview.value?.averageTicket ?? 0),
-    icon: "i-lucide-tag",
-    color: "text-orange-500",
+    icon: 'i-lucide-tag',
+    color: 'text-orange-500'
   },
   {
-    label: "Clientes ativos",
+    label: 'Clientes ativos',
     value: String(overview.value?.activeClients ?? 0),
-    icon: "i-lucide-users",
-    color: "text-primary",
+    icon: 'i-lucide-users',
+    color: 'text-primary'
   },
   {
-    label: "Ordens finalizadas",
+    label: 'Ordens finalizadas',
     value: String(overview.value?.totalOrders ?? 0),
-    icon: "i-lucide-check-circle-2",
-    color: "text-green-600",
+    icon: 'i-lucide-check-circle-2',
+    color: 'text-green-600'
   },
   {
-    label: "Novos clientes",
+    label: 'Novos clientes',
     value: String(overview.value?.newClients ?? 0),
-    icon: "i-lucide-user-plus",
-    color: "text-primary",
-  },
-]);
+    icon: 'i-lucide-user-plus',
+    color: 'text-primary'
+  }
+])
 </script>
 
 <template>
@@ -179,7 +176,9 @@ const kpis = computed(() => [
                     name="i-lucide-bar-chart-2"
                     class="size-4 text-primary shrink-0"
                   />
-                  <p class="text-sm font-semibold">Faturamento vs Custo</p>
+                  <p class="text-sm font-semibold">
+                    Faturamento vs Custo
+                  </p>
                 </div>
               </template>
               <ChartsBar
@@ -201,7 +200,9 @@ const kpis = computed(() => [
                     name="i-lucide-list-checks"
                     class="size-4 text-primary shrink-0"
                   />
-                  <p class="text-sm font-semibold">Itens mais vendidos</p>
+                  <p class="text-sm font-semibold">
+                    Itens mais vendidos
+                  </p>
                 </div>
               </template>
               <div class="divide-y divide-default">
@@ -212,8 +213,7 @@ const kpis = computed(() => [
                 >
                   <span
                     class="text-muted text-xs w-5 text-right shrink-0 font-medium"
-                    >{{ i + 1 }}</span
-                  >
+                  >{{ i + 1 }}</span>
                   <span class="flex-1 text-sm truncate">{{ item.name }}</span>
                   <UBadge
                     :label="`${item.count}×`"
