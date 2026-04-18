@@ -23,7 +23,6 @@ function formatCurrency(v: number | string) {
         { label: 'Total a receber', value: formatCurrency(totals.total ?? 0), icon: 'i-lucide-badge-dollar-sign', color: 'text-primary', bg: 'bg-primary/10', description: 'pendências filtradas' },
         { label: 'Em atraso', value: formatCurrency(totals.overdue ?? 0), icon: 'i-lucide-triangle-alert', color: 'text-error', bg: 'bg-error/10', description: 'valores vencidos' },
         { label: 'Em dia', value: formatCurrency(totals.current ?? 0), icon: 'i-lucide-calendar-check-2', color: 'text-success', bg: 'bg-success/10', description: 'ainda no prazo' },
-        { label: 'Clientes / OS', value: `${counts.clients ?? 0} / ${counts.orders ?? 0}`, icon: 'i-lucide-users-round', color: 'text-info', bg: 'bg-info/10', description: 'registros filtrados' }
       ]"
       :key="stat.label"
       :ui="{ body: 'p-3 sm:p-4' }"

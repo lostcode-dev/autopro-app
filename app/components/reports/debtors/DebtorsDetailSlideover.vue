@@ -59,6 +59,14 @@ function formatDate(v: string | null) {
   return `${day}/${month}/${year}`
 }
 
+function formatPhone(phone: string | null | undefined) {
+  if (!phone) return 'â€”'
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10) return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  if (digits.length === 11) return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return phone
+}
+
 function getInitials(name?: string) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -142,7 +150,7 @@ const sortedItems = computed(() =>
                 <UIcon name="i-lucide-phone" class="size-4 text-info" />
                 <span class="text-muted">Telefone</span>
               </div>
-              <span class="font-medium text-highlighted">{{ data.phone }}</span>
+              <span class="font-medium text-highlighted">{{ formatPhone(data.phone) }}</span>
             </div>
             <div v-if="data.email" class="flex items-center justify-between gap-3 text-sm">
               <div class="flex items-center gap-2">

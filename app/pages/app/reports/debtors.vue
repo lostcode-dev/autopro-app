@@ -181,6 +181,14 @@ function formatDate(v: string | null | undefined) {
   return `${day}/${month}/${year}`
 }
 
+function formatPhone(phone: string | null | undefined) {
+  if (!phone) return 'â€”'
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 10) return digits.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3')
+  if (digits.length === 11) return digits.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+  return phone
+}
+
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
@@ -276,8 +284,8 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
               <UTabs
                 :model-value="viewMode"
                 :items="[
-                  { label: `Por cliente (${counts.clients ?? 0})`, value: 'clients' },
-                  { label: `Por OS (${counts.orders ?? 0})`, value: 'orders' }
+                  { label: `Por cliente`, value: 'clients' },
+                  { label: `Por OS`, value: 'orders' }
                 ]"
                 @update:model-value="value => viewMode = value as 'clients' | 'orders'"
               />
@@ -296,7 +304,7 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
                   {{ row.original.clientName }}
                 </p>
                 <p v-if="row.original.phone || row.original.email" class="truncate text-xs text-muted">
-                  {{ row.original.phone || row.original.email }}
+                  {{ row.original.phone ? formatPhone(String(row.original.phone)) : row.original.email }}
                 </p>
               </div>
             </div>
