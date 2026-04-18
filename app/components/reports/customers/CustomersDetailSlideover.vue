@@ -124,25 +124,35 @@ function clientInitial(name?: string) {
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div v-if="loading" class="flex items-center gap-3">
-        <USkeleton class="h-10 w-10 rounded-full shrink-0" />
-        <div class="space-y-1.5">
-          <USkeleton class="h-5 w-36" />
-          <USkeleton class="h-3.5 w-24" />
+      <div class="flex w-full items-center gap-3">
+        <div v-if="loading" class="flex flex-1 items-center gap-3">
+          <USkeleton class="h-10 w-10 shrink-0 rounded-full" />
+          <div class="space-y-1.5">
+            <USkeleton class="h-5 w-36" />
+            <USkeleton class="h-3.5 w-24" />
+          </div>
         </div>
-      </div>
-      <div v-else-if="data" class="flex items-center gap-3">
-        <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-white font-bold text-sm shadow-sm">
-          {{ clientInitial(data.client?.name) }}
+        <div v-else-if="data" class="flex flex-1 items-center gap-3">
+          <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/60 text-sm font-bold text-white shadow-sm">
+            {{ clientInitial(data.client?.name) }}
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-highlighted leading-tight">
+              {{ data.client?.name ?? '—' }}
+            </h2>
+            <p class="mt-0.5 text-xs text-muted">
+              {{ data.stats.totalOrders }} ordem{{ data.stats.totalOrders !== 1 ? 's' : '' }} no período
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 class="text-base font-bold text-highlighted leading-tight">
-            {{ data.client?.name ?? '—' }}
-          </h2>
-          <p class="text-xs text-muted mt-0.5">
-            {{ data.stats.totalOrders }} ordem{{ data.stats.totalOrders !== 1 ? 's' : '' }} no período
-          </p>
-        </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          class="shrink-0"
+          @click="$emit('update:open', false)"
+        />
       </div>
     </template>
 
@@ -254,7 +264,7 @@ function clientInitial(name?: string) {
         </div>
 
         <!-- Order history -->
-        <UCard v-if="data.orders.length" :ui="{ body: 'p-0' }">
+        <UCard v-if="data.orders.length" :ui="{ body: 'p-0 sm:p-2' }">
           <div class="flex items-center gap-2 border-b border-default px-4 py-3">
             <UIcon name="i-lucide-history" class="size-4 text-primary" />
             <p class="text-sm font-semibold text-highlighted">
