@@ -37,7 +37,8 @@ const chartData = computed(() => {
     })
 })
 
-const chartBars = [{ key: 'amount', label: 'Total comprado', color: '#a78bfa' }]
+const chartCategories = computed(() => chartData.value.map(d => d.name))
+const chartSeries = computed(() => [{ name: 'Total comprado', data: chartData.value.map(d => d.amount) }])
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -111,10 +112,11 @@ const columns = [
               Compras por dia
             </p>
           </template>
-          <AppBarChart
-            :data="chartData"
-            :bars="chartBars"
+          <ChartsBarChart
+            :categories="chartCategories"
+            :series="chartSeries"
             :height="200"
+            :colors="['#a78bfa']"
             :format-value="formatCurrency"
           />
         </UPageCard>

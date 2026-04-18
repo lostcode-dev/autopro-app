@@ -5,29 +5,40 @@ useSeoMeta({ title: 'Custos e Lucro' })
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const { dateFrom, dateTo } = useReportDateRange()
+const now = new Date()
+const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
+const dateFrom = ref(defaultFrom)
+const dateTo = ref(defaultTo)
+
+interface CategoryRow { categoryKey: string, category: string, amount: number, percentage: number }
+interface EvolutionPoint { name: string, cost: number }
+interface Summary { totalCosts: number, totalRevenue: number, netProfit: number, profitMargin: number }
 
 const { data, status } = await useAsyncData(
   () => `report-costs-${dateFrom.value}-${dateTo.value}`,
-  () => requestFetch<{ data: any }>('/api/reports/costs-profit', {
+  () => requestFetch<{ data: { costsReport: {
+    summary: Summary
+    charts: { categories: CategoryRow[], evolution: EvolutionPoint[] }
+  } } }>('/api/reports/costs-profit', {
     headers: requestHeaders,
     query: { dateFrom: dateFrom.value, dateTo: dateTo.value, includeReport: 'true' }
   }),
   { watch: [dateFrom, dateTo] }
 )
 
-const costsReport = computed(() => data.value?.data?.costsReport ?? {})
-const summary = computed(() => costsReport.value?.summary ?? {})
+const costsReport = computed(() => data.value?.data?.costsReport)
+const summary = computed(() => costsReport.value?.summary)
 const categories = computed(() => costsReport.value?.charts?.categories ?? [])
 const evolution = computed(() => costsReport.value?.charts?.evolution ?? [])
 
-const maxCategoryAmount = computed(() =>
-  Math.max(1, ...categories.value.map((c: any) => Number(c.amount ?? 0)))
-)
+const evoCategories = computed(() => evolution.value.map(d => d.name))
+const evoSeries = computed(() => [{ name: 'Custo', data: evolution.value.map(d => d.cost) }])
 
-function catPct(amount: number) {
-  return Math.max(2, Math.round((amount / maxCategoryAmount.value) * 100))
-}
+const donutLabels = computed(() => categories.value.map(c => c.category))
+const donutSeries = computed(() => categories.value.map(c => c.amount))
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -35,39 +46,33 @@ function formatCurrency(v: number | string) {
 function formatPercent(v: number) {
   return `${parseFloat(String(v || 0)).toFixed(1)}%`
 }
-
-const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
 </script>
 
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Custos e Lucro" />
+      <AppPageHeader title="Custos e Lucro">
+        <template #right>
+          <div class="flex items-center gap-2">
+            <UInput v-model="dateFrom" type="date" size="sm" class="w-36" />
+            <span class="text-muted text-sm">até</span>
+            <UInput v-model="dateTo" type="date" size="sm" class="w-36" />
+          </div>
+        </template>
+      </AppPageHeader>
     </template>
 
     <template #body>
-      <div class="p-4 pb-0">
-        <!-- Filter card -->
-        <UCard :ui="{ body: 'p-3' }">
-          <div class="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3">
-            <div class="flex items-center gap-2 shrink-0 text-muted">
-              <UIcon name="i-lucide-filter" class="size-4" />
-              <span class="text-sm font-medium">Filtros</span>
-            </div>
-            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-72" />
-          </div>
-        </UCard>
-      </div>
       <div v-if="status === 'pending'" class="p-6 space-y-4">
         <USkeleton v-for="i in 6" :key="i" class="h-20 rounded-xl" />
       </div>
 
       <div v-else class="p-4 space-y-4">
         <!-- KPI cards -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-green-600">
-              {{ formatCurrency(summary.totalRevenue ?? summary.grossRevenue ?? 0) }}
+              {{ formatCurrency(summary?.totalRevenue ?? summary?.grossRevenue ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Receita bruta
@@ -75,7 +80,7 @@ const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-red-500">
-              {{ formatCurrency(summary.totalCosts ?? 0) }}
+              {{ formatCurrency(summary?.totalCosts ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Custos totais
@@ -83,7 +88,7 @@ const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold text-blue-600">
-              {{ formatCurrency(summary.netProfit ?? 0) }}
+              {{ formatCurrency(summary?.netProfit ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Lucro líquido
@@ -91,7 +96,7 @@ const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
           </UPageCard>
           <UPageCard variant="subtle" class="text-center">
             <p class="text-lg font-bold">
-              {{ formatPercent(summary.profitMargin ?? 0) }}
+              {{ formatPercent(summary?.profitMargin ?? 0) }}
             </p>
             <p class="text-xs text-muted">
               Margem de lucro
@@ -99,65 +104,68 @@ const chartBars = [{ key: 'cost', label: 'Custo', color: '#f87171' }]
           </UPageCard>
         </div>
 
-        <!-- Cost evolution chart -->
-        <UPageCard v-if="evolution.length" variant="subtle" class="overflow-hidden">
-          <template #header>
-            <p class="text-sm font-semibold">
-              Evolução de custos
-            </p>
-          </template>
-          <AppBarChart
-            :data="evolution"
-            :bars="chartBars"
-            :height="200"
-            :format-value="formatCurrency"
-          />
-        </UPageCard>
+        <!-- Charts row -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <!-- Cost evolution bar chart -->
+          <UPageCard v-if="evolution.length" variant="subtle" class="lg:col-span-2">
+            <template #header>
+              <p class="text-sm font-semibold">
+                Evolução de custos
+              </p>
+            </template>
+            <ChartsBarChart
+              :categories="evoCategories"
+              :series="evoSeries"
+              :height="240"
+              :colors="['#f87171']"
+              :format-value="formatCurrency"
+            />
+          </UPageCard>
 
-        <!-- Category breakdown -->
+          <!-- Category donut chart -->
+          <UPageCard v-if="categories.length" variant="subtle">
+            <template #header>
+              <p class="text-sm font-semibold">
+                Custos por categoria
+              </p>
+            </template>
+            <ChartsDonutChart
+              :labels="donutLabels"
+              :series="donutSeries"
+              :height="260"
+              :format-value="formatCurrency"
+            />
+          </UPageCard>
+        </div>
+
+        <!-- Category breakdown table -->
         <UPageCard v-if="categories.length" variant="subtle">
           <template #header>
             <p class="text-sm font-semibold">
-              Custos por categoria
+              Detalhamento por categoria
             </p>
           </template>
-          <div class="space-y-3">
+          <div class="divide-y divide-default">
             <div
               v-for="cat in categories"
               :key="cat.categoryKey"
-              class="space-y-1"
+              class="flex items-center gap-4 py-2.5 text-sm"
             >
-              <div class="flex items-center justify-between text-sm">
-                <span class="truncate max-w-45">{{ cat.category }}</span>
-                <div class="flex items-center gap-3 shrink-0">
-                  <span class="text-muted text-xs">{{ formatPercent(cat.percentage ?? 0) }}</span>
-                  <span class="font-medium text-xs w-24 text-right">{{ formatCurrency(cat.amount ?? 0) }}</span>
-                </div>
-              </div>
-              <div class="h-1.5 bg-elevated rounded-full overflow-hidden">
+              <span class="flex-1 truncate font-medium">{{ cat.category }}</span>
+              <div class="w-24 h-1.5 bg-elevated rounded-full overflow-hidden shrink-0">
                 <div
-                  class="h-full bg-red-400 rounded-full transition-all duration-300"
-                  :style="{ width: catPct(cat.amount ?? 0) + '%' }"
+                  class="h-full bg-red-400 rounded-full"
+                  :style="{ width: `${cat.percentage ?? 0}%` }"
                 />
               </div>
+              <span class="text-muted text-xs w-10 text-right shrink-0">{{ formatPercent(cat.percentage ?? 0) }}</span>
+              <span class="font-semibold w-28 text-right shrink-0">{{ formatCurrency(cat.amount ?? 0) }}</span>
             </div>
           </div>
         </UPageCard>
 
-        <div v-if="!data?.data" class="flex min-h-48 items-center justify-center rounded-[1.25rem] border border-default/90 bg-default p-10 text-center">
-          <div class="max-w-sm space-y-3">
-            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-default/80 bg-elevated/60 text-primary">
-              <UIcon name="i-lucide-trending-up" class="h-5 w-5" />
-            </div>
-            <div class="space-y-1.5">
-              <p class="text-sm font-semibold text-highlighted">
-                Nenhum dado disponível
-              </p>
-              <p class="text-sm text-muted">
-                Não há dados de custos e lucro para o período selecionado.
-              </p>
-            </div>
-          </div>
+        <div v-if="!costsReport" class="text-center text-muted py-8 text-sm">
+          Nenhum dado disponível para o período selecionado.
         </div>
       </div>
     </template>

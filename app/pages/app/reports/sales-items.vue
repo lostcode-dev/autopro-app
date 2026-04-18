@@ -25,19 +25,20 @@ const pagination = computed(() => data.value?.data?.salesItemsReport?.table?.pag
 
 const chartData = computed(() =>
   [...items.value]
-    .sort((a: any, b: any) => (b.quantity ?? 0) - (a.quantity ?? 0))
+    .sort((a, b) => Number(b.quantity ?? 0) - Number(a.quantity ?? 0))
     .slice(0, 12)
-    .map((it: any) => ({
+    .map(it => ({
       name: String(it.name ?? '?').substring(0, 12),
       qty: Number(it.quantity ?? 0),
       revenue: Number(it.totalRevenue ?? it.revenue ?? 0)
     }))
 )
 
-const chartBars = [
-  { key: 'revenue', label: 'Receita', color: '#22c55e' },
-  { key: 'qty', label: 'Quantidade', color: '#a78bfa' }
-]
+const chartCategories = computed(() => chartData.value.map(d => d.name))
+const chartSeries = computed(() => [
+  { name: 'Receita', data: chartData.value.map(d => d.revenue) },
+  { name: 'Quantidade', data: chartData.value.map(d => d.qty) }
+])
 
 function formatCurrency(v: number | string) {
   return parseFloat(String(v || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -105,10 +106,11 @@ const columns = [
               Top itens por receita
             </p>
           </template>
-          <AppBarChart
-            :data="chartData"
-            :bars="chartBars"
+          <ChartsBarChart
+            :categories="chartCategories"
+            :series="chartSeries"
             :height="200"
+            :colors="['#22c55e', '#a78bfa']"
             :format-value="formatCurrency"
           />
         </UPageCard>

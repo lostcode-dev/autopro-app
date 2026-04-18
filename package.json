@@ -41,6 +41,7 @@
     "@vueup/vue-quill": "^1.2.0",
     "@vueuse/core": "^14.2.1",
     "@vueuse/nuxt": "^14.2.1",
+    "apexcharts": "^5.10.6",
     "better-sqlite3": "^12.6.2",
     "date-fns": "^4.1.0",
     "driver.js": "^1.4.0",
@@ -55,6 +56,7 @@
     "stripe": "^20.4.0",
     "tailwindcss": "^4.2.1",
     "vue": "^3.5.29",
+    "vue3-apexcharts": "^1.11.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
