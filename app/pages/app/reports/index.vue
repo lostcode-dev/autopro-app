@@ -6,9 +6,7 @@ const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
 const now = new Date()
-const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
 const { dateFrom, dateTo } = useReportDateRange()
 
@@ -79,7 +77,7 @@ const kpis = computed(() => [
               <UIcon name="i-lucide-filter" class="size-4" />
               <span class="text-sm font-medium">Filtros</span>
             </div>
-            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full sm:w-72" />
+            <UiDateRangePicker v-model:from="dateFrom" v-model:to="dateTo" class="w-full" />
           </div>
         </UCard>
       </div>
@@ -93,7 +91,7 @@ const kpis = computed(() => [
 
       <div v-else class="p-4 space-y-4 pt-0">
         <!-- KPI Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           <UPageCard
             v-for="kpi in kpis"
             :key="kpi.label"
