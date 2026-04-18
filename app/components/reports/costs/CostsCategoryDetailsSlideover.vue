@@ -130,8 +130,8 @@ const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKe
       <div v-else-if="props.data" class="space-y-4 p-4">
         <div class="grid grid-cols-2 gap-3">
           <div class="rounded-xl border border-default bg-gradient-to-b from-elevated/50 to-default p-3 text-center">
-            <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-error/10">
-              <UIcon name="i-lucide-wallet-cards" class="size-4 text-error" />
+            <div class="mx-auto mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-neutral/10">
+              <UIcon name="i-lucide-wallet-cards" class="size-4 text-highlighted" />
             </div>
             <p class="text-sm font-bold leading-tight text-highlighted">
               {{ formatCurrency(props.data.totalValue) }}
@@ -212,7 +212,7 @@ const headerVisual = computed(() => getCostCategoryVisual(props.data?.categoryKe
                 <p class="text-sm text-muted lg:text-right">
                   Valor
                 </p>
-                <p class="text-xl font-bold text-error lg:text-right">
+                <p class="text-xl font-bold text-highlighted lg:text-right">
                   {{ formatCurrency(item.amount) }}
                 </p>
               </div>
