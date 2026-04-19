@@ -102,7 +102,7 @@ const statusOptions = computed<TagFilterOption[]>(() =>
         />
       </div>
 
-      <div class="col-span-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div class="col-span-2 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div>
           <p class="mb-1 text-xs font-medium text-muted">
             Cliente
@@ -111,6 +111,18 @@ const statusOptions = computed<TagFilterOption[]>(() =>
             v-model="clientIds"
             :options="toTagOptions(props.clients)"
             placeholder="Todos os clientes"
+            class="w-full"
+          />
+        </div>
+
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Funcionário
+          </p>
+          <UiTagFilter
+            v-model="responsibleIds"
+            :options="toTagOptions(props.responsibles)"
+            placeholder="Todos os funcionários"
             class="w-full"
           />
         </div>
@@ -128,19 +140,7 @@ const statusOptions = computed<TagFilterOption[]>(() =>
         </div>
       </div>
 
-      <div class="col-span-2 grid grid-cols-1 gap-3 md:grid-cols-2">
-        <div>
-          <p class="mb-1 text-xs font-medium text-muted">
-            Funcionário
-          </p>
-          <UiTagFilter
-            v-model="responsibleIds"
-            :options="toTagOptions(props.responsibles)"
-            placeholder="Todos os funcionários"
-            class="w-full"
-          />
-        </div>
-
+      <div class="col-span-2 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div>
           <p class="mb-1 text-xs font-medium text-muted">
             Categoria
@@ -152,9 +152,7 @@ const statusOptions = computed<TagFilterOption[]>(() =>
             class="w-full"
           />
         </div>
-      </div>
 
-      <div class="col-span-2 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
           <p class="mb-1 text-xs font-medium text-muted">
             Custo
