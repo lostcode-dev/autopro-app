@@ -18,7 +18,7 @@ function formatCurrency(v: number | string) {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 gap-3 sm:grid-cols-5">
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
     <UCard
       v-for="stat in [
         { label: 'Quantidade vendida', value: summary.totalQuantity ?? 0, icon: 'i-lucide-package', color: 'text-primary', bg: 'bg-primary/10', description: 'unidades no período' },
@@ -30,18 +30,18 @@ function formatCurrency(v: number | string) {
       :key="stat.label"
       :ui="{ body: 'p-3 sm:p-4' }"
     >
-      <div class="flex items-start gap-3">
-        <div :class="[stat.bg, 'rounded-xl p-2 shrink-0']">
+      <div class="flex min-w-0 items-start gap-3">
+        <div :class="[stat.bg, 'shrink-0 rounded-xl p-2']">
           <UIcon :name="stat.icon" :class="[stat.color, 'size-5']" />
         </div>
-        <div>
-          <p class="text-lg font-bold leading-tight">
+        <div class="min-w-0 flex-1">
+          <p class="break-words text-base font-bold leading-tight sm:text-lg">
             {{ stat.value }}
           </p>
-          <p class="text-xs font-medium text-highlighted">
+          <p class="mt-1 text-xs font-medium text-highlighted">
             {{ stat.label }}
           </p>
-          <p class="text-xs text-muted">
+          <p class="mt-0.5 text-xs leading-snug text-muted">
             {{ stat.description }}
           </p>
         </div>

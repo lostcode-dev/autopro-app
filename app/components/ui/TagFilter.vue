@@ -52,11 +52,11 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
   <UPopover
     v-model:open="popoverOpen"
     :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
-    :ui="{ content: 'z-[260] w-52 rounded-xl border border-default bg-default p-1 shadow-xl' }"
+    :ui="{ content: 'z-[260] w-(--reka-popper-anchor-width) rounded-xl border border-default bg-default p-1 shadow-xl' }"
   >
     <button
       type="button"
-      class="inline-flex h-9 min-w-24 items-center gap-1.5 rounded-md border border-default bg-default px-2.5 py-1.5 text-sm shadow-xs transition hover:bg-elevated"
+      class="flex h-9 w-full min-w-0 items-center justify-start gap-1.5 rounded-md border border-default bg-default px-2.5 py-1.5 text-left text-sm shadow-xs transition hover:bg-elevated"
       :class="hasSelection ? 'border-primary/40 bg-primary/5' : ''"
     >
       <!-- No selection -->
@@ -120,7 +120,7 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
           v-for="opt in options"
           :key="opt.value"
           type="button"
-          class="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition hover:bg-elevated"
+          class="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-sm transition hover:bg-elevated"
           :class="modelValue.includes(opt.value) ? 'bg-elevated' : ''"
           @click="toggle(opt.value)"
         >
@@ -128,7 +128,7 @@ const unresolvedSelectionCount = computed(() => props.modelValue.length - select
             <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
               {{ opt.initials }}
             </span>
-            <span class="text-sm">{{ opt.label }}</span>
+            <span class="min-w-0 flex-1 text-left text-sm leading-tight">{{ opt.label }}</span>
           </template>
           <UBadge
             v-else
