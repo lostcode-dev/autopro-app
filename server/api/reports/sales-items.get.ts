@@ -107,6 +107,7 @@ interface SalesItemDetailData {
   mode: 'item' | 'os'
   id: string
   orderId: string
+  currentItemId: string | null
   orderNumber: string
   client: string
   responsible: string
@@ -118,6 +119,7 @@ interface SalesItemDetailData {
   costSource: string
   itemDescription: string
   quantity: number
+  unitCost: number
   totalCost: number
   commissionCost: number
   totalCostWithCommission: number
@@ -400,10 +402,12 @@ export default defineEventHandler(async (event) => {
   if (includeDetails && selectedItemId) {
     const selectedItem = expandedItems.find(item => item.id === selectedItemId)
     if (selectedItem) {
+      const orderItems = expandedItems.filter(item => item.orderId === selectedItem.orderId)
       details = {
         mode: 'item',
         id: selectedItem.id,
         orderId: selectedItem.orderId,
+        currentItemId: selectedItem.id,
         orderNumber: selectedItem.orderNumber,
         client: selectedItem.client,
         responsible: selectedItem.responsible,
@@ -415,13 +419,14 @@ export default defineEventHandler(async (event) => {
         costSource: selectedItem.costSource,
         itemDescription: selectedItem.itemDescription,
         quantity: selectedItem.quantity,
+        unitCost: selectedItem.unitCost,
         totalCost: selectedItem.totalCost,
         commissionCost: selectedItem.commissionCost,
         totalCostWithCommission: selectedItem.totalCostWithCommission,
         totalValue: selectedItem.totalValue,
         profit: selectedItem.profit,
-        itemCount: 1,
-        items: [selectedItem]
+        itemCount: orderItems.length,
+        items: orderItems
       }
     }
   }
@@ -433,6 +438,7 @@ export default defineEventHandler(async (event) => {
         mode: 'os',
         id: orderRow.id,
         orderId: orderRow.orderId,
+        currentItemId: null,
         orderNumber: orderRow.orderNumber,
         client: orderRow.client,
         responsible: orderRow.responsible,
@@ -444,6 +450,7 @@ export default defineEventHandler(async (event) => {
         costSource: orderItems.map(item => item.costSource).filter(Boolean).join(', '),
         itemDescription: `${orderRow.itemCount} item(ns)`,
         quantity: orderRow.quantity,
+        unitCost: orderRow.quantity > 0 ? roundMoney(orderRow.totalCost / orderRow.quantity) : 0,
         totalCost: orderRow.totalCost,
         commissionCost: orderRow.commissionCost,
         totalCostWithCommission: orderRow.totalCostWithCommission,
