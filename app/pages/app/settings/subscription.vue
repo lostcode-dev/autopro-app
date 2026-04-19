@@ -287,40 +287,6 @@ async function openInvoice(url: string | null) {
         <USeparator />
 
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">Cliente (Stripe)</span>
-          <span class="text-sm font-medium font-mono">
-            {{ data.subscription.stripe_customer_id || '-' }}
-          </span>
-        </div>
-
-        <USeparator />
-
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">Assinatura (Stripe)</span>
-          <span class="text-sm font-medium font-mono">
-            {{ data.subscription.stripe_subscription_id || '-' }}
-          </span>
-        </div>
-
-        <USeparator />
-
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">Plano (price_id)</span>
-          <span class="text-sm font-medium font-mono">
-            {{ data.subscription.price_id || '-' }}
-          </span>
-        </div>
-
-        <USeparator />
-
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">Quantidade</span>
-          <span class="text-sm font-medium">{{ data.subscription.quantity ?? '-' }}</span>
-        </div>
-
-        <USeparator />
-
-        <div class="flex items-center justify-between">
           <span class="text-sm text-muted">Início do período</span>
           <span class="text-sm font-medium">{{ formatDate(data.subscription.current_period_start) }}</span>
         </div>
