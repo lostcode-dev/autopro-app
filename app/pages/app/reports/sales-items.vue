@@ -205,9 +205,9 @@ const itemColumns = [
   { accessorKey: 'client', header: 'Cliente' },
   { accessorKey: 'orderNumber', header: 'OS' },
   { accessorKey: 'itemDescription', header: 'Item' },
-  { accessorKey: 'responsible', header: 'ResponsÃ¡vel' },
+  { accessorKey: 'responsible', header: 'Responsável' },
   { accessorKey: 'totalCost', header: 'Custo' },
-  { accessorKey: 'commissionCost', header: 'ComissÃ£o' },
+  { accessorKey: 'commissionCost', header: 'Comissão' },
   { accessorKey: 'totalValue', header: 'Valor' },
   { id: 'actions', header: '', enableSorting: false }
 ]
@@ -216,9 +216,9 @@ const orderColumns = [
   { accessorKey: 'client', header: 'Cliente' },
   { accessorKey: 'orderNumber', header: 'OS' },
   { accessorKey: 'itemCount', header: 'Itens' },
-  { accessorKey: 'responsible', header: 'ResponsÃ¡vel' },
+  { accessorKey: 'responsible', header: 'Responsável' },
   { accessorKey: 'totalCost', header: 'Custo' },
-  { accessorKey: 'commissionCost', header: 'ComissÃ£o' },
+  { accessorKey: 'commissionCost', header: 'Comissão' },
   { accessorKey: 'totalValue', header: 'Valor' },
   { id: 'actions', header: '', enableSorting: false }
 ]
@@ -230,9 +230,9 @@ function formatCurrency(v: number | string) {
 }
 
 function formatDate(v: string | null | undefined) {
-  if (!v) return 'â€”'
+  if (!v) return '—'
   const [year, month, day] = v.split('-')
-  if (!year || !month || !day) return 'â€”'
+  if (!year || !month || !day) return '—'
   return `${day}/${month}/${year}`
 }
 
@@ -332,7 +332,7 @@ async function exportReport(format: 'csv' | 'pdf') {
       URL.revokeObjectURL(url)
     }
   } catch {
-    toast.add({ title: 'Erro ao exportar relatÃ³rio', color: 'error' })
+    toast.add({ title: 'Erro ao exportar relatório', color: 'error' })
   } finally {
     exporting.value = null
   }
@@ -342,7 +342,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader :title="viewMode === 'os' ? 'RelatÃ³rio por Ordem de ServiÃ§o' : 'Itens Vendidos'" />
+      <AppPageHeader :title="viewMode === 'os' ? 'Relatório por Ordem de Serviço' : 'Itens Vendidos'" />
     </template>
 
     <template #body>
@@ -382,16 +382,16 @@ async function exportReport(format: 'csv' | 'pdf') {
           :total="pagination?.totalItems ?? items.length"
           :show-page-size-selector="false"
           show-search
-          search-placeholder="Buscar item, OS, cliente, responsÃ¡vel ou categoria..."
+          search-placeholder="Buscar item, OS, cliente, responsável ou categoria..."
           empty-icon="i-lucide-list-checks"
           :empty-title="viewMode === 'os' ? 'Nenhuma OS encontrada' : 'Nenhum item encontrado'"
-          :empty-description="viewMode === 'os' ? 'NÃ£o hÃ¡ ordens de serviÃ§o para os filtros selecionados.' : 'NÃ£o hÃ¡ itens vendidos para os filtros selecionados.'"
+          :empty-description="viewMode === 'os' ? 'Não há ordens de serviço para os filtros selecionados.' : 'Não há itens vendidos para os filtros selecionados.'"
           @search-change="page = 1"
         >
           <template #toolbar-right>
             <div class="flex items-center gap-2">
               <div class="inline-flex">
-                <UTooltip :text="`VisualizaÃ§Ã£o por item (${summary.itemCount ?? 0})`">
+                <UTooltip :text="`Visualização por item (${summary.itemCount ?? 0})`">
                   <UButton
                     icon="i-lucide-package"
                     color="neutral"
@@ -400,7 +400,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                     @click="viewMode = 'item'"
                   />
                 </UTooltip>
-                <UTooltip :text="`VisualizaÃ§Ã£o por OS (${summary.orderCount ?? 0})`">
+                <UTooltip :text="`Visualização por OS (${summary.orderCount ?? 0})`">
                   <UButton
                     icon="i-lucide-file-text"
                     color="neutral"
@@ -411,7 +411,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                 </UTooltip>
               </div>
 
-              <UTooltip text="Exportar relatÃ³rio">
+              <UTooltip text="Exportar relatório">
                 <UDropdownMenu
                   :items="exportItems"
                   :content="{ align: 'end' }"
