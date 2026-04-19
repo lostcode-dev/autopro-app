@@ -165,7 +165,7 @@ const fiscalRegimeOptions = [
 </script>
 
 <template>
-  <div v-if="!canView" class="p-6">
+  <div v-if="!canView" class="rounded-xl border border-default/60 bg-elevated/30 p-6">
     <p class="text-sm text-muted">
       Você não tem permissão para visualizar as configurações da empresa.
     </p>
@@ -178,10 +178,9 @@ const fiscalRegimeOptions = [
     :state="form"
     @submit="onSubmit"
   >
-    <!-- Header -->
     <UPageCard
       title="Empresa"
-      description="Informações gerais da sua oficina."
+      description="Dados cadastrais, contato e endereço da sua oficina."
       variant="naked"
       orientation="horizontal"
       class="mb-4"
@@ -199,128 +198,170 @@ const fiscalRegimeOptions = [
     </UPageCard>
 
     <div v-if="status === 'pending'" class="space-y-4">
-      <USkeleton v-for="i in 6" :key="i" class="h-14 w-full" />
+      <USkeleton v-for="i in 8" :key="i" class="h-14 w-full" />
     </div>
 
     <template v-else>
       <!-- Logo -->
-      <UPageCard title="Logo da Oficina" icon="i-lucide-image" variant="subtle" class="mb-4">
-        <div class="flex items-start gap-4 flex-wrap">
-          <div class="relative shrink-0">
-            <img
-              v-if="form.logo_url"
-              :src="form.logo_url"
-              alt="Logo da Oficina"
-              class="size-20 rounded-lg object-contain border border-default bg-white p-1"
-            />
-            <div
-              v-else
-              class="size-20 rounded-lg border-2 border-dashed border-default flex items-center justify-center bg-muted/30"
-            >
-              <UIcon name="i-lucide-image" class="size-8 text-muted" />
+      <UPageCard variant="subtle" class="mb-4">
+        <UFormField
+          name="logo_url"
+          label="Logo da oficina"
+          description="JPEG, PNG ou WebP. Máx. 5 MB. Recomendado 200×200 px."
+          class="flex max-sm:flex-col justify-between sm:items-center gap-4"
+        >
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="relative shrink-0">
+              <img
+                v-if="form.logo_url"
+                :src="form.logo_url"
+                alt="Logo"
+                class="size-16 rounded-xl object-contain border border-default bg-white p-1"
+              />
+              <div
+                v-else
+                class="size-16 rounded-xl border-2 border-dashed border-default/70 flex items-center justify-center bg-elevated/40"
+              >
+                <UIcon name="i-lucide-building-2" class="size-6 text-muted" />
+              </div>
             </div>
-            <UButton
-              v-if="form.logo_url && canUpdate"
-              color="error"
-              icon="i-lucide-x"
-              size="xs"
-              class="absolute -top-2 -right-2"
-              @click="removeLogo"
-            />
-          </div>
-
-          <div class="flex flex-col gap-3">
             <div class="flex flex-wrap gap-2">
               <UButton
-                label="Selecionar Logo"
+                label="Enviar logo"
                 color="neutral"
-                variant="outline"
                 icon="i-lucide-upload"
                 :loading="isUploadingLogo"
                 :disabled="!canUpdate || isUploadingLogo"
                 @click="logoFileRef?.click()"
               />
               <UButton
-                v-if="form.logo_url"
+                v-if="form.logo_url && canUpdate"
                 label="Remover"
-                color="error"
+                color="neutral"
                 variant="ghost"
-                icon="i-lucide-x"
-                :disabled="!canUpdate"
+                icon="i-lucide-trash-2"
                 @click="removeLogo"
               />
             </div>
-            <ul class="text-xs text-muted space-y-0.5">
-              <li>• Formatos aceitos: JPEG, PNG, WebP</li>
-              <li>• Tamanho máximo: 5MB</li>
-              <li>• Recomendado: 200x200px ou maior</li>
-            </ul>
+            <input ref="logoFileRef" type="file" class="hidden" accept=".jpg,.jpeg,.png,.webp" @change="onLogoFileChange" />
           </div>
-        </div>
-        <input ref="logoFileRef" type="file" class="hidden" accept=".jpg,.jpeg,.png,.webp" @change="onLogoFileChange" />
+        </UFormField>
       </UPageCard>
 
-      <!-- Dados básicos -->
-      <UPageCard title="Identificação" variant="subtle" class="mb-4">
+      <!-- Identificação -->
+      <UPageCard variant="subtle" class="mb-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+          Identificação
+        </p>
+
         <UFormField
           name="name"
           label="Razão social"
+          description="Nome jurídico registrado da empresa."
           required
           class="flex max-sm:flex-col justify-between items-start gap-4"
         >
-          <UInput v-model="form.name" :disabled="!canUpdate" class="w-full" />
+          <UInput v-model="form.name" :disabled="!canUpdate" class="w-full" placeholder="Ex: Oficina Silva LTDA" />
         </UFormField>
+
         <USeparator />
-        <UFormField name="trade_name" label="Nome fantasia" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput v-model="form.trade_name" :disabled="!canUpdate" class="w-full" />
+
+        <UFormField
+          name="trade_name"
+          label="Nome fantasia"
+          description="Como a oficina é conhecida pelos clientes."
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput v-model="form.trade_name" :disabled="!canUpdate" class="w-full" placeholder="Ex: Oficina do Silva" />
         </UFormField>
+
         <USeparator />
-        <UFormField name="tax_id" label="CNPJ / CPF" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput v-model="form.tax_id" :disabled="!canUpdate" class="w-full" />
+
+        <UFormField
+          name="tax_id"
+          label="CNPJ / CPF"
+          description="Documento de identificação fiscal."
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput v-model="form.tax_id" :disabled="!canUpdate" class="w-full" placeholder="00.000.000/0001-00" />
         </UFormField>
+
         <USeparator />
-        <UFormField name="description" label="Descrição" class="flex max-sm:flex-col justify-between items-start gap-4">
+
+        <UFormField
+          name="description"
+          label="Descrição"
+          description="Breve apresentação da oficina (opcional)."
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
           <UTextarea
             v-model="form.description"
             :disabled="!canUpdate"
             class="w-full"
             :rows="3"
+            placeholder="Ex: Especializada em veículos leves e pesados desde 2005."
           />
         </UFormField>
       </UPageCard>
 
       <!-- Contato -->
-      <UPageCard title="Contato" variant="subtle" class="mb-4">
-        <UFormField name="email" label="E-mail" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput
-            v-model="form.email"
-            type="email"
-            :disabled="!canUpdate"
-            class="w-full"
-          />
+      <UPageCard variant="subtle" class="mb-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+          Contato
+        </p>
+
+        <UFormField
+          name="email"
+          label="E-mail"
+          description="Para comunicação com clientes e parceiros."
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput v-model="form.email" type="email" :disabled="!canUpdate" class="w-full" placeholder="contato@oficina.com.br" />
         </UFormField>
+
         <USeparator />
-        <UFormField name="phone" label="Telefone" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput v-model="form.phone" :disabled="!canUpdate" class="w-full" />
+
+        <UFormField
+          name="phone"
+          label="Telefone fixo"
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput v-model="form.phone" :disabled="!canUpdate" class="w-full" placeholder="(00) 0000-0000" />
         </UFormField>
+
         <USeparator />
-        <UFormField name="mobile_phone" label="Celular" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput v-model="form.mobile_phone" :disabled="!canUpdate" class="w-full" />
+
+        <UFormField
+          name="mobile_phone"
+          label="Celular / WhatsApp"
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput v-model="form.mobile_phone" :disabled="!canUpdate" class="w-full" placeholder="(00) 90000-0000" />
         </UFormField>
+
         <USeparator />
-        <UFormField name="website" label="Website" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput
-            v-model="form.website"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="https://"
-          />
+
+        <UFormField
+          name="website"
+          label="Website"
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput v-model="form.website" :disabled="!canUpdate" class="w-full" placeholder="https://suaoficina.com.br" />
         </UFormField>
       </UPageCard>
 
       <!-- Endereço -->
-      <UPageCard title="Endereço" variant="subtle" class="mb-4">
-        <UFormField name="address_zip_code" label="CEP" class="flex max-sm:flex-col justify-between items-start gap-4">
+      <UPageCard variant="subtle" class="mb-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+          Endereço
+        </p>
+
+        <UFormField
+          name="address_zip_code"
+          label="CEP"
+          description="Digite o CEP para preencher o endereço automaticamente."
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
           <div class="flex gap-2 w-full">
             <UInput
               v-model="form.address_zip_code"
@@ -330,51 +371,92 @@ const fiscalRegimeOptions = [
             />
             <UButton
               v-if="canUpdate"
-              label="Buscar"
+              label="Buscar CEP"
               color="neutral"
               variant="outline"
+              icon="i-lucide-search"
               :loading="isLoadingCep"
               :disabled="isLoadingCep"
               @click="lookupCep"
             />
           </div>
         </UFormField>
+
         <USeparator />
-        <UFormField name="address_street" label="Logradouro" class="flex max-sm:flex-col justify-between items-start gap-4">
-          <UInput v-model="form.address_street" :disabled="!canUpdate" class="w-full" />
+
+        <UFormField
+          name="address_street"
+          label="Logradouro"
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput v-model="form.address_street" :disabled="!canUpdate" class="w-full" placeholder="Rua, Avenida..." />
         </UFormField>
+
         <USeparator />
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField name="address_number" label="Número">
-            <UInput v-model="form.address_number" :disabled="!canUpdate" class="w-full" />
-          </UFormField>
-          <UFormField name="address_complement" label="Complemento">
-            <UInput v-model="form.address_complement" :disabled="!canUpdate" class="w-full" />
-          </UFormField>
+
+        <div class="flex max-sm:flex-col justify-between items-start gap-4">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium text-highlighted">
+              Número e complemento
+            </p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 w-full sm:max-w-xs">
+            <UFormField name="address_number" label="">
+              <UInput v-model="form.address_number" :disabled="!canUpdate" class="w-full" placeholder="Nº" />
+            </UFormField>
+            <UFormField name="address_complement" label="">
+              <UInput v-model="form.address_complement" :disabled="!canUpdate" class="w-full" placeholder="Apto, sala..." />
+            </UFormField>
+          </div>
         </div>
+
         <USeparator />
-        <UFormField name="address_neighborhood" label="Bairro" class="flex max-sm:flex-col justify-between items-start gap-4">
+
+        <UFormField
+          name="address_neighborhood"
+          label="Bairro"
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
           <UInput v-model="form.address_neighborhood" :disabled="!canUpdate" class="w-full" />
         </UFormField>
+
         <USeparator />
-        <div class="grid grid-cols-2 gap-4">
-          <UFormField name="address_city" label="Cidade">
-            <UInput v-model="form.address_city" :disabled="!canUpdate" class="w-full" />
-          </UFormField>
-          <UFormField name="address_state" label="UF">
-            <UInput
-              v-model="form.address_state"
-              :disabled="!canUpdate"
-              maxlength="2"
-              class="w-full uppercase"
-            />
-          </UFormField>
+
+        <div class="flex max-sm:flex-col justify-between items-start gap-4">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium text-highlighted">
+              Cidade e estado
+            </p>
+          </div>
+          <div class="grid grid-cols-[1fr_80px] gap-3 w-full sm:max-w-xs">
+            <UFormField name="address_city" label="">
+              <UInput v-model="form.address_city" :disabled="!canUpdate" class="w-full" placeholder="Cidade" />
+            </UFormField>
+            <UFormField name="address_state" label="">
+              <UInput
+                v-model="form.address_state"
+                :disabled="!canUpdate"
+                maxlength="2"
+                class="w-full uppercase"
+                placeholder="UF"
+              />
+            </UFormField>
+          </div>
         </div>
       </UPageCard>
 
       <!-- Fiscal -->
-      <UPageCard title="Fiscal" variant="subtle" class="mb-4">
-        <UFormField name="fiscal_regime" label="Regime tributário" class="flex max-sm:flex-col justify-between items-start gap-4">
+      <UPageCard variant="subtle" class="mb-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+          Fiscal
+        </p>
+
+        <UFormField
+          name="fiscal_regime"
+          label="Regime tributário"
+          description="Enquadramento fiscal da empresa."
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
           <USelectMenu
             v-model="form.fiscal_regime"
             :items="fiscalRegimeOptions"
@@ -384,22 +466,38 @@ const fiscalRegimeOptions = [
             placeholder="Selecionar..."
           />
         </UFormField>
+
         <USeparator />
-        <UFormField name="municipal_registration" label="Inscrição municipal" class="flex max-sm:flex-col justify-between items-start gap-4">
+
+        <UFormField
+          name="municipal_registration"
+          label="Inscrição municipal"
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
           <UInput v-model="form.municipal_registration" :disabled="!canUpdate" class="w-full" />
         </UFormField>
+
         <USeparator />
-        <UFormField name="state_registration" label="Inscrição estadual" class="flex max-sm:flex-col justify-between items-start gap-4">
+
+        <UFormField
+          name="state_registration"
+          label="Inscrição estadual"
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
           <UInput v-model="form.state_registration" :disabled="!canUpdate" class="w-full" />
         </UFormField>
       </UPageCard>
 
-      <!-- Configurações do Sistema -->
-      <UPageCard title="Configurações do Sistema" icon="i-lucide-settings-2" variant="subtle" class="mb-4">
+      <!-- Sistema -->
+      <UPageCard variant="subtle" class="mb-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+          Sistema
+        </p>
+
         <UFormField
           name="initial_service_order_number"
-          label="Número Inicial das OS"
-          description="Define o número a partir do qual as novas Ordens de Serviço serão criadas."
+          label="Número inicial de OS"
+          description="As novas ordens de serviço serão numeradas a partir deste valor."
           class="flex max-sm:flex-col justify-between items-start gap-4"
         >
           <UInput
@@ -407,7 +505,7 @@ const fiscalRegimeOptions = [
             type="number"
             min="1"
             :disabled="!canUpdate"
-            class="w-full"
+            class="w-full sm:max-w-32"
           />
         </UFormField>
       </UPageCard>
