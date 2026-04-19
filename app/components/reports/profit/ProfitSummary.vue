@@ -7,8 +7,9 @@ interface PeriodData {
 }
 
 interface VariationValue {
-  variation?: number
+  variation?: number | null
   type?: 'increase' | 'decrease' | 'equal'
+  fromZeroBase?: boolean
 }
 
 defineProps<{
@@ -31,6 +32,7 @@ function formatPercent(v: number | string) {
 
 function variationText(value?: VariationValue, suffix = '') {
   if (!value) return null
+  if (value.fromZeroBase) return 'Sem base anterior'
   if (!Number.isFinite(Number(value.variation))) return `Novo${suffix ? ` ${suffix}` : ''}`
   return `${Number(value.variation || 0).toFixed(1)}%${suffix}`
 }

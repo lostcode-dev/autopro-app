@@ -14,8 +14,9 @@ interface PeriodData {
 }
 
 interface VariationValue {
-  variation: number
+  variation: number | null
   type: 'increase' | 'decrease' | 'equal'
+  fromZeroBase?: boolean
 }
 
 interface Variations {
@@ -99,6 +100,7 @@ function formatPercent(v: number | string) {
 
 function variationText(value?: VariationValue | null, suffix = '') {
   if (!value) return '—'
+  if (value.fromZeroBase) return 'Sem base anterior'
   if (!Number.isFinite(Number(value.variation))) return `Novo${suffix ? ` ${suffix}` : ''}`
   return `${Number(value.variation || 0).toFixed(1)}%${suffix}`
 }
@@ -115,13 +117,7 @@ function variationColor(value?: VariationValue | null, invert = false) {
   return value.type === 'increase' ? 'text-success' : 'text-error'
 }
 
-const topOrderColumns = [
-  { accessorKey: 'number', header: 'OS' },
-  { id: 'revenue', header: 'Receita' },
-  { id: 'cost', header: 'Custo' },
-  { id: 'profit', header: 'Lucro' },
-  { id: 'margin', header: 'Margem' }
-]
+
 </script>
 
 <template>
@@ -157,16 +153,48 @@ const topOrderColumns = [
             <div class="rounded-xl bg-primary/10 p-2">
               <UIcon name="i-lucide-git-compare-arrows" class="size-5 text-primary" />
             </div>
-            <div>
+
+            <div v-if="comparisonMeta" class="min-w-0 flex-1 space-y-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <p class="text-sm font-semibold text-highlighted">
+                  Comparação ativa
+                </p>
+                <UBadge color="primary" variant="soft" size="xs">
+                  {{ comparisonMeta.modeLabel }}
+                </UBadge>
+              </div>
+
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div class="rounded-xl border border-default bg-elevated/30 px-3 py-2.5">
+                  <p class="text-[11px] font-medium uppercase tracking-wide text-muted">
+                    Período atual
+                  </p>
+                  <p class="mt-1 text-sm font-medium text-highlighted">
+                    {{ comparisonMeta.currentPeriodLabel }}
+                  </p>
+                </div>
+
+                <div class="rounded-xl border border-default bg-elevated/30 px-3 py-2.5">
+                  <p class="text-[11px] font-medium uppercase tracking-wide text-muted">
+                    Comparado com
+                  </p>
+                  <p class="mt-1 text-sm font-medium text-highlighted">
+                    {{ comparisonMeta.previousPeriodLabel }}
+                  </p>
+                </div>
+              </div>
+
+              <p class="text-sm text-muted">
+                Os indicadores abaixo mostram a variação do período atual em relação ao período comparado.
+              </p>
+            </div>
+
+            <div v-else>
               <p class="text-sm font-semibold text-highlighted">
-                {{ comparisonMeta ? 'Comparação ativa' : 'Sem comparação' }}
+                Sem comparação
               </p>
               <p class="text-sm text-muted">
-                {{
-                  comparisonMeta
-                    ? `Comparando ${comparisonMeta.currentPeriodLabel} com ${comparisonMeta.previousPeriodLabel} (${comparisonMeta.modeLabel}).`
-                    : 'Selecione um modo de comparação para ver a variação entre períodos.'
-                }}
+                Selecione um modo de comparação para ver a variação entre períodos.
               </p>
             </div>
           </div>
@@ -192,9 +220,12 @@ const topOrderColumns = [
 
           <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl border border-default bg-elevated/40 p-3">
-              <p class="text-xs text-muted">
-                Faturamento
-              </p>
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-banknote" class="size-3.5 text-primary" />
+                <p class="text-xs text-muted">
+                  Faturamento
+                </p>
+              </div>
               <p class="mt-1 text-sm font-bold text-primary">
                 Atual: {{ formatCurrency(current.revenue) }}
               </p>
@@ -213,9 +244,12 @@ const topOrderColumns = [
             </div>
 
             <div class="rounded-xl border border-default bg-elevated/40 p-3">
-              <p class="text-xs text-muted">
-                Custos
-              </p>
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-receipt" class="size-3.5 text-error" />
+                <p class="text-xs text-muted">
+                  Custos
+                </p>
+              </div>
               <p class="mt-1 text-sm font-bold text-error">
                 Atual: {{ formatCurrency(current.costs) }}
               </p>
@@ -234,9 +268,12 @@ const topOrderColumns = [
             </div>
 
             <div class="rounded-xl border border-default bg-elevated/40 p-3">
-              <p class="text-xs text-muted">
-                Lucro
-              </p>
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-coins" :class="['size-3.5', current.profit >= 0 ? 'text-success' : 'text-error']" />
+                <p class="text-xs text-muted">
+                  Lucro
+                </p>
+              </div>
               <p class="mt-1 text-sm font-bold" :class="current.profit >= 0 ? 'text-success' : 'text-error'">
                 Atual: {{ formatCurrency(current.profit) }}
               </p>
@@ -255,9 +292,12 @@ const topOrderColumns = [
             </div>
 
             <div class="rounded-xl border border-default bg-elevated/40 p-3">
-              <p class="text-xs text-muted">
-                Margem
-              </p>
+              <div class="flex items-center gap-1.5">
+                <UIcon name="i-lucide-percent" class="size-3.5 text-info" />
+                <p class="text-xs text-muted">
+                  Margem
+                </p>
+              </div>
               <p class="mt-1 text-sm font-bold text-info">
                 Atual: {{ formatPercent(current.profitMargin) }}
               </p>
@@ -283,42 +323,81 @@ const topOrderColumns = [
             <p class="text-sm font-semibold text-highlighted">
               Ordens mais lucrativas
             </p>
+            <UBadge v-if="topOrders.length" color="neutral" variant="soft" size="xs" class="ml-auto">
+              Top {{ topOrders.length }}
+            </UBadge>
           </div>
 
-          <AppDataTable
-            :columns="topOrderColumns"
-            :data="topOrders as Record<string, unknown>[]"
-            :show-footer="false"
-            empty-icon="i-lucide-trophy"
-            empty-title="Nenhuma OS encontrada"
-            empty-description="Não há ordens lucrativas para exibir no período."
-          >
-            <template #number-cell="{ row }">
-              <span class="font-mono text-sm text-highlighted">
-                #{{ row.original.number }}
+          <div v-if="topOrders.length" class="space-y-2 p-4">
+            <div
+              v-for="(order, index) in topOrders"
+              :key="order.number"
+              class="flex flex-wrap items-center gap-3 rounded-xl border border-default bg-elevated/30 px-4 py-3 transition-colors hover:bg-elevated/60"
+            >
+              <span
+                class="flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-bold"
+                :class="index === 0 ? 'bg-yellow-500/15 text-yellow-500' : index === 1 ? 'bg-zinc-400/15 text-zinc-400' : index === 2 ? 'bg-amber-700/15 text-amber-700' : 'bg-elevated text-muted'"
+              >
+                {{ index + 1 }}
               </span>
-            </template>
 
-            <template #revenue-cell="{ row }">
-              {{ formatCurrency(Number(row.original.revenue ?? 0)) }}
-            </template>
-
-            <template #cost-cell="{ row }">
-              <span class="text-error">
-                {{ formatCurrency(Number(row.original.cost ?? 0)) }}
+              <span class="w-36 shrink-0 font-mono text-sm font-semibold text-highlighted">
+                #{{ order.number }}
               </span>
-            </template>
 
-            <template #profit-cell="{ row }">
-              <span class="font-medium" :class="Number(row.original.profit ?? 0) >= 0 ? 'text-success' : 'text-error'">
-                {{ formatCurrency(Number(row.original.profit ?? 0)) }}
-              </span>
-            </template>
+              <div class="flex flex-1 flex-wrap items-center gap-x-6 gap-y-2">
+                <div class="flex items-center gap-1.5">
+                  <UIcon name="i-lucide-banknote" class="size-3.5 text-muted" />
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wide text-muted">Receita</p>
+                    <p class="text-xs font-medium text-highlighted">{{ formatCurrency(order.revenue) }}</p>
+                  </div>
+                </div>
 
-            <template #margin-cell="{ row }">
-              {{ formatPercent(Number(row.original.margin ?? 0)) }}
-            </template>
-          </AppDataTable>
+                <div class="flex items-center gap-1.5">
+                  <UIcon name="i-lucide-receipt" class="size-3.5 text-error/70" />
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wide text-muted">Custo</p>
+                    <p class="text-xs font-medium text-error">{{ formatCurrency(order.cost) }}</p>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1.5">
+                  <UIcon
+                    :name="order.profit >= 0 ? 'i-lucide-trending-up' : 'i-lucide-trending-down'"
+                    :class="['size-3.5', order.profit >= 0 ? 'text-success/70' : 'text-error/70']"
+                  />
+                  <div>
+                    <p class="text-[10px] uppercase tracking-wide text-muted">Lucro</p>
+                    <p class="text-xs font-semibold" :class="order.profit >= 0 ? 'text-success' : 'text-error'">
+                      {{ formatCurrency(order.profit) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="ml-auto flex items-center gap-1.5">
+                  <UIcon name="i-lucide-percent" class="size-3.5 text-muted" />
+                  <UBadge
+                    :color="order.margin >= 40 ? 'success' : order.margin >= 20 ? 'warning' : 'error'"
+                    variant="soft"
+                    size="sm"
+                  >
+                    {{ formatPercent(order.margin) }}
+                  </UBadge>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="flex flex-col items-center justify-center gap-2 p-8 text-center">
+            <UIcon name="i-lucide-trophy" class="size-8 text-muted" />
+            <p class="text-sm font-medium text-highlighted">
+              Nenhuma OS encontrada
+            </p>
+            <p class="text-xs text-muted">
+              Não há ordens lucrativas para exibir no período.
+            </p>
+          </div>
         </UCard>
       </div>
     </template>

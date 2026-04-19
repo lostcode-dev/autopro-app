@@ -202,11 +202,18 @@ export function getPreviousRangeByMode(
 
 export function calculateVariation(current: number, previous: number) {
   if (previous === 0 && current === 0) return { variation: 0, type: 'equal' as const }
-  if (previous === 0) return { variation: current > 0 ? Infinity : -Infinity, type: current > 0 ? 'increase' as const : 'decrease' as const }
+  if (previous === 0) {
+    return {
+      variation: null,
+      type: current > 0 ? 'increase' as const : 'decrease' as const,
+      fromZeroBase: true
+    }
+  }
   const variation = ((current - previous) / Math.abs(previous)) * 100
   return {
     variation: Math.abs(variation),
-    type: variation > 0 ? 'increase' as const : variation < 0 ? 'decrease' as const : 'equal' as const
+    type: variation > 0 ? 'increase' as const : variation < 0 ? 'decrease' as const : 'equal' as const,
+    fromZeroBase: false
   }
 }
 
