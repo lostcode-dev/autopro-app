@@ -81,17 +81,27 @@ function formatDate(v: string | null) {
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div v-if="props.loading" class="space-y-2">
-        <USkeleton class="h-5 w-40" />
-        <USkeleton class="h-4 w-28" />
-      </div>
-      <div v-else-if="props.data">
-        <h2 class="text-base font-bold text-highlighted">
-          {{ props.data.mode === 'os' ? `OS #${props.data.orderNumber}` : props.data.itemDescription }}
-        </h2>
-        <p class="mt-0.5 text-xs text-muted">
-          {{ props.data.client }}
-        </p>
+      <div class="flex items-center justify-between gap-3 w-full">
+        <div v-if="props.loading" class="space-y-2">
+          <USkeleton class="h-5 w-40" />
+          <USkeleton class="h-4 w-28" />
+        </div>
+        <div v-else-if="props.data">
+          <h2 class="text-base font-bold text-highlighted">
+            {{ props.data.mode === 'os' ? `OS #${props.data.orderNumber}` : props.data.itemDescription }}
+          </h2>
+          <p class="mt-0.5 text-xs text-muted">
+            {{ props.data.client }}
+          </p>
+        </div>
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          class="shrink-0"
+          @click="$emit('update:open', false)"
+        />
       </div>
     </template>
 

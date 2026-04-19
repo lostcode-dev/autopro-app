@@ -1,14 +1,6 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
 import type { SalesItemsDetailData } from '~/components/reports/sales-items/SalesItemsDetailSlideover.vue'
-import {
-  formatSalesCostSourceLabel,
-  formatSalesOrderStatusLabel,
-  formatSalesPaymentStatusLabel,
-  salesCostSourceColor,
-  salesOrderStatusColor,
-  salesPaymentStatusColor
-} from '~/utils/report-sales-items'
 
 interface SalesItemRow {
   id: string
@@ -84,8 +76,6 @@ interface SalesItemsReportResponse {
   }
 }
 
-type BadgeColor = 'neutral' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error'
-
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Itens Vendidos' })
 
@@ -129,12 +119,12 @@ const exportItems = computed(() => [[
   }
 ]])
 
-const sortByParam = useReportQueryParam('sortBy', 'date')
+const sortByParam = useReportQueryParam('sortBy', 'totalValue')
 const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
 const sorting = computed<SortingState>({
   get: () => [{ id: sortByParam.value, desc: sortOrderParam.value !== 'asc' }],
   set: (val) => {
-    sortByParam.value = val[0]?.id ?? 'date'
+    sortByParam.value = val[0]?.id ?? 'totalValue'
     sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
     page.value = 1
   }
@@ -143,20 +133,14 @@ const sortByMap: Record<string, string> = {
   client: 'client',
   orderNumber: 'orderNumber',
   itemDescription: 'itemDescription',
-  categoryName: 'categoryName',
-  quantity: 'quantity',
   totalValue: 'totalValue',
   totalCost: 'totalCost',
   commissionCost: 'commissionCost',
-  profit: 'profit',
   responsible: 'responsible',
-  status_col: 'status',
-  payment_status_col: 'paymentStatus',
-  date: 'date',
   itemCount: 'itemCount'
 }
 
-const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'date')
+const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'totalValue')
 const sortOrder = computed(() => sortOrderParam.value)
 
 watch([
@@ -221,17 +205,10 @@ const itemColumns = [
   { accessorKey: 'client', header: 'Cliente' },
   { accessorKey: 'orderNumber', header: 'OS' },
   { accessorKey: 'itemDescription', header: 'Item' },
-  { accessorKey: 'categoryName', header: 'Categoria' },
-  { accessorKey: 'responsible', header: 'Responsável' },
-  { id: 'status_col', header: 'Status OS' },
-  { id: 'payment_status_col', header: 'Pgto OS' },
-  { accessorKey: 'costSource', header: 'Origem custo' },
-  { accessorKey: 'quantity', header: 'Qtd.' },
-  { accessorKey: 'date', header: 'Data' },
-  { accessorKey: 'totalValue', header: 'Receita' },
+  { accessorKey: 'responsible', header: 'ResponsÃ¡vel' },
   { accessorKey: 'totalCost', header: 'Custo' },
-  { accessorKey: 'commissionCost', header: 'Comissão' },
-  { accessorKey: 'profit', header: 'Lucro' },
+  { accessorKey: 'commissionCost', header: 'ComissÃ£o' },
+  { accessorKey: 'totalValue', header: 'Valor' },
   { id: 'actions', header: '', enableSorting: false }
 ]
 
@@ -239,15 +216,10 @@ const orderColumns = [
   { accessorKey: 'client', header: 'Cliente' },
   { accessorKey: 'orderNumber', header: 'OS' },
   { accessorKey: 'itemCount', header: 'Itens' },
-  { accessorKey: 'responsible', header: 'Responsável' },
-  { id: 'status_col', header: 'Status OS' },
-  { id: 'payment_status_col', header: 'Pgto OS' },
-  { accessorKey: 'quantity', header: 'Qtd.' },
-  { accessorKey: 'date', header: 'Data' },
-  { accessorKey: 'totalValue', header: 'Receita' },
+  { accessorKey: 'responsible', header: 'ResponsÃ¡vel' },
   { accessorKey: 'totalCost', header: 'Custo' },
-  { accessorKey: 'commissionCost', header: 'Comissão' },
-  { accessorKey: 'profit', header: 'Lucro' },
+  { accessorKey: 'commissionCost', header: 'ComissÃ£o' },
+  { accessorKey: 'totalValue', header: 'Valor' },
   { id: 'actions', header: '', enableSorting: false }
 ]
 
@@ -258,9 +230,9 @@ function formatCurrency(v: number | string) {
 }
 
 function formatDate(v: string | null | undefined) {
-  if (!v) return '—'
+  if (!v) return 'â€”'
   const [year, month, day] = v.split('-')
-  if (!year || !month || !day) return '—'
+  if (!year || !month || !day) return 'â€”'
   return `${day}/${month}/${year}`
 }
 
@@ -269,6 +241,19 @@ function getInitials(name: string) {
   if (parts.length === 0) return '?'
   if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
   return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
+}
+
+function getResponsibleNames(value: string | null | undefined) {
+  if (!value) return []
+
+  return Array.from(
+    new Set(
+      value
+        .split(',')
+        .map(name => name.trim())
+        .filter(Boolean)
+    )
+  )
 }
 
 async function openDetail(row: SalesItemRow | SalesOrderRow) {
@@ -347,7 +332,7 @@ async function exportReport(format: 'csv' | 'pdf') {
       URL.revokeObjectURL(url)
     }
   } catch {
-    toast.add({ title: 'Erro ao exportar relatório', color: 'error' })
+    toast.add({ title: 'Erro ao exportar relatÃ³rio', color: 'error' })
   } finally {
     exporting.value = null
   }
@@ -357,7 +342,7 @@ async function exportReport(format: 'csv' | 'pdf') {
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader :title="viewMode === 'os' ? 'Relatório por Ordem de Serviço' : 'Itens Vendidos'" />
+      <AppPageHeader :title="viewMode === 'os' ? 'RelatÃ³rio por Ordem de ServiÃ§o' : 'Itens Vendidos'" />
     </template>
 
     <template #body>
@@ -399,16 +384,16 @@ async function exportReport(format: 'csv' | 'pdf') {
           :total="pagination?.totalItems ?? items.length"
           :show-page-size-selector="false"
           show-search
-          search-placeholder="Buscar item, OS, cliente, responsável ou categoria..."
+          search-placeholder="Buscar item, OS, cliente, responsÃ¡vel ou categoria..."
           empty-icon="i-lucide-list-checks"
           :empty-title="viewMode === 'os' ? 'Nenhuma OS encontrada' : 'Nenhum item encontrado'"
-          :empty-description="viewMode === 'os' ? 'Não há ordens de serviço para os filtros selecionados.' : 'Não há itens vendidos para os filtros selecionados.'"
+          :empty-description="viewMode === 'os' ? 'NÃ£o hÃ¡ ordens de serviÃ§o para os filtros selecionados.' : 'NÃ£o hÃ¡ itens vendidos para os filtros selecionados.'"
           @search-change="page = 1"
         >
           <template #toolbar-right>
             <div class="flex items-center gap-2">
               <div class="inline-flex">
-                <UTooltip :text="`Visualização por item (${summary.itemCount ?? 0})`">
+                <UTooltip :text="`VisualizaÃ§Ã£o por item (${summary.itemCount ?? 0})`">
                   <UButton
                     icon="i-lucide-package"
                     color="neutral"
@@ -417,7 +402,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                     @click="viewMode = 'item'"
                   />
                 </UTooltip>
-                <UTooltip :text="`Visualização por OS (${summary.orderCount ?? 0})`">
+                <UTooltip :text="`VisualizaÃ§Ã£o por OS (${summary.orderCount ?? 0})`">
                   <UButton
                     icon="i-lucide-file-text"
                     color="neutral"
@@ -428,7 +413,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                 </UTooltip>
               </div>
 
-              <UTooltip text="Exportar relatório">
+              <UTooltip text="Exportar relatÃ³rio">
                 <UDropdownMenu
                   :items="exportItems"
                   :content="{ align: 'end' }"
@@ -471,56 +456,27 @@ async function exportReport(format: 'csv' | 'pdf') {
               <p class="truncate font-medium text-highlighted">
                 {{ row.original.itemDescription }}
               </p>
-              <p class="truncate text-xs text-muted">
-                {{ row.original.categoryName || 'Sem categoria' }}
-              </p>
             </div>
           </template>
 
-          <template #categoryName-cell="{ row }">
-            <span class="text-sm text-highlighted">
-              {{ row.original.categoryName || 'Sem categoria' }}
-            </span>
-          </template>
-
           <template #responsible-cell="{ row }">
-            <span class="text-sm text-highlighted">
-              {{ row.original.responsible || '—' }}
+            <div
+              v-if="getResponsibleNames(row.original.responsible).length"
+              class="flex flex-wrap items-center gap-1"
+            >
+              <UTooltip
+                v-for="name in getResponsibleNames(row.original.responsible)"
+                :key="name"
+                :text="name"
+              >
+                <span class="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold text-primary">
+                  {{ getInitials(name) }}
+                </span>
+              </UTooltip>
+            </div>
+            <span v-else class="text-sm text-muted">
+              —
             </span>
-          </template>
-
-          <template #status_col-cell="{ row }">
-            <UBadge
-              :color="salesOrderStatusColor(String(row.original.status ?? '')) as BadgeColor"
-              variant="subtle"
-              size="xs"
-            >
-              {{ formatSalesOrderStatusLabel(String(row.original.status ?? '')) }}
-            </UBadge>
-          </template>
-
-          <template #payment_status_col-cell="{ row }">
-            <UBadge
-              :color="salesPaymentStatusColor(String(row.original.paymentStatus ?? '')) as BadgeColor"
-              variant="subtle"
-              size="xs"
-            >
-              {{ formatSalesPaymentStatusLabel(String(row.original.paymentStatus ?? '')) }}
-            </UBadge>
-          </template>
-
-          <template #costSource-cell="{ row }">
-            <UBadge
-              :color="salesCostSourceColor(String(row.original.costSource ?? '')) as BadgeColor"
-              variant="soft"
-              size="xs"
-            >
-              {{ formatSalesCostSourceLabel(String(row.original.costSource ?? '')) }}
-            </UBadge>
-          </template>
-
-          <template #date-cell="{ row }">
-            {{ formatDate(String(row.original.date ?? '')) }}
           </template>
 
           <template #totalValue-cell="{ row }">
@@ -537,12 +493,6 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #commissionCost-cell="{ row }">
             {{ formatCurrency(Number(row.original.commissionCost ?? 0)) }}
-          </template>
-
-          <template #profit-cell="{ row }">
-            <span class="font-medium" :class="Number(row.original.profit ?? 0) >= 0 ? 'text-primary' : 'text-error'">
-              {{ formatCurrency(Number(row.original.profit ?? 0)) }}
-            </span>
           </template>
 
           <template #actions-cell="{ row }">
