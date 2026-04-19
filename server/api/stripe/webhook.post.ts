@@ -3,14 +3,23 @@ import type Stripe from 'stripe'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { getStripe, getStripeWebhookSecret } from '../../utils/stripe'
 
-function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
-  const subscription = invoice.parent?.subscription_details?.subscription
-  if (!subscription)
-    return null
+type SupabaseClient = ReturnType<typeof getSupabaseAdminClient>
+type SubRow = { id: string; organization_id: string }
 
-  return typeof subscription === 'string'
-    ? subscription
-    : subscription.id
+function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
+  // New Stripe API (>= 2024-09-30.acacia)
+  const parentSub = invoice.parent?.subscription_details?.subscription
+  if (parentSub) {
+    return typeof parentSub === 'string' ? parentSub : parentSub.id
+  }
+
+  // Fallback: older Stripe API versions use invoice.subscription directly
+  const legacySub = (invoice as unknown as { subscription?: string | { id: string } }).subscription
+  if (legacySub) {
+    return typeof legacySub === 'string' ? legacySub : legacySub.id
+  }
+
+  return null
 }
 
 function getSubscriptionPeriodEnd(subscription: Stripe.Subscription) {
@@ -106,11 +115,18 @@ async function handleCheckoutCompleted(
   supabase: ReturnType<typeof getSupabaseAdminClient>,
   stripe: ReturnType<typeof getStripe>
 ) {
+  // Support multiple metadata key conventions:
+  //   - user_id / user_email (explicit)
+  //   - supabase_user_id (set by checkout.post.ts)
+  //   - client_reference_id (Stripe standard field set by checkout.post.ts)
   const userId = session.metadata?.user_id
-  const userEmail = session.metadata?.user_email
+    || session.metadata?.supabase_user_id
+    || session.client_reference_id
+    || null
+  const userEmail = session.metadata?.user_email || null
 
   if (!userId && !userEmail) {
-    console.warn('[stripe/webhook] checkout.session.completed: no user_id/user_email in metadata')
+    console.warn('[stripe/webhook] checkout.session.completed: no user identifier in metadata or client_reference_id')
     return
   }
 
@@ -296,24 +312,112 @@ async function handleCheckoutCompleted(
   }
 }
 
+// =============================================================================
+// Subscription row resolver
+// =============================================================================
+
+function extractCustomerId(
+  customer: string | Stripe.Customer | Stripe.DeletedCustomer | null | undefined
+): string | null {
+  if (!customer) return null
+  return typeof customer === 'string' ? customer : customer.id
+}
+
+/**
+ * Resolves the subscriptions row for a given Stripe subscription / customer.
+ * Lookup order:
+ *   1. stripe_subscription_id  (fast path — normal flow)
+ *   2. stripe_customer_id      (fallback when subscription wasn't yet recorded)
+ *      → also patches stripe_subscription_id on the found row if it was missing
+ *   3. user_profiles.stripe_customer_id → bootstraps a new subscription row
+ *      so that subsequent events don't silently no-op either.
+ */
+async function resolveSubscriptionRow(
+  supabase: SupabaseClient,
+  stripeSubscriptionId: string | null,
+  stripeCustomerId: string | null
+): Promise<SubRow | null> {
+  // 1. Exact match by subscription ID
+  if (stripeSubscriptionId) {
+    const { data } = await supabase
+      .from('subscriptions')
+      .select('id, organization_id')
+      .eq('stripe_subscription_id', stripeSubscriptionId)
+      .is('deleted_at', null)
+      .maybeSingle<SubRow>()
+    if (data) return data
+  }
+
+  // 2. Fallback by customer ID
+  if (!stripeCustomerId) return null
+
+  const { data: byCustomer } = await supabase
+    .from('subscriptions')
+    .select('id, organization_id')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<SubRow>()
+
+  if (byCustomer) {
+    // Patch the missing stripe_subscription_id so future lookups hit path 1
+    if (stripeSubscriptionId) {
+      await supabase
+        .from('subscriptions')
+        .update({ stripe_subscription_id: stripeSubscriptionId, updated_by: 'stripe-webhook' })
+        .eq('id', byCustomer.id)
+    }
+    return byCustomer
+  }
+
+  // 3. Bootstrap from user_profiles — handles cases where checkout.session.completed
+  //    was missed or failed before the subscription row was created.
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('organization_id, email')
+    .eq('stripe_customer_id', stripeCustomerId)
+    .maybeSingle<{ organization_id: string | null; email: string | null }>()
+
+  if (!profile?.organization_id) {
+    console.warn(`[stripe/webhook] resolveSubscriptionRow: no profile found for customer ${stripeCustomerId}`)
+    return null
+  }
+
+  const { data: newSub, error: insertError } = await supabase
+    .from('subscriptions')
+    .insert({
+      organization_id: profile.organization_id,
+      user_email: profile.email || '',
+      status: 'active',
+      stripe_customer_id: stripeCustomerId,
+      stripe_subscription_id: stripeSubscriptionId,
+      start_date: new Date().toISOString(),
+      created_by: 'stripe-webhook'
+    })
+    .select('id, organization_id')
+    .single<SubRow>()
+
+  if (insertError) {
+    console.error('[stripe/webhook] resolveSubscriptionRow: failed to bootstrap subscription:', insertError)
+    return null
+  }
+
+  return newSub ?? null
+}
+
 /**
  * invoice.payment_succeeded / invoice.paid
  * Ensures the organization stays active when a payment goes through.
  */
 async function handleInvoicePaid(
   invoice: Stripe.Invoice,
-  supabase: ReturnType<typeof getSupabaseAdminClient>
+  supabase: SupabaseClient
 ) {
   const subscriptionId = getInvoiceSubscriptionId(invoice)
+  const customerId = extractCustomerId(invoice.customer)
 
-  if (!subscriptionId) return
-
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('id, organization_id, status')
-    .eq('stripe_subscription_id', subscriptionId)
-    .maybeSingle()
-
+  const sub = await resolveSubscriptionRow(supabase, subscriptionId, customerId)
   if (!sub) return
 
   await Promise.all([
@@ -334,18 +438,12 @@ async function handleInvoicePaid(
  */
 async function handleInvoiceFailed(
   invoice: Stripe.Invoice,
-  supabase: ReturnType<typeof getSupabaseAdminClient>
+  supabase: SupabaseClient
 ) {
   const subscriptionId = getInvoiceSubscriptionId(invoice)
+  const customerId = extractCustomerId(invoice.customer)
 
-  if (!subscriptionId) return
-
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('id, organization_id')
-    .eq('stripe_subscription_id', subscriptionId)
-    .maybeSingle()
-
+  const sub = await resolveSubscriptionRow(supabase, subscriptionId, customerId)
   if (!sub) return
 
   await supabase
@@ -356,18 +454,14 @@ async function handleInvoiceFailed(
 
 /**
  * customer.subscription.updated
- * Syncs subscription status with Stripe.
+ * Syncs subscription status and next payment date with Stripe.
  */
 async function handleSubscriptionUpdated(
   subscription: Stripe.Subscription,
-  supabase: ReturnType<typeof getSupabaseAdminClient>
+  supabase: SupabaseClient
 ) {
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('id, organization_id')
-    .eq('stripe_subscription_id', subscription.id)
-    .maybeSingle()
-
+  const customerId = extractCustomerId(subscription.customer)
+  const sub = await resolveSubscriptionRow(supabase, subscription.id, customerId)
   if (!sub) return
 
   const statusMap: Record<string, string> = {
@@ -383,15 +477,14 @@ async function handleSubscriptionUpdated(
 
   const newStatus = statusMap[subscription.status] ?? 'suspended'
   const isActive = newStatus === 'active'
+  const periodEnd = getSubscriptionPeriodEnd(subscription)
 
   await Promise.all([
     supabase
       .from('subscriptions')
       .update({
         status: newStatus,
-        next_payment_date: getSubscriptionPeriodEnd(subscription)
-          ? new Date(getSubscriptionPeriodEnd(subscription)! * 1000).toISOString()
-          : null,
+        next_payment_date: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
         updated_by: 'stripe-webhook'
       })
       .eq('id', sub.id),
@@ -408,14 +501,10 @@ async function handleSubscriptionUpdated(
  */
 async function handleSubscriptionDeleted(
   subscription: Stripe.Subscription,
-  supabase: ReturnType<typeof getSupabaseAdminClient>
+  supabase: SupabaseClient
 ) {
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('id, organization_id')
-    .eq('stripe_subscription_id', subscription.id)
-    .maybeSingle()
-
+  const customerId = extractCustomerId(subscription.customer)
+  const sub = await resolveSubscriptionRow(supabase, subscription.id, customerId)
   if (!sub) return
 
   await Promise.all([

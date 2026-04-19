@@ -237,13 +237,6 @@ async function openInvoice(url: string | null) {
             @click="cancelAtPeriodEnd"
           />
         </div>
-
-        <UButton
-          label="Atualizar"
-          color="neutral"
-          :loading="status === 'pending'"
-          @click="() => refresh()"
-        />
       </div>
     </template>
 

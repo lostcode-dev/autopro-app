@@ -1,22 +1,25 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { resolveOrganizationId } from '../../utils/organization'
 import { getStripe } from '../../utils/stripe'
 
 type SubscriptionRow = {
-  stripe_subscription_id: string
+  id: string
+  stripe_subscription_id: string | null
   status: string
-  cancel_at_period_end: boolean
 }
 
 export default eventHandler(async (event) => {
   const user = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
+  const organizationId = await resolveOrganizationId(event, user.id)
 
   const { data, error } = await supabase
-    .from('stripe_subscriptions')
-    .select('stripe_subscription_id,status,cancel_at_period_end')
-    .eq('user_id', user.id)
-    .order('current_period_end', { ascending: false, nullsFirst: false })
+    .from('subscriptions')
+    .select('id,stripe_subscription_id,status')
+    .eq('organization_id', organizationId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle<SubscriptionRow>()
 
@@ -34,16 +37,12 @@ export default eventHandler(async (event) => {
     })
   }
 
-  const hasActive = data.status === 'active' || data.status === 'trialing'
+  const hasActive = data.status === 'active' || data.status === 'trial'
   if (!hasActive) {
     throw createError({
       statusCode: 400,
       statusMessage: 'Subscription is not active'
     })
-  }
-
-  if (data.cancel_at_period_end) {
-    return { ok: true, cancelAtPeriodEnd: true }
   }
 
   const stripe = getStripe()
