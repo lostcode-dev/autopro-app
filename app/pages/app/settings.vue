@@ -6,7 +6,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Configuracoes'
+  title: 'Configurações'
 })
 
 const workshop = useWorkshopPermissions()
@@ -14,14 +14,9 @@ const workshop = useWorkshopPermissions()
 const links = computed<NavigationMenuItem[][]>(() => [[
   {
     label: 'Conta',
-    icon: 'i-lucide-settings',
+    icon: 'i-lucide-user',
     to: '/app/settings',
     exact: true
-  },
-  {
-    label: 'Perfil',
-    icon: 'i-lucide-user',
-    to: '/app/settings/profile'
   },
   workshop.can('settings.view')
     ? {
@@ -32,14 +27,14 @@ const links = computed<NavigationMenuItem[][]>(() => [[
     : null,
   workshop.can('employees.read')
     ? {
-        label: 'Funcionarios',
+        label: 'Funcionários',
         icon: 'i-lucide-users-round',
         to: '/app/settings/employees'
       }
     : null,
   workshop.can('roles.view')
     ? {
-        label: 'Permissoes',
+        label: 'Permissões',
         icon: 'i-lucide-shield-check',
         to: '/app/settings/roles'
       }
@@ -50,12 +45,12 @@ const links = computed<NavigationMenuItem[][]>(() => [[
     to: '/app/settings/subscription'
   },
   {
-    label: 'Notificacoes',
+    label: 'Notificações',
     icon: 'i-lucide-bell',
     to: '/app/settings/notifications'
   },
   {
-    label: 'Seguranca',
+    label: 'Segurança',
     icon: 'i-lucide-shield',
     to: '/app/settings/security'
   }
@@ -65,7 +60,7 @@ const links = computed<NavigationMenuItem[][]>(() => [[
 <template>
   <UDashboardPanel id="settings" :ui="{ body: 'lg:py-12' }">
     <template #header>
-      <AppPageHeader title="Configuracoes" />
+      <AppPageHeader title="Configurações" />
 
       <UDashboardToolbar>
         <UNavigationMenu :items="links" highlight class="-mx-1 flex-1" />

@@ -2,13 +2,8 @@
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 
-definePageMeta({
-  layout: 'app'
-})
-
-useSeoMeta({
-  title: 'Configurações'
-})
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Configurações' })
 
 const toast = useToast()
 const { fetchUser } = useAuth()
@@ -16,13 +11,120 @@ const { state: userPreferencesState } = useUserPreferences()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-type ProfileResponse = {
+// ─── Auth profile ─────────────────────────────────────────
+type AuthProfileResponse = {
   id: string
   email: string | null
   name: string
   avatar_url: string
 }
 
+const accountSchema = z.object({
+  name: z.string().min(2, 'Deve ter pelo menos 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  avatar_url: z.string().optional()
+})
+
+type AccountSchema = z.output<typeof accountSchema>
+
+const { data: authProfileData, status: authProfileStatus } = await useAsyncData(
+  'user-profile',
+  () => requestFetch<AuthProfileResponse>('/api/auth/profile', { headers: requestHeaders })
+)
+
+const account = reactive<Partial<AccountSchema>>({
+  name: authProfileData.value?.name || '',
+  email: authProfileData.value?.email || '',
+  avatar_url: authProfileData.value?.avatar_url || undefined
+})
+
+watch(authProfileData, (data) => {
+  if (!data) return
+  account.name = data.name
+  account.email = data.email || ''
+  account.avatar_url = data.avatar_url || undefined
+})
+
+const isSavingAccount = ref(false)
+
+async function onSubmitAccount(_event: FormSubmitEvent<AccountSchema>) {
+  if (isSavingAccount.value) return
+  isSavingAccount.value = true
+  try {
+    await $fetch('/api/auth/profile', {
+      method: 'PUT',
+      body: { name: account.name, avatar_url: account.avatar_url || '' }
+    })
+    await fetchUser()
+    toast.add({ title: 'Conta atualizada', description: 'Suas informações foram salvas.', color: 'success' })
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
+  } finally {
+    isSavingAccount.value = false
+  }
+}
+
+const fileRef = ref<HTMLInputElement>()
+
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length) return
+  account.avatar_url = URL.createObjectURL(input.files[0]!)
+}
+
+// ─── Workshop profile ──────────────────────────────────────
+type WorkshopProfileData = {
+  id: string
+  display_name: string | null
+  profile_picture_url: string | null
+  user_id: string
+  organization_id: string
+}
+
+const workshopSchema = z.object({
+  display_name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
+  profile_picture_url: z.string().optional().nullable()
+})
+
+type WorkshopSchema = z.output<typeof workshopSchema>
+
+const { data: workshopProfileData, status: workshopProfileStatus } = await useAsyncData(
+  'workshop-profile',
+  () => requestFetch<WorkshopProfileData>('/api/profile', { headers: requestHeaders })
+)
+
+const workshop = reactive<Partial<WorkshopSchema>>({
+  display_name: '',
+  profile_picture_url: ''
+})
+
+watch(workshopProfileData, (data) => {
+  if (!data) return
+  workshop.display_name = data.display_name ?? ''
+  workshop.profile_picture_url = data.profile_picture_url ?? ''
+}, { immediate: true })
+
+const isSavingWorkshop = ref(false)
+
+async function onSubmitWorkshop(_event: FormSubmitEvent<WorkshopSchema>) {
+  if (isSavingWorkshop.value) return
+  isSavingWorkshop.value = true
+  try {
+    await $fetch('/api/profile', {
+      method: 'PUT',
+      body: { display_name: workshop.display_name, profile_picture_url: workshop.profile_picture_url || null }
+    })
+    toast.add({ title: 'Perfil atualizado', description: 'Seus dados foram salvos.', color: 'success' })
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
+  } finally {
+    isSavingWorkshop.value = false
+  }
+}
+
+// ─── Preferences / timezone ────────────────────────────────
 type PreferencesResponse = {
   primary_color: string
   neutral_color: string
@@ -30,103 +132,36 @@ type PreferencesResponse = {
   timezone: string
 }
 
-const profileSchema = z.object({
-  name: z.string().min(2, 'Deve ter pelo menos 2 caracteres'),
-  email: z.string().email('Email inválido'),
-  avatar_url: z.string().optional()
-})
-
-type ProfileSchema = z.output<typeof profileSchema>
-
-const { data: profileData, status } = await useAsyncData(
-  'user-profile',
-  () => requestFetch<ProfileResponse>('/api/auth/profile', { headers: requestHeaders })
-)
-
 const { data: preferencesData, status: preferencesStatus } = await useAsyncData(
   'user-settings-preferences',
   () => requestFetch<PreferencesResponse>('/api/settings/preferences', { headers: requestHeaders })
 )
 
-const profile = reactive<Partial<ProfileSchema>>({
-  name: profileData.value?.name || '',
-  email: profileData.value?.email || '',
-  avatar_url: profileData.value?.avatar_url || undefined
-})
-
-watch(profileData, (newData) => {
-  if (newData) {
-    profile.name = newData.name
-    profile.email = newData.email || ''
-    profile.avatar_url = newData.avatar_url || undefined
-  }
-})
-
-const browserTimezone = computed(() => import.meta.client
-  ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
-  : 'UTC')
+const browserTimezone = computed(() =>
+  import.meta.client ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' : 'UTC'
+)
 const selectedTimezone = ref(preferencesData.value?.timezone || browserTimezone.value)
 
-watch(preferencesData, (newData) => {
-  if (!newData)
-    return
-
-  selectedTimezone.value = newData.timezone
+watch(preferencesData, (data) => {
+  if (!data) return
+  selectedTimezone.value = data.timezone
 }, { immediate: true })
 
 const timezoneOptions = computed(() => {
-  const builtInTimezones = typeof Intl.supportedValuesOf === 'function'
+  const builtIn = typeof Intl.supportedValuesOf === 'function'
     ? Intl.supportedValuesOf('timeZone')
     : ['UTC', 'America/Fortaleza', 'America/Sao_Paulo', 'America/New_York', 'Europe/London']
-  const values = new Set([...builtInTimezones, browserTimezone.value, userPreferencesState.value.timezone])
-
-  return Array.from(values)
+  return Array.from(new Set([...builtIn, browserTimezone.value, userPreferencesState.value.timezone]))
     .filter(Boolean)
     .sort((a, b) => a.localeCompare(b))
-    .map(timezone => ({
-      label: timezone,
-      value: timezone
-    }))
+    .map(tz => ({ label: tz, value: tz }))
 })
 
-const isSaving = ref(false)
 const isSavingTimezone = ref(false)
 
-async function onSubmit(_event: FormSubmitEvent<ProfileSchema>) {
-  if (isSaving.value) return
-  isSaving.value = true
-
-  try {
-    await $fetch('/api/auth/profile', {
-      method: 'PUT',
-      body: {
-        name: profile.name,
-        avatar_url: profile.avatar_url || ''
-      }
-    })
-
-    await fetchUser()
-
-    toast.add({
-      title: 'Perfil atualizado',
-      description: 'Suas informações foram salvas com sucesso.',
-      color: 'success'
-    })
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar o perfil'
-    toast.add({ title: 'Erro', description: message, color: 'error' })
-  } finally {
-    isSaving.value = false
-  }
-}
-
-async function saveTimezonePreference() {
-  if (isSavingTimezone.value)
-    return
-
+async function saveTimezone() {
+  if (isSavingTimezone.value) return
   isSavingTimezone.value = true
-
   try {
     await $fetch('/api/settings/preferences', {
       method: 'PUT',
@@ -137,23 +172,13 @@ async function saveTimezonePreference() {
         timezone: selectedTimezone.value
       }
     })
-
     if (preferencesData.value) {
-      preferencesData.value = {
-        ...preferencesData.value,
-        timezone: selectedTimezone.value
-      }
+      preferencesData.value = { ...preferencesData.value, timezone: selectedTimezone.value }
     }
-
-    toast.add({
-      title: 'Timezone atualizada',
-      description: 'O fuso horário da sua conta foi salvo.',
-      color: 'success'
-    })
+    toast.add({ title: 'Fuso horário atualizado', description: 'O fuso horário da sua conta foi salvo.', color: 'success' })
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    const message = err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar o fuso horário'
-    toast.add({ title: 'Erro', description: message, color: 'error' })
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
   } finally {
     isSavingTimezone.value = false
   }
@@ -161,58 +186,43 @@ async function saveTimezonePreference() {
 
 function useBrowserTimezone() {
   selectedTimezone.value = browserTimezone.value
-  void saveTimezonePreference()
-}
-
-const fileRef = ref<HTMLInputElement>()
-
-function onFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  if (!input.files?.length) return
-  profile.avatar_url = URL.createObjectURL(input.files[0]!)
-}
-
-function onFileClick() {
-  fileRef.value?.click()
+  void saveTimezone()
 }
 </script>
 
 <template>
+  <!-- Conta (auth) -->
   <UForm
-    id="settings"
-    :schema="profileSchema"
-    :state="profile"
-    @submit="onSubmit"
+    id="account-form"
+    :schema="accountSchema"
+    :state="account"
+    @submit="onSubmitAccount"
   >
     <UPageCard
-      title="Perfil"
-      description="Essas informações podem aparecer para outras pessoas."
+      title="Conta"
+      description="Informações de acesso à sua conta."
       variant="naked"
       orientation="horizontal"
       class="mb-4"
     >
       <UButton
-        form="settings"
+        form="account-form"
         label="Salvar alterações"
         color="neutral"
         type="submit"
-        :loading="isSaving"
-        :disabled="isSaving"
+        :loading="isSavingAccount"
+        :disabled="isSavingAccount"
         class="w-fit lg:ms-auto"
       />
     </UPageCard>
 
-    <div v-if="status === 'pending'" class="space-y-4">
-      <USkeleton class="h-14 w-full" />
+    <div v-if="authProfileStatus === 'pending'" class="space-y-4">
       <USkeleton class="h-14 w-full" />
       <USkeleton class="h-14 w-full" />
       <USkeleton class="h-14 w-full" />
     </div>
 
-    <UPageCard
-      v-else
-      variant="subtle"
-    >
+    <UPageCard v-else variant="subtle">
       <UFormField
         name="name"
         label="Nome"
@@ -220,12 +230,11 @@ function onFileClick() {
         required
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
-        <UInput
-          v-model="profile.name"
-          autocomplete="off"
-        />
+        <UInput v-model="account.name" autocomplete="off" />
       </UFormField>
+
       <USeparator />
+
       <UFormField
         name="email"
         label="Email"
@@ -233,14 +242,11 @@ function onFileClick() {
         required
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
-        <UInput
-          v-model="profile.email"
-          type="email"
-          autocomplete="off"
-          disabled
-        />
+        <UInput v-model="account.email" type="email" autocomplete="off" disabled />
       </UFormField>
+
       <USeparator />
+
       <UFormField
         name="avatar_url"
         label="Avatar"
@@ -248,21 +254,13 @@ function onFileClick() {
         class="flex max-sm:flex-col justify-between sm:items-center gap-4"
       >
         <div class="flex flex-wrap items-center gap-3">
-          <UAvatar
-            :src="profile.avatar_url"
-            :alt="profile.name"
-            size="lg"
-          />
-          <UButton
-            label="Escolher"
-            color="neutral"
-            @click="onFileClick"
-          />
+          <UAvatar :src="account.avatar_url" :alt="account.name" size="lg" />
+          <UButton label="Escolher" color="neutral" @click="fileRef?.click()" />
           <input
             ref="fileRef"
             type="file"
             class="hidden"
-            accept=".jpg, .jpeg, .png, .gif"
+            accept=".jpg,.jpeg,.png,.gif"
             @change="onFileChange"
           >
         </div>
@@ -270,6 +268,74 @@ function onFileClick() {
     </UPageCard>
   </UForm>
 
+  <!-- Perfil da oficina -->
+  <UForm
+    id="profile-form"
+    :schema="workshopSchema"
+    :state="workshop"
+    class="mt-6"
+    @submit="onSubmitWorkshop"
+  >
+    <UPageCard
+      title="Perfil na oficina"
+      description="Nome de exibição e foto usados internamente no sistema."
+      variant="naked"
+      orientation="horizontal"
+      class="mb-4"
+    >
+      <UButton
+        form="profile-form"
+        label="Salvar alterações"
+        color="neutral"
+        type="submit"
+        :loading="isSavingWorkshop"
+        :disabled="isSavingWorkshop"
+        class="w-fit lg:ms-auto"
+      />
+    </UPageCard>
+
+    <div v-if="workshopProfileStatus === 'pending'" class="space-y-4">
+      <USkeleton class="h-14 w-full" />
+      <USkeleton class="h-14 w-full" />
+    </div>
+
+    <UPageCard v-else variant="subtle">
+      <UFormField
+        name="display_name"
+        label="Nome de exibição"
+        description="Como você aparece para outros usuários da oficina."
+        required
+        class="flex max-sm:flex-col justify-between items-start gap-4"
+      >
+        <UInput v-model="workshop.display_name" class="w-full" autocomplete="off" />
+      </UFormField>
+
+      <USeparator />
+
+      <UFormField
+        name="profile_picture_url"
+        label="Foto de perfil"
+        description="URL pública para sua foto de perfil na oficina."
+        class="flex max-sm:flex-col justify-between items-start gap-4"
+      >
+        <div class="flex items-center gap-3 w-full">
+          <UAvatar
+            :src="workshop.profile_picture_url || undefined"
+            :alt="workshop.display_name || 'Perfil'"
+            size="lg"
+          />
+          <UInput
+            v-model="workshop.profile_picture_url"
+            class="flex-1"
+            placeholder="https://..."
+            autocomplete="off"
+          />
+        </div>
+      </UFormField>
+    </UPageCard>
+  </UForm>
+
+  <!-- Regional -->
   <UPageCard
     title="Regional"
     description="Defina o fuso horário usado para agenda, ordens de serviço e notificações."
@@ -284,8 +350,8 @@ function onFileClick() {
     <template v-else>
       <UFormField
         name="timezone"
-        label="Timezone"
-        description="Usada para organizar agenda, lembretes operacionais e futuras automações."
+        label="Fuso horário"
+        description="Usado para agenda, lembretes operacionais e automações."
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
         <div class="w-full space-y-3">
@@ -295,17 +361,16 @@ function onFileClick() {
             value-key="value"
             class="w-full"
           />
-
           <div class="flex flex-wrap gap-2">
             <UButton
-              label="Salvar timezone"
+              label="Salvar fuso horário"
               color="neutral"
               :loading="isSavingTimezone"
               :disabled="isSavingTimezone"
-              @click="saveTimezonePreference"
+              @click="saveTimezone"
             />
             <UButton
-              label="Usar timezone do dispositivo"
+              label="Usar fuso do dispositivo"
               variant="outline"
               color="neutral"
               :disabled="isSavingTimezone || selectedTimezone === browserTimezone"

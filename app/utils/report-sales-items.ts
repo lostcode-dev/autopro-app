@@ -70,6 +70,33 @@ export function salesPaymentMethodColor(method: string) {
   return map[method] ?? 'neutral'
 }
 
+export function salesPaymentMethodIcon(method: string) {
+  const map: Record<string, string> = {
+    pix: 'i-lucide-zap',
+    cash: 'i-lucide-banknote',
+    credit_card: 'i-lucide-credit-card',
+    debit_card: 'i-lucide-credit-card',
+    bank_transfer: 'i-lucide-landmark',
+    check: 'i-lucide-file-signature',
+    boleto: 'i-lucide-scroll-text',
+    no_payment: 'i-lucide-ban'
+  }
+  return map[method] ?? 'i-lucide-circle'
+}
+
+export function salesOrderStatusIcon(status: string) {
+  const map: Record<string, string> = {
+    open: 'i-lucide-circle-dot',
+    in_progress: 'i-lucide-wrench',
+    waiting_for_part: 'i-lucide-package-search',
+    completed: 'i-lucide-check-circle-2',
+    delivered: 'i-lucide-truck',
+    estimate: 'i-lucide-file-text',
+    cancelled: 'i-lucide-x-circle'
+  }
+  return map[status] ?? 'i-lucide-circle'
+}
+
 export function formatSalesCostSourceLabel(source: string) {
   const map: Record<string, string> = {
     item: 'Informado na OS',

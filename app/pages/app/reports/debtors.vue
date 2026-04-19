@@ -75,15 +75,14 @@ useSeoMeta({ title: 'Relatório de Devedores' })
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-const { dateFrom, dateTo } = useReportDateRange()
+const { dateFrom, dateTo, orderStatusFilters } = useReportDateRange()
 const search = useReportQueryParam('q', '')
 const page = useReportQueryParam('page', 1)
 const pageSize = 20
 const viewMode = useReportQueryParam('debtorsView', 'clients' as 'clients' | 'orders')
 const clientIds = useReportQueryParam('clients', [] as string[])
-const statusFilters = useReportQueryParam('status', [] as string[])
+const statusFilters = useReportQueryParam('debtorStatus', [] as string[])
 const paymentMethodFilters = useReportQueryParam('paymentMethod', [] as string[])
-const orderStatusFilters = useReportQueryParam('orderStatus', ['completed'] as string[])
 const detailOpen = ref(false)
 const detailData = ref<DebtorDetailData | null>(null)
 

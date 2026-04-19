@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { h, resolveComponent } from 'vue'
-
 definePageMeta({
   layout: 'app'
 })
@@ -82,24 +80,15 @@ function formatDate(date: string | null): string {
 
 function getSubscriptionStatusLabel(status: string): string {
   switch (status) {
-    case StripeSubscriptionStatus.Active:
-      return 'Ativa'
-    case StripeSubscriptionStatus.Trialing:
-      return 'Período de teste'
-    case StripeSubscriptionStatus.PastDue:
-      return 'Pagamento pendente'
-    case StripeSubscriptionStatus.Canceled:
-      return 'Cancelada'
-    case StripeSubscriptionStatus.Unpaid:
-      return 'Não paga'
-    case StripeSubscriptionStatus.Incomplete:
-      return 'Incompleta'
-    case StripeSubscriptionStatus.IncompleteExpired:
-      return 'Expirada'
-    case StripeSubscriptionStatus.Paused:
-      return 'Pausada'
-    default:
-      return status
+    case StripeSubscriptionStatus.Active: return 'Ativa'
+    case StripeSubscriptionStatus.Trialing: return 'Período de teste'
+    case StripeSubscriptionStatus.PastDue: return 'Pagamento pendente'
+    case StripeSubscriptionStatus.Canceled: return 'Cancelada'
+    case StripeSubscriptionStatus.Unpaid: return 'Não paga'
+    case StripeSubscriptionStatus.Incomplete: return 'Incompleta'
+    case StripeSubscriptionStatus.IncompleteExpired: return 'Expirada'
+    case StripeSubscriptionStatus.Paused: return 'Pausada'
+    default: return status
   }
 }
 
@@ -131,7 +120,7 @@ async function openPortal() {
   }
 }
 
-// ─── Invoices (Faturamento) ──────────────────────────────
+// ─── Invoices ────────────────────────────────────────────
 type InvoiceItem = {
   stripe_invoice_id: string
   status: string | null
@@ -177,68 +166,35 @@ async function toggleInvoices() {
 }
 
 const invoiceColumns = [
-  {
-    accessorKey: 'invoice_number' as const,
-    header: 'Fatura',
-    cell: ({ row }: { row: { original: InvoiceItem } }) => {
-      return h('span', { class: 'font-medium' }, row.original.invoice_number || row.original.stripe_invoice_id)
-    }
-  },
-  {
-    accessorKey: 'status' as const,
-    header: 'Status'
-  },
-  {
-    accessorKey: 'paid' as const,
-    header: 'Pago',
-    cell: ({ row }: { row: { original: InvoiceItem } }) => {
-      const value = row.original.paid
-      return value == null ? '-' : (value ? 'Sim' : 'Não')
-    }
-  },
-  {
-    accessorKey: 'total' as const,
-    header: 'Total',
-    cell: ({ row }: { row: { original: InvoiceItem } }) => {
-      return formatMoney(row.original.total, row.original.currency)
-    }
-  },
-  {
-    accessorKey: 'amount_due' as const,
-    header: 'Em aberto',
-    cell: ({ row }: { row: { original: InvoiceItem } }) => {
-      return formatMoney(row.original.amount_due, row.original.currency)
-    }
-  },
-  {
-    accessorKey: 'created' as const,
-    header: 'Data',
-    cell: ({ row }: { row: { original: InvoiceItem } }) => {
-      if (!row.original.created) return '-'
-      return new Date(row.original.created).toLocaleDateString('pt-BR')
-    }
-  },
-  {
-    accessorKey: 'due_date' as const,
-    header: 'Vencimento',
-    cell: ({ row }: { row: { original: InvoiceItem } }) => {
-      return formatDate(row.original.due_date)
-    }
-  },
-  {
-    id: 'actions',
-    header: '',
-    cell: ({ row }: { row: { original: InvoiceItem } }) => {
-      const url = row.original.invoice_pdf || row.original.hosted_invoice_url
-      return h(resolveComponent('UButton') as ReturnType<typeof resolveComponent>, {
-        label: 'Abrir',
-        color: 'neutral',
-        variant: 'ghost',
-        onClick: () => openInvoice(url)
-      })
-    }
-  }
+  { accessorKey: 'invoice_number', header: 'Fatura', enableSorting: false },
+  { accessorKey: 'status', header: 'Status', enableSorting: false },
+  { accessorKey: 'total', header: 'Total', enableSorting: false },
+  { accessorKey: 'amount_due', header: 'Em aberto', enableSorting: false },
+  { accessorKey: 'created', header: 'Data', enableSorting: false },
+  { accessorKey: 'due_date', header: 'Vencimento', enableSorting: false },
+  { id: 'actions', header: '', enableSorting: false }
 ]
+
+function getInvoiceStatusLabel(status: string | null): string {
+  switch (status) {
+    case 'paid': return 'Pago'
+    case 'open': return 'Em aberto'
+    case 'void': return 'Cancelada'
+    case 'draft': return 'Rascunho'
+    case 'uncollectible': return 'Incobrável'
+    default: return status || '-'
+  }
+}
+
+function getInvoiceStatusColor(status: string | null): 'success' | 'warning' | 'error' | 'neutral' {
+  switch (status) {
+    case 'paid': return 'success'
+    case 'open': return 'warning'
+    case 'void':
+    case 'uncollectible': return 'error'
+    default: return 'neutral'
+  }
+}
 
 function formatMoney(amount: number | null, currency: string | null): string {
   if (amount == null) return '-'
@@ -280,7 +236,9 @@ async function openInvoice(url: string | null) {
           />
 
           <UButton
-            v-if="data?.subscription && (data.subscription.status === StripeSubscriptionStatus.Active || data.subscription.status === StripeSubscriptionStatus.Trialing) && !data.subscription.cancel_at_period_end"
+            v-if="data?.subscription
+              && (data.subscription.status === StripeSubscriptionStatus.Active || data.subscription.status === StripeSubscriptionStatus.Trialing)
+              && !data.subscription.cancel_at_period_end"
             label="Cancelar no fim do período"
             color="neutral"
             variant="ghost"
@@ -293,6 +251,7 @@ async function openInvoice(url: string | null) {
         <UButton
           label="Atualizar"
           color="neutral"
+          :loading="status === 'pending'"
           @click="() => refresh()"
         />
       </div>
@@ -318,103 +277,85 @@ async function openInvoice(url: string | null) {
 
       <div v-else class="grid grid-cols-1 gap-3">
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Acesso
-          </span>
-          <UBadge
-            :color="data.hasAccess ? 'success' : 'warning'"
-            variant="subtle"
-          >
+          <span class="text-sm text-muted">Acesso</span>
+          <UBadge :color="data.hasAccess ? 'success' : 'warning'" variant="subtle">
             {{ data.hasAccess ? 'Liberado' : 'Restrito' }}
           </UBadge>
         </div>
 
+        <USeparator />
+
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Status
-          </span>
-          <UBadge
-            :color="getSubscriptionStatusColor(data.subscription.status)"
-            variant="subtle"
-          >
+          <span class="text-sm text-muted">Status</span>
+          <UBadge :color="getSubscriptionStatusColor(data.subscription.status)" variant="subtle">
             {{ getSubscriptionStatusLabel(data.subscription.status) }}
           </UBadge>
         </div>
 
+        <USeparator />
+
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Cliente (Stripe)
-          </span>
-          <span class="text-sm font-medium">
+          <span class="text-sm text-muted">Cliente (Stripe)</span>
+          <span class="text-sm font-medium font-mono">
             {{ data.subscription.stripe_customer_id || '-' }}
           </span>
         </div>
 
+        <USeparator />
+
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Assinatura (Stripe)
-          </span>
-          <span class="text-sm font-medium">
+          <span class="text-sm text-muted">Assinatura (Stripe)</span>
+          <span class="text-sm font-medium font-mono">
             {{ data.subscription.stripe_subscription_id || '-' }}
           </span>
         </div>
 
+        <USeparator />
+
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Plano (price_id)
-          </span>
-          <span class="text-sm font-medium">
+          <span class="text-sm text-muted">Plano (price_id)</span>
+          <span class="text-sm font-medium font-mono">
             {{ data.subscription.price_id || '-' }}
           </span>
         </div>
 
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Quantidade
-          </span>
-          <span class="text-sm font-medium">
-            {{ data.subscription.quantity ?? '-' }}
-          </span>
-        </div>
+        <USeparator />
 
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Início do período
-          </span>
-          <span class="text-sm font-medium">
-            {{ formatDate(data.subscription.current_period_start) }}
-          </span>
+          <span class="text-sm text-muted">Quantidade</span>
+          <span class="text-sm font-medium">{{ data.subscription.quantity ?? '-' }}</span>
         </div>
 
-        <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Fim do período
-          </span>
-          <span class="text-sm font-medium">
-            {{ formatDate(data.subscription.current_period_end) }}
-          </span>
-        </div>
+        <USeparator />
 
         <div class="flex items-center justify-between">
-          <span class="text-sm text-muted">
-            Cancelar no fim do período
-          </span>
-          <span class="text-sm font-medium">
+          <span class="text-sm text-muted">Início do período</span>
+          <span class="text-sm font-medium">{{ formatDate(data.subscription.current_period_start) }}</span>
+        </div>
+
+        <USeparator />
+
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-muted">Fim do período</span>
+          <span class="text-sm font-medium">{{ formatDate(data.subscription.current_period_end) }}</span>
+        </div>
+
+        <USeparator />
+
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-muted">Cancelar no fim do período</span>
+          <UBadge :color="data.subscription.cancel_at_period_end ? 'warning' : 'neutral'" variant="subtle">
             {{ data.subscription.cancel_at_period_end ? 'Sim' : 'Não' }}
-          </span>
+          </UBadge>
         </div>
 
-        <div
-          v-if="data.subscription.canceled_at"
-          class="flex items-center justify-between"
-        >
-          <span class="text-sm text-muted">
-            Cancelada em
-          </span>
-          <span class="text-sm font-medium">
-            {{ formatDate(data.subscription.canceled_at) }}
-          </span>
-        </div>
+        <template v-if="data.subscription.canceled_at">
+          <USeparator />
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-muted">Cancelada em</span>
+            <span class="text-sm font-medium">{{ formatDate(data.subscription.canceled_at) }}</span>
+          </div>
+        </template>
       </div>
     </div>
   </UPageCard>
@@ -424,6 +365,7 @@ async function openInvoice(url: string | null) {
     title="Faturas"
     description="Histórico de faturas da sua assinatura."
     variant="subtle"
+    class="mt-6"
   >
     <template #footer>
       <div class="flex items-center justify-end w-full">
@@ -438,35 +380,65 @@ async function openInvoice(url: string | null) {
     </template>
 
     <template v-if="showInvoices">
-      <div v-if="invoicesStatus === 'pending'" class="space-y-3">
-        <USkeleton class="h-10 w-full" />
-        <USkeleton class="h-10 w-full" />
-        <USkeleton class="h-10 w-full" />
-      </div>
+      <AppDataTable
+        v-model:page="invoicePage"
+        :columns="invoiceColumns"
+        :data="(invoicesData?.items ?? []) as Record<string, unknown>[]"
+        :loading="invoicesStatus === 'pending'"
+        :page-size="invoicePageSize"
+        :total="invoicesData?.total ?? 0"
+        :show-page-size-selector="false"
+        empty-icon="i-lucide-receipt"
+        empty-title="Nenhuma fatura encontrada"
+        empty-description="Não há faturas registradas para esta assinatura."
+      >
+        <template #invoice_number-cell="{ row }">
+          <span class="font-medium font-mono text-sm">
+            {{ row.original.invoice_number || row.original.stripe_invoice_id }}
+          </span>
+        </template>
 
-      <template v-else>
-        <UTable
-          :columns="invoiceColumns"
-          :data="invoicesData?.items || []"
-        />
+        <template #status-cell="{ row }">
+          <UBadge
+            :color="getInvoiceStatusColor(row.original.status as string | null)"
+            variant="subtle"
+            size="sm"
+          >
+            {{ getInvoiceStatusLabel(row.original.status as string | null) }}
+          </UBadge>
+        </template>
 
-        <div
-          v-if="(invoicesData?.total || 0) > invoicePageSize"
-          class="flex justify-center pt-4"
-        >
-          <UPagination
-            v-model="invoicePage"
-            :page-count="invoicePageSize"
-            :total="invoicesData?.total || 0"
+        <template #total-cell="{ row }">
+          {{ formatMoney(row.original.total as number | null, row.original.currency as string | null) }}
+        </template>
+
+        <template #amount_due-cell="{ row }">
+          {{ formatMoney(row.original.amount_due as number | null, row.original.currency as string | null) }}
+        </template>
+
+        <template #created-cell="{ row }">
+          {{ row.original.created ? new Date(row.original.created as string).toLocaleDateString('pt-BR') : '-' }}
+        </template>
+
+        <template #due_date-cell="{ row }">
+          {{ formatDate(row.original.due_date as string | null) }}
+        </template>
+
+        <template #actions-cell="{ row }">
+          <UButton
+            label="Abrir"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            icon="i-lucide-external-link"
+            :disabled="!row.original.invoice_pdf && !row.original.hosted_invoice_url"
+            @click="openInvoice((row.original.invoice_pdf || row.original.hosted_invoice_url) as string | null)"
           />
-        </div>
-      </template>
+        </template>
+      </AppDataTable>
     </template>
 
-    <p
-      v-else
-      class="text-sm text-muted"
-    >
+    <p v-else class="text-sm text-muted">
       Clique em "Ver faturas" para carregar o histórico.
     </p>
   </UPageCard>

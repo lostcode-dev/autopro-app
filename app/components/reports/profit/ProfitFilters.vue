@@ -74,6 +74,7 @@ const compareOptions = [
           :model-value="compareMode"
           :items="compareOptions"
           value-key="value"
+          leading-icon="i-lucide-git-compare-arrows"
           class="w-full"
           @update:model-value="compareMode = String($event || 'no_compare')"
         />

@@ -83,7 +83,7 @@ const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const toast = useToast()
 
-const { dateFrom, dateTo } = useReportDateRange()
+const { dateFrom, dateTo, orderStatusFilters: statusFilters, paymentStatusFilters } = useReportDateRange()
 const search = useReportQueryParam('q', '')
 const page = useReportQueryParam('page', 1)
 const pageSize = 20
@@ -92,8 +92,6 @@ const viewMode = useReportQueryParam('view', 'item' as 'item' | 'os')
 const clientIds = useReportQueryParam('clients', [] as string[])
 const orderIds = useReportQueryParam('orders', [] as string[])
 const responsibleIds = useReportQueryParam('responsibles', [] as string[])
-const statusFilters = useReportQueryParam('status', [] as string[])
-const paymentStatusFilters = useReportQueryParam('paymentStatus', [] as string[])
 const paymentMethodFilters = useReportQueryParam('paymentMethod', [] as string[])
 const categoryIds = useReportQueryParam('categories', [] as string[])
 const costFilters = useReportQueryParam('costFilters', [] as string[])

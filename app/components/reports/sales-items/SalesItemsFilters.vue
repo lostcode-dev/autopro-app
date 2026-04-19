@@ -4,7 +4,9 @@ import {
   formatSalesPaymentMethodLabel,
   formatSalesOrderStatusLabel,
   salesPaymentMethodColor,
-  salesOrderStatusColor
+  salesPaymentMethodIcon,
+  salesOrderStatusColor,
+  salesOrderStatusIcon
 } from '~/utils/report-sales-items'
 
 const props = defineProps<{
@@ -60,7 +62,8 @@ const paymentMethodOptions: TagFilterOption[] = [
 ].map(method => ({
   value: method,
   label: formatSalesPaymentMethodLabel(method),
-  color: salesPaymentMethodColor(method) as TagFilterOption['color']
+  color: salesPaymentMethodColor(method) as TagFilterOption['color'],
+  icon: salesPaymentMethodIcon(method)
 }))
 
 const costFilterOptions: TagFilterOption[] = [
@@ -78,7 +81,8 @@ const statusOptions = computed<TagFilterOption[]>(() =>
   props.statuses.map(status => ({
     value: status.value,
     label: formatSalesOrderStatusLabel(status.value),
-    color: salesOrderStatusColor(status.value) as TagFilterOption['color']
+    color: salesOrderStatusColor(status.value) as TagFilterOption['color'],
+    icon: salesOrderStatusIcon(status.value)
   }))
 )
 </script>

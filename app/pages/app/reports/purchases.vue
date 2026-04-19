@@ -55,7 +55,7 @@ const toast = useToast()
 const { dateFrom, dateTo } = useReportDateRange()
 
 const search = useReportQueryParam('q', '')
-const paymentStatus = useReportQueryParam('paymentStatus', [] as string[])
+const paymentStatus = useReportQueryParam('purchaseStatus', [] as string[])
 const supplierIds = useReportQueryParam('suppliers', [] as string[])
 const page = useReportQueryParam('page', 1)
 const pageSize = 20
