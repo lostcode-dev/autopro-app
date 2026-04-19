@@ -178,7 +178,7 @@ const statusOptions = computed<TagFilterOption[]>(() =>
         </div>
       </div>
 
-      <div class="col-span-2 grid grid-cols-1 gap-3 xl:grid-cols-3">
+      <div class="col-span-2 grid grid-cols-1 gap-3 lg:grid-cols-3">
         <div>
           <p class="mb-1 text-xs font-medium text-muted">
             Status da OS
