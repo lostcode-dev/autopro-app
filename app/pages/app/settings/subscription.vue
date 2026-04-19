@@ -161,9 +161,7 @@ const invoiceColumns = [
   { accessorKey: 'invoice_number', header: 'Fatura', enableSorting: false },
   { accessorKey: 'status', header: 'Status', enableSorting: false },
   { accessorKey: 'total', header: 'Total', enableSorting: false },
-  { accessorKey: 'amount_due', header: 'Em aberto', enableSorting: false },
   { accessorKey: 'created', header: 'Data', enableSorting: false },
-  { accessorKey: 'due_date', header: 'Vencimento', enableSorting: false },
   { id: 'actions', header: '', enableSorting: false }
 ]
 
