@@ -114,6 +114,21 @@ const detailLoading = ref(false)
 const detailData = ref<SalesItemsDetailData | null>(null)
 const exporting = ref<'csv' | 'pdf' | null>(null)
 
+const exportItems = computed(() => [[
+  {
+    label: 'Exportar CSV',
+    icon: 'i-lucide-file-spreadsheet',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('csv')
+  },
+  {
+    label: 'Exportar PDF',
+    icon: 'i-lucide-file-text',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('pdf')
+  }
+]])
+
 const sortByParam = useReportQueryParam('sortBy', 'date')
 const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
 const sorting = computed<SortingState>({
@@ -391,32 +406,45 @@ async function exportReport(format: 'csv' | 'pdf') {
           @search-change="page = 1"
         >
           <template #toolbar-right>
-            <UTabs
-              :model-value="viewMode"
-              :items="[
-                { label: `Por item (${summary.itemCount ?? 0})`, value: 'item' },
-                { label: `Por OS (${summary.orderCount ?? 0})`, value: 'os' }
-              ]"
-              @update:model-value="value => viewMode = value as 'item' | 'os'"
-            />
-            <UButton
-              icon="i-lucide-file-spreadsheet"
-              label="CSV"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              :loading="exporting === 'csv'"
-              @click="exportReport('csv')"
-            />
-            <UButton
-              icon="i-lucide-file-text"
-              label="PDF"
-              color="neutral"
-              variant="outline"
-              size="sm"
-              :loading="exporting === 'pdf'"
-              @click="exportReport('pdf')"
-            />
+            <div class="flex items-center gap-2">
+              <div class="inline-flex">
+                <UTooltip :text="`Visualização por item (${summary.itemCount ?? 0})`">
+                  <UButton
+                    icon="i-lucide-package"
+                    color="neutral"
+                    class="rounded-r-none"
+                    :variant="viewMode === 'item' ? 'solid' : 'outline'"
+                    @click="viewMode = 'item'"
+                  />
+                </UTooltip>
+                <UTooltip :text="`Visualização por OS (${summary.orderCount ?? 0})`">
+                  <UButton
+                    icon="i-lucide-file-text"
+                    color="neutral"
+                    class="-ml-px rounded-l-none"
+                    :variant="viewMode === 'os' ? 'solid' : 'outline'"
+                    @click="viewMode = 'os'"
+                  />
+                </UTooltip>
+              </div>
+
+              <UTooltip text="Exportar relatório">
+                <UDropdownMenu
+                  :items="exportItems"
+                  :content="{ align: 'end' }"
+                  :ui="{ content: 'min-w-44' }"
+                >
+                  <UButton
+                    icon="i-lucide-download"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    square
+                    :loading="exporting !== null"
+                  />
+                </UDropdownMenu>
+              </UTooltip>
+            </div>
           </template>
 
           <template #client-cell="{ row }">
