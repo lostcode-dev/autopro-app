@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { SortingState } from '@tanstack/vue-table'
+import type { CommissionDetailData } from '~/components/reports/commissions/CommissionsDetailSlideover.vue'
 import { ActionCode } from '~/constants/action-codes'
 
 interface CommissionReportItem {
@@ -23,8 +24,8 @@ interface CommissionSummary {
 }
 
 interface CommissionCharts {
-  byEmployee: Array<{ name: string, total: number }>
-  statusDistribution: Array<{ name: string, value: number }>
+  byEmployee: Array<{ name: string, total: number, paid: number, pending: number }>
+  statusDistribution: Array<{ name: string, value: number, color: string }>
 }
 
 interface EmployeeOption {
@@ -45,6 +46,12 @@ interface CommissionsReportResponse {
     pagination?: { totalItems?: number } | null
     charts?: CommissionCharts
     employees?: EmployeeOption[]
+  }
+}
+
+interface CommissionDetailResponse {
+  data?: {
+    detail?: CommissionDetailData
   }
 }
 
@@ -94,6 +101,9 @@ const selectedIds = ref<string[]>([])
 const bulkPayOpen = ref(false)
 const bankAccounts = ref<BankAccountItem[]>([])
 const bulkPayLoading = ref(false)
+const detailOpen = ref(false)
+const detailLoading = ref(false)
+const detailData = ref<CommissionDetailData | null>(null)
 
 interface CommissionDeleteTarget {
   id: string
@@ -199,7 +209,7 @@ const columns = computed(() => [
   { id: 'order_payment_col', header: 'Pgto OS', enableSorting: false },
   { accessorKey: 'amount', header: 'Comissão' },
   { id: 'status_col', header: 'Status Com.' },
-  ...(canUpdate.value || canDelete.value ? [{ id: 'actions', header: '', enableSorting: false }] : [])
+  { id: 'actions', header: '', enableSorting: false }
 ])
 
 // Helpers
@@ -217,6 +227,10 @@ function formatDate(v: string) {
   if (!v) return '—'
   const [y, m, d] = v.split('-')
   return `${d}/${m}/${y}`
+}
+
+function rowItem(row: { original: unknown }): CommissionReportItem {
+  return row.original as CommissionReportItem
 }
 
 // Selection
@@ -263,6 +277,24 @@ async function openBulkPay() {
     bankAccounts.value = res.items ?? []
   }
   bulkPayOpen.value = true
+}
+
+async function openDetail(row: CommissionReportItem) {
+  detailOpen.value = true
+  detailLoading.value = true
+  detailData.value = null
+
+  try {
+    const response = await $fetch<CommissionDetailResponse>(`/api/reports/commissions/${row.id}`)
+    if (!response.data?.detail)
+      throw new Error('Commission detail not found')
+    detailData.value = response.data?.detail ?? null
+  } catch {
+    toast.add({ title: 'Erro ao carregar detalhes da comissão', color: 'error' })
+    detailOpen.value = false
+  } finally {
+    detailLoading.value = false
+  }
 }
 
 async function handleBulkPay(accountId: string) {
@@ -411,7 +443,7 @@ async function exportReport(format: 'csv' | 'pdf') {
           v-model:page="page"
           v-model:sorting="sorting"
           :columns="columns"
-          :data="items as Record<string, unknown>[]"
+          :data="items as unknown as Record<string, unknown>[]"
           :loading="status === 'pending'"
           :page-size="pageSize"
           :total="pagination?.totalItems ?? items.length"
@@ -537,13 +569,22 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #actions-cell="{ row }">
             <div class="flex items-center justify-end gap-1">
-              <UTooltip v-if="canUpdate && (row.original as CommissionReportItem).status === 'pending'" text="Marcar como pago">
+              <UTooltip text="Ver detalhes">
+                <UButton
+                  icon="i-lucide-eye"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="openDetail(row.original as unknown as CommissionReportItem)"
+                />
+              </UTooltip>
+              <UTooltip v-if="canUpdate && (row.original as unknown as CommissionReportItem).status === 'pending'" text="Marcar como pago">
                 <UButton
                   icon="i-lucide-circle-check"
                   color="success"
                   variant="ghost"
                   size="xs"
-                  @click="payCommission((row.original as CommissionReportItem).id)"
+                  @click="payCommission((row.original as unknown as CommissionReportItem).id)"
                 />
               </UTooltip>
               <UTooltip v-if="canDelete" text="Excluir comissão">
@@ -552,7 +593,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                   color="error"
                   variant="ghost"
                   size="xs"
-                  @click="setDeleteTarget(row.original)"
+                  @click="setDeleteTarget(row.original as unknown as CommissionReportItem)"
                 />
               </UTooltip>
             </div>
@@ -561,6 +602,13 @@ async function exportReport(format: 'csv' | 'pdf') {
       </div>
     </template>
   </UDashboardPanel>
+
+  <ReportsCommissionsDetailSlideover
+    :open="detailOpen"
+    :loading="detailLoading"
+    :data="detailData"
+    @update:open="value => { detailOpen = value; if (!value) detailData = null }"
+  />
 
   <!-- Bulk pay modal -->
   <ReportsCommissionsBulkPayModal
