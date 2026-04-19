@@ -166,7 +166,7 @@ const headerSubtitle = computed(() => {
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center justify-between gap-3 w-full">
         <div v-if="loading" class="flex items-center gap-3">
           <USkeleton class="h-10 w-10 rounded-full shrink-0" />
           <div class="space-y-1.5">

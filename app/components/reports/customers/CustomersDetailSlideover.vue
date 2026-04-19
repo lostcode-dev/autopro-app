@@ -138,7 +138,7 @@ function clientInitial(name?: string) {
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center justify-between gap-3 w-full">
         <div v-if="loading" class="flex flex-1 items-center gap-3">
           <USkeleton class="h-10 w-10 shrink-0 rounded-full" />
           <div class="space-y-1.5">

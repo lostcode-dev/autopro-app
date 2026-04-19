@@ -63,7 +63,7 @@ const chartSeries = computed(() => [
     @update:open="$emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex items-center justify-between gap-3">
+      <div class="flex items-center justify-between gap-3 w-full">
         <div v-if="props.loading" class="space-y-2">
           <USkeleton class="h-5 w-48" />
           <USkeleton class="h-4 w-32" />
