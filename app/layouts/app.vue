@@ -165,7 +165,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     : []
 
   const settingsChildren: NavigationMenuItem[] = [
-    item('Perfil', 'i-lucide-user', '/app/settings/profile'),
+    item('Conta', 'i-lucide-user', '/app/settings'),
     item('Assinatura', 'i-lucide-credit-card', '/app/settings/subscription'),
     item('Notificações', 'i-lucide-bell', '/app/settings/notifications'),
     item('Segurança', 'i-lucide-lock', '/app/settings/security')
