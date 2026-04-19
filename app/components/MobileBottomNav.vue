@@ -2,7 +2,6 @@
 import { ActionCode } from '~/constants/action-codes'
 
 const route = useRoute()
-const router = useRouter()
 const workshop = useWorkshopPermissions()
 
 const items = computed(() => [
@@ -38,11 +37,8 @@ function handleMoreClick() {
   showMoreMenu.value = !showMoreMenu.value
 }
 
-function navigateToPage(to: string) {
+function closeMoreMenu() {
   showMoreMenu.value = false
-  if (to) {
-    router.push(to)
-  }
 }
 </script>
 
@@ -51,19 +47,20 @@ function navigateToPage(to: string) {
     <Transition name="slide-up">
       <div
         v-if="showMoreMenu"
-        class="absolute bottom-full left-0 right-0 bg-elevated border-t border-default shadow-lg"
+        class="absolute bottom-full left-0 right-0 z-10 bg-elevated border-t border-default shadow-lg"
       >
         <div class="grid grid-cols-3 gap-1 p-3">
-          <button
+          <NuxtLink
             v-for="item in moreItems"
             :key="item.to"
+            :to="item.to"
             class="flex flex-col items-center gap-1.5 rounded-lg p-3 transition-colors"
             :class="isActive(item.to) ? 'bg-primary/10 text-primary' : 'text-muted hover:bg-muted/50'"
-            @click="navigateToPage(item.to)"
+            @click="closeMoreMenu"
           >
             <UIcon :name="item.icon" class="size-5" />
             <span class="text-xs font-medium">{{ item.label }}</span>
-          </button>
+          </NuxtLink>
         </div>
       </div>
     </Transition>
@@ -73,7 +70,7 @@ function navigateToPage(to: string) {
         <div
           v-if="showMoreMenu"
           class="fixed inset-0 z-40 bg-black/30 lg:hidden"
-          @click="showMoreMenu = false"
+          @click="closeMoreMenu"
         />
       </Transition>
     </Teleport>
@@ -85,7 +82,7 @@ function navigateToPage(to: string) {
           :to="item.to"
           class="flex flex-col items-center gap-0.5 rounded-lg px-3 py-1.5 transition-colors"
           :class="isActive(item.to) ? 'text-primary' : 'text-muted'"
-          @click="showMoreMenu = false"
+          @click="closeMoreMenu"
         >
           <UIcon :name="item.icon" class="size-5" />
           <span class="text-[10px] font-medium leading-tight">{{ item.label }}</span>

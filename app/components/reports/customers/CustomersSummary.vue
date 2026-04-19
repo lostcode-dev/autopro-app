@@ -41,7 +41,7 @@ function formatCurrency(v: number | string) {
           icon: 'i-lucide-clipboard-list',
           color: 'text-info',
           bg: 'bg-info/10',
-          description: 'ordens finalizadas'
+          description: 'no período'
         }
       ]"
       :key="stat.label"

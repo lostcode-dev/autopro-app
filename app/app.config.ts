@@ -29,6 +29,11 @@ export default defineAppConfig({
         content: 'max-h-[90vh] flex flex-col',
         body: 'overflow-y-auto'
       }
+    },
+    dashboardPanel: {
+      slots: {
+        body: 'pb-[60px] lg:pb-6'
+      }
     }
   }
 })

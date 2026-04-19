@@ -118,7 +118,7 @@ body.keyboard-open .mobile-bottom-nav {
 }
 
 /* Offset main content so it's not hidden behind bottom nav */
-@media (max-width: 1023px) {
+@media (max-width: 767px) {
   .app-content-with-bottom-nav {
     padding-bottom: calc(var(--mobile-bottom-nav-height, 4.75rem) + var(--safe-area-bottom) + 1rem);
   }
