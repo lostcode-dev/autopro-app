@@ -147,23 +147,15 @@ type InvoicesResponse = {
 
 const invoicePage = ref(1)
 const invoicePageSize = 10
-const showInvoices = ref(false)
 
-const { data: invoicesData, status: invoicesStatus, refresh: refreshInvoices } = await useAsyncData(
+const { data: invoicesData, status: invoicesStatus } = await useAsyncData(
   () => `billing-invoices-${invoicePage.value}`,
   () => requestFetch<InvoicesResponse>('/api/billing/invoices', {
     headers: requestHeaders,
     query: { page: invoicePage.value, pageSize: invoicePageSize }
   }),
-  { watch: [invoicePage], lazy: true, immediate: false }
+  { watch: [invoicePage] }
 )
-
-async function toggleInvoices() {
-  showInvoices.value = !showInvoices.value
-  if (showInvoices.value && !invoicesData.value) {
-    await refreshInvoices()
-  }
-}
 
 const invoiceColumns = [
   { accessorKey: 'invoice_number', header: 'Fatura', enableSorting: false },
@@ -367,31 +359,18 @@ async function openInvoice(url: string | null) {
     variant="subtle"
     class="mt-6"
   >
-    <template #footer>
-      <div class="flex items-center justify-end w-full">
-        <UButton
-          :label="showInvoices ? 'Ocultar faturas' : 'Ver faturas'"
-          color="neutral"
-          variant="ghost"
-          :icon="showInvoices ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-          @click="toggleInvoices"
-        />
-      </div>
-    </template>
-
-    <template v-if="showInvoices">
-      <AppDataTable
-        v-model:page="invoicePage"
-        :columns="invoiceColumns"
-        :data="(invoicesData?.items ?? []) as Record<string, unknown>[]"
-        :loading="invoicesStatus === 'pending'"
-        :page-size="invoicePageSize"
-        :total="invoicesData?.total ?? 0"
-        :show-page-size-selector="false"
-        empty-icon="i-lucide-receipt"
-        empty-title="Nenhuma fatura encontrada"
-        empty-description="Não há faturas registradas para esta assinatura."
-      >
+    <AppDataTable
+      v-model:page="invoicePage"
+      :columns="invoiceColumns"
+      :data="(invoicesData?.items ?? []) as Record<string, unknown>[]"
+      :loading="invoicesStatus === 'pending'"
+      :page-size="invoicePageSize"
+      :total="invoicesData?.total ?? 0"
+      :show-page-size-selector="false"
+      empty-icon="i-lucide-receipt"
+      empty-title="Nenhuma fatura encontrada"
+      empty-description="Não há faturas registradas para esta assinatura."
+    >
         <template #invoice_number-cell="{ row }">
           <span class="font-medium font-mono text-sm">
             {{ row.original.invoice_number || row.original.stripe_invoice_id }}
@@ -436,10 +415,5 @@ async function openInvoice(url: string | null) {
           />
         </template>
       </AppDataTable>
-    </template>
-
-    <p v-else class="text-sm text-muted">
-      Clique em "Ver faturas" para carregar o histórico.
-    </p>
   </UPageCard>
 </template>

@@ -152,7 +152,7 @@ const timezoneOptions = computed(() => {
   return Array.from(new Set([...builtIn, selectedTimezone.value]))
     .filter(Boolean)
     .map(tz => ({ label: formatTimezoneLabel(tz), value: tz, offset: getTimezoneOffsetMinutes(tz) }))
-    .sort((a, b) => a.offset - b.offset || a.label.localeCompare(b.label))
+    .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }))
     .map(({ label, value }) => ({ label, value }))
 })
 
