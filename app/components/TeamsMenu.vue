@@ -2,6 +2,10 @@
 defineProps<{
   collapsed?: boolean
 }>()
+
+const workshop = useWorkshopBootstrap()
+const orgLogoUrl = computed(() => workshop.organization.value?.logo_url ?? null)
+const orgName = computed(() => workshop.organization.value?.trade_name || workshop.organization.value?.name || 'AutoPro')
 </script>
 
 <template>
@@ -9,6 +13,18 @@ defineProps<{
     to="/app/"
     class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
   >
-    <AppLogo size="sm" />
+    <img
+      v-if="orgLogoUrl"
+      :src="orgLogoUrl"
+      :alt="orgName"
+      class="h-7 w-7 rounded object-contain shrink-0"
+    />
+    <AppLogo v-else size="sm" />
+    <span
+      v-if="!collapsed && orgLogoUrl"
+      class="truncate text-sm font-semibold text-highlighted"
+    >
+      {{ orgName }}
+    </span>
   </NuxtLink>
 </template>

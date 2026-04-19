@@ -35,7 +35,9 @@ const schema = z.object({
   address_country: z.string().optional().nullable(),
   municipal_registration: z.string().optional().nullable(),
   state_registration: z.string().optional().nullable(),
-  fiscal_regime: z.string().optional().nullable()
+  fiscal_regime: z.string().optional().nullable(),
+  logo_url: z.string().optional().nullable(),
+  initial_service_order_number: z.number().int().min(1).optional().nullable()
 })
 
 type Schema = z.output<typeof schema>
@@ -68,7 +70,9 @@ function fillForm(data: OrgData | null) {
     address_country: data.address_country ?? 'BR',
     municipal_registration: data.municipal_registration ?? '',
     state_registration: data.state_registration ?? '',
-    fiscal_regime: data.fiscal_regime ?? ''
+    fiscal_regime: data.fiscal_regime ?? '',
+    logo_url: data.logo_url ?? null,
+    initial_service_order_number: data.initial_service_order_number ?? 1
   })
 }
 
@@ -76,6 +80,42 @@ watch(orgData, fillForm, { immediate: true })
 
 const isSaving = ref(false)
 const isLoadingCep = ref(false)
+const isUploadingLogo = ref(false)
+const logoFileRef = ref<HTMLInputElement>()
+
+async function onLogoFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length) return
+  const file = input.files[0]!
+  isUploadingLogo.value = true
+  try {
+    const body = new FormData()
+    body.append('file', file)
+    const result = await $fetch<{ logo_url: string }>('/api/organizations/logo', {
+      method: 'POST',
+      body
+    })
+    form.logo_url = result.logo_url
+    toast.add({ title: 'Logo atualizado', color: 'success' })
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao enviar logo', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível enviar', color: 'error' })
+  } finally {
+    isUploadingLogo.value = false
+    if (input) input.value = ''
+  }
+}
+
+async function removeLogo() {
+  if (!canUpdate.value) return
+  try {
+    await $fetch('/api/organizations', { method: 'PUT', body: { logo_url: null } })
+    form.logo_url = null
+    toast.add({ title: 'Logo removido', color: 'success' })
+  } catch {
+    toast.add({ title: 'Erro ao remover logo', color: 'error' })
+  }
+}
 
 async function onSubmit(_event: FormSubmitEvent<Schema>) {
   if (isSaving.value || !canUpdate.value) return
@@ -163,6 +203,63 @@ const fiscalRegimeOptions = [
     </div>
 
     <template v-else>
+      <!-- Logo -->
+      <UPageCard title="Logo da Oficina" icon="i-lucide-image" variant="subtle" class="mb-4">
+        <div class="flex items-start gap-4 flex-wrap">
+          <div class="relative shrink-0">
+            <img
+              v-if="form.logo_url"
+              :src="form.logo_url"
+              alt="Logo da Oficina"
+              class="size-20 rounded-lg object-contain border border-default bg-white p-1"
+            />
+            <div
+              v-else
+              class="size-20 rounded-lg border-2 border-dashed border-default flex items-center justify-center bg-muted/30"
+            >
+              <UIcon name="i-lucide-image" class="size-8 text-muted" />
+            </div>
+            <UButton
+              v-if="form.logo_url && canUpdate"
+              color="error"
+              icon="i-lucide-x"
+              size="xs"
+              class="absolute -top-2 -right-2"
+              @click="removeLogo"
+            />
+          </div>
+
+          <div class="flex flex-col gap-3">
+            <div class="flex flex-wrap gap-2">
+              <UButton
+                label="Selecionar Logo"
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-upload"
+                :loading="isUploadingLogo"
+                :disabled="!canUpdate || isUploadingLogo"
+                @click="logoFileRef?.click()"
+              />
+              <UButton
+                v-if="form.logo_url"
+                label="Remover"
+                color="error"
+                variant="ghost"
+                icon="i-lucide-x"
+                :disabled="!canUpdate"
+                @click="removeLogo"
+              />
+            </div>
+            <ul class="text-xs text-muted space-y-0.5">
+              <li>• Formatos aceitos: JPEG, PNG, WebP</li>
+              <li>• Tamanho máximo: 5MB</li>
+              <li>• Recomendado: 200x200px ou maior</li>
+            </ul>
+          </div>
+        </div>
+        <input ref="logoFileRef" type="file" class="hidden" accept=".jpg,.jpeg,.png,.webp" @change="onLogoFileChange" />
+      </UPageCard>
+
       <!-- Dados básicos -->
       <UPageCard title="Identificação" variant="subtle" class="mb-4">
         <UFormField
@@ -294,6 +391,24 @@ const fiscalRegimeOptions = [
         <USeparator />
         <UFormField name="state_registration" label="Inscrição estadual" class="flex max-sm:flex-col justify-between items-start gap-4">
           <UInput v-model="form.state_registration" :disabled="!canUpdate" class="w-full" />
+        </UFormField>
+      </UPageCard>
+
+      <!-- Configurações do Sistema -->
+      <UPageCard title="Configurações do Sistema" icon="i-lucide-settings-2" variant="subtle" class="mb-4">
+        <UFormField
+          name="initial_service_order_number"
+          label="Número Inicial das OS"
+          description="Define o número a partir do qual as novas Ordens de Serviço serão criadas."
+          class="flex max-sm:flex-col justify-between items-start gap-4"
+        >
+          <UInput
+            v-model.number="form.initial_service_order_number"
+            type="number"
+            min="1"
+            :disabled="!canUpdate"
+            class="w-full"
+          />
         </UFormField>
       </UPageCard>
     </template>

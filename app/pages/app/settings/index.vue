@@ -84,11 +84,30 @@ async function onSubmitAccount(_event: FormSubmitEvent<AccountSchema>) {
 }
 
 const fileRef = ref<HTMLInputElement>()
+const isUploadingAvatar = ref(false)
 
-function onFileChange(e: Event) {
+async function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
-  account.avatar_url = URL.createObjectURL(input.files[0]!)
+  const file = input.files[0]!
+  isUploadingAvatar.value = true
+  try {
+    const body = new FormData()
+    body.append('file', file)
+    const result = await $fetch<{ avatar_url: string }>('/api/auth/avatar', {
+      method: 'POST',
+      body
+    })
+    account.avatar_url = result.avatar_url
+    await fetchUser()
+    toast.add({ title: 'Avatar atualizado', color: 'success' })
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao enviar avatar', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível enviar', color: 'error' })
+  } finally {
+    isUploadingAvatar.value = false
+    if (input) input.value = ''
+  }
 }
 
 // ─── Preferences / timezone ────────────────────────────────
@@ -221,17 +240,23 @@ function useBrowserTimezone() {
       <UFormField
         name="avatar_url"
         label="Avatar"
-        description="JPG, GIF ou PNG. Máx. 1MB."
+        description="JPEG, PNG, GIF ou WebP. Máx. 1MB."
         class="flex max-sm:flex-col justify-between sm:items-center gap-4"
       >
         <div class="flex flex-wrap items-center gap-3">
           <UAvatar :src="account.avatar_url" :alt="account.name" size="lg" />
-          <UButton label="Escolher" color="neutral" @click="fileRef?.click()" />
+          <UButton
+            label="Escolher"
+            color="neutral"
+            :loading="isUploadingAvatar"
+            :disabled="isUploadingAvatar"
+            @click="fileRef?.click()"
+          />
           <input
             ref="fileRef"
             type="file"
             class="hidden"
-            accept=".jpg,.jpeg,.png,.gif"
+            accept=".jpg,.jpeg,.png,.gif,.webp"
             @change="onFileChange"
           >
         </div>
