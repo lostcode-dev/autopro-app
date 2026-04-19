@@ -199,7 +199,7 @@ const headerSubtitle = computed(() => {
     </template>
 
     <template #body>
-      <div v-if="loading" class="space-y-4 p-4">
+      <div v-if="loading" class="space-y-4 px-4 py-6">
         <USkeleton class="h-28 w-full rounded-xl" />
         <div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <USkeleton class="h-24 w-full rounded-xl" />
@@ -280,7 +280,7 @@ const headerSubtitle = computed(() => {
           variant="solid"
           icon="i-lucide-message-circle"
           label="Enviar cobrança completa via WhatsApp"
-          class="w-full"
+          class="w-full justify-center py-3.5 text-center"
           @click="sendWhatsAppFull"
         />
 

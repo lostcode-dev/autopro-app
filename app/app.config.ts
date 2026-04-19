@@ -32,7 +32,7 @@ export default defineAppConfig({
     },
     dashboardPanel: {
       slots: {
-        body: 'pb-[60px] lg:pb-6'
+        body: 'pb-[80px] lg:pb-6'
       }
     }
   }
