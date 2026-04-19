@@ -11,7 +11,7 @@ const { state: userPreferencesState } = useUserPreferences()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
-// ─── Auth profile ─────────────────────────────────────────
+// ─── Profile ──────────────────────────────────────────────
 type AuthProfileResponse = {
   id: string
   email: string | null
@@ -45,23 +45,41 @@ watch(authProfileData, (data) => {
   account.avatar_url = data.avatar_url || undefined
 })
 
-const isSavingAccount = ref(false)
+const isSaving = ref(false)
 
 async function onSubmitAccount(_event: FormSubmitEvent<AccountSchema>) {
-  if (isSavingAccount.value) return
-  isSavingAccount.value = true
+  if (isSaving.value) return
+  isSaving.value = true
   try {
-    await $fetch('/api/auth/profile', {
-      method: 'PUT',
-      body: { name: account.name, avatar_url: account.avatar_url || '' }
-    })
+    await Promise.all([
+      $fetch('/api/auth/profile', {
+        method: 'PUT',
+        body: { name: account.name, avatar_url: account.avatar_url || '' }
+      }),
+      $fetch('/api/profile', {
+        method: 'PUT',
+        body: { display_name: account.name, profile_picture_url: account.avatar_url || null }
+      }),
+      $fetch('/api/settings/preferences', {
+        method: 'PUT',
+        body: {
+          primary_color: preferencesData.value?.primary_color || userPreferencesState.value.primary_color,
+          neutral_color: preferencesData.value?.neutral_color || userPreferencesState.value.neutral_color,
+          color_mode: preferencesData.value?.color_mode || userPreferencesState.value.color_mode,
+          timezone: selectedTimezone.value
+        }
+      })
+    ])
+    if (preferencesData.value) {
+      preferencesData.value = { ...preferencesData.value, timezone: selectedTimezone.value }
+    }
     await fetchUser()
-    toast.add({ title: 'Conta atualizada', description: 'Suas informações foram salvas.', color: 'success' })
+    toast.add({ title: 'Configurações salvas', description: 'Suas informações foram atualizadas.', color: 'success' })
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
   } finally {
-    isSavingAccount.value = false
+    isSaving.value = false
   }
 }
 
@@ -71,57 +89,6 @@ function onFileChange(e: Event) {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
   account.avatar_url = URL.createObjectURL(input.files[0]!)
-}
-
-// ─── Workshop profile ──────────────────────────────────────
-type WorkshopProfileData = {
-  id: string
-  display_name: string | null
-  profile_picture_url: string | null
-  user_id: string
-  organization_id: string
-}
-
-const workshopSchema = z.object({
-  display_name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
-  profile_picture_url: z.string().optional().nullable()
-})
-
-type WorkshopSchema = z.output<typeof workshopSchema>
-
-const { data: workshopProfileData, status: workshopProfileStatus } = await useAsyncData(
-  'workshop-profile',
-  () => requestFetch<WorkshopProfileData>('/api/profile', { headers: requestHeaders })
-)
-
-const workshop = reactive<Partial<WorkshopSchema>>({
-  display_name: '',
-  profile_picture_url: ''
-})
-
-watch(workshopProfileData, (data) => {
-  if (!data) return
-  workshop.display_name = data.display_name ?? ''
-  workshop.profile_picture_url = data.profile_picture_url ?? ''
-}, { immediate: true })
-
-const isSavingWorkshop = ref(false)
-
-async function onSubmitWorkshop(_event: FormSubmitEvent<WorkshopSchema>) {
-  if (isSavingWorkshop.value) return
-  isSavingWorkshop.value = true
-  try {
-    await $fetch('/api/profile', {
-      method: 'PUT',
-      body: { display_name: workshop.display_name, profile_picture_url: workshop.profile_picture_url || null }
-    })
-    toast.add({ title: 'Perfil atualizado', description: 'Seus dados foram salvos.', color: 'success' })
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
-  } finally {
-    isSavingWorkshop.value = false
-  }
 }
 
 // ─── Preferences / timezone ────────────────────────────────
@@ -147,51 +114,55 @@ watch(preferencesData, (data) => {
   selectedTimezone.value = data.timezone
 }, { immediate: true })
 
-const timezoneOptions = computed(() => {
-  const builtIn = typeof Intl.supportedValuesOf === 'function'
-    ? Intl.supportedValuesOf('timeZone')
-    : ['UTC', 'America/Fortaleza', 'America/Sao_Paulo', 'America/New_York', 'Europe/London']
-  return Array.from(new Set([...builtIn, browserTimezone.value, userPreferencesState.value.timezone]))
-    .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b))
-    .map(tz => ({ label: tz, value: tz }))
-})
-
-const isSavingTimezone = ref(false)
-
-async function saveTimezone() {
-  if (isSavingTimezone.value) return
-  isSavingTimezone.value = true
+function getTimezoneOffsetMinutes(tz: string): number {
   try {
-    await $fetch('/api/settings/preferences', {
-      method: 'PUT',
-      body: {
-        primary_color: preferencesData.value?.primary_color || userPreferencesState.value.primary_color,
-        neutral_color: preferencesData.value?.neutral_color || userPreferencesState.value.neutral_color,
-        color_mode: preferencesData.value?.color_mode || userPreferencesState.value.color_mode,
-        timezone: selectedTimezone.value
-      }
-    })
-    if (preferencesData.value) {
-      preferencesData.value = { ...preferencesData.value, timezone: selectedTimezone.value }
-    }
-    toast.add({ title: 'Fuso horário atualizado', description: 'O fuso horário da sua conta foi salvo.', color: 'success' })
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
-  } finally {
-    isSavingTimezone.value = false
+    const now = new Date()
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'shortOffset' }).formatToParts(now)
+    const tzName = parts.find(p => p.type === 'timeZoneName')?.value ?? 'GMT+0'
+    const match = tzName.match(/GMT([+-])(\d+)(?::(\d+))?/)
+    if (!match) return 0
+    const sign = match[1] === '+' ? 1 : -1
+    return sign * (parseInt(match[2] ?? '0') * 60 + parseInt(match[3] ?? '0'))
+  } catch {
+    return 0
   }
 }
 
+function formatTimezoneLabel(tz: string): string {
+  try {
+    const offset = getTimezoneOffsetMinutes(tz)
+    const sign = offset >= 0 ? '+' : '-'
+    const abs = Math.abs(offset)
+    const h = String(Math.floor(abs / 60)).padStart(2, '0')
+    const m = String(abs % 60).padStart(2, '0')
+    const city = tz.split('/').pop()?.replace(/_/g, ' ') ?? tz
+    return `(UTC${sign}${h}:${m}) ${city}`
+  } catch {
+    return tz
+  }
+}
+
+const timezoneOptions = computed(() => {
+  if (!import.meta.client) {
+    return [{ label: formatTimezoneLabel(selectedTimezone.value), value: selectedTimezone.value }]
+  }
+  const builtIn = typeof Intl.supportedValuesOf === 'function'
+    ? Intl.supportedValuesOf('timeZone')
+    : ['UTC', 'America/Fortaleza', 'America/Sao_Paulo', 'America/New_York', 'Europe/London']
+  return Array.from(new Set([...builtIn, selectedTimezone.value]))
+    .filter(Boolean)
+    .map(tz => ({ label: formatTimezoneLabel(tz), value: tz, offset: getTimezoneOffsetMinutes(tz) }))
+    .sort((a, b) => a.offset - b.offset || a.label.localeCompare(b.label))
+    .map(({ label, value }) => ({ label, value }))
+})
+
 function useBrowserTimezone() {
   selectedTimezone.value = browserTimezone.value
-  void saveTimezone()
 }
 </script>
 
 <template>
-  <!-- Conta (auth) -->
+  <!-- Conta -->
   <UForm
     id="account-form"
     :schema="accountSchema"
@@ -200,7 +171,7 @@ function useBrowserTimezone() {
   >
     <UPageCard
       title="Conta"
-      description="Informações de acesso à sua conta."
+      description="Informações do seu perfil e acesso à conta."
       variant="naked"
       orientation="horizontal"
       class="mb-4"
@@ -210,8 +181,8 @@ function useBrowserTimezone() {
         label="Salvar alterações"
         color="neutral"
         type="submit"
-        :loading="isSavingAccount"
-        :disabled="isSavingAccount"
+        :loading="isSaving"
+        :disabled="isSaving"
         class="w-fit lg:ms-auto"
       />
     </UPageCard>
@@ -268,76 +239,9 @@ function useBrowserTimezone() {
     </UPageCard>
   </UForm>
 
-  <!-- Perfil da oficina -->
-  <UForm
-    id="profile-form"
-    :schema="workshopSchema"
-    :state="workshop"
-    class="mt-6"
-    @submit="onSubmitWorkshop"
-  >
-    <UPageCard
-      title="Perfil na oficina"
-      description="Nome de exibição e foto usados internamente no sistema."
-      variant="naked"
-      orientation="horizontal"
-      class="mb-4"
-    >
-      <UButton
-        form="profile-form"
-        label="Salvar alterações"
-        color="neutral"
-        type="submit"
-        :loading="isSavingWorkshop"
-        :disabled="isSavingWorkshop"
-        class="w-fit lg:ms-auto"
-      />
-    </UPageCard>
-
-    <div v-if="workshopProfileStatus === 'pending'" class="space-y-4">
-      <USkeleton class="h-14 w-full" />
-      <USkeleton class="h-14 w-full" />
-    </div>
-
-    <UPageCard v-else variant="subtle">
-      <UFormField
-        name="display_name"
-        label="Nome de exibição"
-        description="Como você aparece para outros usuários da oficina."
-        required
-        class="flex max-sm:flex-col justify-between items-start gap-4"
-      >
-        <UInput v-model="workshop.display_name" class="w-full" autocomplete="off" />
-      </UFormField>
-
-      <USeparator />
-
-      <UFormField
-        name="profile_picture_url"
-        label="Foto de perfil"
-        description="URL pública para sua foto de perfil na oficina."
-        class="flex max-sm:flex-col justify-between items-start gap-4"
-      >
-        <div class="flex items-center gap-3 w-full">
-          <UAvatar
-            :src="workshop.profile_picture_url || undefined"
-            :alt="workshop.display_name || 'Perfil'"
-            size="lg"
-          />
-          <UInput
-            v-model="workshop.profile_picture_url"
-            class="flex-1"
-            placeholder="https://..."
-            autocomplete="off"
-          />
-        </div>
-      </UFormField>
-    </UPageCard>
-  </UForm>
-
   <!-- Regional -->
   <UPageCard
-    title="Regional"
+    title="Fuso horário"
     description="Defina o fuso horário usado para agenda, ordens de serviço e notificações."
     variant="subtle"
     class="mt-6"
@@ -351,32 +255,26 @@ function useBrowserTimezone() {
       <UFormField
         name="timezone"
         label="Fuso horário"
-        description="Usado para agenda, lembretes operacionais e automações."
+        description="Salvo junto com as demais configurações ao clicar em Salvar alterações."
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
-        <div class="w-full space-y-3">
+        <div class="w-full space-y-2">
           <USelectMenu
             v-model="selectedTimezone"
             :items="timezoneOptions"
             value-key="value"
+            search-placeholder="Buscar fuso horário..."
             class="w-full"
           />
-          <div class="flex flex-wrap gap-2">
-            <UButton
-              label="Salvar fuso horário"
-              color="neutral"
-              :loading="isSavingTimezone"
-              :disabled="isSavingTimezone"
-              @click="saveTimezone"
-            />
-            <UButton
-              label="Usar fuso do dispositivo"
-              variant="outline"
-              color="neutral"
-              :disabled="isSavingTimezone || selectedTimezone === browserTimezone"
-              @click="useBrowserTimezone"
-            />
-          </div>
+          <UButton
+            label="Usar fuso do dispositivo"
+            variant="ghost"
+            color="neutral"
+            size="xs"
+            icon="i-lucide-monitor"
+            :disabled="selectedTimezone === browserTimezone"
+            @click="useBrowserTimezone"
+          />
         </div>
       </UFormField>
     </template>
