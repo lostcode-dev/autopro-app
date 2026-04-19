@@ -287,9 +287,6 @@ const accessEmployee = ref<Employee | null>(null)
 const accessStatus = ref<{ hasAuthUser: boolean, active?: boolean } | null>(null)
 const isLoadingAccessStatus = ref(false)
 const isLinkingAccess = ref(false)
-const accessLinkCopied = ref(false)
-
-const signupUrl = computed(() => import.meta.client ? `${window.location.origin}/signup` : '/signup')
 
 async function openGrantAccess(emp: Employee) {
   accessEmployee.value = emp
@@ -309,27 +306,13 @@ async function openGrantAccess(emp: Employee) {
   }
 }
 
-async function copySignupUrl() {
-  if (!import.meta.client) return
-  try {
-    await navigator.clipboard.writeText(signupUrl.value)
-    accessLinkCopied.value = true
-    setTimeout(() => {
-      accessLinkCopied.value = false
-    }, 2500)
-    toast.add({ title: 'Link copiado!', color: 'success' })
-  } catch {
-    toast.add({ title: 'Não foi possível copiar o link', color: 'error' })
-  }
-}
-
 async function grantAccess() {
   if (!accessEmployee.value || isLinkingAccess.value) return
   isLinkingAccess.value = true
   try {
     await $fetch(`/api/employees/${accessEmployee.value.id}/grant-access`, { method: 'POST' as const })
     accessStatus.value = { hasAuthUser: true, active: true }
-    toast.add({ title: 'Acesso concedido!', description: `${accessEmployee.value.name} agora pode fazer login.`, color: 'success' })
+    toast.add({ title: 'Acesso criado!', description: `${accessEmployee.value.name} receberá um email para definir a senha.`, color: 'success' })
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro ao vincular acesso', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível vincular', color: 'error' })
@@ -984,103 +967,36 @@ const columns = [
         </div>
       </div>
 
-      <!-- Passo a passo para gerar acesso -->
+      <!-- Criar acesso automaticamente -->
       <div v-else class="space-y-3">
-        <p class="text-sm text-muted">
-          Siga os passos para que <strong class="text-highlighted">{{ accessEmployee?.name }}</strong>
-          possa acessar o sistema.
-        </p>
-
-        <!-- Passo 1: Funcionário criado ✓ -->
-        <div class="flex gap-3 rounded-xl border border-default bg-elevated/40 p-3">
-          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-success/15 text-sm font-bold text-success">
-            1
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-circle-check" class="size-4 shrink-0 text-success" />
-              <span class="text-sm font-medium">Funcionário criado</span>
-            </div>
-            <p class="mt-1 text-xs text-muted">
-              Cadastro no sistema com e-mail: <strong class="text-highlighted">{{ accessEmployee?.email }}</strong>
-            </p>
-          </div>
-        </div>
-
-        <!-- Passo 2: Funcionário cria a conta -->
-        <div class="flex gap-3 rounded-xl border border-default bg-elevated/40 p-3">
-          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-info/15 text-sm font-bold text-info">
-            2
-          </div>
-          <div class="min-w-0 flex-1 space-y-2">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-user-plus" class="size-4 shrink-0 text-info" />
-              <span class="text-sm font-medium">Funcionário cria a própria conta</span>
-            </div>
-            <div class="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
-              <strong>Importante:</strong> o funcionário deve usar exatamente o e-mail
-              <strong>{{ accessEmployee?.email }}</strong> ao se cadastrar.
-            </div>
-            <p class="text-xs text-muted">
-              Envie o link abaixo para o funcionário:
-            </p>
-            <div class="flex items-center gap-2 rounded-md border border-default bg-background px-3 py-2">
-              <a
-                :href="signupUrl"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="flex-1 truncate text-xs text-primary hover:underline"
-              >
-                {{ signupUrl }}
-              </a>
-              <UButton
-                :icon="accessLinkCopied ? 'i-lucide-check' : 'i-lucide-copy'"
-                :color="accessLinkCopied ? 'success' : 'neutral'"
-                variant="ghost"
-                size="xs"
-                @click="copySignupUrl"
-              />
+        <div class="rounded-lg border border-default bg-elevated/40 p-4">
+          <div class="flex items-start gap-3">
+            <UIcon name="i-lucide-mail-check" class="mt-0.5 size-5 shrink-0 text-primary" />
+            <div class="space-y-2">
+              <p class="text-sm font-medium text-highlighted">
+                Criar acesso do funcionário
+              </p>
+              <p class="text-sm text-muted">
+                O sistema vai criar o usuário de <strong class="text-highlighted">{{ accessEmployee?.name }}</strong>,
+                vincular automaticamente à organização e enviar um email para
+                <strong class="text-highlighted">{{ accessEmployee?.email }}</strong> definir a senha.
+              </p>
+              <p class="text-xs text-muted">
+                Garanta apenas que o e-mail informado está correto e acessível pelo funcionário.
+              </p>
             </div>
           </div>
         </div>
 
-        <!-- Passo 3: Vincular conta -->
-        <div class="flex gap-3 rounded-xl border border-default bg-elevated/40 p-3">
-          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-sm font-bold text-purple-500">
-            3
-          </div>
-          <div class="min-w-0 flex-1 space-y-2">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-link" class="size-4 shrink-0 text-purple-500" />
-              <span class="text-sm font-medium">Vincular conta ao funcionário</span>
-            </div>
-            <p class="text-xs text-muted">
-              Após o funcionário criar a conta com o e-mail correto, clique para vincular e liberar o acesso.
-            </p>
-            <UButton
-              label="Vincular conta ao funcionário"
-              icon="i-lucide-link"
-              color="neutral"
-              :loading="isLinkingAccess"
-              :disabled="isLinkingAccess"
-              class="w-full sm:w-auto"
-              @click="grantAccess"
-            />
-          </div>
-        </div>
-
-        <!-- Passo 4: Pronto -->
-        <div class="flex gap-3 rounded-xl border border-success/30 bg-success/10 p-3">
-          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-success/20 text-sm font-bold text-success">
-            4
-          </div>
-          <div class="flex min-w-0 flex-1 items-center gap-2">
-            <UIcon name="i-lucide-log-in" class="size-4 shrink-0 text-success" />
-            <span class="text-sm text-success">
-              Pronto! O funcionário poderá fazer login com
-              <strong>{{ accessEmployee?.email }}</strong>.
-            </span>
-          </div>
+        <div class="flex justify-end">
+          <UButton
+            label="Criar acesso e enviar email"
+            icon="i-lucide-user-round-plus"
+            color="neutral"
+            :loading="isLinkingAccess"
+            :disabled="isLinkingAccess"
+            @click="grantAccess"
+          />
         </div>
       </div>
     </template>

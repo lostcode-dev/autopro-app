@@ -1,23 +1,22 @@
-import { getRouterParam, readBody } from 'h3'
+import { getRequestURL, getRouterParam } from 'h3'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
+import { getSupabaseAnonClient } from '../../../utils/supabase-anon'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { ensureUserProvisioned } from '../../../utils/user-provisioning'
 
 /**
  * POST /api/employees/:id/grant-access
- * Links an existing auth user (who registered with the employee's email)
- * to this employee record by assigning the org, employee_id, and the
- * system 'employee' role to their user_profiles row.
- *
- * Flow:
- *   1. Admin creates the employee record with an email
- *   2. Employee registers at /signup using that exact email
- *   3. Admin clicks "Gerar Acesso" → this endpoint runs
- *   4. Employee can now log in as an org member
+ * Provisions the employee's app access in one step:
+ *   1. Creates the auth user if needed
+ *   2. Ensures required app tables exist (profile + preferences)
+ *   3. Links the user to the organization, employee, and role
+ *   4. Sends the password setup email
  */
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
+  const supabaseAnon = getSupabaseAnonClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
   const id = getRouterParam(event, 'id')
@@ -42,21 +41,24 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Funcionário não tem email cadastrado. Adicione um email antes de gerar acesso.' })
   }
 
-  // 2. Check if already linked
-  const { data: existingProfile } = await supabase
+  const normalizedEmail = employee.email.trim().toLowerCase()
+
+  // 2. Check if already linked to this employee
+  const { data: existingEmployeeProfile } = await supabase
     .from('user_profiles')
-    .select('id')
+    .select('id, user_id, organization_id')
     .eq('employee_id', id)
     .maybeSingle()
 
-  if (existingProfile) {
-    throw createError({ statusCode: 400, statusMessage: 'Funcionário já possui acesso ao sistema.' })
+  if (existingEmployeeProfile && existingEmployeeProfile.organization_id !== organizationId) {
+    throw createError({ statusCode: 400, statusMessage: 'Funcionário já está vinculado a outra organização.' })
   }
 
   // 3. Find the 'employee' system role for this org
   const { data: systemRole } = await supabase
     .from('roles')
     .select('id')
+    .eq('organization_id', organizationId)
     .eq('name', 'employee')
     .eq('is_system_role', true)
     .maybeSingle()
@@ -68,42 +70,68 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 4. Find the user_profile by employee email
+  // 4. Find the user profile by email when it already exists
   const { data: targetProfile } = await supabase
     .from('user_profiles')
-    .select('id, organization_id')
-    .eq('email', employee.email.trim().toLowerCase())
+    .select('id, user_id, organization_id')
+    .eq('email', normalizedEmail)
     .maybeSingle()
 
-  if (!targetProfile) {
-    throw createError({
-      statusCode: 404,
-      statusMessage: 'Nenhum usuário encontrado com este email. O funcionário precisa criar a conta primeiro no link de cadastro.'
-    })
-  }
-
-  if (targetProfile.organization_id && targetProfile.organization_id !== organizationId) {
+  if (targetProfile?.organization_id && targetProfile.organization_id !== organizationId) {
     throw createError({ statusCode: 400, statusMessage: 'Este usuário já está vinculado a outra organização.' })
   }
 
-  // 5. Assign org, employee, and role
-  const { error: updateError } = await supabase
-    .from('user_profiles')
-    .update({
-      organization_id: organizationId,
-      employee_id: id,
-      role_id: systemRole.id,
-      active: true,
-      updated_by: authUser.email
-    })
-    .eq('id', targetProfile.id)
+  let userId = targetProfile?.user_id ?? existingEmployeeProfile?.user_id ?? null
 
-  if (updateError) {
-    throw createError({ statusCode: 500, statusMessage: 'Erro ao vincular acesso ao funcionário.' })
+  if (!userId) {
+    const temporaryPassword = `${crypto.randomUUID()}${crypto.randomUUID()}`
+    const { data: createdUser, error: createUserError } = await supabase.auth.admin.createUser({
+      email: normalizedEmail,
+      password: temporaryPassword,
+      email_confirm: true,
+      user_metadata: {
+        name: employee.name
+      }
+    })
+
+    if (createUserError || !createdUser.user) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: createUserError?.message || 'Não foi possível criar o usuário do funcionário.'
+      })
+    }
+
+    userId = createdUser.user.id
+  }
+
+  // 5. Ensure all required app records exist and are linked
+  await ensureUserProvisioned(supabase, {
+    userId,
+    email: normalizedEmail,
+    displayName: employee.name,
+    organizationId,
+    roleId: systemRole.id,
+    employeeId: id,
+    isActive: true,
+    updatedBy: authUser.email,
+    createdBy: authUser.email
+  })
+
+  // 6. Send password setup email using the existing reset-password flow
+  const redirectTo = `${getRequestURL(event).origin}/reset-password`
+  const { error: resetPasswordError } = await supabaseAnon.auth.resetPasswordForEmail(normalizedEmail, {
+    redirectTo
+  })
+
+  if (resetPasswordError) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: 'A conta foi criada e vinculada, mas não foi possível enviar o email para definir a senha.'
+    })
   }
 
   return {
     success: true,
-    message: 'Acesso concedido com sucesso. O funcionário já pode fazer login.'
+    message: 'Acesso criado com sucesso. O funcionário receberá um email para definir a senha.'
   }
 })

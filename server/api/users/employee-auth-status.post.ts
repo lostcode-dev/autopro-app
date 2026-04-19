@@ -20,15 +20,25 @@ export default eventHandler(async (event) => {
 
   const { data: users } = await supabase
     .from('user_profiles')
-    .select('id, active')
+    .select('id, user_id, is_active')
     .eq('employee_id', employee_id)
     .limit(1)
 
   if (users && users.length > 0) {
+    const firstUser = users[0]
+
+    if (!firstUser) {
+      return {
+        hasAuthUser: false,
+        user_id: null,
+        active: false
+      }
+    }
+
     return {
       hasAuthUser: true,
-      user_id: users[0].id,
-      active: users[0].active ?? true
+      user_id: firstUser.user_id,
+      active: firstUser.is_active ?? true
     }
   }
 
