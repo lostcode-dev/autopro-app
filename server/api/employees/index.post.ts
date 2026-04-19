@@ -34,6 +34,7 @@ export default defineEventHandler(async (event) => {
     tax_id: body.tax_id.trim(),
     phone: body.phone.trim(),
     email: body.email ?? null,
+    role: body.role ?? null,
     zip_code: body.zip_code ?? null,
     street: body.street ?? null,
     address_number: body.address_number ?? null,

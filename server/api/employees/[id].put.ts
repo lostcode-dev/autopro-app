@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event)
 
   const UPDATABLE_FIELDS = [
-    'name', 'person_type', 'tax_id', 'phone', 'email',
+    'name', 'person_type', 'tax_id', 'phone', 'email', 'role',
     'zip_code', 'street', 'address_number', 'address_complement',
     'neighborhood', 'city', 'state',
     'has_salary', 'salary_amount', 'payment_day', 'salary_installments',

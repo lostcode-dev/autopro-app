@@ -14,14 +14,15 @@ const canCreate = computed(() => workshop.can(ActionCode.EMPLOYEES_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.EMPLOYEES_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.EMPLOYEES_DELETE))
 
-type Employee = Record<string, any>
+type Employee = Record<string, unknown>
 
+// ─── List ──────────────────────────────────────────────────
 const search = ref('')
 const includeTerminated = ref(false)
 
 const { data, status, refresh } = await useAsyncData(
   'employees-list',
-  () => requestFetch<Employee[]>('/api/employees', {
+  () => requestFetch<{ items: Employee[] }>('/api/employees', {
     headers: requestHeaders,
     query: {
       search: search.value || undefined,
@@ -30,30 +31,73 @@ const { data, status, refresh } = await useAsyncData(
   })
 )
 
+const employees = computed(() => data.value?.items ?? [])
+
 watch([search, includeTerminated], () => refresh())
 
-// ─── Modal: criar / editar ─────────────────────────────────
+// ─── Product categories (lazy-loaded for commission sections) ──
+type ProductCategory = { id: string, name: string }
+const productCategories = ref<ProductCategory[]>([])
+const isLoadingCategories = ref(false)
+
+async function loadProductCategories() {
+  if (productCategories.value.length > 0 || isLoadingCategories.value) return
+  isLoadingCategories.value = true
+  try {
+    const res = await $fetch<{ items: ProductCategory[] }>('/api/product-categories')
+    productCategories.value = res?.items ?? []
+  } catch {
+    // non-critical
+  } finally {
+    isLoadingCategories.value = false
+  }
+}
+
+// ─── Form ─────────────────────────────────────────────────
 const showModal = ref(false)
 const isEditing = ref(false)
 const isSaving = ref(false)
 const selectedId = ref<string | null>(null)
+const isFetchingCep = ref(false)
+
+type Installment = { day: number, amount: string }
 
 const emptyForm = () => ({
   name: '',
   role: '',
-  person_type: 'PF' as string,
+  person_type: 'pf' as string,
   tax_id: '',
   phone: '',
   email: '',
-  birth_date: '',
-  hire_date: '',
-  salary_type: 'fixed' as string,
-  salary_amount: '' as string | number,
-  commission_type: '' as string,
-  commission_value: '' as string | number,
+  // Address
+  zip_code: '',
+  street: '',
+  address_number: '',
+  address_complement: '',
+  neighborhood: '',
+  city: '',
+  state: '',
+  // Salary
+  has_salary: false,
+  salary_amount: '' as string,
+  payment_day: '5' as string,
+  salary_installments: [] as Installment[],
+  // Minimum guarantee
+  has_minimum_guarantee: false,
+  minimum_guarantee_amount: '' as string,
+  minimum_guarantee_installments: [] as Installment[],
+  // Commission
+  has_commission: false,
+  commission_type: 'percentage' as string,
+  commission_amount: '' as string,
+  commission_base: 'revenue' as string,
+  commission_categories: [] as string[],
+  // PIX
   pix_key_type: '' as string,
   pix_key: '',
-  is_active: true
+  // Termination
+  termination_date: '',
+  termination_reason: ''
 })
 
 const form = reactive(emptyForm())
@@ -66,49 +110,132 @@ function openCreate() {
 }
 
 function openEdit(emp: Employee) {
+  const toInstallments = (arr: unknown[]): Installment[] =>
+    (arr || []).map(p => ({ day: Number((p as Installment).day) || 1, amount: String((p as Installment).amount ?? '') }))
+
   Object.assign(form, {
     name: emp.name ?? '',
     role: emp.role ?? '',
-    person_type: emp.person_type ?? 'PF',
+    person_type: emp.person_type ?? 'pf',
     tax_id: emp.tax_id ?? '',
     phone: emp.phone ?? '',
     email: emp.email ?? '',
-    birth_date: emp.birth_date ? emp.birth_date.split('T')[0] : '',
-    hire_date: emp.hire_date ? emp.hire_date.split('T')[0] : '',
-    salary_type: emp.salary_type ?? 'fixed',
-    salary_amount: emp.salary_amount ?? '',
-    commission_type: emp.commission_type ?? '',
-    commission_value: emp.commission_value ?? '',
+    zip_code: emp.zip_code ?? '',
+    street: emp.street ?? '',
+    address_number: emp.address_number ?? '',
+    address_complement: emp.address_complement ?? '',
+    neighborhood: emp.neighborhood ?? '',
+    city: emp.city ?? '',
+    state: emp.state ?? '',
+    has_salary: emp.has_salary ?? false,
+    salary_amount: emp.salary_amount != null ? String(emp.salary_amount) : '',
+    payment_day: emp.payment_day != null ? String(emp.payment_day) : '5',
+    salary_installments: toInstallments(emp.salary_installments as unknown[]),
+    has_minimum_guarantee: emp.has_minimum_guarantee ?? false,
+    minimum_guarantee_amount: emp.minimum_guarantee_amount != null ? String(emp.minimum_guarantee_amount) : '',
+    minimum_guarantee_installments: toInstallments(emp.minimum_guarantee_installments as unknown[]),
+    has_commission: emp.has_commission ?? false,
+    commission_type: emp.commission_type ?? 'percentage',
+    commission_amount: emp.commission_amount != null ? String(emp.commission_amount) : '',
+    commission_base: emp.commission_base ?? 'revenue',
+    commission_categories: emp.commission_categories ?? [],
     pix_key_type: emp.pix_key_type ?? '',
     pix_key: emp.pix_key ?? '',
-    is_active: emp.is_active ?? true
+    termination_date: emp.termination_date ? String(emp.termination_date) : '',
+    termination_reason: emp.termination_reason ?? ''
   })
+
   isEditing.value = true
-  selectedId.value = emp.id
+  selectedId.value = emp.id as string
   showModal.value = true
+
+  if (emp.has_commission) loadProductCategories()
 }
 
+watch(() => form.has_commission, (val) => {
+  if (val) loadProductCategories()
+})
+watch(() => form.pix_key_type, () => {
+  form.pix_key = ''
+})
+
+// ─── CEP lookup ───────────────────────────────────────────
+async function lookupCep() {
+  const cep = form.zip_code.replace(/\D/g, '')
+  if (cep.length !== 8 || isFetchingCep.value) return
+  isFetchingCep.value = true
+  try {
+    const res = await $fetch<Record<string, unknown>>(`https://viacep.com.br/ws/${cep}/json/`)
+    if (res && !res.erro) {
+      form.street = String(res.logradouro || '')
+      form.neighborhood = String(res.bairro || '')
+      form.city = String(res.localidade || '')
+      form.state = String(res.uf || '')
+    }
+  } catch {
+    // optional
+  } finally {
+    isFetchingCep.value = false
+  }
+}
+
+// ─── Installment helpers ──────────────────────────────────
+function addSalaryInstallment() {
+  form.salary_installments.push({ day: 5, amount: '' })
+}
+function removeSalaryInstallment(i: number) {
+  form.salary_installments.splice(i, 1)
+}
+function addMinGuaranteeInstallment() {
+  form.minimum_guarantee_installments.push({ day: 5, amount: '' })
+}
+function removeMinGuaranteeInstallment(i: number) {
+  form.minimum_guarantee_installments.splice(i, 1)
+}
+
+// ─── Save ─────────────────────────────────────────────────
 async function save() {
   if (isSaving.value) return
   isSaving.value = true
   try {
-    const body: Record<string, any> = {
-      name: form.name,
+    const toPayload = (arr: Installment[]) =>
+      arr.map(p => ({ day: Number(p.day) || 1, amount: parseFloat(p.amount) || 0 }))
+
+    const cleanPixKey = (key: string, type: string) =>
+      ['cpf', 'cnpj', 'phone'].includes(type) ? key.replace(/\D/g, '') : key
+
+    const body: Record<string, unknown> = {
+      name: form.name.trim(),
       role: form.role || null,
       person_type: form.person_type,
-      tax_id: form.tax_id || null,
-      phone: form.phone || null,
+      tax_id: form.tax_id.replace(/\D/g, '') || null,
+      phone: form.phone.replace(/\D/g, '') || null,
       email: form.email || null,
-      birth_date: form.birth_date || null,
-      hire_date: form.hire_date || null,
-      salary_type: form.salary_type || null,
-      salary_amount: form.salary_amount !== '' ? Number(form.salary_amount) : null,
-      commission_type: form.commission_type || null,
-      commission_value: form.commission_value !== '' ? Number(form.commission_value) : null,
+      zip_code: form.zip_code.replace(/\D/g, '') || null,
+      street: form.street || null,
+      address_number: form.address_number || null,
+      address_complement: form.address_complement || null,
+      neighborhood: form.neighborhood || null,
+      city: form.city || null,
+      state: form.state || null,
+      has_salary: form.has_salary,
+      salary_amount: form.has_salary && form.salary_amount !== '' ? parseFloat(String(form.salary_amount)) : null,
+      payment_day: form.has_salary && form.payment_day !== '' ? Number(String(form.payment_day)) : null,
+      salary_installments: form.has_salary ? toPayload(form.salary_installments) : [],
+      has_minimum_guarantee: form.has_minimum_guarantee,
+      minimum_guarantee_amount: form.has_minimum_guarantee && form.minimum_guarantee_amount !== '' ? parseFloat(String(form.minimum_guarantee_amount)) : null,
+      minimum_guarantee_installments: form.has_minimum_guarantee ? toPayload(form.minimum_guarantee_installments) : [],
+      has_commission: form.has_commission,
+      commission_type: form.has_commission ? form.commission_type : null,
+      commission_amount: form.has_commission && form.commission_amount !== '' ? parseFloat(String(form.commission_amount)) : null,
+      commission_base: form.has_commission ? form.commission_base : null,
+      commission_categories: form.has_commission ? form.commission_categories : [],
       pix_key_type: form.pix_key_type || null,
-      pix_key: form.pix_key || null,
-      is_active: form.is_active
+      pix_key: form.pix_key_type ? cleanPixKey(form.pix_key, form.pix_key_type) : null,
+      termination_date: form.termination_date || null,
+      termination_reason: form.termination_reason || null
     }
+
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/employees/${selectedId.value}`, { method: 'PUT', body })
       toast.add({ title: 'Funcionário atualizado', color: 'success' })
@@ -116,6 +243,7 @@ async function save() {
       await $fetch('/api/employees', { method: 'POST', body })
       toast.add({ title: 'Funcionário criado', color: 'success' })
     }
+
     showModal.value = false
     await refresh()
   } catch (error: unknown) {
@@ -126,7 +254,7 @@ async function save() {
   }
 }
 
-// ─── Modal: confirmar exclusão ─────────────────────────────
+// ─── Delete ───────────────────────────────────────────────
 const showConfirm = ref(false)
 const isDeleting = ref(false)
 const pendingDelete = ref<Employee | null>(null)
@@ -153,9 +281,73 @@ async function confirmDelete() {
   }
 }
 
-// ─── Helpers ──────────────────────────────────────────────
+// ─── Grant access modal ───────────────────────────────────
+const showAccessModal = ref(false)
+const accessEmployee = ref<Employee | null>(null)
+const accessStatus = ref<{ hasAuthUser: boolean, active?: boolean } | null>(null)
+const isLoadingAccessStatus = ref(false)
+const isLinkingAccess = ref(false)
+const accessLinkCopied = ref(false)
+
+const signupUrl = computed(() => import.meta.client ? `${window.location.origin}/signup` : '/signup')
+
+async function openGrantAccess(emp: Employee) {
+  accessEmployee.value = emp
+  accessStatus.value = null
+  isLoadingAccessStatus.value = true
+  showAccessModal.value = true
+  try {
+    const res = await $fetch<{ hasAuthUser: boolean, active?: boolean }>('/api/users/employee-auth-status', {
+      method: 'POST',
+      body: { employee_id: emp.id }
+    })
+    accessStatus.value = res
+  } catch {
+    accessStatus.value = null
+  } finally {
+    isLoadingAccessStatus.value = false
+  }
+}
+
+async function copySignupUrl() {
+  if (!import.meta.client) return
+  try {
+    await navigator.clipboard.writeText(signupUrl.value)
+    accessLinkCopied.value = true
+    setTimeout(() => {
+      accessLinkCopied.value = false
+    }, 2500)
+    toast.add({ title: 'Link copiado!', color: 'success' })
+  } catch {
+    toast.add({ title: 'Não foi possível copiar o link', color: 'error' })
+  }
+}
+
+async function grantAccess() {
+  if (!accessEmployee.value || isLinkingAccess.value) return
+  isLinkingAccess.value = true
+  try {
+    await $fetch(`/api/employees/${accessEmployee.value.id}/grant-access`, { method: 'POST' as const })
+    accessStatus.value = { hasAuthUser: true, active: true }
+    toast.add({ title: 'Acesso concedido!', description: `${accessEmployee.value.name} agora pode fazer login.`, color: 'success' })
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao vincular acesso', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível vincular', color: 'error' })
+  } finally {
+    isLinkingAccess.value = false
+  }
+}
+
+// ─── Status helpers ───────────────────────────────────────
+function getEmployeeStatus(emp: Employee): { label: string, color: 'success' | 'warning' | 'neutral' } {
+  if (!emp.termination_date) return { label: 'Ativo', color: 'success' }
+  const today = new Date().toISOString().split('T')[0]!
+  if (String(emp.termination_date) <= today) return { label: 'Demitido', color: 'neutral' }
+  return { label: 'Demissão agendada', color: 'warning' }
+}
+
 function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
   if (!parts.length) return '?'
   if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
   return ((parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')).toUpperCase()
@@ -163,35 +355,34 @@ function getInitials(name: string) {
 
 // ─── Select options ────────────────────────────────────────
 const personTypeOptions = [
-  { label: 'Pessoa Física', value: 'PF' },
-  { label: 'Pessoa Jurídica', value: 'PJ' }
-]
-
-const salaryTypeOptions = [
-  { label: 'Fixo', value: 'fixed' },
-  { label: 'Por hora', value: 'hourly' },
-  { label: 'Só comissão', value: 'commission_only' }
+  { label: 'Pessoa Física (PF)', value: 'pf' },
+  { label: 'Pessoa Jurídica (PJ)', value: 'pj' }
 ]
 
 const commissionTypeOptions = [
   { label: 'Percentual (%)', value: 'percentage' },
-  { label: 'Valor fixo (R$)', value: 'fixed' }
+  { label: 'Valor fixo (R$)', value: 'fixed_amount' }
+]
+
+const commissionBaseOptions = [
+  { label: 'Valor bruto (receita total)', value: 'revenue' },
+  { label: 'Lucro (receita − custos)', value: 'profit' }
 ]
 
 const pixKeyTypeOptions = [
-  { label: 'CPF / CNPJ', value: 'cpf_cnpj' },
+  { label: 'CPF', value: 'cpf' },
+  { label: 'CNPJ', value: 'cnpj' },
   { label: 'E-mail', value: 'email' },
   { label: 'Telefone', value: 'phone' },
-  { label: 'Chave aleatória', value: 'random' }
+  { label: 'Chave aleatória', value: 'random_key' }
 ]
 
-// ─── Tabela ────────────────────────────────────────────────
+// ─── Table columns ─────────────────────────────────────────
 const columns = [
   { accessorKey: 'name', header: 'Funcionário', enableSorting: false },
   { accessorKey: 'role', header: 'Cargo', enableSorting: false },
   { accessorKey: 'phone', header: 'Telefone', enableSorting: false },
-  { accessorKey: 'email', header: 'E-mail', enableSorting: false },
-  { accessorKey: 'is_active', header: 'Status', enableSorting: false },
+  { accessorKey: 'status_col', header: 'Status', enableSorting: false },
   { id: 'actions', header: '', enableSorting: false }
 ]
 </script>
@@ -224,11 +415,11 @@ const columns = [
     <AppDataTable
       v-model:search-term="search"
       :columns="columns"
-      :data="(data ?? []) as Record<string, unknown>[]"
+      :data="employees as Record<string, unknown>[]"
       :loading="status === 'pending'"
       :show-footer="false"
       show-search
-      search-placeholder="Buscar por nome, e-mail ou cargo..."
+      search-placeholder="Buscar por nome, CPF ou cargo..."
       empty-icon="i-lucide-users-round"
       empty-title="Nenhum funcionário encontrado"
       empty-description="Adicione funcionários para gerenciar sua equipe."
@@ -241,9 +432,19 @@ const columns = [
         />
       </template>
 
+      <!-- Name cell with avatar -->
       <template #name-cell="{ row }">
         <div class="flex items-center gap-3">
-          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+          <img
+            v-if="row.original.photo_url"
+            :src="String(row.original.photo_url)"
+            :alt="String(row.original.name ?? '')"
+            class="size-8 shrink-0 rounded-full object-cover"
+          >
+          <div
+            v-else
+            class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10"
+          >
             <span class="text-xs font-bold text-primary">
               {{ getInitials(String(row.original.name ?? '')) }}
             </span>
@@ -252,8 +453,8 @@ const columns = [
             <p class="truncate font-medium text-highlighted">
               {{ row.original.name }}
             </p>
-            <p v-if="row.original.hire_date" class="text-xs text-muted truncate">
-              Desde {{ new Date(row.original.hire_date).toLocaleDateString('pt-BR') }}
+            <p v-if="row.original.email" class="truncate text-xs text-muted">
+              {{ row.original.email }}
             </p>
           </div>
         </div>
@@ -265,27 +466,27 @@ const columns = [
       </template>
 
       <template #phone-cell="{ row }">
-        <span v-if="row.original.phone" class="text-sm font-mono">{{ row.original.phone }}</span>
+        <span v-if="row.original.phone" class="font-mono text-sm">{{ row.original.phone }}</span>
         <span v-else class="text-sm text-muted">—</span>
       </template>
 
-      <template #email-cell="{ row }">
-        <span v-if="row.original.email" class="text-sm">{{ row.original.email }}</span>
-        <span v-else class="text-sm text-muted">—</span>
-      </template>
-
-      <template #is_active-cell="{ row }">
-        <UBadge
-          :color="row.original.is_active ? 'success' : 'neutral'"
-          variant="subtle"
-          size="sm"
-        >
-          {{ row.original.is_active ? 'Ativo' : 'Inativo' }}
+      <template #status_col-cell="{ row }">
+        <UBadge :color="getEmployeeStatus(row.original).color" variant="subtle" size="sm">
+          {{ getEmployeeStatus(row.original).label }}
         </UBadge>
       </template>
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
+          <UTooltip v-if="row.original.email" text="Gerenciar acesso">
+            <UButton
+              icon="i-lucide-key-round"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openGrantAccess(row.original)"
+            />
+          </UTooltip>
           <UTooltip v-if="canUpdate" text="Editar">
             <UButton
               icon="i-lucide-pencil"
@@ -309,28 +510,30 @@ const columns = [
     </AppDataTable>
   </template>
 
-  <!-- Modal criar / editar -->
+  <!-- ══════════════════════════════════════
+       MODAL: criar / editar
+  ═══════════════════════════════════════ -->
   <UModal
     v-model:open="showModal"
     :title="isEditing ? 'Editar funcionário' : 'Novo funcionário'"
     :description="isEditing ? 'Atualize os dados do funcionário.' : 'Preencha os dados para adicionar um novo membro à equipe.'"
-    :ui="{ body: 'overflow-y-auto max-h-[70vh]' }"
+    :ui="{ body: 'overflow-y-auto max-h-[72vh]' }"
   >
     <template #body>
       <div class="space-y-6">
-        <!-- Dados pessoais -->
+        <!-- ── Dados pessoais ── -->
         <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-3">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
             Dados pessoais
           </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <UFormField label="Nome completo" required class="sm:col-span-2">
               <UInput v-model="form.name" class="w-full" placeholder="Ex: João da Silva" />
             </UFormField>
             <UFormField label="Cargo">
-              <UInput v-model="form.role" class="w-full" placeholder="Ex: Mecânico" />
+              <UInput v-model="form.role" class="w-full" placeholder="Ex: Mecânico, Balconista" />
             </UFormField>
-            <UFormField label="Tipo de pessoa">
+            <UFormField label="Tipo">
               <USelectMenu
                 v-model="form.person_type"
                 :items="personTypeOptions"
@@ -338,78 +541,33 @@ const columns = [
                 class="w-full"
               />
             </UFormField>
-            <UFormField label="CPF / CNPJ">
-              <UInput v-model="form.tax_id" class="w-full" placeholder="000.000.000-00" />
-            </UFormField>
-            <UFormField label="Data de nascimento">
-              <UInput v-model="form.birth_date" type="date" class="w-full" />
+            <UFormField :label="form.person_type === 'pj' ? 'CNPJ' : 'CPF'" required>
+              <UInput
+                v-model="form.tax_id"
+                class="w-full"
+                :placeholder="form.person_type === 'pj' ? '00.000.000/0000-00' : '000.000.000-00'"
+              />
             </UFormField>
           </div>
         </div>
 
         <USeparator />
 
-        <!-- Contato -->
+        <!-- ── Contato ── -->
         <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-3">
+          <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
             Contato
           </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UFormField label="Telefone / WhatsApp">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <UFormField label="Telefone / WhatsApp" required>
               <UInput v-model="form.phone" class="w-full" placeholder="(00) 90000-0000" />
             </UFormField>
             <UFormField label="E-mail">
-              <UInput v-model="form.email" type="email" class="w-full" placeholder="joao@email.com" />
-            </UFormField>
-          </div>
-        </div>
-
-        <USeparator />
-
-        <!-- Admissão e remuneração -->
-        <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-3">
-            Admissão e remuneração
-          </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <UFormField label="Data de admissão">
-              <UInput v-model="form.hire_date" type="date" class="w-full" />
-            </UFormField>
-            <UFormField label="Tipo de salário">
-              <USelectMenu
-                v-model="form.salary_type"
-                :items="salaryTypeOptions"
-                value-key="value"
-                class="w-full"
-              />
-            </UFormField>
-            <UFormField v-if="form.salary_type !== 'commission_only'" label="Valor do salário (R$)">
               <UInput
-                v-model="form.salary_amount"
-                type="number"
-                min="0"
-                step="0.01"
+                v-model="form.email"
+                type="email"
                 class="w-full"
-                placeholder="0,00"
-              />
-            </UFormField>
-            <UFormField label="Tipo de comissão">
-              <USelectMenu
-                v-model="form.commission_type"
-                :items="commissionTypeOptions"
-                value-key="value"
-                class="w-full"
-                placeholder="Sem comissão"
-              />
-            </UFormField>
-            <UFormField v-if="form.commission_type" label="Valor da comissão">
-              <UInput
-                v-model="form.commission_value"
-                type="number"
-                min="0"
-                step="0.01"
-                class="w-full"
-                placeholder="0,00"
+                placeholder="joao@email.com"
               />
             </UFormField>
           </div>
@@ -417,42 +575,523 @@ const columns = [
 
         <USeparator />
 
-        <!-- PIX -->
+        <!-- ── Endereço ── -->
         <div>
-          <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-3">
-            PIX
+          <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
+            Endereço
           </p>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+            <UFormField label="CEP" class="sm:col-span-1">
+              <div class="relative">
+                <UInput
+                  v-model="form.zip_code"
+                  class="w-full"
+                  placeholder="00000-000"
+                  maxlength="9"
+                  @blur="lookupCep"
+                />
+                <UIcon
+                  v-if="isFetchingCep"
+                  name="i-lucide-loader-circle"
+                  class="absolute right-2 top-2.5 size-4 animate-spin text-muted"
+                />
+              </div>
+            </UFormField>
+            <UFormField label="Logradouro" class="sm:col-span-3">
+              <UInput
+                v-model="form.street"
+                class="w-full"
+                placeholder="Rua, Av., Travessa..."
+                :disabled="isFetchingCep"
+              />
+            </UFormField>
+            <UFormField label="Número" class="sm:col-span-1">
+              <UInput v-model="form.address_number" class="w-full" placeholder="S/N" />
+            </UFormField>
+            <UFormField label="Complemento" class="sm:col-span-3">
+              <UInput v-model="form.address_complement" class="w-full" placeholder="Apto, Sala..." />
+            </UFormField>
+            <UFormField label="Bairro" class="sm:col-span-2">
+              <UInput v-model="form.neighborhood" class="w-full" :disabled="isFetchingCep" />
+            </UFormField>
+            <UFormField label="Cidade" class="sm:col-span-1">
+              <UInput v-model="form.city" class="w-full" :disabled="isFetchingCep" />
+            </UFormField>
+            <UFormField label="UF" class="sm:col-span-1">
+              <UInput
+                v-model="form.state"
+                class="w-full"
+                maxlength="2"
+                :disabled="isFetchingCep"
+                placeholder="SP"
+              />
+            </UFormField>
+          </div>
+        </div>
+
+        <USeparator />
+
+        <!-- ── Remuneração ── -->
+        <div class="space-y-4">
+          <p class="text-xs font-semibold uppercase tracking-widest text-muted">
+            Remuneração
+          </p>
+
+          <!-- Salário fixo -->
+          <div class="rounded-lg border border-default p-4 space-y-4">
+            <UCheckbox v-model="form.has_salary" label="Possui salário fixo" color="neutral" />
+
+            <template v-if="form.has_salary">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <UFormField label="Valor do salário (R$)">
+                  <UInput
+                    v-model="form.salary_amount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="w-full"
+                    placeholder="0,00"
+                  />
+                </UFormField>
+                <UFormField label="Dia do pagamento">
+                  <UInput
+                    v-model="form.payment_day"
+                    type="number"
+                    min="1"
+                    max="31"
+                    class="w-full"
+                    placeholder="5"
+                  />
+                </UFormField>
+              </div>
+
+              <!-- Parcelas do salário -->
+              <div class="rounded-md bg-elevated/40 p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-muted">Dividir em parcelas <span class="font-normal">(opcional)</span></span>
+                  <UButton
+                    label="+ Parcela"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    @click="addSalaryInstallment"
+                  />
+                </div>
+                <p v-if="form.salary_installments.length === 0" class="text-xs text-muted">
+                  Adicione parcelas para dividir o pagamento em múltiplas datas no mês.
+                </p>
+                <div
+                  v-for="(inst, i) in form.salary_installments"
+                  :key="i"
+                  class="flex items-end gap-2"
+                >
+                  <UFormField label="Dia" class="w-20">
+                    <UInput
+                      v-model.number="inst.day"
+                      type="number"
+                      min="1"
+                      max="31"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <UFormField label="Valor (R$)" class="flex-1">
+                    <UInput
+                      v-model="inst.amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="w-full"
+                      placeholder="0,00"
+                    />
+                  </UFormField>
+                  <UButton
+                    icon="i-lucide-x"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    class="mb-0.5"
+                    @click="removeSalaryInstallment(i)"
+                  />
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Mínimo garantido -->
+          <div class="rounded-lg border border-default p-4 space-y-4">
+            <UCheckbox v-model="form.has_minimum_guarantee" label="Mínimo salarial garantido" color="neutral" />
+
+            <template v-if="form.has_minimum_guarantee">
+              <UFormField label="Valor mínimo garantido (R$)">
+                <UInput
+                  v-model="form.minimum_guarantee_amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="w-full"
+                  placeholder="0,00"
+                />
+              </UFormField>
+              <p class="text-xs text-muted">
+                Se comissões + salário não atingirem este valor no mês, será gerado um complemento automaticamente.
+              </p>
+
+              <!-- Parcelas do mínimo -->
+              <div class="rounded-md bg-elevated/40 p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-medium text-muted">Dividir em parcelas <span class="font-normal">(opcional)</span></span>
+                  <UButton
+                    label="+ Parcela"
+                    size="xs"
+                    color="neutral"
+                    variant="ghost"
+                    @click="addMinGuaranteeInstallment"
+                  />
+                </div>
+                <div
+                  v-for="(inst, i) in form.minimum_guarantee_installments"
+                  :key="i"
+                  class="flex items-end gap-2"
+                >
+                  <UFormField label="Dia" class="w-20">
+                    <UInput
+                      v-model.number="inst.day"
+                      type="number"
+                      min="1"
+                      max="31"
+                      class="w-full"
+                    />
+                  </UFormField>
+                  <UFormField label="Valor (R$)" class="flex-1">
+                    <UInput
+                      v-model="inst.amount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="w-full"
+                      placeholder="0,00"
+                    />
+                  </UFormField>
+                  <UButton
+                    icon="i-lucide-x"
+                    color="error"
+                    variant="ghost"
+                    size="xs"
+                    class="mb-0.5"
+                    @click="removeMinGuaranteeInstallment(i)"
+                  />
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- Comissão -->
+          <div class="rounded-lg border border-default p-4 space-y-4">
+            <UCheckbox v-model="form.has_commission" label="Recebe comissão" color="neutral" />
+
+            <template v-if="form.has_commission">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <UFormField label="Tipo de comissão">
+                  <USelectMenu
+                    v-model="form.commission_type"
+                    :items="commissionTypeOptions"
+                    value-key="value"
+                    class="w-full"
+                  />
+                </UFormField>
+                <UFormField :label="form.commission_type === 'percentage' ? 'Taxa (%)' : 'Valor fixo (R$)'">
+                  <UInput
+                    v-model="form.commission_amount"
+                    type="number"
+                    min="0"
+                    :max="form.commission_type === 'percentage' ? 100 : undefined"
+                    step="0.01"
+                    class="w-full"
+                    placeholder="0"
+                  />
+                </UFormField>
+                <UFormField label="Base de cálculo" class="sm:col-span-2">
+                  <USelectMenu
+                    v-model="form.commission_base"
+                    :items="commissionBaseOptions"
+                    value-key="value"
+                    class="w-full"
+                  />
+                </UFormField>
+              </div>
+
+              <!-- Categorias de produto -->
+              <div>
+                <p class="mb-2 text-xs font-medium text-muted">
+                  Categorias que geram comissão
+                  <span class="font-normal">(deixe em branco para todas)</span>
+                </p>
+                <div v-if="isLoadingCategories" class="flex items-center gap-2 text-xs text-muted">
+                  <UIcon name="i-lucide-loader-circle" class="animate-spin" />
+                  Carregando categorias...
+                </div>
+                <p v-else-if="productCategories.length === 0" class="text-xs text-muted">
+                  Nenhuma categoria cadastrada.
+                </p>
+                <div v-else class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <UCheckbox
+                    v-for="cat in productCategories"
+                    :key="cat.id"
+                    :label="cat.name"
+                    :model-value="form.commission_categories.includes(cat.id)"
+                    color="neutral"
+                    @update:model-value="(v) => {
+                      if (v) { if (!form.commission_categories.includes(cat.id)) form.commission_categories.push(cat.id) }
+                      else { form.commission_categories = form.commission_categories.filter((id: string) => id !== cat.id) }
+                    }"
+                  />
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <USeparator />
+
+        <!-- ── Chave PIX ── -->
+        <div>
+          <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
+            Chave PIX
+          </p>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <UFormField label="Tipo de chave">
               <USelectMenu
                 v-model="form.pix_key_type"
                 :items="pixKeyTypeOptions"
                 value-key="value"
-                class="w-full"
                 placeholder="Sem chave PIX"
+                class="w-full"
               />
             </UFormField>
             <UFormField v-if="form.pix_key_type" label="Chave PIX">
-              <UInput v-model="form.pix_key" class="w-full" />
+              <UInput
+                v-model="form.pix_key"
+                class="w-full"
+                :placeholder="
+                  form.pix_key_type === 'cpf'
+                    ? '000.000.000-00'
+                    : form.pix_key_type === 'cnpj'
+                      ? '00.000.000/0000-00'
+                      : form.pix_key_type === 'phone'
+                        ? '(11) 99999-9999'
+                        : form.pix_key_type === 'email'
+                          ? 'email@exemplo.com'
+                          : 'Chave aleatória gerada pelo banco'
+                "
+              />
             </UFormField>
           </div>
         </div>
 
-        <USeparator />
-
-        <UCheckbox v-model="form.is_active" label="Funcionário ativo" color="neutral" />
+        <!-- ── Demissão (somente ao editar) ── -->
+        <template v-if="isEditing">
+          <USeparator />
+          <div>
+            <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
+              Demissão
+            </p>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <UFormField label="Data de demissão">
+                <UInput v-model="form.termination_date" type="date" class="w-full" />
+              </UFormField>
+              <UFormField label="Motivo" class="sm:col-span-2">
+                <UTextarea
+                  v-model="form.termination_reason"
+                  class="w-full"
+                  placeholder="Opcional"
+                  :rows="2"
+                />
+              </UFormField>
+            </div>
+            <p v-if="form.termination_date" class="mt-2 text-xs text-muted">
+              O acesso ao sistema será bloqueado após esta data.
+            </p>
+          </div>
+        </template>
       </div>
     </template>
 
     <template #footer>
-      <div class="flex justify-end gap-2 w-full">
-        <UButton label="Cancelar" color="neutral" variant="ghost" @click="showModal = false" />
+      <div class="flex w-full justify-end gap-2">
+        <UButton
+          label="Cancelar"
+          color="neutral"
+          variant="ghost"
+          @click="showModal = false"
+        />
         <UButton
           :label="isEditing ? 'Salvar alterações' : 'Criar funcionário'"
           color="neutral"
           :loading="isSaving"
-          :disabled="isSaving || !form.name"
+          :disabled="isSaving || !form.name || !form.phone"
           @click="save"
+        />
+      </div>
+    </template>
+  </UModal>
+
+  <!-- ══════════════════════════════════════
+       MODAL: Gerenciar acesso
+  ═══════════════════════════════════════ -->
+  <UModal
+    v-model:open="showAccessModal"
+    title="Acesso ao sistema"
+    :description="accessEmployee?.name ? `Gerencie o acesso de ${accessEmployee.name} ao sistema.` : ''"
+  >
+    <template #body>
+      <!-- Carregando status -->
+      <div v-if="isLoadingAccessStatus" class="flex items-center justify-center gap-2 py-8 text-muted">
+        <UIcon name="i-lucide-loader-circle" class="size-5 animate-spin" />
+        <span class="text-sm">Verificando status...</span>
+      </div>
+
+      <!-- Sem e-mail cadastrado -->
+      <div v-else-if="!accessEmployee?.email" class="rounded-lg border border-warning/40 bg-warning/10 p-4">
+        <p class="text-sm font-medium">
+          E-mail não cadastrado
+        </p>
+        <p class="mt-1 text-sm text-muted">
+          Edite o cadastro do funcionário e adicione um e-mail para poder gerar acesso.
+        </p>
+      </div>
+
+      <!-- Já tem acesso -->
+      <div v-else-if="accessStatus?.hasAuthUser" class="space-y-3">
+        <div class="flex items-start gap-3 rounded-lg border border-success/30 bg-success/10 p-4">
+          <UIcon name="i-lucide-shield-check" class="mt-0.5 size-5 shrink-0 text-success" />
+          <div>
+            <p class="font-medium text-success">
+              Funcionário já possui acesso
+            </p>
+            <p class="mt-1 text-sm text-muted">
+              {{ accessEmployee?.name }} pode fazer login com o e-mail
+              <strong class="text-highlighted">{{ accessEmployee?.email }}</strong>.
+            </p>
+            <UBadge
+              :color="accessStatus.active ? 'success' : 'neutral'"
+              variant="subtle"
+              size="sm"
+              class="mt-2"
+            >
+              {{ accessStatus.active ? 'Conta ativa' : 'Conta inativa' }}
+            </UBadge>
+          </div>
+        </div>
+      </div>
+
+      <!-- Passo a passo para gerar acesso -->
+      <div v-else class="space-y-3">
+        <p class="text-sm text-muted">
+          Siga os passos para que <strong class="text-highlighted">{{ accessEmployee?.name }}</strong>
+          possa acessar o sistema.
+        </p>
+
+        <!-- Passo 1: Funcionário criado ✓ -->
+        <div class="flex gap-3 rounded-xl border border-default bg-elevated/40 p-3">
+          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-success/15 text-sm font-bold text-success">
+            1
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-circle-check" class="size-4 shrink-0 text-success" />
+              <span class="text-sm font-medium">Funcionário criado</span>
+            </div>
+            <p class="mt-1 text-xs text-muted">
+              Cadastro no sistema com e-mail: <strong class="text-highlighted">{{ accessEmployee?.email }}</strong>
+            </p>
+          </div>
+        </div>
+
+        <!-- Passo 2: Funcionário cria a conta -->
+        <div class="flex gap-3 rounded-xl border border-default bg-elevated/40 p-3">
+          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-info/15 text-sm font-bold text-info">
+            2
+          </div>
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-user-plus" class="size-4 shrink-0 text-info" />
+              <span class="text-sm font-medium">Funcionário cria a própria conta</span>
+            </div>
+            <div class="rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-xs">
+              <strong>Importante:</strong> o funcionário deve usar exatamente o e-mail
+              <strong>{{ accessEmployee?.email }}</strong> ao se cadastrar.
+            </div>
+            <p class="text-xs text-muted">
+              Envie o link abaixo para o funcionário:
+            </p>
+            <div class="flex items-center gap-2 rounded-md border border-default bg-background px-3 py-2">
+              <a
+                :href="signupUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="flex-1 truncate text-xs text-primary hover:underline"
+              >
+                {{ signupUrl }}
+              </a>
+              <UButton
+                :icon="accessLinkCopied ? 'i-lucide-check' : 'i-lucide-copy'"
+                :color="accessLinkCopied ? 'success' : 'neutral'"
+                variant="ghost"
+                size="xs"
+                @click="copySignupUrl"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Passo 3: Vincular conta -->
+        <div class="flex gap-3 rounded-xl border border-default bg-elevated/40 p-3">
+          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-purple-500/15 text-sm font-bold text-purple-500">
+            3
+          </div>
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="flex items-center gap-2">
+              <UIcon name="i-lucide-link" class="size-4 shrink-0 text-purple-500" />
+              <span class="text-sm font-medium">Vincular conta ao funcionário</span>
+            </div>
+            <p class="text-xs text-muted">
+              Após o funcionário criar a conta com o e-mail correto, clique para vincular e liberar o acesso.
+            </p>
+            <UButton
+              label="Vincular conta ao funcionário"
+              icon="i-lucide-link"
+              color="neutral"
+              :loading="isLinkingAccess"
+              :disabled="isLinkingAccess"
+              class="w-full sm:w-auto"
+              @click="grantAccess"
+            />
+          </div>
+        </div>
+
+        <!-- Passo 4: Pronto -->
+        <div class="flex gap-3 rounded-xl border border-success/30 bg-success/10 p-3">
+          <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-success/20 text-sm font-bold text-success">
+            4
+          </div>
+          <div class="flex min-w-0 flex-1 items-center gap-2">
+            <UIcon name="i-lucide-log-in" class="size-4 shrink-0 text-success" />
+            <span class="text-sm text-success">
+              Pronto! O funcionário poderá fazer login com
+              <strong>{{ accessEmployee?.email }}</strong>.
+            </span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <template #footer>
+      <div class="flex w-full justify-end">
+        <UButton
+          label="Fechar"
+          color="neutral"
+          variant="ghost"
+          @click="showAccessModal = false"
         />
       </div>
     </template>
