@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import BillingPricingPlans from '~/components/billing/BillingPricingPlans.vue'
 
-const { data: page } = await useAsyncData('pricing', () => queryCollection('pricing').first())
+const { data: cms } = await useAsyncData('pricing', () => queryCollection('pricing').first())
+const { plans, toCmsPlan } = usePlans()
 
-const title = page.value?.seo?.title || page.value?.title
-const description = page.value?.seo?.description || page.value?.description
+const title = cms.value?.seo?.title || cms.value?.title
+const description = cms.value?.seo?.description || cms.value?.description
 
 useSeoMeta({
   title,
@@ -14,6 +15,11 @@ useSeoMeta({
 })
 
 defineOgImageComponent('Saas')
+
+const page = computed(() => cms.value
+  ? { ...cms.value, plans: plans.map(toCmsPlan) }
+  : null
+)
 </script>
 
 <template>

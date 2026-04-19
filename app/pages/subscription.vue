@@ -8,51 +8,10 @@ useSeoMeta({
   description: 'Selecione um plano para começar a usar o sistema de gestão'
 })
 
-const config = useRuntimeConfig()
 const toast = useToast()
+const { plans } = usePlans()
 
 const loadingPlanKey = ref<string | null>(null)
-
-const plans = computed(() => [
-  {
-    key: 'starter',
-    name: 'Starter',
-    price: 'R$ 199',
-    period: '/mês',
-    description: 'Ideal para oficinas que estão começando a organizar sua operação.',
-    highlight: false,
-    badge: null,
-    priceId: config.public.stripeStarterPriceId || null,
-    features: [
-      'Ordens de serviço ilimitadas',
-      'Cadastro de clientes e veículos',
-      'Gestão financeira básica',
-      'Relatórios essenciais',
-      'Até 3 usuários',
-      'Suporte por email'
-    ],
-    cta: 'Começar com Starter'
-  },
-  {
-    key: 'pro',
-    name: 'Pro',
-    price: 'R$ 399',
-    period: '/mês',
-    description: 'Para oficinas que precisam de controle completo e escala.',
-    highlight: true,
-    badge: 'Mais popular',
-    priceId: config.public.stripeProPriceId || null,
-    features: [
-      'Tudo do Starter',
-      'Usuários ilimitados',
-      'Relatórios avançados e análises',
-      'Integração fiscal',
-      'Controle de estoque avançado',
-      'Suporte prioritário'
-    ],
-    cta: 'Começar com Pro'
-  }
-])
 
 async function subscribe(plan: { key: string, priceId: string | null }) {
   if (loadingPlanKey.value) return
