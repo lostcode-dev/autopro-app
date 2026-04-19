@@ -91,7 +91,7 @@ const statusOptions = computed<TagFilterOption[]>(() =>
         <span class="text-sm font-medium">Filtros</span>
       </div>
 
-      <div>
+      <div class="col-span-2">
         <p class="mb-1 text-xs font-medium text-muted">
           Período
         </p>
@@ -102,114 +102,120 @@ const statusOptions = computed<TagFilterOption[]>(() =>
         />
       </div>
 
-      <div />
+      <div class="col-span-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Cliente
+          </p>
+          <UiTagFilter
+            v-model="clientIds"
+            :options="toTagOptions(props.clients)"
+            placeholder="Todos os clientes"
+            class="w-full"
+          />
+        </div>
 
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          Clientes
-        </p>
-        <UiTagFilter
-          v-model="clientIds"
-          :options="toTagOptions(props.clients)"
-          placeholder="Todos"
-          class="w-full"
-        />
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            OS
+          </p>
+          <UiTagFilter
+            v-model="orderIds"
+            :options="toTagOptions(props.orders)"
+            placeholder="Todas as OS"
+            class="w-full"
+          />
+        </div>
       </div>
 
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          OS
-        </p>
-        <UiTagFilter
-          v-model="orderIds"
-          :options="toTagOptions(props.orders)"
-          placeholder="Todas"
-          class="w-full"
-        />
+      <div class="col-span-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Funcionário
+          </p>
+          <UiTagFilter
+            v-model="responsibleIds"
+            :options="toTagOptions(props.responsibles)"
+            placeholder="Todos os funcionários"
+            class="w-full"
+          />
+        </div>
+
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Categoria
+          </p>
+          <UiTagFilter
+            v-model="categoryIds"
+            :options="toTagOptions(props.categories)"
+            placeholder="Todas as categorias"
+            class="w-full"
+          />
+        </div>
       </div>
 
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          Responsáveis
-        </p>
-        <UiTagFilter
-          v-model="responsibleIds"
-          :options="toTagOptions(props.responsibles)"
-          placeholder="Todos"
-          class="w-full"
-        />
+      <div class="col-span-2 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Custo
+          </p>
+          <UiTagFilter
+            v-model="costFilters"
+            :options="costFilterOptions"
+            placeholder="Todos os custos"
+            class="w-full"
+          />
+        </div>
+
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Origem do custo
+          </p>
+          <UiTagFilter
+            v-model="costSources"
+            :options="costSourceOptions"
+            placeholder="Todas as origens"
+            class="w-full"
+          />
+        </div>
       </div>
 
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          Categorias
-        </p>
-        <UiTagFilter
-          v-model="categoryIds"
-          :options="toTagOptions(props.categories)"
-          placeholder="Todas"
-          class="w-full"
-        />
-      </div>
+      <div class="col-span-2 grid grid-cols-1 gap-3 xl:grid-cols-3">
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Status da OS
+          </p>
+          <UiTagFilter
+            v-model="statusFilters"
+            :options="statusOptions"
+            placeholder="Todos os status"
+            class="w-full"
+          />
+        </div>
 
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          Status da OS
-        </p>
-        <UiTagFilter
-          v-model="statusFilters"
-          :options="statusOptions"
-          placeholder="Todos"
-          class="w-full"
-        />
-      </div>
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Status do Pagamento da OS
+          </p>
+          <UiTagFilter
+            v-model="paymentStatusFilters"
+            :options="paymentStatusOptions"
+            placeholder="Todos os status"
+            class="w-full"
+          />
+        </div>
 
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          Status do pagamento
-        </p>
-        <UiTagFilter
-          v-model="paymentStatusFilters"
-          :options="paymentStatusOptions"
-          placeholder="Todos"
-          class="w-full"
-        />
-      </div>
-
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          Forma de pagamento
-        </p>
-        <UiTagFilter
-          v-model="paymentMethodFilters"
-          :options="paymentMethodOptions"
-          placeholder="Todas"
-          class="w-full"
-        />
-      </div>
-
-      <div>
-        <p class="mb-1 text-xs font-medium text-muted">
-          Filtro de custo
-        </p>
-        <UiTagFilter
-          v-model="costFilters"
-          :options="costFilterOptions"
-          placeholder="Todos"
-          class="w-full"
-        />
-      </div>
-
-      <div class="col-span-2">
-        <p class="mb-1 text-xs font-medium text-muted">
-          Origem do custo
-        </p>
-        <UiTagFilter
-          v-model="costSources"
-          :options="costSourceOptions"
-          placeholder="Todas"
-          class="w-full"
-        />
+        <div>
+          <p class="mb-1 text-xs font-medium text-muted">
+            Forma de Pagamento da OS
+          </p>
+          <UiTagFilter
+            v-model="paymentMethodFilters"
+            :options="paymentMethodOptions"
+            placeholder="Todas as formas"
+            class="w-full"
+          />
+        </div>
       </div>
     </div>
   </UCard>
