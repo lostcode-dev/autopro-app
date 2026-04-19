@@ -45,29 +45,38 @@ export default eventHandler(async (event) => {
   const isOwner = profile.is_owner === true
   const isAdmin = isOwner || userRole?.name === 'admin' || userRole?.is_system_role === true
   const onboardingCompleted = organization ? (organization as Record<string, unknown>).onboarding_completed === true : false
+  const employeeDeleted = employee ? Boolean((employee as Record<string, unknown>).deleted_at) : false
+  const employeeTerminationDate = employee?.termination_date ? new Date(employee.termination_date) : null
+  const employeeTerminated = Boolean(employeeTerminationDate && employeeTerminationDate <= new Date())
+  const accessRevoked = profile.is_active === false || employeeDeleted || employeeTerminated
 
-  if (employee?.termination_date) {
-    const terminationDate = new Date(employee.termination_date)
-    if (terminationDate <= new Date()) {
-      return {
-        currentUser: profile,
-        userRole,
-        organization,
-        employee,
-        roles,
-        actions: [],
-        roleActions: [],
-        permissions: {},
-        organizationId,
-        isOwner,
-        isAdmin,
-        terminated: true,
-        termination_date: employee.termination_date ?? null,
-        termination_reason: employee.termination_reason ?? null,
-        onboardingCompleted,
-        user: profile,
-        role: userRole
-      }
+  if (accessRevoked) {
+    return {
+      currentUser: {
+        ...profile,
+        organization_id: null,
+        role_id: null
+      },
+      userRole: null,
+      organization: null,
+      employee,
+      roles: [],
+      actions: [],
+      roleActions: [],
+      permissions: {},
+      organizationId: null,
+      isOwner,
+      isAdmin: false,
+      terminated: employeeTerminated,
+      termination_date: employee?.termination_date ?? null,
+      termination_reason: employee?.termination_reason ?? null,
+      onboardingCompleted: false,
+      user: {
+        ...profile,
+        organization_id: null,
+        role_id: null
+      },
+      role: null
     }
   }
 

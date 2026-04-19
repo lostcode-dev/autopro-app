@@ -2,6 +2,7 @@ import { defineEventHandler, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { syncEmployeeLinkedUserAccess } from '../../utils/employee-access'
 
 /**
  * DELETE /api/employees/:id
@@ -20,7 +21,7 @@ export default defineEventHandler(async (event) => {
   // Verify ownership
   const { data: existing, error: fetchError } = await supabase
     .from('employees')
-    .select('id')
+    .select('id, name, organization_id, termination_date, deleted_at')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -42,6 +43,15 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createError({ statusCode: 500, statusMessage: `Failed to delete employee: ${error.message}` })
   }
+
+  await syncEmployeeLinkedUserAccess(supabase, {
+    employeeId: id,
+    organizationId,
+    employeeName: existing.name as string | null,
+    terminationDate: existing.termination_date as string | null,
+    deletedAt: new Date().toISOString(),
+    updatedBy: authUser.email
+  })
 
   return { success: true }
 })

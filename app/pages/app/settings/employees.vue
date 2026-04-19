@@ -59,6 +59,7 @@ const isEditing = ref(false)
 const isSaving = ref(false)
 const selectedId = ref<string | null>(null)
 const isFetchingCep = ref(false)
+const isEmailLocked = ref(false)
 
 type Installment = { day: number, amount: string }
 
@@ -106,6 +107,7 @@ function openCreate() {
   Object.assign(form, emptyForm())
   isEditing.value = false
   selectedId.value = null
+  isEmailLocked.value = false
   showModal.value = true
 }
 
@@ -147,9 +149,20 @@ function openEdit(emp: Employee) {
 
   isEditing.value = true
   selectedId.value = emp.id as string
+  isEmailLocked.value = false
   showModal.value = true
 
   if (emp.has_commission) loadProductCategories()
+
+  if (typeof emp.id === 'string') {
+    fetchEmployeeAccessStatus(emp.id)
+      .then((status) => {
+        isEmailLocked.value = status.hasAuthUser
+      })
+      .catch(() => {
+        isEmailLocked.value = false
+      })
+  }
 }
 
 watch(() => form.has_commission, (val) => {
@@ -288,16 +301,20 @@ const accessStatus = ref<{ hasAuthUser: boolean, active?: boolean } | null>(null
 const isLoadingAccessStatus = ref(false)
 const isLinkingAccess = ref(false)
 
+async function fetchEmployeeAccessStatus(employeeId: string) {
+  return await $fetch<{ hasAuthUser: boolean, active?: boolean }>('/api/users/employee-auth-status', {
+    method: 'POST',
+    body: { employee_id: employeeId }
+  })
+}
+
 async function openGrantAccess(emp: Employee) {
   accessEmployee.value = emp
   accessStatus.value = null
   isLoadingAccessStatus.value = true
   showAccessModal.value = true
   try {
-    const res = await $fetch<{ hasAuthUser: boolean, active?: boolean }>('/api/users/employee-auth-status', {
-      method: 'POST',
-      body: { employee_id: emp.id }
-    })
+    const res = await fetchEmployeeAccessStatus(String(emp.id))
     accessStatus.value = res
   } catch {
     accessStatus.value = null
@@ -551,7 +568,11 @@ const columns = [
                 type="email"
                 class="w-full"
                 placeholder="joao@email.com"
+                :disabled="isEmailLocked"
               />
+              <p v-if="isEmailLocked" class="mt-1 text-xs text-muted">
+                O e-mail não pode ser alterado após o funcionário já possuir um usuário vinculado.
+              </p>
             </UFormField>
           </div>
         </div>

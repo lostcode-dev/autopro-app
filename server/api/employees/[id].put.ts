@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, getRouterParam, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { syncEmployeeLinkedUserAccess } from '../../utils/employee-access'
 
 /**
  * PUT /api/employees/:id
@@ -20,7 +21,7 @@ export default defineEventHandler(async (event) => {
   // Verify ownership
   const { data: existing, error: fetchError } = await supabase
     .from('employees')
-    .select('id')
+    .select('id, name, email, organization_id, termination_date, deleted_at')
     .eq('id', id)
     .eq('organization_id', organizationId)
     .is('deleted_at', null)
@@ -31,6 +32,30 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody(event)
+
+  const { data: linkedProfiles, error: linkedProfilesError } = await supabase
+    .from('user_profiles')
+    .select('id')
+    .eq('employee_id', id)
+    .limit(1)
+
+  if (linkedProfilesError) {
+    throw createError({ statusCode: 500, statusMessage: `Failed to inspect linked user: ${linkedProfilesError.message}` })
+  }
+
+  const hasLinkedUser = (linkedProfiles?.length ?? 0) > 0
+
+  if (hasLinkedUser && body.email !== undefined) {
+    const currentEmail = typeof existing.email === 'string' ? existing.email.trim().toLowerCase() : ''
+    const nextEmail = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
+
+    if (nextEmail !== currentEmail) {
+      throw createError({
+        statusCode: 400,
+        statusMessage: 'Não é possível alterar o e-mail após o funcionário já possuir um usuário vinculado.'
+      })
+    }
+  }
 
   const UPDATABLE_FIELDS = [
     'name', 'person_type', 'tax_id', 'phone', 'email', 'role',
@@ -62,6 +87,15 @@ export default defineEventHandler(async (event) => {
   if (error) {
     throw createError({ statusCode: 500, statusMessage: `Failed to update employee: ${error.message}` })
   }
+
+  await syncEmployeeLinkedUserAccess(supabase, {
+    employeeId: id,
+    organizationId,
+    employeeName: (data as Record<string, unknown>).name as string | null,
+    terminationDate: (data as Record<string, unknown>).termination_date as string | null,
+    deletedAt: (data as Record<string, unknown>).deleted_at as string | null,
+    updatedBy: authUser.email
+  })
 
   return { item: data }
 })
