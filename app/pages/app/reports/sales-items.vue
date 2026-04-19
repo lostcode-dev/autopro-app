@@ -371,8 +371,6 @@ async function exportReport(format: 'csv' | 'pdf') {
           :view-mode="viewMode"
         />
 
-        <ReportsSalesItemsCharts :items="topItemsChart" />
-
         <AppDataTable
           v-model:page="page"
           v-model:sorting="sorting"
