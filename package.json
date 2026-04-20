@@ -36,6 +36,8 @@
     "@standard-schema/spec": "^1.1.0",
     "@supabase/supabase-js": "^2.98.0",
     "@tanstack/table-core": "^8.21.3",
+    "@tanstack/vue-table": "^8.21.3",
+    "@tanstack/vue-virtual": "^3.13.24",
     "@unovis/ts": "^1.6.4",
     "@unovis/vue": "^1.6.4",
     "@vite-pwa/nuxt": "^1.1.1",

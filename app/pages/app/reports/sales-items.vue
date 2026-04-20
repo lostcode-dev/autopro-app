@@ -85,9 +85,12 @@ const toast = useToast()
 
 const { dateFrom, dateTo, orderStatusFilters: statusFilters, paymentStatusFilters } = useReportDateRange()
 const search = useReportQueryParam('q', '')
-const page = useReportQueryParam('page', 1)
 const pageSize = 20
 const viewMode = useReportQueryParam('view', 'item' as 'item' | 'os')
+
+const page = ref(1)
+const accumulatedItems = ref<Array<SalesItemRow | SalesOrderRow>>([])
+const totalFromServer = ref(0)
 
 const clientIds = useReportQueryParam('clients', [] as string[])
 const orderIds = useReportQueryParam('orders', [] as string[])
@@ -124,6 +127,7 @@ const sorting = computed<SortingState>({
   set: (val) => {
     sortByParam.value = val[0]?.id ?? 'totalValue'
     sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    accumulatedItems.value = []
     page.value = 1
   }
 })
@@ -158,6 +162,7 @@ watch([
   sortBy,
   sortOrder
 ], () => {
+  accumulatedItems.value = []
   page.value = 1
 })
 
@@ -193,11 +198,29 @@ const { data, status } = await useAsyncData(
 )
 
 const report = computed(() => data.value?.data?.salesItemsReport)
-const items = computed<Array<SalesItemRow | SalesOrderRow>>(() => report.value?.table?.items ?? [])
 const summary = computed(() => report.value?.summary ?? {})
-const pagination = computed(() => report.value?.table?.pagination ?? null)
 const filters = computed(() => report.value?.filters ?? {})
 const topItemsChart = computed(() => report.value?.charts?.topItemsByQuantity ?? [])
+
+watch(data, (newData) => {
+  const table = newData?.data?.salesItemsReport?.table
+  const newItems = (table?.items ?? []) as Array<SalesItemRow | SalesOrderRow>
+  totalFromServer.value = table?.pagination?.totalItems ?? 0
+  if (page.value === 1) {
+    accumulatedItems.value = newItems
+  } else {
+    accumulatedItems.value = [...accumulatedItems.value, ...newItems]
+  }
+}, { immediate: true })
+
+const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.value)
+const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
+
+function loadMore() {
+  if (hasMore.value && status.value !== 'pending') {
+    page.value++
+  }
+}
 
 const itemColumns = [
   { accessorKey: 'client', header: 'Cliente' },
@@ -369,22 +392,21 @@ async function exportReport(format: 'csv' | 'pdf') {
           :view-mode="viewMode"
         />
 
-        <AppDataTable
-          v-model:page="page"
+        <AppDataTableInfinite
           v-model:sorting="sorting"
           v-model:search-term="search"
           :columns="columns"
-          :data="items as Record<string, unknown>[]"
-          :loading="status === 'pending'"
-          :page-size="pageSize"
-          :total="pagination?.totalItems ?? items.length"
-          :show-page-size-selector="false"
+          :data="accumulatedItems as Record<string, unknown>[]"
+          :loading="status === 'pending' && page === 1"
+          :loading-more="loadingMore"
+          :has-more="hasMore"
+          :total="totalFromServer"
           show-search
           search-placeholder="Buscar item, OS, cliente, responsável ou categoria..."
           empty-icon="i-lucide-list-checks"
           :empty-title="viewMode === 'os' ? 'Nenhuma OS encontrada' : 'Nenhum item encontrado'"
           :empty-description="viewMode === 'os' ? 'Não há ordens de serviço para os filtros selecionados.' : 'Não há itens vendidos para os filtros selecionados.'"
-          @search-change="page = 1"
+          @load-more="loadMore"
         >
           <template #toolbar-right>
             <div class="flex items-center gap-2">
@@ -457,11 +479,11 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #responsible-cell="{ row }">
             <div
-              v-if="getResponsibleNames(row.original.responsible).length"
+              v-if="getResponsibleNames(String(row.original.responsible ?? '')).length"
               class="flex flex-wrap items-center gap-1"
             >
               <UTooltip
-                v-for="name in getResponsibleNames(row.original.responsible)"
+                v-for="name in getResponsibleNames(String(row.original.responsible ?? ''))"
                 :key="name"
                 :text="name"
               >
@@ -497,10 +519,10 @@ async function exportReport(format: 'csv' | 'pdf') {
               color="neutral"
               variant="ghost"
               size="xs"
-              @click="openDetail(row.original as SalesItemRow | SalesOrderRow)"
+              @click="openDetail(row.original as unknown as SalesItemRow | SalesOrderRow)"
             />
           </template>
-        </AppDataTable>
+        </AppDataTableInfinite>
       </div>
 
       <ReportsSalesItemsDetailSlideover

@@ -77,9 +77,12 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 
 const { dateFrom, dateTo, orderStatusFilters } = useReportDateRange()
 const search = useReportQueryParam('q', '')
-const page = useReportQueryParam('page', 1)
 const pageSize = 20
 const viewMode = useReportQueryParam('debtorsView', 'clients' as 'clients' | 'orders')
+
+const page = ref(1)
+const accumulatedItems = ref<Array<DebtorReportItem | DebtorOrderRow>>([])
+const totalFromServer = ref(0)
 const clientIds = useReportQueryParam('clients', [] as string[])
 const statusFilters = useReportQueryParam('debtorStatus', [] as string[])
 const paymentMethodFilters = useReportQueryParam('paymentMethod', [] as string[])
@@ -93,6 +96,7 @@ const sorting = computed<SortingState>({
   set: (val) => {
     sortByParam.value = val[0]?.id ?? 'earliestDue'
     sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    accumulatedItems.value = []
     page.value = 1
   }
 })
@@ -110,6 +114,7 @@ const sortBy = computed(() => sortByMap[sortByParam.value] ?? 'earliest_due')
 const sortOrder = computed(() => sortOrderParam.value)
 
 watch([dateFrom, dateTo, search, clientIds, statusFilters, paymentMethodFilters, orderStatusFilters, viewMode, sortBy, sortOrder], () => {
+  accumulatedItems.value = []
   page.value = 1
 })
 
@@ -140,13 +145,31 @@ const { data, status } = await useAsyncData(
 )
 
 const report = computed(() => data.value?.data?.debtorsReport)
-const clientItems = computed<DebtorReportItem[]>(() => report.value?.items ?? [])
-const orderItems = computed<DebtorOrderRow[]>(() => report.value?.orderItems ?? [])
-const items = computed<Array<DebtorReportItem | DebtorOrderRow>>(() => (viewMode.value === 'clients' ? clientItems.value : orderItems.value))
 const totals = computed<DebtorsTotals>(() => report.value?.totals ?? {})
 const counts = computed(() => report.value?.counts ?? { clients: 0, orders: 0 })
-const pagination = computed<DebtorsPagination | null>(() => report.value?.pagination ?? null)
 const availableClients = computed(() => report.value?.filters?.availableClients ?? [])
+
+watch(data, (newData) => {
+  const r = newData?.data?.debtorsReport
+  const newItems = (viewMode.value === 'clients'
+    ? (r?.items ?? [])
+    : (r?.orderItems ?? [])) as Array<DebtorReportItem | DebtorOrderRow>
+  totalFromServer.value = r?.pagination?.totalItems ?? 0
+  if (page.value === 1) {
+    accumulatedItems.value = newItems
+  } else {
+    accumulatedItems.value = [...accumulatedItems.value, ...newItems]
+  }
+}, { immediate: true })
+
+const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.value)
+const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
+
+function loadMore() {
+  if (hasMore.value && status.value !== 'pending') {
+    page.value++
+  }
+}
 
 const clientColumns = [
   { accessorKey: 'clientName', header: 'Cliente' },
@@ -261,22 +284,21 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
           :counts="counts"
         />
 
-        <AppDataTable
-          v-model:page="page"
+        <AppDataTableInfinite
           v-model:sorting="sorting"
           v-model:search-term="search"
           :columns="columns"
-          :data="items as Record<string, unknown>[]"
-          :loading="status === 'pending'"
-          :page-size="pageSize"
-          :total="pagination?.totalItems ?? items.length"
-          :show-page-size-selector="false"
+          :data="accumulatedItems as Record<string, unknown>[]"
+          :loading="status === 'pending' && page === 1"
+          :loading-more="loadingMore"
+          :has-more="hasMore"
+          :total="totalFromServer"
           show-search
           search-placeholder="Buscar por nome, telefone ou e-mail..."
           empty-icon="i-lucide-badge-alert"
           empty-title="Nenhum devedor encontrado"
           empty-description="Ótimo! Não há pendências para os filtros selecionados."
-          @search-change="page = 1"
+          @load-more="loadMore"
         >
           <template #toolbar-right>
             <div class="flex items-center gap-2">
@@ -367,7 +389,7 @@ function handleOpenDetails(row: DebtorReportItem | DebtorOrderRow) {
               @click="handleOpenDetails(row.original as DebtorReportItem | DebtorOrderRow)"
             />
           </template>
-        </AppDataTable>
+        </AppDataTableInfinite>
       </div>
 
       <ReportsDebtorsDetailSlideover

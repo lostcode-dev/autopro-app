@@ -74,8 +74,10 @@ const recordType = useReportQueryParam('recordType', [] as string[])
 const paymentMethods = useReportQueryParam('paymentMethods', [] as string[])
 
 // Pagination / sorting
-const page = useReportQueryParam('page', 1)
 const pageSize = 20
+const page = ref(1)
+const accumulatedItems = ref<CommissionReportItem[]>([])
+const totalFromServer = ref(0)
 const sortByParam = useReportQueryParam('sortBy', 'reference_date')
 const sortOrderParam = useReportQueryParam('sortOrder', 'desc')
 const sorting = computed<SortingState>({
@@ -83,6 +85,7 @@ const sorting = computed<SortingState>({
   set: (val) => {
     sortByParam.value = val[0]?.id ?? 'reference_date'
     sortOrderParam.value = val[0]?.desc === false ? 'asc' : 'desc'
+    accumulatedItems.value = []
     page.value = 1
   }
 })
@@ -141,10 +144,13 @@ const exportItems = computed(() => [[
   }
 ]])
 
-// Reset page on filter changes
+// Reset on filter changes
 watch(
   [dateFrom, dateTo, selectedEmployees, commissionStatus, recordType, orderStatusFilters, paymentStatusFilters, paymentMethods, sortBy, sortOrder],
-  () => { page.value = 1 }
+  () => {
+    accumulatedItems.value = []
+    page.value = 1
+  }
 )
 
 const queryKey = computed(() =>
@@ -173,11 +179,38 @@ const { data, status, refresh } = await useAsyncData(
   { watch: [queryKey] }
 )
 
-const items = computed<CommissionReportItem[]>(() => data.value?.data?.items ?? [])
 const summary = computed<CommissionSummary>(() => data.value?.data?.summary ?? {})
-const pagination = computed<{ totalItems?: number } | null>(() => data.value?.data?.pagination ?? null)
 const charts = computed<CommissionCharts>(() => data.value?.data?.charts ?? { byEmployee: [], statusDistribution: [] })
 const employees = computed<EmployeeOption[]>(() => data.value?.data?.employees ?? [])
+
+watch(data, (newData) => {
+  const newItems = newData?.data?.items ?? []
+  totalFromServer.value = newData?.data?.pagination?.totalItems ?? 0
+  if (page.value === 1) {
+    accumulatedItems.value = newItems
+  } else {
+    accumulatedItems.value = [...accumulatedItems.value, ...newItems]
+  }
+}, { immediate: true })
+
+const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.value)
+const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
+
+function loadMore() {
+  if (hasMore.value && status.value !== 'pending') {
+    page.value++
+  }
+}
+
+async function resetAndRefresh() {
+  accumulatedItems.value = []
+  selectedIds.value = []
+  if (page.value !== 1) {
+    page.value = 1
+  } else {
+    await refresh()
+  }
+}
 
 // Status maps
 const commissionStatusColorMap: Record<string, BadgeColor> = { pending: 'warning', paid: 'success', cancelled: 'error' }
@@ -235,14 +268,14 @@ function rowItem(row: { original: unknown }): CommissionReportItem {
 
 // Selection
 const allSelected = computed(
-  () => items.value.length > 0 && items.value.every(item => selectedIds.value.includes(item.id))
+  () => accumulatedItems.value.length > 0 && accumulatedItems.value.every(item => selectedIds.value.includes(item.id))
 )
 
 function toggleSelectAll() {
   if (allSelected.value) {
     selectedIds.value = []
   } else {
-    selectedIds.value = items.value.map(item => item.id)
+    selectedIds.value = accumulatedItems.value.map(item => item.id)
   }
 }
 
@@ -256,7 +289,7 @@ function toggleSelectRow(id: string) {
 
 // Bulk pay — only pending commissions from selection are sent to backend
 const bulkPayItems = computed(() =>
-  items.value
+  accumulatedItems.value
     .filter(item => selectedIds.value.includes(item.id) && item.status === 'pending')
     .map(item => ({
       id: item.id,
@@ -306,9 +339,8 @@ async function handleBulkPay(accountId: string) {
       body: { registroIds: pendingIds, contaBancariaId: accountId }
     })
     toast.add({ title: 'Comissões pagas com sucesso!', color: 'success' })
-    selectedIds.value = []
     bulkPayOpen.value = false
-    await refresh()
+    await resetAndRefresh()
   } catch {
     toast.add({ title: 'Erro ao pagar comissões', color: 'error' })
   } finally {
@@ -321,7 +353,7 @@ async function payCommission(id: string) {
   try {
     await $fetch(`/api/reports/commissions/${id}/pay`, { method: 'POST' })
     toast.add({ title: 'Comissão marcada como paga!', color: 'success' })
-    await refresh()
+    await resetAndRefresh()
   } catch {
     toast.add({ title: 'Erro ao pagar comissão', color: 'error' })
   }
@@ -335,8 +367,7 @@ async function confirmDelete() {
     await $fetch(`/api/reports/commissions/${targetId}`, { method: 'DELETE' })
     toast.add({ title: 'Comissão excluída', color: 'success' })
     deleteTarget.value = null
-    selectedIds.value = selectedIds.value.filter(id => id !== targetId)
-    await refresh()
+    await resetAndRefresh()
   } catch {
     toast.add({ title: 'Erro ao excluir comissão', color: 'error' })
   } finally {
@@ -359,9 +390,8 @@ async function handleBulkDelete() {
   try {
     await Promise.all(selectedIds.value.map(id => $fetch(`/api/reports/commissions/${id}`, { method: 'DELETE' })))
     toast.add({ title: `${selectedIds.value.length} comissões excluídas`, color: 'success' })
-    selectedIds.value = []
     bulkDeleteOpen.value = false
-    await refresh()
+    await resetAndRefresh()
   } catch {
     toast.add({ title: 'Erro ao excluir comissões', color: 'error' })
   } finally {
@@ -439,18 +469,18 @@ async function exportReport(format: 'csv' | 'pdf') {
           :status-distribution="charts.statusDistribution"
         />
 
-        <AppDataTable
-          v-model:page="page"
+        <AppDataTableInfinite
           v-model:sorting="sorting"
           :columns="columns"
-          :data="items as unknown as Record<string, unknown>[]"
-          :loading="status === 'pending'"
-          :page-size="pageSize"
-          :total="pagination?.totalItems ?? items.length"
-          :show-page-size-selector="false"
+          :data="accumulatedItems as unknown as Record<string, unknown>[]"
+          :loading="status === 'pending' && page === 1"
+          :loading-more="loadingMore"
+          :has-more="hasMore"
+          :total="totalFromServer"
           empty-icon="i-lucide-badge-percent"
           empty-title="Nenhuma comissão encontrada"
           empty-description="Não há comissões registradas para o período selecionado."
+          @load-more="loadMore"
         >
           <template #toolbar-right>
             <UButton
@@ -493,7 +523,7 @@ async function exportReport(format: 'csv' | 'pdf') {
           <template #select-header>
             <UCheckbox
               :model-value="allSelected"
-              :disabled="items.length === 0"
+              :disabled="accumulatedItems.length === 0"
               @update:model-value="toggleSelectAll"
             />
           </template>
@@ -501,8 +531,8 @@ async function exportReport(format: 'csv' | 'pdf') {
           <!-- Select row cell -->
           <template #select-cell="{ row }">
             <UCheckbox
-              :model-value="selectedIds.includes((row.original as CommissionReportItem).id)"
-              @update:model-value="toggleSelectRow((row.original as CommissionReportItem).id)"
+              :model-value="selectedIds.includes(rowItem(row).id)"
+              @update:model-value="toggleSelectRow(rowItem(row).id)"
             />
           </template>
 
@@ -510,34 +540,34 @@ async function exportReport(format: 'csv' | 'pdf') {
             <div class="flex items-center gap-2">
               <div class="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10">
                 <span class="text-xs font-bold text-primary">
-                  {{ getInitials((row.original as CommissionReportItem).employee_name ?? '') }}
+                  {{ getInitials(rowItem(row).employee_name ?? '') }}
                 </span>
               </div>
-              <span class="truncate font-medium text-highlighted">{{ (row.original as CommissionReportItem).employee_name }}</span>
+              <span class="truncate font-medium text-highlighted">{{ rowItem(row).employee_name }}</span>
             </div>
           </template>
 
           <template #order_number-cell="{ row }">
-            <span v-if="(row.original as CommissionReportItem).order_number" class="font-mono text-sm text-muted">
-              #{{ (row.original as CommissionReportItem).order_number }}
+            <span v-if="rowItem(row).order_number" class="font-mono text-sm text-muted">
+              #{{ rowItem(row).order_number }}
             </span>
             <span v-else class="text-muted">—</span>
           </template>
 
           <template #reference_date-cell="{ row }">
-            {{ formatDate((row.original as CommissionReportItem).reference_date) }}
+            {{ formatDate(rowItem(row).reference_date) }}
           </template>
 
           <template #order_entry_date-cell="{ row }">
-            {{ (row.original as CommissionReportItem).order_entry_date ? formatDate((row.original as CommissionReportItem).order_entry_date || '') : '—' }}
+            {{ rowItem(row).order_entry_date ? formatDate(rowItem(row).order_entry_date || '') : '—' }}
           </template>
 
           <template #order_status_col-cell="{ row }">
             <UBadge
-              v-if="(row.original as CommissionReportItem).order_status"
-              :color="orderStatusColorMap[(row.original as CommissionReportItem).order_status || ''] ?? 'neutral'"
+              v-if="rowItem(row).order_status"
+              :color="orderStatusColorMap[rowItem(row).order_status || ''] ?? 'neutral'"
               variant="subtle"
-              :label="orderStatusLabelMap[(row.original as CommissionReportItem).order_status || ''] ?? String((row.original as CommissionReportItem).order_status)"
+              :label="orderStatusLabelMap[rowItem(row).order_status || ''] ?? String(rowItem(row).order_status)"
               size="sm"
             />
             <span v-else class="text-sm text-muted">—</span>
@@ -545,24 +575,24 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <template #order_payment_col-cell="{ row }">
             <UBadge
-              v-if="(row.original as CommissionReportItem).order_payment_status"
-              :color="paymentStatusColorMap[(row.original as CommissionReportItem).order_payment_status || ''] ?? 'neutral'"
+              v-if="rowItem(row).order_payment_status"
+              :color="paymentStatusColorMap[rowItem(row).order_payment_status || ''] ?? 'neutral'"
               variant="subtle"
-              :label="paymentStatusLabelMap[(row.original as CommissionReportItem).order_payment_status || ''] ?? String((row.original as CommissionReportItem).order_payment_status)"
+              :label="paymentStatusLabelMap[rowItem(row).order_payment_status || ''] ?? String(rowItem(row).order_payment_status)"
               size="sm"
             />
             <span v-else class="text-sm text-muted">—</span>
           </template>
 
           <template #amount-cell="{ row }">
-            <span class="font-bold text-success">{{ formatCurrency((row.original as CommissionReportItem).amount) }}</span>
+            <span class="font-bold text-success">{{ formatCurrency(rowItem(row).amount) }}</span>
           </template>
 
           <template #status_col-cell="{ row }">
             <UBadge
-              :color="commissionStatusColorMap[(row.original as CommissionReportItem).status] ?? 'neutral'"
+              :color="commissionStatusColorMap[rowItem(row).status] ?? 'neutral'"
               variant="subtle"
-              :label="commissionStatusLabelMap[(row.original as CommissionReportItem).status] ?? String((row.original as CommissionReportItem).status)"
+              :label="commissionStatusLabelMap[rowItem(row).status] ?? String(rowItem(row).status)"
               size="sm"
             />
           </template>
@@ -575,16 +605,16 @@ async function exportReport(format: 'csv' | 'pdf') {
                   color="neutral"
                   variant="ghost"
                   size="xs"
-                  @click="openDetail(row.original as unknown as CommissionReportItem)"
+                  @click="openDetail(rowItem(row))"
                 />
               </UTooltip>
-              <UTooltip v-if="canUpdate && (row.original as unknown as CommissionReportItem).status === 'pending'" text="Marcar como pago">
+              <UTooltip v-if="canUpdate && rowItem(row).status === 'pending'" text="Marcar como pago">
                 <UButton
                   icon="i-lucide-circle-check"
                   color="success"
                   variant="ghost"
                   size="xs"
-                  @click="payCommission((row.original as unknown as CommissionReportItem).id)"
+                  @click="payCommission(rowItem(row).id)"
                 />
               </UTooltip>
               <UTooltip v-if="canDelete" text="Excluir comissão">
@@ -593,12 +623,12 @@ async function exportReport(format: 'csv' | 'pdf') {
                   color="error"
                   variant="ghost"
                   size="xs"
-                  @click="setDeleteTarget(row.original as unknown as CommissionReportItem)"
+                  @click="setDeleteTarget(rowItem(row))"
                 />
               </UTooltip>
             </div>
           </template>
-        </AppDataTable>
+        </AppDataTableInfinite>
       </div>
     </template>
   </UDashboardPanel>
