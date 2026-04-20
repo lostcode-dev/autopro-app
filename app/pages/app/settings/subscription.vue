@@ -298,15 +298,6 @@ async function openInvoice(url: string | null) {
           :disabled="isCancelling"
           @click="cancelAtPeriodEnd"
         />
-        <UButton
-          label="Atualizar"
-          color="neutral"
-          variant="ghost"
-          icon="i-lucide-refresh-cw"
-          :loading="status === 'pending'"
-          class="ml-auto"
-          @click="() => refresh()"
-        />
       </div>
     </div>
 
