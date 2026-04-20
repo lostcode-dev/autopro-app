@@ -253,7 +253,7 @@ const fiscalRegimeOptions = [
           description="JPEG, PNG ou WebP. Máx. 5 MB. Recomendado 200×200 px."
           class="grid gap-4"
         >
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-col flex-wrap items-center gap-3">
             <div class="relative shrink-0">
               <img
                 v-if="form.logo_url"
