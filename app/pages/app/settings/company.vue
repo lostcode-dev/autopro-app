@@ -430,7 +430,7 @@ const fiscalRegimeOptions = [
         </p>
 
         <div class="gap-4 grid grid-cols-2">
-          <UFormField name="address_zip_code" label="CEP" class="grid gap-2">
+          <UFormField name="address_zip_code" label="CEP" class="grid gap-2 col-span-2">
             <div class="flex gap-2 w-full">
               <UInput
                 v-model="form.address_zip_code"
