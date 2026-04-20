@@ -116,8 +116,6 @@ function variationColor(value?: VariationValue | null, invert = false) {
   if (invert) return value.type === 'increase' ? 'text-error' : 'text-success'
   return value.type === 'increase' ? 'text-success' : 'text-error'
 }
-
-
 </script>
 
 <template>
@@ -323,7 +321,13 @@ function variationColor(value?: VariationValue | null, invert = false) {
             <p class="text-sm font-semibold text-highlighted">
               Ordens mais lucrativas
             </p>
-            <UBadge v-if="topOrders.length" color="neutral" variant="soft" size="xs" class="ml-auto">
+            <UBadge
+              v-if="topOrders.length"
+              color="neutral"
+              variant="soft"
+              size="xs"
+              class="ml-auto"
+            >
               Top {{ topOrders.length }}
             </UBadge>
           </div>
@@ -349,16 +353,24 @@ function variationColor(value?: VariationValue | null, invert = false) {
                 <div class="flex items-center gap-1.5">
                   <UIcon name="i-lucide-banknote" class="size-3.5 text-muted" />
                   <div>
-                    <p class="text-[10px] uppercase tracking-wide text-muted">Receita</p>
-                    <p class="text-xs font-medium text-highlighted">{{ formatCurrency(order.revenue) }}</p>
+                    <p class="text-[10px] uppercase tracking-wide text-muted">
+                      Receita
+                    </p>
+                    <p class="text-xs font-medium text-highlighted">
+                      {{ formatCurrency(order.revenue) }}
+                    </p>
                   </div>
                 </div>
 
                 <div class="flex items-center gap-1.5">
                   <UIcon name="i-lucide-receipt" class="size-3.5 text-error/70" />
                   <div>
-                    <p class="text-[10px] uppercase tracking-wide text-muted">Custo</p>
-                    <p class="text-xs font-medium text-error">{{ formatCurrency(order.cost) }}</p>
+                    <p class="text-[10px] uppercase tracking-wide text-muted">
+                      Custo
+                    </p>
+                    <p class="text-xs font-medium text-error">
+                      {{ formatCurrency(order.cost) }}
+                    </p>
                   </div>
                 </div>
 
@@ -368,7 +380,9 @@ function variationColor(value?: VariationValue | null, invert = false) {
                     :class="['size-3.5', order.profit >= 0 ? 'text-success/70' : 'text-error/70']"
                   />
                   <div>
-                    <p class="text-[10px] uppercase tracking-wide text-muted">Lucro</p>
+                    <p class="text-[10px] uppercase tracking-wide text-muted">
+                      Lucro
+                    </p>
                     <p class="text-xs font-semibold" :class="order.profit >= 0 ? 'text-success' : 'text-error'">
                       {{ formatCurrency(order.profit) }}
                     </p>

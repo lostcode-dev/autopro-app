@@ -4,7 +4,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { getStripe, getStripeWebhookSecret } from '../../utils/stripe'
 
 type SupabaseClient = ReturnType<typeof getSupabaseAdminClient>
-type SubRow = { id: string; organization_id: string }
+type SubRow = { id: string, organization_id: string }
 
 function getInvoiceSubscriptionId(invoice: Stripe.Invoice) {
   // New Stripe API (>= 2024-09-30.acacia)
@@ -377,7 +377,7 @@ async function resolveSubscriptionRow(
     .from('user_profiles')
     .select('organization_id, email')
     .eq('stripe_customer_id', stripeCustomerId)
-    .maybeSingle<{ organization_id: string | null; email: string | null }>()
+    .maybeSingle<{ organization_id: string | null, email: string | null }>()
 
   if (!profile?.organization_id) {
     console.warn(`[stripe/webhook] resolveSubscriptionRow: no profile found for customer ${stripeCustomerId}`)

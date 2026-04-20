@@ -286,7 +286,12 @@ async function deleteAccount() {
         required
         class="flex max-sm:flex-col justify-between items-start gap-4"
       >
-        <UInput v-model="account.email" type="email" autocomplete="off" disabled />
+        <UInput
+          v-model="account.email"
+          type="email"
+          autocomplete="off"
+          disabled
+        />
       </UFormField>
 
       <USeparator />

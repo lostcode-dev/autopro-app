@@ -19,7 +19,7 @@ function formatCurrency(v: number | string) {
       v-for="stat in [
         { label: 'Total comprado', value: formatCurrency(summary.totalPurchased ?? 0), icon: 'i-lucide-shopping-cart', color: 'text-primary', bg: 'bg-primary/10', description: 'no período' },
         { label: 'Total pago', value: formatCurrency(summary.totalPaid ?? 0), icon: 'i-lucide-circle-check', color: 'text-success', bg: 'bg-success/10', description: 'já quitado' },
-        { label: 'Pendente', value: formatCurrency(summary.totalPending ?? 0), icon: 'i-lucide-clock', color: 'text-warning', bg: 'bg-warning/10', description: 'a pagar' },
+        { label: 'Pendente', value: formatCurrency(summary.totalPending ?? 0), icon: 'i-lucide-clock', color: 'text-warning', bg: 'bg-warning/10', description: 'a pagar' }
       ]"
       :key="stat.label"
       :ui="{ body: 'p-3 sm:p-4' }"

@@ -1,82 +1,82 @@
 <script setup lang="ts">
-import type { TagFilterOption } from "~/components/ui/TagFilter.vue";
+import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
 
 const props = withDefaults(
   defineProps<{
-    dateLabel?: string;
-    orderStatusLabel?: string;
-    paymentStatusLabel?: string;
+    dateLabel?: string
+    orderStatusLabel?: string
+    paymentStatusLabel?: string
   }>(),
   {
-    dateLabel: "Período",
-    orderStatusLabel: "Status da OS",
-    paymentStatusLabel: "Pagamento",
-  },
-);
+    dateLabel: 'Período',
+    orderStatusLabel: 'Status da OS',
+    paymentStatusLabel: 'Pagamento'
+  }
+)
 
-const dateFrom = defineModel<string>("dateFrom");
-const dateTo = defineModel<string>("dateTo");
-const orderStatusFilters = defineModel<string[]>("orderStatusFilters", {
-  default: () => [],
-});
-const paymentStatusFilters = defineModel<string[]>("paymentStatusFilters", {
-  default: () => [],
-});
+const dateFrom = defineModel<string>('dateFrom')
+const dateTo = defineModel<string>('dateTo')
+const orderStatusFilters = defineModel<string[]>('orderStatusFilters', {
+  default: () => []
+})
+const paymentStatusFilters = defineModel<string[]>('paymentStatusFilters', {
+  default: () => []
+})
 
 const orderStatusOptions: TagFilterOption[] = [
   {
-    value: "open",
-    label: "Aberta",
-    color: "info",
-    icon: "i-lucide-circle-dot",
+    value: 'open',
+    label: 'Aberta',
+    color: 'info',
+    icon: 'i-lucide-circle-dot'
   },
   {
-    value: "in_progress",
-    label: "Em andamento",
-    color: "warning",
-    icon: "i-lucide-wrench",
+    value: 'in_progress',
+    label: 'Em andamento',
+    color: 'warning',
+    icon: 'i-lucide-wrench'
   },
   {
-    value: "waiting_for_part",
-    label: "Aguard. peça",
-    color: "warning",
-    icon: "i-lucide-package-search",
+    value: 'waiting_for_part',
+    label: 'Aguard. peça',
+    color: 'warning',
+    icon: 'i-lucide-package-search'
   },
   {
-    value: "completed",
-    label: "Concluída",
-    color: "success",
-    icon: "i-lucide-check-circle-2",
+    value: 'completed',
+    label: 'Concluída',
+    color: 'success',
+    icon: 'i-lucide-check-circle-2'
   },
   {
-    value: "delivered",
-    label: "Entregue",
-    color: "success",
-    icon: "i-lucide-truck",
+    value: 'delivered',
+    label: 'Entregue',
+    color: 'success',
+    icon: 'i-lucide-truck'
   },
   {
-    value: "estimate",
-    label: "Orçamento",
-    color: "neutral",
-    icon: "i-lucide-file-text",
-  },
-];
+    value: 'estimate',
+    label: 'Orçamento',
+    color: 'neutral',
+    icon: 'i-lucide-file-text'
+  }
+]
 
 const paymentStatusOptions: TagFilterOption[] = [
   {
-    value: "pending",
-    label: "Pendente",
-    color: "warning",
-    icon: "i-lucide-clock",
+    value: 'pending',
+    label: 'Pendente',
+    color: 'warning',
+    icon: 'i-lucide-clock'
   },
   {
-    value: "paid",
-    label: "Pago",
-    color: "success",
-    icon: "i-lucide-circle-check",
+    value: 'paid',
+    label: 'Pago',
+    color: 'success',
+    icon: 'i-lucide-circle-check'
   },
-  { value: "partial", label: "Parcial", color: "info", icon: "i-lucide-split" },
-];
+  { value: 'partial', label: 'Parcial', color: 'info', icon: 'i-lucide-split' }
+]
 </script>
 
 <template>

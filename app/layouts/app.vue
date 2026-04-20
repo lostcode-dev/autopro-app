@@ -167,7 +167,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
   const settingsChildren: NavigationMenuItem[] = [
     item('Conta', 'i-lucide-user', '/app/settings'),
     item('Assinatura', 'i-lucide-credit-card', '/app/settings/subscription'),
-    item('Notificações', 'i-lucide-bell', '/app/settings/notifications'),
+    item('Notificações', 'i-lucide-bell', '/app/settings/notifications')
   ]
 
   if (workshop.can(ActionCode.SETTINGS_VIEW))

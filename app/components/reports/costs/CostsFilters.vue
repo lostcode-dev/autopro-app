@@ -83,7 +83,7 @@ const categoryOptions = computed<TagFilterOption[]>(() =>
         />
       </div>
 
-      <div> </div>
+      <div />
 
       <div>
         <p class="mb-1 text-xs font-medium text-muted">

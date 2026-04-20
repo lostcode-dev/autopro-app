@@ -23,7 +23,7 @@ function formatCurrency(v: number | string) {
       v-for="stat in [
         { label: 'Receita total', value: formatCurrency(summary.totalRevenue ?? 0), icon: 'i-lucide-badge-dollar-sign', color: 'text-success', bg: 'bg-success/10', description: 'itens vendidos' },
         { label: 'Custo total', value: formatCurrency(summary.totalCost ?? 0), icon: 'i-lucide-wallet-cards', color: 'text-error', bg: 'bg-error/10', description: 'sem comissão' },
-        { label: 'Comissão total', value: formatCurrency(summary.totalCommissionCost ?? 0), icon: 'i-lucide-hand-coins', color: 'text-warning', bg: 'bg-warning/10', description: 'custos variáveis' },
+        { label: 'Comissão total', value: formatCurrency(summary.totalCommissionCost ?? 0), icon: 'i-lucide-hand-coins', color: 'text-warning', bg: 'bg-warning/10', description: 'custos variáveis' }
       ]"
       :key="stat.label"
       :ui="{ body: 'p-3 sm:p-4' }"

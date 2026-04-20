@@ -1,33 +1,33 @@
 <script setup lang="ts">
-import * as z from "zod";
-import type { FormSubmitEvent } from "@nuxt/ui";
-import { ActionCode } from "~/constants/action-codes";
+import * as z from 'zod'
+import type { FormSubmitEvent } from '@nuxt/ui'
+import { ActionCode } from '~/constants/action-codes'
 
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Empresa" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Empresa' })
 
-const toast = useToast();
-const workshop = useWorkshopPermissions();
-const requestFetch = useRequestFetch();
+const toast = useToast()
+const workshop = useWorkshopPermissions()
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
-const canView = computed(() => workshop.can(ActionCode.SETTINGS_VIEW));
-const canUpdate = computed(() => workshop.can(ActionCode.SETTINGS_UPDATE));
+const canView = computed(() => workshop.can(ActionCode.SETTINGS_VIEW))
+const canUpdate = computed(() => workshop.can(ActionCode.SETTINGS_UPDATE))
 
-type OrgData = Record<string, any>;
+type OrgData = Record<string, any>
 
 const schema = z.object({
-  name: z.string().min(2, "Nome deve ter ao menos 2 caracteres"),
+  name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
   trade_name: z.string().optional().nullable(),
   tax_id: z.string().optional().nullable(),
   email: z
     .string()
-    .email("E-mail inválido")
+    .email('E-mail inválido')
     .optional()
     .nullable()
-    .or(z.literal("")),
+    .or(z.literal('')),
   phone: z.string().optional().nullable(),
   mobile_phone: z.string().optional().nullable(),
   website: z.string().optional().nullable(),
@@ -44,164 +44,164 @@ const schema = z.object({
   state_registration: z.string().optional().nullable(),
   fiscal_regime: z.string().optional().nullable(),
   logo_url: z.string().optional().nullable(),
-  initial_service_order_number: z.number().int().min(1).optional().nullable(),
-});
+  initial_service_order_number: z.number().int().min(1).optional().nullable()
+})
 
-type Schema = z.output<typeof schema>;
+type Schema = z.output<typeof schema>
 
 const {
   data: orgData,
   status,
-  refresh,
-} = await useAsyncData("company-org", () =>
-  requestFetch<OrgData>("/api/organizations", { headers: requestHeaders }),
-);
+  refresh
+} = await useAsyncData('company-org', () =>
+  requestFetch<OrgData>('/api/organizations', { headers: requestHeaders })
+)
 
-const form = reactive<Partial<Schema>>({});
+const form = reactive<Partial<Schema>>({})
 
 function fillForm(data: OrgData | null) {
-  if (!data) return;
+  if (!data) return
   Object.assign(form, {
-    name: data.name ?? "",
-    trade_name: data.trade_name ?? "",
-    tax_id: data.tax_id ?? "",
-    email: data.email ?? "",
-    phone: data.phone ?? "",
-    mobile_phone: data.mobile_phone ?? "",
-    website: data.website ?? "",
-    description: data.description ?? "",
-    address_zip_code: data.address_zip_code ?? "",
-    address_street: data.address_street ?? "",
-    address_number: data.address_number ?? "",
-    address_complement: data.address_complement ?? "",
-    address_neighborhood: data.address_neighborhood ?? "",
-    address_city: data.address_city ?? "",
-    address_state: data.address_state ?? "",
-    address_country: data.address_country ?? "BR",
-    municipal_registration: data.municipal_registration ?? "",
-    state_registration: data.state_registration ?? "",
-    fiscal_regime: data.fiscal_regime ?? "",
+    name: data.name ?? '',
+    trade_name: data.trade_name ?? '',
+    tax_id: data.tax_id ?? '',
+    email: data.email ?? '',
+    phone: data.phone ?? '',
+    mobile_phone: data.mobile_phone ?? '',
+    website: data.website ?? '',
+    description: data.description ?? '',
+    address_zip_code: data.address_zip_code ?? '',
+    address_street: data.address_street ?? '',
+    address_number: data.address_number ?? '',
+    address_complement: data.address_complement ?? '',
+    address_neighborhood: data.address_neighborhood ?? '',
+    address_city: data.address_city ?? '',
+    address_state: data.address_state ?? '',
+    address_country: data.address_country ?? 'BR',
+    municipal_registration: data.municipal_registration ?? '',
+    state_registration: data.state_registration ?? '',
+    fiscal_regime: data.fiscal_regime ?? '',
     logo_url: data.logo_url ?? null,
-    initial_service_order_number: data.initial_service_order_number ?? 1,
-  });
+    initial_service_order_number: data.initial_service_order_number ?? 1
+  })
 }
 
-watch(orgData, fillForm, { immediate: true });
+watch(orgData, fillForm, { immediate: true })
 
-const isSaving = ref(false);
-const isLoadingCep = ref(false);
-const isUploadingLogo = ref(false);
-const logoFileRef = ref<HTMLInputElement>();
+const isSaving = ref(false)
+const isLoadingCep = ref(false)
+const isUploadingLogo = ref(false)
+const logoFileRef = ref<HTMLInputElement>()
 
 async function onLogoFileChange(e: Event) {
-  const input = e.target as HTMLInputElement;
-  if (!input.files?.length) return;
-  const file = input.files[0]!;
-  isUploadingLogo.value = true;
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length) return
+  const file = input.files[0]!
+  isUploadingLogo.value = true
   try {
-    const body = new FormData();
-    body.append("file", file);
+    const body = new FormData()
+    body.append('file', file)
     const result = await $fetch<{ logo_url: string }>(
-      "/api/organizations/logo",
+      '/api/organizations/logo',
       {
-        method: "POST",
-        body,
-      },
-    );
-    form.logo_url = result.logo_url;
-    toast.add({ title: "Logo atualizado", color: "success" });
+        method: 'POST',
+        body
+      }
+    )
+    form.logo_url = result.logo_url
+    toast.add({ title: 'Logo atualizado', color: 'success' })
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro ao enviar logo",
+      title: 'Erro ao enviar logo',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível enviar",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível enviar',
+      color: 'error'
+    })
   } finally {
-    isUploadingLogo.value = false;
-    if (input) input.value = "";
+    isUploadingLogo.value = false
+    if (input) input.value = ''
   }
 }
 
 async function removeLogo() {
-  if (!canUpdate.value) return;
+  if (!canUpdate.value) return
   try {
-    await $fetch("/api/organizations", {
-      method: "PUT",
-      body: { logo_url: null },
-    });
-    form.logo_url = null;
-    toast.add({ title: "Logo removido", color: "success" });
+    await $fetch('/api/organizations', {
+      method: 'PUT',
+      body: { logo_url: null }
+    })
+    form.logo_url = null
+    toast.add({ title: 'Logo removido', color: 'success' })
   } catch {
-    toast.add({ title: "Erro ao remover logo", color: "error" });
+    toast.add({ title: 'Erro ao remover logo', color: 'error' })
   }
 }
 
 async function onSubmit(_event: FormSubmitEvent<Schema>) {
-  if (isSaving.value || !canUpdate.value) return;
-  isSaving.value = true;
+  if (isSaving.value || !canUpdate.value) return
+  isSaving.value = true
   try {
-    await $fetch("/api/organizations", {
-      method: "PUT",
-      body: form,
-    });
-    await refresh();
+    await $fetch('/api/organizations', {
+      method: 'PUT',
+      body: form
+    })
+    await refresh()
     toast.add({
-      title: "Empresa atualizada",
-      description: "Dados salvos com sucesso.",
-      color: "success",
-    });
+      title: 'Empresa atualizada',
+      description: 'Dados salvos com sucesso.',
+      color: 'success'
+    })
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro",
+      title: 'Erro',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível salvar",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível salvar',
+      color: 'error'
+    })
   } finally {
-    isSaving.value = false;
+    isSaving.value = false
   }
 }
 
 async function lookupCep() {
-  const cep = (form.address_zip_code ?? "").replace(/\D/g, "");
-  if (cep.length !== 8) return;
-  isLoadingCep.value = true;
+  const cep = (form.address_zip_code ?? '').replace(/\D/g, '')
+  if (cep.length !== 8) return
+  isLoadingCep.value = true
   try {
-    const res = await $fetch<any>(`https://viacep.com.br/ws/${cep}/json/`);
+    const res = await $fetch<any>(`https://viacep.com.br/ws/${cep}/json/`)
     if (res.erro) {
-      toast.add({ title: "CEP não encontrado", color: "warning" });
-      return;
+      toast.add({ title: 'CEP não encontrado', color: 'warning' })
+      return
     }
-    form.address_street = res.logradouro || form.address_street;
-    form.address_neighborhood = res.bairro || form.address_neighborhood;
-    form.address_city = res.localidade || form.address_city;
-    form.address_state = res.uf || form.address_state;
+    form.address_street = res.logradouro || form.address_street
+    form.address_neighborhood = res.bairro || form.address_neighborhood
+    form.address_city = res.localidade || form.address_city
+    form.address_state = res.uf || form.address_state
   } catch {
-    toast.add({ title: "Erro ao buscar CEP", color: "error" });
+    toast.add({ title: 'Erro ao buscar CEP', color: 'error' })
   } finally {
-    isLoadingCep.value = false;
+    isLoadingCep.value = false
   }
 }
 
 const fiscalRegimeOptions = [
-  { label: "Simples Nacional", value: "simples_nacional" },
-  { label: "Lucro Presumido", value: "lucro_presumido" },
-  { label: "Lucro Real", value: "lucro_real" },
-  { label: "MEI", value: "mei" },
-];
+  { label: 'Simples Nacional', value: 'simples_nacional' },
+  { label: 'Lucro Presumido', value: 'lucro_presumido' },
+  { label: 'Lucro Real', value: 'lucro_real' },
+  { label: 'MEI', value: 'mei' }
+]
 </script>
 
 <template>
@@ -260,7 +260,7 @@ const fiscalRegimeOptions = [
                 :src="form.logo_url"
                 alt="Logo"
                 class="size-32 rounded-xl object-contain border border-default bg-white p-1"
-              />
+              >
               <div
                 v-else
                 class="size-32 rounded-xl border-2 border-dashed border-default/70 flex items-center justify-center bg-elevated/40"
@@ -295,7 +295,7 @@ const fiscalRegimeOptions = [
               class="hidden"
               accept=".jpg,.jpeg,.png,.webp"
               @change="onLogoFileChange"
-            />
+            >
           </div>
         </UFormField>
       </UPageCard>

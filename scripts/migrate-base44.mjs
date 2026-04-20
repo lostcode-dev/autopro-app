@@ -28,11 +28,11 @@ const get = (flag) => {
   return i !== -1 ? args[i + 1] : null
 }
 
-const CSV_DIR   = resolve(get('--csv-dir')  ?? './exports')
-const OUT_DIR   = resolve(get('--out-dir')  ?? './migration-output')
-const ORG_ID    = get('--org-id')   ?? '00000000-0000-0000-0000-000000000000'
-const MIGRATOR  = get('--migrator') ?? 'migration@autopro.local'
-const DRY_RUN   = args.includes('--dry-run')
+const CSV_DIR = resolve(get('--csv-dir') ?? './exports')
+const OUT_DIR = resolve(get('--out-dir') ?? './migration-output')
+const ORG_ID = get('--org-id') ?? '00000000-0000-0000-0000-000000000000'
+const MIGRATOR = get('--migrator') ?? 'migration@autopro.local'
+const DRY_RUN = args.includes('--dry-run')
 
 if (!existsSync(CSV_DIR)) {
   console.error(`[error] CSV directory not found: ${CSV_DIR}`)
@@ -119,8 +119,7 @@ function parseCsv(text) {
       const ch = line[i]
       const nx = line[i + 1]
       if (ch === '"') {
-        if (q && nx === '"') { field += '"'; i++ }
-        else q = !q
+        if (q && nx === '"') { field += '"'; i++ } else q = !q
       } else if (ch === ',' && !q) {
         fields.push(field)
         field = ''
@@ -132,7 +131,7 @@ function parseCsv(text) {
     return fields
   }
 
-  const nonEmpty = lines.filter((l) => l.trim() !== '')
+  const nonEmpty = lines.filter(l => l.trim() !== '')
   if (nonEmpty.length === 0) return { headers: [], rows: [] }
 
   const headers = splitLine(nonEmpty[0])
@@ -163,7 +162,7 @@ const NOW = 'NOW()'
 /** Escape a string value for a SQL literal */
 function esc(v) {
   if (v === null || v === undefined || v === '') return 'NULL'
-  return `'${String(v).replace(/'/g, "''")}'`
+  return `'${String(v).replace(/'/g, '\'\'')}'`
 }
 
 function escUuid(v) {
@@ -197,23 +196,23 @@ function escDate(v) {
 }
 
 function escJson(v) {
-  if (!v || v === '' || v === 'null' || v === '[]' || v === '{}') return "'{}'::jsonb"
+  if (!v || v === '' || v === 'null' || v === '[]' || v === '{}') return '\'{}\'::jsonb'
   try {
     JSON.parse(v) // validate
-    return `'${v.replace(/'/g, "''")}'::jsonb`
+    return `'${v.replace(/'/g, '\'\'')}'::jsonb`
   } catch {
-    return "'[]'::jsonb"
+    return '\'[]\'::jsonb'
   }
 }
 
 function escJsonArray(v) {
-  if (!v || v === '' || v === 'null') return "'[]'::jsonb"
+  if (!v || v === '' || v === 'null') return '\'[]\'::jsonb'
   try {
     const parsed = JSON.parse(v)
     const s = JSON.stringify(Array.isArray(parsed) ? parsed : [parsed])
-    return `'${s.replace(/'/g, "''")}'::jsonb`
+    return `'${s.replace(/'/g, '\'\'')}'::jsonb`
   } catch {
-    return "'[]'::jsonb"
+    return '\'[]\'::jsonb'
   }
 }
 
@@ -345,7 +344,7 @@ function pkg0() {
     '--            product_categories, taxes)',
     '-- ============================================================',
     '',
-    idMapSetupSql(),
+    idMapSetupSql()
   ]
 
   // 0.2 bank_accounts
@@ -359,7 +358,7 @@ function pkg0() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome_conta ?? r.account_name)}, ${esc(r.tipo ?? r.account_type ?? 'checking')}, ${escNum(r.saldo_inicial ?? r.initial_balance ?? 0)}, ${escNum(r.saldo_atual ?? r.current_balance ?? 0)}, ${esc(r.banco ?? r.bank_name)}, ${esc(r.agencia ?? r.branch)}, ${esc(r.conta ?? r.account_number)}, ${escBool(r.ativa ?? r.is_active ?? 'true')}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('bank_account', bankRows.map((r) => [r.id, mapId('bank_account', r.id)])))
+    lines.push(idMapInsertSql('bank_account', bankRows.map(r => [r.id, mapId('bank_account', r.id)])))
   }
 
   // 0.3 financial_categories
@@ -373,7 +372,7 @@ function pkg0() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome ?? r.name)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('financial_category', fcRows.map((r) => [r.id, mapId('financial_category', r.id)])))
+    lines.push(idMapInsertSql('financial_category', fcRows.map(r => [r.id, mapId('financial_category', r.id)])))
   }
 
   // 0.4 product_categories
@@ -387,7 +386,7 @@ function pkg0() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome ?? r.name)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('product_category', pcRows.map((r) => [r.id, mapId('product_category', r.id)])))
+    lines.push(idMapInsertSql('product_category', pcRows.map(r => [r.id, mapId('product_category', r.id)])))
   }
 
   // 0.5 taxes
@@ -401,7 +400,7 @@ function pkg0() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome ?? r.name)}, ${esc(r.tipo ?? r.type)}, ${escNum(r.aliquota ?? r.rate)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('tax', taxRows.map((r) => [r.id, mapId('tax', r.id)])))
+    lines.push(idMapInsertSql('tax', taxRows.map(r => [r.id, mapId('tax', r.id)])))
   }
 
   return lines.join('\n')
@@ -414,7 +413,7 @@ function pkg1() {
     '-- ============================================================',
     '-- Package 1: People (suppliers, employees, clients)',
     '-- ============================================================',
-    '',
+    ''
   ]
 
   // 1.1 suppliers
@@ -428,7 +427,7 @@ function pkg1() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome ?? r.name)}, ${esc(r.tipo_pessoa ?? r.person_type ?? 'pj')}, ${esc(r.cpf_cnpj ?? r.tax_id)}, ${esc(r.telefone ?? r.phone)}, ${esc(r.whatsapp)}, ${esc(r.email)}, ${esc(r.site ?? r.website)}, ${esc(r.cep ?? r.zip_code)}, ${esc(r.logradouro ?? r.street)}, ${esc(r.numero ?? r.address_number)}, ${esc(r.complemento ?? r.address_complement)}, ${esc(r.bairro ?? r.neighborhood)}, ${esc(r.cidade ?? r.city)}, ${esc(r.uf ?? r.state)}, ${esc(mapEnum(SUPPLIER_CATEGORY, r.categoria ?? r.category))}, ${escNum(r.prazo_pagamento_dias ?? r.payment_term_days)}, ${escNum(r.limite_credito ?? r.credit_limit)}, ${escBool(r.ativo ?? r.is_active ?? 'true')}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('supplier', supRows.map((r) => [r.id, mapId('supplier', r.id)])))
+    lines.push(idMapInsertSql('supplier', supRows.map(r => [r.id, mapId('supplier', r.id)])))
   }
 
   // 1.2 employees
@@ -442,7 +441,7 @@ function pkg1() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome ?? r.name)}, ${esc(r.tipo_pessoa ?? r.person_type ?? 'pf')}, ${esc(r.cpf_cnpj ?? r.tax_id)}, ${esc(r.telefone ?? r.phone)}, ${esc(r.email)}, ${esc(r.cep ?? r.zip_code)}, ${esc(r.logradouro ?? r.street)}, ${esc(r.numero ?? r.address_number)}, ${esc(r.complemento ?? r.address_complement)}, ${esc(r.bairro ?? r.neighborhood)}, ${esc(r.cidade ?? r.city)}, ${esc(r.uf ?? r.state)}, ${escBool(r.tem_salario ?? r.has_salary)}, ${escNum(r.valor_salario ?? r.salary_amount)}, ${escNum(r.dia_pagamento ?? r.payment_day)}, ${escBool(r.tem_comissao ?? r.has_commission)}, ${esc(mapEnum(COMMISSION_TYPE, r.tipo_comissao ?? r.commission_type))}, ${escNum(r.valor_comissao ?? r.commission_amount)}, ${esc(mapEnum(COMMISSION_BASE, r.base_comissao ?? r.commission_base))}, ${escBool(r.tem_minimo_garantido ?? r.has_minimum_guarantee)}, ${escNum(r.valor_minimo_garantido ?? r.minimum_guarantee_amount)}, ${esc(r.tipo_chave_pix ?? r.pix_key_type)}, ${esc(r.chave_pix ?? r.pix_key)}, ${escDate(r.data_demissao ?? r.termination_date)}, ${esc(r.motivo_demissao ?? r.termination_reason)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('employee', empRows.map((r) => [r.id, mapId('employee', r.id)])))
+    lines.push(idMapInsertSql('employee', empRows.map(r => [r.id, mapId('employee', r.id)])))
   }
 
   // 1.3 clients
@@ -456,7 +455,7 @@ function pkg1() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome ?? r.name)}, ${esc(r.telefone ?? r.phone)}, ${esc(r.tipo_pessoa ?? r.person_type ?? 'pf')}, ${esc(r.cpf_cnpj ?? r.tax_id)}, ${esc(r.email)}, ${esc(r.cep ?? r.zip_code)}, ${esc(r.logradouro ?? r.street)}, ${esc(r.numero ?? r.address_number)}, ${esc(r.complemento ?? r.address_complement)}, ${esc(r.bairro ?? r.neighborhood)}, ${esc(r.cidade ?? r.city)}, ${esc(r.uf ?? r.state)}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('client', clientRows.map((r) => [r.id, mapId('client', r.id)])))
+    lines.push(idMapInsertSql('client', clientRows.map(r => [r.id, mapId('client', r.id)])))
   }
 
   return lines.join('\n')
@@ -469,7 +468,7 @@ function pkg2() {
     '-- ============================================================',
     '-- Package 2: Vehicles',
     '-- ============================================================',
-    '',
+    ''
   ]
 
   const rows = loadCsv('vehicles.csv')
@@ -482,7 +481,7 @@ function pkg2() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${escUuid(clientId)}, ${esc(r.placa ?? r.license_plate)}, ${esc(r.marca ?? r.brand)}, ${esc(r.modelo ?? r.model)}, ${escNum(r.ano ?? r.year)}, ${esc(r.cor ?? r.color)}, ${esc(r.motor ?? r.engine)}, ${esc(mapEnum(FUEL_TYPE, r.combustivel ?? r.fuel_type))}, ${escNum(r.quilometragem ?? r.mileage)}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('vehicle', rows.map((r) => [r.id, mapId('vehicle', r.id)])))
+    lines.push(idMapInsertSql('vehicle', rows.map(r => [r.id, mapId('vehicle', r.id)])))
   }
 
   return lines.join('\n')
@@ -495,7 +494,7 @@ function pkg3() {
     '-- ============================================================',
     '-- Package 3: Products & Parts',
     '-- ============================================================',
-    '',
+    ''
   ]
 
   // 3.1 products
@@ -510,7 +509,7 @@ function pkg3() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.nome ?? r.name)}, ${esc(r.codigo ?? r.code)}, ${esc(r.tipo ?? r.type ?? 'unit')}, ${escUuid(catId)}, ${escBool(r.controlar_estoque ?? r.track_inventory)}, ${escNum(r.quantidade_inicial_estoque ?? r.initial_stock_quantity ?? 0)}, ${escNum(r.preco_venda_unitario ?? r.unit_sale_price)}, ${escNum(r.preco_custo_unitario ?? r.unit_cost_price)}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('product', prodRows.map((r) => [r.id, mapId('product', r.id)])))
+    lines.push(idMapInsertSql('product', prodRows.map(r => [r.id, mapId('product', r.id)])))
   }
 
   // 3.2 parts
@@ -525,7 +524,7 @@ function pkg3() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${escUuid(productId)}, ${esc(r.codigo ?? r.code)}, ${esc(r.descricao ?? r.description)}, ${escNum(r.quantidade_estoque ?? r.stock_quantity ?? 0)}, ${escNum(r.preco_venda ?? r.sale_price)}, ${esc(r.marca ?? r.brand)}, ${esc(mapEnum(PARTS_CATEGORY, r.categoria ?? r.category))}, ${escNum(r.quantidade_minima ?? r.minimum_quantity)}, ${escNum(r.preco_custo ?? r.cost_price)}, ${esc(r.fornecedor ?? r.supplier_name)}, ${esc(r.localizacao ?? r.location)}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('part', partRows.map((r) => [r.id, mapId('part', r.id)])))
+    lines.push(idMapInsertSql('part', partRows.map(r => [r.id, mapId('part', r.id)])))
   }
 
   return lines.join('\n')
@@ -543,13 +542,13 @@ function transformItems(itemsJson) {
   try {
     const items = JSON.parse(itemsJson)
     if (!Array.isArray(items)) return '[]'
-    const mapped = items.map((it) => ({
+    const mapped = items.map(it => ({
       product_id: mapId('product', it.produto_id ?? it.product_id) ?? null,
       description: it.descricao ?? it.description ?? '',
       quantity: Number(it.quantidade ?? it.quantity ?? 1),
       unit_price: Number(it.preco_unitario ?? it.unit_price ?? 0),
       cost_price: Number(it.preco_custo ?? it.cost_price ?? 0),
-      total_price: Number(it.preco_total ?? it.total_price ?? (it.quantidade ?? 1) * (it.preco_unitario ?? 0)),
+      total_price: Number(it.preco_total ?? it.total_price ?? (it.quantidade ?? 1) * (it.preco_unitario ?? 0))
     }))
     return JSON.stringify(mapped)
   } catch {
@@ -583,7 +582,7 @@ function pkg4() {
     '-- ============================================================',
     '-- Package 4: Service Orders & Installments',
     '-- ============================================================',
-    '',
+    ''
   ]
 
   // 4.1 service_orders
@@ -599,10 +598,10 @@ function pkg4() {
       const empId = mapId('employee', r.funcionario_responsavel_id ?? r.employee_responsible_id)
       const itemsJson = transformItems(r.itens ?? r.items ?? r.itens_json)
       const responsiblesJson = transformResponsibles(r.responsaveis ?? r.responsible_employees)
-      return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.numero ?? r.number)}, ${escUuid(clientId)}, ${escUuid(vehicleId)}, ${escUuid(empId)}, '${responsiblesJson.replace(/'/g, "''")}'::jsonb, ${esc(mapEnum(STATUS_OS, r.status, 'open'))}, ${esc(mapEnum(PAYMENT_STATUS, r.status_pagamento ?? r.payment_status, 'pending'))}, ${esc(mapEnum(PAYMENT_METHOD, r.forma_pagamento ?? r.payment_method))}, ${escDate(r.data_entrada ?? r.entry_date)}, ${escDate(r.data_prevista ?? r.expected_date)}, ${escDate(r.data_conclusao ?? r.completion_date)}, ${esc(r.defeito_relatado ?? r.reported_defect)}, ${esc(r.diagnostico ?? r.diagnosis)}, '${itemsJson.replace(/'/g, "''")}'::jsonb, ${escNum(r.valor_total ?? r.total_amount ?? 0)}, ${escNum(r.valor_custo_total ?? r.total_cost_amount ?? 0)}, ${escNum(r.desconto ?? r.discount ?? 0)}, ${escNum(r.valor_comissao ?? r.commission_amount ?? 0)}, ${escBool(r.parcelado ?? r.is_installment)}, ${escNum(r.numero_parcelas ?? r.installment_count)}, ${esc(r.observacoes ?? r.notes)}, ${escBool(r.aplicar_impostos ?? r.apply_taxes ?? 'false')}, ${escNum(r.valor_impostos_total ?? r.total_taxes_amount ?? 0)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
+      return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${esc(r.numero ?? r.number)}, ${escUuid(clientId)}, ${escUuid(vehicleId)}, ${escUuid(empId)}, '${responsiblesJson.replace(/'/g, '\'\'')}'::jsonb, ${esc(mapEnum(STATUS_OS, r.status, 'open'))}, ${esc(mapEnum(PAYMENT_STATUS, r.status_pagamento ?? r.payment_status, 'pending'))}, ${esc(mapEnum(PAYMENT_METHOD, r.forma_pagamento ?? r.payment_method))}, ${escDate(r.data_entrada ?? r.entry_date)}, ${escDate(r.data_prevista ?? r.expected_date)}, ${escDate(r.data_conclusao ?? r.completion_date)}, ${esc(r.defeito_relatado ?? r.reported_defect)}, ${esc(r.diagnostico ?? r.diagnosis)}, '${itemsJson.replace(/'/g, '\'\'')}'::jsonb, ${escNum(r.valor_total ?? r.total_amount ?? 0)}, ${escNum(r.valor_custo_total ?? r.total_cost_amount ?? 0)}, ${escNum(r.desconto ?? r.discount ?? 0)}, ${escNum(r.valor_comissao ?? r.commission_amount ?? 0)}, ${escBool(r.parcelado ?? r.is_installment)}, ${escNum(r.numero_parcelas ?? r.installment_count)}, ${esc(r.observacoes ?? r.notes)}, ${escBool(r.aplicar_impostos ?? r.apply_taxes ?? 'false')}, ${escNum(r.valor_impostos_total ?? r.total_taxes_amount ?? 0)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('service_order', osRows.map((r) => [r.id, mapId('service_order', r.id)])))
+    lines.push(idMapInsertSql('service_order', osRows.map(r => [r.id, mapId('service_order', r.id)])))
   }
 
   // 4.2 service_order_installments
@@ -629,7 +628,7 @@ function pkg5() {
     '-- ============================================================',
     '-- Package 5: Financial Transactions & Employee Records',
     '-- ============================================================',
-    '',
+    ''
   ]
 
   // 5.1 financial_transactions
@@ -646,7 +645,7 @@ function pkg5() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${escUuid(bankId)}, ${escUuid(catId)}, ${escUuid(soId)}, ${esc(mapEnum(TRANSACTION_TYPE, r.tipo ?? r.type, 'income'))}, ${esc(r.descricao ?? r.description)}, ${escNum(r.valor ?? r.amount)}, ${escDate(r.data_transacao ?? r.data_lancamento ?? r.transaction_date)}, ${esc(mapEnum(PAYMENT_METHOD, r.forma_pagamento ?? r.payment_method))}, ${esc(mapEnum(PAYMENT_STATUS, r.status_pagamento ?? r.payment_status, 'paid'))}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('financial_transaction', ftRows.map((r) => [r.id, mapId('financial_transaction', r.id)])))
+    lines.push(idMapInsertSql('financial_transaction', ftRows.map(r => [r.id, mapId('financial_transaction', r.id)])))
   }
 
   // 5.2 employee_financial_records
@@ -675,7 +674,7 @@ function pkg6() {
     '-- ============================================================',
     '-- Package 6: Appointments, Purchases, Purchase Requests',
     '-- ============================================================',
-    '',
+    ''
   ]
 
   // 6.1 appointments
@@ -692,7 +691,7 @@ function pkg6() {
       return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${escUuid(clientId)}, ${escUuid(vehicleId)}, ${escDate(r.data_agendamento ?? r.appointment_date)}, ${esc(r.horario ?? r.time)}, ${esc(r.tipo_servico ?? r.service_type)}, ${esc(mapEnum(APPOINTMENT_PRIORITY, r.prioridade ?? r.priority, 'medium'))}, ${esc(mapEnum(APPOINTMENT_STATUS, r.status, 'scheduled'))}, ${escUuid(soId)}, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('appointment', apptRows.map((r) => [r.id, mapId('appointment', r.id)])))
+    lines.push(idMapInsertSql('appointment', apptRows.map(r => [r.id, mapId('appointment', r.id)])))
   }
 
   // 6.2 purchases
@@ -710,21 +709,21 @@ function pkg6() {
       try {
         if (itemsRaw) {
           const arr = JSON.parse(itemsRaw)
-          itemsJson = JSON.stringify((Array.isArray(arr) ? arr : []).map((it) => ({
+          itemsJson = JSON.stringify((Array.isArray(arr) ? arr : []).map(it => ({
             part_id: mapId('part', it.peca_id ?? it.part_id) ?? null,
             description: it.descricao ?? it.description ?? '',
             quantity: Number(it.quantidade ?? it.quantity ?? 1),
             unit_cost_price: Number(it.preco_custo_unitario ?? it.unit_cost_price ?? 0),
             unit_sale_price: Number(it.preco_venda_unitario ?? it.unit_sale_price ?? 0),
             total_item_price: Number(it.preco_total_item ?? it.total_item_price ?? 0),
-            add_to_stock: Boolean(it.adicionar_estoque ?? it.add_to_stock ?? true),
+            add_to_stock: Boolean(it.adicionar_estoque ?? it.add_to_stock ?? true)
           })))
         }
       } catch { /* keep '[]' */ }
-      return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${escUuid(supId)}, ${escDate(r.data_compra ?? r.purchase_date)}, ${escNum(r.valor_total ?? r.total_amount)}, ${escUuid(bankId)}, ${esc(mapEnum(PAYMENT_STATUS, r.status_pagamento ?? r.payment_status, 'pending'))}, ${esc(r.numero_nota_fiscal ?? r.invoice_number)}, ${escDate(r.data_pagamento ?? r.payment_date)}, ${escDate(r.data_vencimento ?? r.due_date)}, '${itemsJson.replace(/'/g, "''")}'::jsonb, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
+      return `  (${escUuid(newId)}, ${escUuid(ORG_ID)}, ${escUuid(supId)}, ${escDate(r.data_compra ?? r.purchase_date)}, ${escNum(r.valor_total ?? r.total_amount)}, ${escUuid(bankId)}, ${esc(mapEnum(PAYMENT_STATUS, r.status_pagamento ?? r.payment_status, 'pending'))}, ${esc(r.numero_nota_fiscal ?? r.invoice_number)}, ${escDate(r.data_pagamento ?? r.payment_date)}, ${escDate(r.data_vencimento ?? r.due_date)}, '${itemsJson.replace(/'/g, '\'\'')}'::jsonb, ${esc(r.observacoes ?? r.notes)}, ${esc(MIGRATOR)}, ${esc(MIGRATOR)})`
     })
     lines.push(inserts.join(',\n') + '\nON CONFLICT DO NOTHING;\n')
-    lines.push(idMapInsertSql('purchase', purRows.map((r) => [r.id, mapId('purchase', r.id)])))
+    lines.push(idMapInsertSql('purchase', purRows.map(r => [r.id, mapId('purchase', r.id)])))
   }
 
   // 6.3 purchase_requests
@@ -804,13 +803,13 @@ WHERE v.organization_id = '${ORG_ID}'
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 const packages = [
-  { name: 'pkg0_foundation',     fn: pkg0 },
-  { name: 'pkg1_people',         fn: pkg1 },
-  { name: 'pkg2_vehicles',       fn: pkg2 },
+  { name: 'pkg0_foundation', fn: pkg0 },
+  { name: 'pkg1_people', fn: pkg1 },
+  { name: 'pkg2_vehicles', fn: pkg2 },
   { name: 'pkg3_products_parts', fn: pkg3 },
   { name: 'pkg4_service_orders', fn: pkg4 },
-  { name: 'pkg5_financial',      fn: pkg5 },
-  { name: 'pkg6_auxiliary',      fn: pkg6 },
+  { name: 'pkg5_financial', fn: pkg5 },
+  { name: 'pkg6_auxiliary', fn: pkg6 }
 ]
 
 for (const pkg of packages) {

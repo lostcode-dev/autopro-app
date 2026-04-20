@@ -18,7 +18,7 @@ const orgName = computed(() => workshop.organization.value?.trade_name || worksh
       :src="orgLogoUrl"
       :alt="orgName"
       class="h-7 w-7 rounded object-contain shrink-0"
-    />
+    >
     <AppLogo v-else size="sm" />
     <span
       v-if="!collapsed && orgLogoUrl"

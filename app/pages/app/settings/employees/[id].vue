@@ -414,7 +414,12 @@ async function exportReport(format: 'csv' | 'pdf') {
             </p>
             <div class="mt-4 flex gap-2">
               <UButton label="Tentar novamente" color="neutral" @click="refresh" />
-              <UButton label="Voltar para funcionários" color="neutral" variant="ghost" to="/app/settings/employees" />
+              <UButton
+                label="Voltar para funcionários"
+                color="neutral"
+                variant="ghost"
+                to="/app/settings/employees"
+              />
             </div>
           </div>
         </template>
@@ -555,24 +560,48 @@ async function exportReport(format: 'csv' | 'pdf') {
 
           <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-2xl border border-default bg-elevated/50 p-4">
-              <p class="text-sm text-muted">Total de comissões</p>
-              <p class="mt-2 text-2xl font-semibold text-highlighted">{{ formatCurrency(summary.totalCommissions) }}</p>
-              <p class="mt-1 text-xs text-muted">Período {{ periodLabel }}</p>
+              <p class="text-sm text-muted">
+                Total de comissões
+              </p>
+              <p class="mt-2 text-2xl font-semibold text-highlighted">
+                {{ formatCurrency(summary.totalCommissions) }}
+              </p>
+              <p class="mt-1 text-xs text-muted">
+                Período {{ periodLabel }}
+              </p>
             </div>
             <div class="rounded-2xl border border-success/20 bg-success/5 p-4">
-              <p class="text-sm text-muted">Pagas</p>
-              <p class="mt-2 text-2xl font-semibold text-success">{{ formatCurrency(summary.totalPaid) }}</p>
-              <p class="mt-1 text-xs text-muted">{{ summary.paidItemsCount }} item(ns) quitados</p>
+              <p class="text-sm text-muted">
+                Pagas
+              </p>
+              <p class="mt-2 text-2xl font-semibold text-success">
+                {{ formatCurrency(summary.totalPaid) }}
+              </p>
+              <p class="mt-1 text-xs text-muted">
+                {{ summary.paidItemsCount }} item(ns) quitados
+              </p>
             </div>
             <div class="rounded-2xl border border-warning/20 bg-warning/5 p-4">
-              <p class="text-sm text-muted">Pendentes</p>
-              <p class="mt-2 text-2xl font-semibold text-warning">{{ formatCurrency(summary.totalPending) }}</p>
-              <p class="mt-1 text-xs text-muted">{{ summary.pendingItemsCount }} item(ns) aguardando pagamento</p>
+              <p class="text-sm text-muted">
+                Pendentes
+              </p>
+              <p class="mt-2 text-2xl font-semibold text-warning">
+                {{ formatCurrency(summary.totalPending) }}
+              </p>
+              <p class="mt-1 text-xs text-muted">
+                {{ summary.pendingItemsCount }} item(ns) aguardando pagamento
+              </p>
             </div>
             <div class="rounded-2xl border border-default bg-elevated/30 p-4">
-              <p class="text-sm text-muted">Cobertura</p>
-              <p class="mt-2 text-2xl font-semibold text-highlighted">{{ summary.orderCount }}</p>
-              <p class="mt-1 text-xs text-muted">OS com {{ summary.itemsCount }} item(ns) comissionados</p>
+              <p class="text-sm text-muted">
+                Cobertura
+              </p>
+              <p class="mt-2 text-2xl font-semibold text-highlighted">
+                {{ summary.orderCount }}
+              </p>
+              <p class="mt-1 text-xs text-muted">
+                OS com {{ summary.itemsCount }} item(ns) comissionados
+              </p>
             </div>
           </div>
         </template>

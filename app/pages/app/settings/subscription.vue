@@ -218,7 +218,13 @@ async function openInvoice(url: string | null) {
       variant="subtle"
     >
       <template #footer>
-        <UButton label="Ver planos" color="neutral" to="/pricing" icon="i-lucide-arrow-right" trailing />
+        <UButton
+          label="Ver planos"
+          color="neutral"
+          to="/pricing"
+          icon="i-lucide-arrow-right"
+          trailing
+        />
       </template>
     </UPageCard>
   </template>
@@ -246,7 +252,9 @@ async function openInvoice(url: string | null) {
           <p class="text-2xl font-bold text-highlighted">
             {{ currentPlan?.price ?? '-' }}
           </p>
-          <p class="text-xs text-muted">por mês</p>
+          <p class="text-xs text-muted">
+            por mês
+          </p>
         </div>
       </div>
 
@@ -261,7 +269,12 @@ async function openInvoice(url: string | null) {
           <UBadge :color="getStatusColor(sub.status)" variant="subtle" size="sm">
             {{ getStatusLabel(sub.status) }}
           </UBadge>
-          <UBadge v-if="sub.cancel_at_period_end" color="warning" variant="subtle" size="sm">
+          <UBadge
+            v-if="sub.cancel_at_period_end"
+            color="warning"
+            variant="subtle"
+            size="sm"
+          >
             Cancelamento agendado
           </UBadge>
         </div>

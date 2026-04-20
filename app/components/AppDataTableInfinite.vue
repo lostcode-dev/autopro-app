@@ -86,9 +86,9 @@ const tableSorting = ref<SortingState>(props.sorting)
 const tableRowSelection = ref<RowSelectionState>(props.rowSelection)
 const internalSearchTerm = ref(props.searchTerm)
 
-watch(() => props.sorting, v => { tableSorting.value = v }, { deep: true })
-watch(() => props.rowSelection, v => { tableRowSelection.value = v }, { deep: true })
-watch(() => props.searchTerm, v => { internalSearchTerm.value = v })
+watch(() => props.sorting, (v) => { tableSorting.value = v }, { deep: true })
+watch(() => props.rowSelection, (v) => { tableRowSelection.value = v }, { deep: true })
+watch(() => props.searchTerm, (v) => { internalSearchTerm.value = v })
 
 const currentSearchTerm = computed({
   get: () => props.searchTerm ?? internalSearchTerm.value,
@@ -205,7 +205,7 @@ function normalizeColumn(column: DataTableColumn): DataTableColumn {
     ? column.enableSorting
     : Boolean(typeof (column as any).accessorKey === 'string' && !actionsCol)
 
-  const meta = (column.meta ?? {}) as { class?: { th?: string; td?: string } }
+  const meta = (column.meta ?? {}) as { class?: { th?: string, td?: string } }
 
   return {
     ...column,

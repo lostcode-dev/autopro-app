@@ -95,7 +95,7 @@ function getResponsibleNames(value: string | null | undefined) {
         .split(',')
         .map(name => name.trim())
         .filter(Boolean)
-      )
+    )
   )
 }
 

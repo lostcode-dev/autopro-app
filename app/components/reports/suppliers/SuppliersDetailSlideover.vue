@@ -45,7 +45,7 @@ function formatDate(v: string | null) {
 }
 
 const chartCategories = computed(() =>
-  props.data?.daily.map(item => {
+  props.data?.daily.map((item) => {
     const [y, m, d] = item.name.split('-')
     return (y && m && d) ? `${d}/${m}/${y}` : item.name
   }) ?? []

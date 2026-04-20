@@ -1,364 +1,364 @@
 <script setup lang="ts">
-import { ActionCode } from "~/constants/action-codes";
+import { ActionCode } from '~/constants/action-codes'
 
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Funcionários" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Funcionários' })
 
-const toast = useToast();
-const workshop = useWorkshopPermissions();
-const requestFetch = useRequestFetch();
+const toast = useToast()
+const workshop = useWorkshopPermissions()
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
-const canRead = computed(() => workshop.can(ActionCode.EMPLOYEES_READ));
-const canCreate = computed(() => workshop.can(ActionCode.EMPLOYEES_CREATE));
-const canUpdate = computed(() => workshop.can(ActionCode.EMPLOYEES_UPDATE));
-const canDelete = computed(() => workshop.can(ActionCode.EMPLOYEES_DELETE));
+const canRead = computed(() => workshop.can(ActionCode.EMPLOYEES_READ))
+const canCreate = computed(() => workshop.can(ActionCode.EMPLOYEES_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.EMPLOYEES_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.EMPLOYEES_DELETE))
 
-type Employee = Record<string, unknown>;
+type Employee = Record<string, unknown>
 
 // ─── List ──────────────────────────────────────────────────
-const search = ref("");
-const includeTerminated = ref(false);
+const search = ref('')
+const includeTerminated = ref(false)
 
-const { data, status, refresh } = await useAsyncData("employees-list", () =>
-  requestFetch<{ items: Employee[] }>("/api/employees", {
+const { data, status, refresh } = await useAsyncData('employees-list', () =>
+  requestFetch<{ items: Employee[] }>('/api/employees', {
     headers: requestHeaders,
     query: {
       search: search.value || undefined,
-      include_terminated: includeTerminated.value || undefined,
-    },
-  }),
-);
+      include_terminated: includeTerminated.value || undefined
+    }
+  })
+)
 
-const employees = computed(() => data.value?.items ?? []);
+const employees = computed(() => data.value?.items ?? [])
 
-watch([search, includeTerminated], () => refresh());
+watch([search, includeTerminated], () => refresh())
 
 // ─── Product categories (lazy-loaded for commission sections) ──
-type ProductCategory = { id: string; name: string };
-const productCategories = ref<ProductCategory[]>([]);
-const isLoadingCategories = ref(false);
+type ProductCategory = { id: string, name: string }
+const productCategories = ref<ProductCategory[]>([])
+const isLoadingCategories = ref(false)
 
 async function loadProductCategories() {
-  if (productCategories.value.length > 0 || isLoadingCategories.value) return;
-  isLoadingCategories.value = true;
+  if (productCategories.value.length > 0 || isLoadingCategories.value) return
+  isLoadingCategories.value = true
   try {
     const res = await $fetch<{ items: ProductCategory[] }>(
-      "/api/product-categories",
-    );
-    productCategories.value = res?.items ?? [];
+      '/api/product-categories'
+    )
+    productCategories.value = res?.items ?? []
   } catch {
     // non-critical
   } finally {
-    isLoadingCategories.value = false;
+    isLoadingCategories.value = false
   }
 }
 
 // ─── Form ─────────────────────────────────────────────────
-const showModal = ref(false);
-const isEditing = ref(false);
-const isSaving = ref(false);
-const selectedId = ref<string | null>(null);
-const isFetchingCep = ref(false);
-const isEmailLocked = ref(false);
-const editFormHasAuthUser = ref(false);
+const showModal = ref(false)
+const isEditing = ref(false)
+const isSaving = ref(false)
+const selectedId = ref<string | null>(null)
+const isFetchingCep = ref(false)
+const isEmailLocked = ref(false)
+const editFormHasAuthUser = ref(false)
 
 type Role = {
-  id: string;
-  name: string;
-  display_name: string;
-  is_system_role: boolean;
-};
-const availableRoles = ref<Role[]>([]);
-const isLoadingRoles = ref(false);
+  id: string
+  name: string
+  display_name: string
+  is_system_role: boolean
+}
+const availableRoles = ref<Role[]>([])
+const isLoadingRoles = ref(false)
 
 async function loadRoles() {
-  if (availableRoles.value.length > 0 || isLoadingRoles.value) return;
-  isLoadingRoles.value = true;
+  if (availableRoles.value.length > 0 || isLoadingRoles.value) return
+  isLoadingRoles.value = true
   try {
-    const res = await $fetch<{ items: Role[] }>("/api/roles");
-    availableRoles.value = res?.items ?? [];
+    const res = await $fetch<{ items: Role[] }>('/api/roles')
+    availableRoles.value = res?.items ?? []
   } catch {
     // non-critical
   } finally {
-    isLoadingRoles.value = false;
+    isLoadingRoles.value = false
   }
 }
 
-type Installment = { day: number; amount: string };
+type Installment = { day: number, amount: string }
 
 const emptyForm = () => ({
-  name: "",
-  role: "",
-  person_type: "pf" as string,
-  tax_id: "",
-  phone: "",
-  email: "",
+  name: '',
+  role: '',
+  person_type: 'pf' as string,
+  tax_id: '',
+  phone: '',
+  email: '',
   // Address
-  zip_code: "",
-  street: "",
-  address_number: "",
-  address_complement: "",
-  neighborhood: "",
-  city: "",
-  state: "",
+  zip_code: '',
+  street: '',
+  address_number: '',
+  address_complement: '',
+  neighborhood: '',
+  city: '',
+  state: '',
   // Salary
   has_salary: false,
-  salary_amount: "" as string,
-  payment_day: "5" as string,
+  salary_amount: '' as string,
+  payment_day: '5' as string,
   salary_installments: [] as Installment[],
   // Minimum guarantee
   has_minimum_guarantee: false,
-  minimum_guarantee_amount: "" as string,
+  minimum_guarantee_amount: '' as string,
   minimum_guarantee_installments: [] as Installment[],
   // Commission
   has_commission: false,
-  commission_type: "percentage" as string,
-  commission_amount: "" as string,
-  commission_base: "revenue" as string,
+  commission_type: 'percentage' as string,
+  commission_amount: '' as string,
+  commission_base: 'revenue' as string,
   commission_categories: [] as string[],
   // PIX
-  pix_key_type: "" as string,
-  pix_key: "",
+  pix_key_type: '' as string,
+  pix_key: '',
   // Termination
-  termination_date: "",
-  termination_reason: "",
+  termination_date: '',
+  termination_reason: '',
   // System access role (only relevant when employee has an auth user)
-  role_id: undefined as string | undefined,
-});
+  role_id: undefined as string | undefined
+})
 
-const form = reactive(emptyForm());
+const form = reactive(emptyForm())
 
 function openCreate() {
-  Object.assign(form, emptyForm());
-  isEditing.value = false;
-  selectedId.value = null;
-  isEmailLocked.value = false;
-  showModal.value = true;
+  Object.assign(form, emptyForm())
+  isEditing.value = false
+  selectedId.value = null
+  isEmailLocked.value = false
+  showModal.value = true
 }
 
 function openDetails(emp: Employee) {
-  if (typeof emp.id !== "string") return;
-  navigateTo(`/app/settings/employees/${emp.id}`);
+  if (typeof emp.id !== 'string') return
+  navigateTo(`/app/settings/employees/${emp.id}`)
 }
 
 function openEdit(emp: Employee) {
   const toInstallments = (arr: unknown[]): Installment[] =>
-    (arr || []).map((p) => ({
+    (arr || []).map(p => ({
       day: Number((p as Installment).day) || 1,
-      amount: String((p as Installment).amount ?? ""),
-    }));
+      amount: String((p as Installment).amount ?? '')
+    }))
 
   Object.assign(form, {
-    name: emp.name ?? "",
-    role: emp.role ?? "",
-    person_type: emp.person_type ?? "pf",
+    name: emp.name ?? '',
+    role: emp.role ?? '',
+    person_type: emp.person_type ?? 'pf',
     tax_id: emp.tax_id
-      ? maskCpfCnpj(String(emp.tax_id), String(emp.person_type ?? "pf"))
-      : "",
-    phone: emp.phone ? maskPhone(String(emp.phone)) : "",
-    email: emp.email ?? "",
-    zip_code: emp.zip_code ? maskCep(String(emp.zip_code)) : "",
-    street: emp.street ?? "",
-    address_number: emp.address_number ?? "",
-    address_complement: emp.address_complement ?? "",
-    neighborhood: emp.neighborhood ?? "",
-    city: emp.city ?? "",
-    state: emp.state ?? "",
+      ? maskCpfCnpj(String(emp.tax_id), String(emp.person_type ?? 'pf'))
+      : '',
+    phone: emp.phone ? maskPhone(String(emp.phone)) : '',
+    email: emp.email ?? '',
+    zip_code: emp.zip_code ? maskCep(String(emp.zip_code)) : '',
+    street: emp.street ?? '',
+    address_number: emp.address_number ?? '',
+    address_complement: emp.address_complement ?? '',
+    neighborhood: emp.neighborhood ?? '',
+    city: emp.city ?? '',
+    state: emp.state ?? '',
     has_salary: emp.has_salary ?? false,
-    salary_amount: emp.salary_amount != null ? String(emp.salary_amount) : "",
-    payment_day: emp.payment_day != null ? String(emp.payment_day) : "5",
+    salary_amount: emp.salary_amount != null ? String(emp.salary_amount) : '',
+    payment_day: emp.payment_day != null ? String(emp.payment_day) : '5',
     salary_installments: toInstallments(emp.salary_installments as unknown[]),
     has_minimum_guarantee: emp.has_minimum_guarantee ?? false,
     minimum_guarantee_amount:
       emp.minimum_guarantee_amount != null
         ? String(emp.minimum_guarantee_amount)
-        : "",
+        : '',
     minimum_guarantee_installments: toInstallments(
-      emp.minimum_guarantee_installments as unknown[],
+      emp.minimum_guarantee_installments as unknown[]
     ),
     has_commission: emp.has_commission ?? false,
-    commission_type: emp.commission_type ?? "percentage",
+    commission_type: emp.commission_type ?? 'percentage',
     commission_amount:
-      emp.commission_amount != null ? String(emp.commission_amount) : "",
-    commission_base: emp.commission_base ?? "revenue",
+      emp.commission_amount != null ? String(emp.commission_amount) : '',
+    commission_base: emp.commission_base ?? 'revenue',
     commission_categories: emp.commission_categories ?? [],
-    pix_key_type: emp.pix_key_type ?? "",
+    pix_key_type: emp.pix_key_type ?? '',
     pix_key: (() => {
-      const raw = String(emp.pix_key ?? "");
-      const type = String(emp.pix_key_type ?? "");
-      if (type === "cpf") return maskCpfCnpj(raw, "pf");
-      if (type === "cnpj") return maskCpfCnpj(raw, "pj");
-      if (type === "phone") return maskPhone(raw);
-      return raw;
+      const raw = String(emp.pix_key ?? '')
+      const type = String(emp.pix_key_type ?? '')
+      if (type === 'cpf') return maskCpfCnpj(raw, 'pf')
+      if (type === 'cnpj') return maskCpfCnpj(raw, 'pj')
+      if (type === 'phone') return maskPhone(raw)
+      return raw
     })(),
-    termination_date: emp.termination_date ? String(emp.termination_date) : "",
-    termination_reason: emp.termination_reason ?? "",
-  });
+    termination_date: emp.termination_date ? String(emp.termination_date) : '',
+    termination_reason: emp.termination_reason ?? ''
+  })
 
-  isEditing.value = true;
-  selectedId.value = emp.id as string;
-  isEmailLocked.value = false;
-  editFormHasAuthUser.value = false;
-  form.role_id = undefined;
-  showModal.value = true;
+  isEditing.value = true
+  selectedId.value = emp.id as string
+  isEmailLocked.value = false
+  editFormHasAuthUser.value = false
+  form.role_id = undefined
+  showModal.value = true
 
-  if (emp.has_commission) loadProductCategories();
-  loadRoles();
+  if (emp.has_commission) loadProductCategories()
+  loadRoles()
 
-  if (typeof emp.id === "string") {
+  if (typeof emp.id === 'string') {
     fetchEmployeeAccessStatus(emp.id)
       .then((status) => {
-        isEmailLocked.value = status.hasAuthUser;
-        editFormHasAuthUser.value = status.hasAuthUser;
+        isEmailLocked.value = status.hasAuthUser
+        editFormHasAuthUser.value = status.hasAuthUser
         if (status.hasAuthUser && status.role_id) {
-          form.role_id = status.role_id;
+          form.role_id = status.role_id
         }
       })
       .catch(() => {
-        isEmailLocked.value = false;
-        editFormHasAuthUser.value = false;
-      });
+        isEmailLocked.value = false
+        editFormHasAuthUser.value = false
+      })
   }
 }
 
 watch(
   () => form.has_commission,
   (val) => {
-    if (val) loadProductCategories();
-  },
-);
+    if (val) loadProductCategories()
+  }
+)
 watch(
   () => form.pix_key_type,
   () => {
-    form.pix_key = "";
-  },
-);
+    form.pix_key = ''
+  }
+)
 
 // ─── Mask helpers ─────────────────────────────────────────
 function maskPhone(raw: string): string {
-  const d = raw.replace(/\D/g, "").slice(0, 11);
+  const d = raw.replace(/\D/g, '').slice(0, 11)
   if (d.length <= 10)
     return d.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, a, b, c) =>
-      c ? `(${a}) ${b}-${c}` : b ? `(${a}) ${b}` : a ? `(${a}` : "",
-    );
+      c ? `(${a}) ${b}-${c}` : b ? `(${a}) ${b}` : a ? `(${a}` : ''
+    )
   return d.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, a, b, c) =>
-    c ? `(${a}) ${b}-${c}` : `(${a}) ${b}`,
-  );
+    c ? `(${a}) ${b}-${c}` : `(${a}) ${b}`
+  )
 }
 
 function maskCpfCnpj(raw: string, type: string): string {
-  const d = raw.replace(/\D/g, "");
-  if (type === "pf") {
+  const d = raw.replace(/\D/g, '')
+  if (type === 'pf') {
     return d
       .slice(0, 11)
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
   }
   return d
     .slice(0, 14)
-    .replace(/(\d{2})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1/$2")
-    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
 }
 
 function maskCep(raw: string): string {
-  const d = raw.replace(/\D/g, "").slice(0, 8);
-  return d.replace(/(\d{5})(\d)/, "$1-$2");
+  const d = raw.replace(/\D/g, '').slice(0, 8)
+  return d.replace(/(\d{5})(\d)/, '$1-$2')
 }
 
 function onPhoneInput(e: Event) {
-  form.phone = maskPhone((e.target as HTMLInputElement).value);
+  form.phone = maskPhone((e.target as HTMLInputElement).value)
 }
 
 function onTaxIdInput(e: Event) {
   form.tax_id = maskCpfCnpj(
     (e.target as HTMLInputElement).value,
-    form.person_type,
-  );
+    form.person_type
+  )
 }
 
 function onCepInput(e: Event) {
-  form.zip_code = maskCep((e.target as HTMLInputElement).value);
+  form.zip_code = maskCep((e.target as HTMLInputElement).value)
 }
 
 function onPixKeyInput(e: Event) {
-  const v = (e.target as HTMLInputElement).value;
-  if (form.pix_key_type === "cpf") form.pix_key = maskCpfCnpj(v, "pf");
-  else if (form.pix_key_type === "cnpj") form.pix_key = maskCpfCnpj(v, "pj");
-  else if (form.pix_key_type === "phone") form.pix_key = maskPhone(v);
-  else form.pix_key = v;
+  const v = (e.target as HTMLInputElement).value
+  if (form.pix_key_type === 'cpf') form.pix_key = maskCpfCnpj(v, 'pf')
+  else if (form.pix_key_type === 'cnpj') form.pix_key = maskCpfCnpj(v, 'pj')
+  else if (form.pix_key_type === 'phone') form.pix_key = maskPhone(v)
+  else form.pix_key = v
 }
 
 watch(
   () => form.person_type,
   () => {
-    form.tax_id = maskCpfCnpj(form.tax_id, form.person_type);
-  },
-);
+    form.tax_id = maskCpfCnpj(form.tax_id, form.person_type)
+  }
+)
 
 // ─── CEP lookup ───────────────────────────────────────────
 async function lookupCep() {
-  const cep = form.zip_code.replace(/\D/g, "");
-  if (cep.length !== 8 || isFetchingCep.value) return;
-  isFetchingCep.value = true;
+  const cep = form.zip_code.replace(/\D/g, '')
+  if (cep.length !== 8 || isFetchingCep.value) return
+  isFetchingCep.value = true
   try {
     const res = await $fetch<Record<string, unknown>>(
-      `https://viacep.com.br/ws/${cep}/json/`,
-    );
+      `https://viacep.com.br/ws/${cep}/json/`
+    )
     if (res && !res.erro) {
-      form.street = String(res.logradouro || "");
-      form.neighborhood = String(res.bairro || "");
-      form.city = String(res.localidade || "");
-      form.state = String(res.uf || "");
+      form.street = String(res.logradouro || '')
+      form.neighborhood = String(res.bairro || '')
+      form.city = String(res.localidade || '')
+      form.state = String(res.uf || '')
     }
   } catch {
     // optional
   } finally {
-    isFetchingCep.value = false;
+    isFetchingCep.value = false
   }
 }
 
 // ─── Installment helpers ──────────────────────────────────
 function addSalaryInstallment() {
-  form.salary_installments.push({ day: 5, amount: "" });
+  form.salary_installments.push({ day: 5, amount: '' })
 }
 function removeSalaryInstallment(i: number) {
-  form.salary_installments.splice(i, 1);
+  form.salary_installments.splice(i, 1)
 }
 function addMinGuaranteeInstallment() {
-  form.minimum_guarantee_installments.push({ day: 5, amount: "" });
+  form.minimum_guarantee_installments.push({ day: 5, amount: '' })
 }
 function removeMinGuaranteeInstallment(i: number) {
-  form.minimum_guarantee_installments.splice(i, 1);
+  form.minimum_guarantee_installments.splice(i, 1)
 }
 
 // ─── Save ─────────────────────────────────────────────────
 async function save() {
-  if (isSaving.value) return;
-  isSaving.value = true;
+  if (isSaving.value) return
+  isSaving.value = true
   try {
     const toPayload = (arr: Installment[]) =>
-      arr.map((p) => ({
+      arr.map(p => ({
         day: Number(p.day) || 1,
-        amount: parseFloat(p.amount) || 0,
-      }));
+        amount: parseFloat(p.amount) || 0
+      }))
 
     const cleanPixKey = (key: string, type: string) =>
-      ["cpf", "cnpj", "phone"].includes(type) ? key.replace(/\D/g, "") : key;
+      ['cpf', 'cnpj', 'phone'].includes(type) ? key.replace(/\D/g, '') : key
 
     const body: Record<string, unknown> = {
       name: form.name.trim(),
       role: form.role || null,
       person_type: form.person_type,
-      tax_id: form.tax_id.replace(/\D/g, "") || null,
-      phone: form.phone.replace(/\D/g, "") || null,
+      tax_id: form.tax_id.replace(/\D/g, '') || null,
+      phone: form.phone.replace(/\D/g, '') || null,
       email: form.email || null,
-      zip_code: form.zip_code.replace(/\D/g, "") || null,
+      zip_code: form.zip_code.replace(/\D/g, '') || null,
       street: form.street || null,
       address_number: form.address_number || null,
       address_complement: form.address_complement || null,
@@ -367,11 +367,11 @@ async function save() {
       state: form.state || null,
       has_salary: form.has_salary,
       salary_amount:
-        form.has_salary && form.salary_amount !== ""
+        form.has_salary && form.salary_amount !== ''
           ? parseFloat(String(form.salary_amount))
           : null,
       payment_day:
-        form.has_salary && form.payment_day !== ""
+        form.has_salary && form.payment_day !== ''
           ? Number(String(form.payment_day))
           : null,
       salary_installments: form.has_salary
@@ -379,7 +379,7 @@ async function save() {
         : [],
       has_minimum_guarantee: form.has_minimum_guarantee,
       minimum_guarantee_amount:
-        form.has_minimum_guarantee && form.minimum_guarantee_amount !== ""
+        form.has_minimum_guarantee && form.minimum_guarantee_amount !== ''
           ? parseFloat(String(form.minimum_guarantee_amount))
           : null,
       minimum_guarantee_installments: form.has_minimum_guarantee
@@ -388,7 +388,7 @@ async function save() {
       has_commission: form.has_commission,
       commission_type: form.has_commission ? form.commission_type : null,
       commission_amount:
-        form.has_commission && form.commission_amount !== ""
+        form.has_commission && form.commission_amount !== ''
           ? parseFloat(String(form.commission_amount))
           : null,
       commission_base: form.has_commission ? form.commission_base : null,
@@ -404,201 +404,201 @@ async function save() {
       role_id:
         isEditing.value && editFormHasAuthUser.value
           ? form.role_id || null
-          : undefined,
-    };
+          : undefined
+    }
 
     if (isEditing.value && selectedId.value) {
       await $fetch(`/api/employees/${selectedId.value}`, {
-        method: "PUT",
-        body,
-      });
-      toast.add({ title: "Funcionário atualizado", color: "success" });
+        method: 'PUT',
+        body
+      })
+      toast.add({ title: 'Funcionário atualizado', color: 'success' })
     } else {
-      await $fetch("/api/employees", { method: "POST", body });
-      toast.add({ title: "Funcionário criado", color: "success" });
+      await $fetch('/api/employees', { method: 'POST', body })
+      toast.add({ title: 'Funcionário criado', color: 'success' })
     }
 
-    showModal.value = false;
-    await refresh();
+    showModal.value = false
+    await refresh()
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro",
+      title: 'Erro',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível salvar",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível salvar',
+      color: 'error'
+    })
   } finally {
-    isSaving.value = false;
+    isSaving.value = false
   }
 }
 
 // ─── Delete ───────────────────────────────────────────────
-const showConfirm = ref(false);
-const isDeleting = ref(false);
-const pendingDelete = ref<Employee | null>(null);
+const showConfirm = ref(false)
+const isDeleting = ref(false)
+const pendingDelete = ref<Employee | null>(null)
 
 function askDelete(emp: Employee) {
-  pendingDelete.value = emp;
-  showConfirm.value = true;
+  pendingDelete.value = emp
+  showConfirm.value = true
 }
 
 async function confirmDelete() {
-  if (!pendingDelete.value || isDeleting.value) return;
-  isDeleting.value = true;
+  if (!pendingDelete.value || isDeleting.value) return
+  isDeleting.value = true
   try {
     await $fetch(`/api/employees/${pendingDelete.value.id}`, {
-      method: "DELETE",
-    });
-    toast.add({ title: "Funcionário removido", color: "success" });
-    showConfirm.value = false;
-    pendingDelete.value = null;
-    await refresh();
+      method: 'DELETE'
+    })
+    toast.add({ title: 'Funcionário removido', color: 'success' })
+    showConfirm.value = false
+    pendingDelete.value = null
+    await refresh()
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro",
+      title: 'Erro',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível remover",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível remover',
+      color: 'error'
+    })
   } finally {
-    isDeleting.value = false;
+    isDeleting.value = false
   }
 }
 
 // ─── Grant access modal ───────────────────────────────────
-const showAccessModal = ref(false);
-const accessEmployee = ref<Employee | null>(null);
-const accessStatus = ref<{ hasAuthUser: boolean; active?: boolean } | null>(
-  null,
-);
-const isLoadingAccessStatus = ref(false);
-const isLinkingAccess = ref(false);
+const showAccessModal = ref(false)
+const accessEmployee = ref<Employee | null>(null)
+const accessStatus = ref<{ hasAuthUser: boolean, active?: boolean } | null>(
+  null
+)
+const isLoadingAccessStatus = ref(false)
+const isLinkingAccess = ref(false)
 
 async function fetchEmployeeAccessStatus(employeeId: string) {
   return await $fetch<{
-    hasAuthUser: boolean;
-    active?: boolean;
-    role_id?: string | null;
-  }>("/api/users/employee-auth-status", {
-    method: "POST",
-    body: { employee_id: employeeId },
-  });
+    hasAuthUser: boolean
+    active?: boolean
+    role_id?: string | null
+  }>('/api/users/employee-auth-status', {
+    method: 'POST',
+    body: { employee_id: employeeId }
+  })
 }
 
 async function openGrantAccess(emp: Employee) {
-  accessEmployee.value = emp;
-  accessStatus.value = null;
-  isLoadingAccessStatus.value = true;
-  showAccessModal.value = true;
+  accessEmployee.value = emp
+  accessStatus.value = null
+  isLoadingAccessStatus.value = true
+  showAccessModal.value = true
   try {
-    const res = await fetchEmployeeAccessStatus(String(emp.id));
-    accessStatus.value = res;
+    const res = await fetchEmployeeAccessStatus(String(emp.id))
+    accessStatus.value = res
   } catch {
-    accessStatus.value = null;
+    accessStatus.value = null
   } finally {
-    isLoadingAccessStatus.value = false;
+    isLoadingAccessStatus.value = false
   }
 }
 
 async function grantAccess() {
-  if (!accessEmployee.value || isLinkingAccess.value) return;
-  isLinkingAccess.value = true;
+  if (!accessEmployee.value || isLinkingAccess.value) return
+  isLinkingAccess.value = true
   try {
     await $fetch(`/api/employees/${accessEmployee.value.id}/grant-access`, {
-      method: "POST" as const,
-    });
-    accessStatus.value = { hasAuthUser: true, active: true };
+      method: 'POST' as const
+    })
+    accessStatus.value = { hasAuthUser: true, active: true }
     if (accessEmployee.value.id === selectedId.value) {
-      editFormHasAuthUser.value = true;
+      editFormHasAuthUser.value = true
     }
     toast.add({
-      title: "Acesso criado!",
+      title: 'Acesso criado!',
       description: `${accessEmployee.value.name} receberá um email para definir a senha.`,
-      color: "success",
-    });
+      color: 'success'
+    })
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro ao vincular acesso",
+      title: 'Erro ao vincular acesso',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível vincular",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível vincular',
+      color: 'error'
+    })
   } finally {
-    isLinkingAccess.value = false;
+    isLinkingAccess.value = false
   }
 }
 
 // ─── Status helpers ───────────────────────────────────────
 function getEmployeeStatus(emp: Employee): {
-  label: string;
-  color: "success" | "warning" | "neutral";
+  label: string
+  color: 'success' | 'warning' | 'neutral'
 } {
-  if (!emp.termination_date) return { label: "Ativo", color: "success" };
-  const today = new Date().toISOString().split("T")[0]!;
+  if (!emp.termination_date) return { label: 'Ativo', color: 'success' }
+  const today = new Date().toISOString().split('T')[0]!
   if (String(emp.termination_date) <= today)
-    return { label: "Demitido", color: "neutral" };
-  return { label: "Demissão agendada", color: "warning" };
+    return { label: 'Demitido', color: 'neutral' }
+  return { label: 'Demissão agendada', color: 'warning' }
 }
 
 function getInitials(name: string) {
-  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "?";
-  if (parts.length === 1) return (parts[0]?.charAt(0) ?? "?").toUpperCase();
+  const parts = (name || '').trim().split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+  if (parts.length === 1) return (parts[0]?.charAt(0) ?? '?').toUpperCase()
   return (
-    (parts[0]?.charAt(0) ?? "") + (parts[parts.length - 1]?.charAt(0) ?? "")
-  ).toUpperCase();
+    (parts[0]?.charAt(0) ?? '') + (parts[parts.length - 1]?.charAt(0) ?? '')
+  ).toUpperCase()
 }
 
 // ─── Select options ────────────────────────────────────────
 const personTypeOptions = [
-  { label: "Pessoa Física (PF)", value: "pf" },
-  { label: "Pessoa Jurídica (PJ)", value: "pj" },
-];
+  { label: 'Pessoa Física (PF)', value: 'pf' },
+  { label: 'Pessoa Jurídica (PJ)', value: 'pj' }
+]
 
 const commissionTypeOptions = [
-  { label: "Percentual (%)", value: "percentage" },
-  { label: "Valor fixo (R$)", value: "fixed_amount" },
-];
+  { label: 'Percentual (%)', value: 'percentage' },
+  { label: 'Valor fixo (R$)', value: 'fixed_amount' }
+]
 
 const commissionBaseOptions = [
-  { label: "Valor bruto (receita total)", value: "revenue" },
-  { label: "Lucro (receita − custos)", value: "profit" },
-];
+  { label: 'Valor bruto (receita total)', value: 'revenue' },
+  { label: 'Lucro (receita − custos)', value: 'profit' }
+]
 
 const pixKeyTypeOptions = [
-  { label: "CPF", value: "cpf" },
-  { label: "CNPJ", value: "cnpj" },
-  { label: "E-mail", value: "email" },
-  { label: "Telefone", value: "phone" },
-  { label: "Chave aleatória", value: "random_key" },
-];
+  { label: 'CPF', value: 'cpf' },
+  { label: 'CNPJ', value: 'cnpj' },
+  { label: 'E-mail', value: 'email' },
+  { label: 'Telefone', value: 'phone' },
+  { label: 'Chave aleatória', value: 'random_key' }
+]
 
 // ─── Table columns ─────────────────────────────────────────
 const columns = [
-  { accessorKey: "name", header: "Funcionário", enableSorting: false },
-  { accessorKey: "role", header: "Cargo", enableSorting: false },
-  { accessorKey: "phone", header: "Telefone", enableSorting: false },
-  { accessorKey: "status_col", header: "Status", enableSorting: false },
-  { id: "actions", header: "", enableSorting: false },
-];
+  { accessorKey: 'name', header: 'Funcionário', enableSorting: false },
+  { accessorKey: 'role', header: 'Cargo', enableSorting: false },
+  { accessorKey: 'phone', header: 'Telefone', enableSorting: false },
+  { accessorKey: 'status_col', header: 'Status', enableSorting: false },
+  { id: 'actions', header: '', enableSorting: false }
+]
 </script>
 
 <template>
@@ -657,7 +657,7 @@ const columns = [
             :src="String(row.original.photo_url)"
             :alt="String(row.original.name ?? '')"
             class="size-8 shrink-0 rounded-full object-cover"
-          />
+          >
           <div
             v-else
             class="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10"
@@ -955,10 +955,8 @@ const columns = [
               <!-- Parcelas do salário -->
               <div class="rounded-md bg-elevated/40 p-3 space-y-2">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-muted"
-                    >Dividir em parcelas
-                    <span class="font-normal">(opcional)</span></span
-                  >
+                  <span class="text-xs font-medium text-muted">Dividir em parcelas
+                    <span class="font-normal">(opcional)</span></span>
                   <UButton
                     label="+ Parcela"
                     size="xs"
@@ -1029,10 +1027,8 @@ const columns = [
               <!-- Parcelas do mínimo -->
               <div class="rounded-md bg-elevated/40 p-3 space-y-2">
                 <div class="flex items-center justify-between">
-                  <span class="text-xs font-medium text-muted"
-                    >Dividir em parcelas
-                    <span class="font-normal">(opcional)</span></span
-                  >
+                  <span class="text-xs font-medium text-muted">Dividir em parcelas
+                    <span class="font-normal">(opcional)</span></span>
                   <UButton
                     label="+ Parcela"
                     size="xs"
@@ -1155,10 +1151,11 @@ const columns = [
                         if (v) {
                           if (!form.commission_categories.includes(cat.id))
                             form.commission_categories.push(cat.id);
-                        } else {
-                          form.commission_categories =
-                            form.commission_categories.filter(
-                              (id: string) => id !== cat.id,
+                        }
+                        else {
+                          form.commission_categories
+                            = form.commission_categories.filter(
+                              (id: string) => id !== cat.id
                             );
                         }
                       }
@@ -1320,7 +1317,9 @@ const columns = [
         v-else-if="!accessEmployee?.email"
         class="rounded-lg border border-warning/40 bg-warning/10 p-4"
       >
-        <p class="text-sm font-medium">E-mail não cadastrado</p>
+        <p class="text-sm font-medium">
+          E-mail não cadastrado
+        </p>
         <p class="mt-1 text-sm text-muted">
           Edite o cadastro do funcionário e adicione um e-mail para poder gerar
           acesso.
@@ -1337,13 +1336,14 @@ const columns = [
             class="mt-0.5 size-5 shrink-0 text-success"
           />
           <div>
-            <p class="font-medium text-success">Funcionário já possui acesso</p>
+            <p class="font-medium text-success">
+              Funcionário já possui acesso
+            </p>
             <p class="mt-1 text-sm text-muted">
               {{ accessEmployee?.name }} pode fazer login com o e-mail
               <strong class="text-highlighted">{{
                 accessEmployee?.email
-              }}</strong
-              >.
+              }}</strong>.
             </p>
             <UBadge
               :color="accessStatus.active ? 'success' : 'neutral'"
@@ -1373,8 +1373,7 @@ const columns = [
                 O sistema vai criar o usuário de
                 <strong class="text-highlighted">{{
                   accessEmployee?.name
-                }}</strong
-                >, vincular automaticamente à organização e enviar um email para
+                }}</strong>, vincular automaticamente à organização e enviar um email para
                 <strong class="text-highlighted">{{
                   accessEmployee?.email
                 }}</strong>
