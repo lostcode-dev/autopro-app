@@ -247,7 +247,7 @@ function openRoleDetails(role: Role | null) {
     </UPageCard>
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-      <UPageCard title="Papéis" description="Perfis disponíveis para vincular aos usuários." variant="subtle">
+      <UPageCard variant="subtle">
         <div v-if="status === 'pending'" class="space-y-3">
           <USkeleton v-for="i in 5" :key="i" class="h-16 w-full rounded-lg" />
         </div>
