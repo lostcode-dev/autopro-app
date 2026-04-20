@@ -483,7 +483,7 @@ watch(userOptions, (options) => {
               variant="subtle"
             >
               <div class="space-y-4">
-                <UFormField label="Nome exibido" required>
+                <UFormField label="Nome" required>
                   <UInput
                     v-model="roleForm.display_name"
                     class="w-full"
