@@ -96,18 +96,18 @@ VALUES (
 ON CONFLICT (id) DO NOTHING;
 
 -- Public read (attachments are accessed via public URL)
-CREATE POLICY IF NOT EXISTS "support-attachments public read"
+CREATE POLICY "support-attachments public read"
     ON storage.objects FOR SELECT
     USING (bucket_id = 'support-attachments');
 
-CREATE POLICY IF NOT EXISTS "support-attachments service role insert"
+CREATE POLICY "support-attachments service role insert"
     ON storage.objects FOR INSERT
     WITH CHECK (bucket_id = 'support-attachments');
 
-CREATE POLICY IF NOT EXISTS "support-attachments service role update"
+CREATE POLICY "support-attachments service role update"
     ON storage.objects FOR UPDATE
     USING (bucket_id = 'support-attachments');
 
-CREATE POLICY IF NOT EXISTS "support-attachments service role delete"
+CREATE POLICY "support-attachments service role delete"
     ON storage.objects FOR DELETE
     USING (bucket_id = 'support-attachments');
