@@ -56,10 +56,23 @@ export function useUserPreferences() {
   const requestFetch = useRequestFetch()
   const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
+  function syncColorMode(mode: ColorModePreference) {
+    colorMode.forced = false
+    colorMode.preference = mode
+    colorMode.value = mode
+
+    if (!import.meta.client) return
+
+    window.localStorage?.setItem('nuxt-color-mode', mode)
+    document.documentElement.classList.remove('light', 'dark')
+    document.documentElement.classList.add(mode)
+    document.documentElement.setAttribute('data-color-mode', mode)
+  }
+
   function applyTheme(theme: ThemePreset) {
     appConfig.ui.colors.primary = theme.primary_color
     appConfig.ui.colors.neutral = theme.neutral_color
-    colorMode.preference = theme.color_mode
+    syncColorMode(theme.color_mode)
   }
 
   async function load() {

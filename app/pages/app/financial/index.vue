@@ -214,35 +214,41 @@ const _hasActiveFilters = computed(() =>
   )
 )
 
-// ── Summary sections ──────────────────────────────────────────────────────────
+// ── Summary cards ─────────────────────────────────────────────────────────────
 
-const summarySections = computed(() => [
+const summaryCards = computed(() => [
   {
-    key: 'total',
-    label: 'Total',
-    cards: [
-      { key: 'income', label: 'Entradas (Total)', value: summary.value.total.income, colorClass: 'text-success' },
-      { key: 'expense', label: 'Saídas (Total)', value: summary.value.total.expense, colorClass: 'text-error' },
-      { key: 'balance', label: 'Saldo Total', value: summary.value.total.balance, colorClass: summary.value.total.balance >= 0 ? 'text-success' : 'text-error' }
-    ]
+    key: 'income',
+    label: 'Receitas',
+    icon: 'i-lucide-trending-up',
+    iconClass: 'text-success',
+    bgClass: 'bg-success/10',
+    valueClass: 'text-success',
+    total: summary.value.total.income,
+    paid: summary.value.paid.income,
+    pending: summary.value.pending.income
   },
   {
-    key: 'paid',
-    label: 'Pagos',
-    cards: [
-      { key: 'income', label: 'Entradas (Pagas)', value: summary.value.paid.income, colorClass: 'text-success' },
-      { key: 'expense', label: 'Saídas (Pagas)', value: summary.value.paid.expense, colorClass: 'text-error' },
-      { key: 'balance', label: 'Saldo Pago', value: summary.value.paid.balance, colorClass: summary.value.paid.balance >= 0 ? 'text-success' : 'text-error' }
-    ]
+    key: 'expense',
+    label: 'Despesas',
+    icon: 'i-lucide-trending-down',
+    iconClass: 'text-error',
+    bgClass: 'bg-error/10',
+    valueClass: 'text-error',
+    total: summary.value.total.expense,
+    paid: summary.value.paid.expense,
+    pending: summary.value.pending.expense
   },
   {
-    key: 'pending',
-    label: 'Pendentes',
-    cards: [
-      { key: 'income', label: 'Entradas (Pendentes)', value: summary.value.pending.income, colorClass: 'text-warning' },
-      { key: 'expense', label: 'Saídas (Pendentes)', value: summary.value.pending.expense, colorClass: 'text-warning' },
-      { key: 'balance', label: 'Saldo Pendente', value: summary.value.pending.balance, colorClass: 'text-muted' }
-    ]
+    key: 'balance',
+    label: 'Saldo',
+    icon: 'i-lucide-wallet',
+    iconClass: summary.value.total.balance >= 0 ? 'text-success' : 'text-error',
+    bgClass: summary.value.total.balance >= 0 ? 'bg-success/10' : 'bg-error/10',
+    valueClass: summary.value.total.balance >= 0 ? 'text-success' : 'text-error',
+    total: summary.value.total.balance,
+    paid: summary.value.paid.balance,
+    pending: summary.value.pending.balance
   }
 ])
 
@@ -588,37 +594,47 @@ const columns = [
     <template #body>
       <div v-if="!canRead" class="p-6">
         <p class="text-sm text-muted">
-          Você não tem permissão para visualizar lançamentos financeiros.
-        </p>
-      </div>
-
-      <div v-else class="space-y-4 p-4">
-        <!-- Summary cards -->
-        <div class="overflow-hidden rounded-xl border border-default/80 bg-default/60">
+          Você não tgrid grid-cols-1 gap-4 sm:grid-cols-3">
           <div
-            v-for="(section, idx) in summarySections"
-            :key="section.key"
-            :class="[
-              'grid grid-cols-[80px_repeat(3,1fr)] divide-x divide-default/60',
-              idx < summarySections.length - 1 ? 'border-b border-default/60' : ''
-            ]"
+            v-for="card in summaryCards"
+            :key="card.key"
+            class="rounded-xl border border-default/80 bg-default p-4 shadow-sm"
           >
-            <div class="flex items-center justify-center bg-default/40 p-3">
-              <span class="text-center text-xs font-semibold uppercase tracking-wider text-muted">
-                {{ section.label }}
-              </span>
+            <div class="flex items-start justify-between">
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-muted">
+                  {{ card.label }}
+                </p>
+                <p class="mt-1 text-2xl font-bold" :class="card.valueClass">
+                  {{ formatCurrency(card.total) }}
+                </p>
+              </div>
+              <div class="ml-3 shrink-0 rounded-lg p-2" :class="card.bgClass">
+                <UIcon :name="card.icon" class="size-5" :class="card.iconClass" />
+              </div>
             </div>
-            <div
-              v-for="card in section.cards"
-              :key="card.key"
-              class="min-w-0 px-4 py-3"
-            >
-              <p class="truncate text-xs text-muted">
-                {{ card.label }}
-              </p>
-              <p class="mt-1 text-base font-semibold" :class="card.colorClass">
-                {{ formatCurrency(card.value) }}
-              </p>
+            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-default/60 pt-3">
+              <div class="flex items-center gap-1 text-xs">
+                <UIcon name="i-lucide-circle-check" class="size-3.5 shrink-0 text-success" />
+                <span class="text-muted">Pago:</span>
+                <span class="font-semibold text-highlighted">{{ formatCurrency(card.paid) }}</span>
+              </div>
+              <div class="flex items-center gap-1 text-xs">
+                <UIcon name="i-lucide-clock" class="size-3.5 shrink-0 text-warning" />
+                <span class="text-muted">Pendente:</span>
+                <span class="font-semibold text-highlighted">{{ formatCurrency(card.pending) }}</span>
+              </div>
+            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-default/60 pt-3">
+              <div class="flex items-center gap-1 text-xs">
+                <UIcon name="i-lucide-circle-check" class="size-3.5 shrink-0 text-success" />
+                <span class="text-muted">Pago:</span>
+                <span class="font-semibold text-highlighted">{{ formatCurrency(card.paid) }}</span>
+              </div>
+              <div class="flex items-center gap-1 text-xs">
+                <UIcon name="i-lucide-clock" class="size-3.5 shrink-0 text-warning" />
+                <span class="text-muted">Pendente:</span>
+                <span class="font-semibold text-highlighted">{{ formatCurrency(card.pending) }}</span>
+              </div>
             </div>
           </div>
         </div>
