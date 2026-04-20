@@ -305,69 +305,65 @@ const fiscalRegimeOptions = [
           Identificação
         </p>
 
-        <UFormField
-          name="name"
-          label="Razão social"
-          description="Nome jurídico registrado da empresa."
-          required
-          class="gap-4"
-        >
-          <UInput
-            v-model="form.name"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="Ex: Oficina Silva LTDA"
-          />
-        </UFormField>
+        <div class="gap-4 grid-cols-2">
+          <UFormField
+            name="name"
+            label="Razão social"
+            description="Nome jurídico registrado da empresa."
+            required
+            class="gap-4"
+          >
+            <UInput
+              v-model="form.name"
+              :disabled="!canUpdate"
+              class="w-full"
+              placeholder="Ex: Oficina Silva LTDA"
+            />
+          </UFormField>
 
-        <USeparator />
+          <UFormField
+            name="trade_name"
+            label="Nome fantasia"
+            description="Como a oficina é conhecida pelos clientes."
+            class="gap-4"
+          >
+            <UInput
+              v-model="form.trade_name"
+              :disabled="!canUpdate"
+              class="w-full"
+              placeholder="Ex: Oficina do Silva"
+            />
+          </UFormField>
 
-        <UFormField
-          name="trade_name"
-          label="Nome fantasia"
-          description="Como a oficina é conhecida pelos clientes."
-          class="gap-4"
-        >
-          <UInput
-            v-model="form.trade_name"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="Ex: Oficina do Silva"
-          />
-        </UFormField>
+          <UFormField
+            name="tax_id"
+            label="CNPJ / CPF"
+            description="Documento de identificação fiscal."
+            class="gap-4"
+          >
+            <UInput
+              v-model="form.tax_id"
+              :disabled="!canUpdate"
+              class="w-full"
+              placeholder="00.000.000/0001-00"
+            />
+          </UFormField>
 
-        <USeparator />
-
-        <UFormField
-          name="tax_id"
-          label="CNPJ / CPF"
-          description="Documento de identificação fiscal."
-          class="gap-4"
-        >
-          <UInput
-            v-model="form.tax_id"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="00.000.000/0001-00"
-          />
-        </UFormField>
-
-        <USeparator />
-
-        <UFormField
-          name="description"
-          label="Descrição"
-          description="Breve apresentação da oficina (opcional)."
-          class="gap-4"
-        >
-          <UTextarea
-            v-model="form.description"
-            :disabled="!canUpdate"
-            class="w-full"
-            :rows="3"
-            placeholder="Ex: Especializada em veículos leves e pesados desde 2005."
-          />
-        </UFormField>
+          <UFormField
+            name="description"
+            label="Descrição"
+            description="Breve apresentação da oficina (opcional)."
+            class="gap-4"
+          >
+            <UTextarea
+              v-model="form.description"
+              :disabled="!canUpdate"
+              class="w-full"
+              :rows="3"
+              placeholder="Ex: Especializada em veículos leves e pesados desde 2005."
+            />
+          </UFormField>
+        </div>
       </UPageCard>
 
       <!-- Contato -->
@@ -395,11 +391,7 @@ const fiscalRegimeOptions = [
 
         <USeparator />
 
-        <UFormField
-          name="phone"
-          label="Telefone fixo"
-          class="gap-4"
-        >
+        <UFormField name="phone" label="Telefone fixo" class="gap-4">
           <UInput
             v-model="form.phone"
             :disabled="!canUpdate"
@@ -425,11 +417,7 @@ const fiscalRegimeOptions = [
 
         <USeparator />
 
-        <UFormField
-          name="website"
-          label="Website"
-          class="gap-4"
-        >
+        <UFormField name="website" label="Website" class="gap-4">
           <UInput
             v-model="form.website"
             :disabled="!canUpdate"
@@ -475,11 +463,7 @@ const fiscalRegimeOptions = [
 
         <USeparator />
 
-        <UFormField
-          name="address_street"
-          label="Logradouro"
-          class="gap-4"
-        >
+        <UFormField name="address_street" label="Logradouro" class="gap-4">
           <UInput
             v-model="form.address_street"
             :disabled="!canUpdate"
@@ -518,11 +502,7 @@ const fiscalRegimeOptions = [
 
         <USeparator />
 
-        <UFormField
-          name="address_neighborhood"
-          label="Bairro"
-          class="gap-4"
-        >
+        <UFormField name="address_neighborhood" label="Bairro" class="gap-4">
           <UInput
             v-model="form.address_neighborhood"
             :disabled="!canUpdate"
