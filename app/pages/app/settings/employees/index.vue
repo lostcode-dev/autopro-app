@@ -806,14 +806,16 @@ const columns = [
                   <UFormField label="Valor (R$)" class="flex-1">
                     <UiCurrencyInput v-model="inst.amount" class="w-full" />
                   </UFormField>
-                  <UButton
-                    icon="i-lucide-x"
-                    color="error"
-                    variant="ghost"
-                    size="xs"
-                    class="mb-0.5"
-                    @click="removeSalaryInstallment(i)"
-                  />
+                  <UTooltip text="Remover parcela">
+                    <UButton
+                      icon="i-lucide-x"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      class="mb-0.5"
+                      @click="removeSalaryInstallment(i)"
+                    />
+                  </UTooltip>
                 </div>
               </div>
             </template>
@@ -860,14 +862,16 @@ const columns = [
                   <UFormField label="Valor (R$)" class="flex-1">
                     <UiCurrencyInput v-model="inst.amount" class="w-full" />
                   </UFormField>
-                  <UButton
-                    icon="i-lucide-x"
-                    color="error"
-                    variant="ghost"
-                    size="xs"
-                    class="mb-0.5"
-                    @click="removeMinGuaranteeInstallment(i)"
-                  />
+                  <UTooltip text="Remover parcela">
+                    <UButton
+                      icon="i-lucide-x"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      class="mb-0.5"
+                      @click="removeMinGuaranteeInstallment(i)"
+                    />
+                  </UTooltip>
                 </div>
               </div>
             </template>
