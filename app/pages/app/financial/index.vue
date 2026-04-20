@@ -47,7 +47,7 @@ type SummaryResponse = {
 }
 
 const PAGE_SIZE = 20
-const MANAGED_QUERY_KEYS = ['search', 'status', 'type', 'dateFrom', 'dateTo', 'page'] as const
+const MANAGED_QUERY_KEYS = ['search', 'status', 'type', 'category', 'dateFrom', 'dateTo', 'page'] as const
 
 const defaultSummary: SummaryResponse = {
   total: { income: 0, expense: 0, balance: 0 },
@@ -121,12 +121,14 @@ const statusFilters = ref<string[]>(parseArrayQuery(route.query.status))
 const typeFilters = ref<string[]>(parseArrayQuery(route.query.type))
 const dateFrom = ref(typeof route.query.dateFrom === 'string' ? route.query.dateFrom : defaultDateRange.from)
 const dateTo = ref(typeof route.query.dateTo === 'string' ? route.query.dateTo : defaultDateRange.to)
+const categoryFilter = ref(typeof route.query.category === 'string' ? route.query.category : '')
 const page = ref(parsePage(route.query.page))
 
 const requestQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
   status: statusFilters.value.length === 1 ? normalizeStatusForApi(statusFilters.value[0]!) : undefined,
   type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
+  category: categoryFilter.value || undefined,
   date_from: dateFrom.value || undefined,
   date_to: dateTo.value || undefined,
   page: page.value,
@@ -137,6 +139,7 @@ const requestQuery = computed(() => ({
 const summaryQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
   type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
+  category: categoryFilter.value || undefined,
   date_from: dateFrom.value || undefined,
   date_to: dateTo.value || undefined
 }))
@@ -209,10 +212,19 @@ const _hasActiveFilters = computed(() =>
     search.value
     || statusFilters.value.length
     || typeFilters.value.length
+    || categoryFilter.value
     || dateFrom.value !== defaultDateRange.from
     || dateTo.value !== defaultDateRange.to
   )
 )
+
+const uniqueCategories = computed(() => {
+  const cats = new Set<string>()
+  for (const item of accumulatedItems.value) {
+    if (item.category) cats.add(String(item.category))
+  }
+  return [...cats].sort()
+})
 
 // ── Summary cards ─────────────────────────────────────────────────────────────
 
@@ -259,6 +271,7 @@ function buildManagedQuery() {
     search: search.value || undefined,
     status: statusFilters.value.length ? statusFilters.value.join(',') : undefined,
     type: typeFilters.value.length ? typeFilters.value.join(',') : undefined,
+    category: categoryFilter.value || undefined,
     dateFrom: dateFrom.value !== defaultDateRange.from ? dateFrom.value : undefined,
     dateTo: dateTo.value !== defaultDateRange.to ? dateTo.value : undefined,
     page: page.value > 1 ? String(page.value) : undefined
@@ -283,6 +296,7 @@ watch(
     const nextType = parseArrayQuery(query.type)
     const nextDateFrom = typeof query.dateFrom === 'string' ? query.dateFrom : defaultDateRange.from
     const nextDateTo = typeof query.dateTo === 'string' ? query.dateTo : defaultDateRange.to
+    const nextCategory = typeof query.category === 'string' ? query.category : ''
     const nextPage = parsePage(query.page)
 
     if (search.value !== nextSearch) {
@@ -293,6 +307,7 @@ watch(
     if (JSON.stringify(typeFilters.value) !== JSON.stringify(nextType)) typeFilters.value = nextType
     if (dateFrom.value !== nextDateFrom) dateFrom.value = nextDateFrom
     if (dateTo.value !== nextDateTo) dateTo.value = nextDateTo
+    if (categoryFilter.value !== nextCategory) categoryFilter.value = nextCategory
     if (page.value !== nextPage) page.value = nextPage
   }
 )
@@ -310,7 +325,7 @@ watchDebounced(
 )
 
 watch(
-  [statusFilters, typeFilters, dateFrom, dateTo],
+  [statusFilters, typeFilters, dateFrom, dateTo, categoryFilter],
   async () => {
     accumulatedItems.value = []
     rowSelection.value = {}
@@ -331,6 +346,7 @@ function _resetFilters() {
   debouncedSearch.value = ''
   statusFilters.value = []
   typeFilters.value = []
+  categoryFilter.value = ''
   dateFrom.value = defaultDateRange.from
   dateTo.value = defaultDateRange.to
   accumulatedItems.value = []
@@ -572,7 +588,9 @@ function getBankAccountLabel(entry: Entry) {
 
 const typeBadgeColor: Record<string, BadgeColor> = { income: 'success', expense: 'error' }
 const typeBadgeLabel: Record<string, string> = { income: 'Receita', expense: 'Despesa' }
+const typeBadgeIcon: Record<string, string> = { income: 'i-lucide-trending-up', expense: 'i-lucide-trending-down' }
 const statusBadgeColor: Record<string, BadgeColor> = { paid: 'success', pending: 'warning' }
+const statusBadgeIcon: Record<string, string> = { paid: 'i-lucide-circle-check', pending: 'i-lucide-clock' }
 
 const columns = [
   { accessorKey: 'description', header: 'Lançamento', enableSorting: false },
@@ -713,6 +731,8 @@ const columns = [
               v-model:date-to="dateTo"
               v-model:type-filters="typeFilters"
               v-model:status-filters="statusFilters"
+              v-model:category-filter="categoryFilter"
+              :categories="uniqueCategories"
             />
           </template>
 
@@ -760,8 +780,9 @@ const columns = [
             <UBadge
               :color="typeBadgeColor[String(row.original.type)] ?? 'neutral'"
               variant="subtle"
+              :icon="typeBadgeIcon[String(row.original.type)]"
               :label="typeBadgeLabel[String(row.original.type)] ?? String(row.original.type || '—')"
-              size="xs"
+              size="sm"
             />
           </template>
 
@@ -769,8 +790,9 @@ const columns = [
             <UBadge
               :color="statusBadgeColor[normalizeStatusValue((row.original as Entry).status)] ?? 'neutral'"
               variant="subtle"
+              :icon="statusBadgeIcon[normalizeStatusValue((row.original as Entry).status)]"
               :label="formatStatusLabel((row.original as Entry).status)"
-              size="xs"
+              size="sm"
             />
           </template>
 

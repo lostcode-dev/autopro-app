@@ -1,31 +1,53 @@
 <script setup lang="ts">
-import type { TagFilterOption } from '~/components/ui/TagFilter.vue'
-
 const dateFrom = defineModel<string>('dateFrom')
 const dateTo = defineModel<string>('dateTo')
 const typeFilters = defineModel<string[]>('typeFilters', { default: () => [] })
 const statusFilters = defineModel<string[]>('statusFilters', { default: () => [] })
+const categoryFilter = defineModel<string>('categoryFilter', { default: '' })
 
-const typeOptions: TagFilterOption[] = [
-  { value: 'income', label: 'Receitas', color: 'success', icon: 'i-lucide-trending-up' },
-  { value: 'expense', label: 'Despesas', color: 'error', icon: 'i-lucide-trending-down' }
+const props = defineProps<{
+  categories?: string[]
+}>()
+
+const typeOptions = [
+  { label: 'Todos os tipos', value: '' },
+  { label: 'Receita', value: 'income' },
+  { label: 'Despesa', value: 'expense' }
 ]
 
-const statusOptions: TagFilterOption[] = [
-  { value: 'pending', label: 'Pendentes', color: 'warning', icon: 'i-lucide-clock' },
-  { value: 'paid', label: 'Pagos', color: 'success', icon: 'i-lucide-circle-check' }
+const statusOptions = [
+  { label: 'Todos os status', value: '' },
+  { label: 'Pendente', value: 'pending' },
+  { label: 'Pago', value: 'paid' }
 ]
+
+const categoryOptions = computed(() => [
+  { label: 'Todas as categorias', value: '' },
+  ...(props.categories ?? []).map(c => ({ label: c, value: c }))
+])
+
+// Bridge between string[] models and single-value USelectMenu
+const localType = computed({
+  get: () => typeFilters.value[0] ?? '',
+  set: (v: string) => { typeFilters.value = v ? [v] : [] }
+})
+
+const localStatus = computed({
+  get: () => statusFilters.value[0] ?? '',
+  set: (v: string) => { statusFilters.value = v ? [v] : [] }
+})
 
 const activeFiltersCount = computed(() => {
   let count = 0
   if (typeFilters.value.length > 0) count++
   if (statusFilters.value.length > 0) count++
+  if (categoryFilter.value) count++
   return count
 })
 </script>
 
 <template>
-  <UPopover :content="{ align: 'start' }">
+  <UPopover>
     <UButton
       icon="i-lucide-sliders-horizontal"
       :label="activeFiltersCount > 0 ? `Filtros (${activeFiltersCount})` : 'Filtros'"
@@ -35,7 +57,7 @@ const activeFiltersCount = computed(() => {
     />
 
     <template #content>
-      <div class="w-72 space-y-4 p-4">
+      <div class="w-64 space-y-3 p-3">
         <UFormField label="Período">
           <UiDateRangePicker
             v-model:from="dateFrom"
@@ -45,20 +67,32 @@ const activeFiltersCount = computed(() => {
         </UFormField>
 
         <UFormField label="Tipo">
-          <UiTagFilter
-            v-model="typeFilters"
-            :options="typeOptions"
-            placeholder="Todos"
+          <USelectMenu
+            v-model="localType"
+            :items="typeOptions"
+            value-key="value"
             class="w-full"
+            :search-input="false"
           />
         </UFormField>
 
         <UFormField label="Status">
-          <UiTagFilter
-            v-model="statusFilters"
-            :options="statusOptions"
-            placeholder="Todos"
+          <USelectMenu
+            v-model="localStatus"
+            :items="statusOptions"
+            value-key="value"
             class="w-full"
+            :search-input="false"
+          />
+        </UFormField>
+
+        <UFormField label="Categoria">
+          <USelectMenu
+            v-model="categoryFilter"
+            :items="categoryOptions"
+            value-key="value"
+            class="w-full"
+            searchable
           />
         </UFormField>
       </div>
