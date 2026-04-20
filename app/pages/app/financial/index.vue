@@ -207,6 +207,41 @@ const summary = computed(() => summaryData.value ?? defaultSummary)
 const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.value)
 const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
 
+// ── Bootstrap: load preceding pages when entering at page > 1 ────────────────
+const isBootstrapping = ref(false)
+
+onMounted(async () => {
+  const initialPage = page.value
+  if (initialPage <= 1 || !canRead.value) return
+
+  isBootstrapping.value = true
+  try {
+    const baseQuery = {
+      search: debouncedSearch.value || undefined,
+      status: statusFilters.value.length === 1 ? normalizeStatusForApi(statusFilters.value[0]!) : undefined,
+      type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
+      category: categoryFilter.value || undefined,
+      date_from: dateFrom.value || undefined,
+      date_to: dateTo.value || undefined,
+      page_size: PAGE_SIZE
+    }
+    const prefetchedItems: Entry[] = []
+    for (let p = 1; p < initialPage; p++) {
+      const res = await $fetch<FinancialResponse>('/api/financial', { query: { ...baseQuery, page: p } })
+      prefetchedItems.push(...res.items)
+    }
+    if (prefetchedItems.length > 0) {
+      const existingIds = new Set(accumulatedItems.value.map(item => item.id))
+      accumulatedItems.value = [
+        ...prefetchedItems.filter(item => !existingIds.has(item.id)),
+        ...accumulatedItems.value
+      ]
+    }
+  } finally {
+    isBootstrapping.value = false
+  }
+})
+
 const _hasActiveFilters = computed(() =>
   Boolean(
     search.value
@@ -657,7 +692,7 @@ const columns = [
           v-model:row-selection="rowSelection"
           :columns="columns"
           :data="accumulatedItems as Record<string, unknown>[]"
-          :loading="status === 'pending' && page === 1"
+          :loading="(status === 'pending' && page === 1) || isBootstrapping"
           :loading-more="loadingMore"
           :has-more="hasMore"
           :total="totalFromServer"
