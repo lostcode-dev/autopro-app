@@ -310,7 +310,7 @@ const fiscalRegimeOptions = [
           label="Razão social"
           description="Nome jurídico registrado da empresa."
           required
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.name"
@@ -326,7 +326,7 @@ const fiscalRegimeOptions = [
           name="trade_name"
           label="Nome fantasia"
           description="Como a oficina é conhecida pelos clientes."
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.trade_name"
@@ -342,7 +342,7 @@ const fiscalRegimeOptions = [
           name="tax_id"
           label="CNPJ / CPF"
           description="Documento de identificação fiscal."
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.tax_id"
@@ -358,7 +358,7 @@ const fiscalRegimeOptions = [
           name="description"
           label="Descrição"
           description="Breve apresentação da oficina (opcional)."
-          class="flex gap-4"
+          class="gap-4"
         >
           <UTextarea
             v-model="form.description"
@@ -382,7 +382,7 @@ const fiscalRegimeOptions = [
           name="email"
           label="E-mail"
           description="Para comunicação com clientes e parceiros."
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.email"
@@ -398,7 +398,7 @@ const fiscalRegimeOptions = [
         <UFormField
           name="phone"
           label="Telefone fixo"
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.phone"
@@ -413,7 +413,7 @@ const fiscalRegimeOptions = [
         <UFormField
           name="mobile_phone"
           label="Celular / WhatsApp"
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.mobile_phone"
@@ -428,7 +428,7 @@ const fiscalRegimeOptions = [
         <UFormField
           name="website"
           label="Website"
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.website"
@@ -451,7 +451,7 @@ const fiscalRegimeOptions = [
           name="address_zip_code"
           label="CEP"
           description="Digite o CEP para preencher o endereço automaticamente."
-          class="flex gap-4"
+          class="gap-4"
         >
           <div class="flex gap-2 w-full">
             <UInput
@@ -478,7 +478,7 @@ const fiscalRegimeOptions = [
         <UFormField
           name="address_street"
           label="Logradouro"
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.address_street"
@@ -490,7 +490,7 @@ const fiscalRegimeOptions = [
 
         <USeparator />
 
-        <div class="flex gap-4">
+        <div class="gap-4">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-highlighted">
               Número e complemento
@@ -521,7 +521,7 @@ const fiscalRegimeOptions = [
         <UFormField
           name="address_neighborhood"
           label="Bairro"
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.address_neighborhood"
@@ -532,7 +532,7 @@ const fiscalRegimeOptions = [
 
         <USeparator />
 
-        <div class="flex gap-4">
+        <div class="gap-4">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-highlighted">Cidade e estado</p>
           </div>
@@ -570,7 +570,7 @@ const fiscalRegimeOptions = [
           name="fiscal_regime"
           label="Regime tributário"
           description="Enquadramento fiscal da empresa."
-          class="flex gap-4"
+          class="gap-4"
         >
           <USelectMenu
             v-model="form.fiscal_regime"
@@ -587,7 +587,7 @@ const fiscalRegimeOptions = [
         <UFormField
           name="municipal_registration"
           label="Inscrição municipal"
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.municipal_registration"
@@ -601,7 +601,7 @@ const fiscalRegimeOptions = [
         <UFormField
           name="state_registration"
           label="Inscrição estadual"
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model="form.state_registration"
@@ -623,7 +623,7 @@ const fiscalRegimeOptions = [
           name="initial_service_order_number"
           label="Número inicial de OS"
           description="As novas ordens de serviço serão numeradas a partir deste valor."
-          class="flex gap-4"
+          class="gap-4"
         >
           <UInput
             v-model.number="form.initial_service_order_number"
