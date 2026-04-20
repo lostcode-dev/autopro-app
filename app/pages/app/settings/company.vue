@@ -269,22 +269,25 @@ const fiscalRegimeOptions = [
               </div>
             </div>
             <div class="flex flex-wrap gap-2">
-              <UButton
-                label="Enviar logo"
-                color="neutral"
-                icon="i-lucide-upload"
-                :loading="isUploadingLogo"
-                :disabled="!canUpdate || isUploadingLogo"
-                @click="logoFileRef?.click()"
-              />
-              <UButton
-                v-if="form.logo_url && canUpdate"
-                label="Remover"
-                color="neutral"
-                variant="ghost"
-                icon="i-lucide-trash-2"
-                @click="removeLogo"
-              />
+              <UTooltip text="Enviar logo">
+                <UButton
+                  color="neutral"
+                  icon="i-lucide-upload"
+                  :loading="isUploadingLogo"
+                  :disabled="!canUpdate || isUploadingLogo"
+                  @click="logoFileRef?.click()"
+                />
+              </UTooltip>
+
+              <UTooltip text="Remover">
+                <UButton
+                  v-if="form.logo_url && canUpdate"
+                  color="neutral"
+                  variant="ghost"
+                  icon="i-lucide-trash-2"
+                  @click="removeLogo"
+                />
+              </UTooltip>
             </div>
             <input
               ref="logoFileRef"

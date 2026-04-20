@@ -47,7 +47,7 @@ function closeMoreMenu() {
     <Transition name="slide-up">
       <div
         v-if="showMoreMenu"
-        class="absolute bottom-full left-0 right-0 z-10 bg-elevated border-t border-default shadow-lg"
+        class="absolute bottom-full left-0 right-0 z-50 bg-elevated border-t border-default shadow-lg"
       >
         <div class="grid grid-cols-3 gap-1 p-3">
           <NuxtLink
@@ -65,15 +65,13 @@ function closeMoreMenu() {
       </div>
     </Transition>
 
-    <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="showMoreMenu"
-          class="fixed inset-0 z-40 bg-black/30 lg:hidden"
-          @click="closeMoreMenu"
-        />
-      </Transition>
-    </Teleport>
+    <Transition name="fade">
+      <div
+        v-if="showMoreMenu"
+        class="fixed inset-0 z-40 bg-black/30 lg:hidden"
+        @click="closeMoreMenu"
+      />
+    </Transition>
 
     <nav class="flex items-center justify-around px-2 py-1.5">
       <template v-for="item in items" :key="item.label">
