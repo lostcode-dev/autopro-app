@@ -692,10 +692,6 @@ watch(userOptions, (options) => {
               />
             </div>
 
-            <p class="mb-4 text-xs text-muted">
-              Se o usuario ja estiver vinculado a outro papel, o vinculo anterior sera substituido ao adicionar aqui.
-            </p>
-
             <div
               v-if="assignedUsers.length"
               class="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
