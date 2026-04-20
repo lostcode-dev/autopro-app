@@ -236,7 +236,7 @@ const columns = computed(() => [
   ...(canUpdate.value ? [{ id: 'select', header: '', enableSorting: false }] : []),
   { accessorKey: 'reference_date', header: 'Referência' },
   { accessorKey: 'employee_name', header: 'Funcionário' },
-  { accessorKey: 'order_number', header: 'OS', enableSorting: false },
+  { accessorKey: 'order_number', header: 'OS', enableSorting: false, meta: { class: { th: 'min-w-[110px]', td: 'min-w-[110px] whitespace-nowrap' } } },
   { accessorKey: 'order_entry_date', header: 'Entrada OS', enableSorting: false },
   { id: 'order_status_col', header: 'Status OS', enableSorting: false },
   { id: 'order_payment_col', header: 'Pgto OS', enableSorting: false },

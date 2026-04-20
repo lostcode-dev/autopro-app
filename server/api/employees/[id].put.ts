@@ -88,6 +88,17 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: `Failed to update employee: ${error.message}` })
   }
 
+  if (body.role_id !== undefined && hasLinkedUser) {
+    const { error: roleUpdateError } = await supabase
+      .from('user_profiles')
+      .update({ role_id: body.role_id || null })
+      .eq('employee_id', id)
+
+    if (roleUpdateError) {
+      throw createError({ statusCode: 500, statusMessage: `Failed to update role: ${roleUpdateError.message}` })
+    }
+  }
+
   await syncEmployeeLinkedUserAccess(supabase, {
     employeeId: id,
     organizationId,

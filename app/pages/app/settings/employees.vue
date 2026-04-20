@@ -60,6 +60,24 @@ const isSaving = ref(false)
 const selectedId = ref<string | null>(null)
 const isFetchingCep = ref(false)
 const isEmailLocked = ref(false)
+const editFormHasAuthUser = ref(false)
+
+type Role = { id: string, name: string, display_name: string, is_system_role: boolean }
+const availableRoles = ref<Role[]>([])
+const isLoadingRoles = ref(false)
+
+async function loadRoles() {
+  if (availableRoles.value.length > 0 || isLoadingRoles.value) return
+  isLoadingRoles.value = true
+  try {
+    const res = await $fetch<{ items: Role[] }>('/api/roles')
+    availableRoles.value = res?.items ?? []
+  } catch {
+    // non-critical
+  } finally {
+    isLoadingRoles.value = false
+  }
+}
 
 type Installment = { day: number, amount: string }
 
@@ -98,7 +116,9 @@ const emptyForm = () => ({
   pix_key: '',
   // Termination
   termination_date: '',
-  termination_reason: ''
+  termination_reason: '',
+  // System access role (only relevant when employee has an auth user)
+  role_id: null as string | null
 })
 
 const form = reactive(emptyForm())
@@ -119,10 +139,10 @@ function openEdit(emp: Employee) {
     name: emp.name ?? '',
     role: emp.role ?? '',
     person_type: emp.person_type ?? 'pf',
-    tax_id: emp.tax_id ?? '',
-    phone: emp.phone ?? '',
+    tax_id: emp.tax_id ? maskCpfCnpj(String(emp.tax_id), String(emp.person_type ?? 'pf')) : '',
+    phone: emp.phone ? maskPhone(String(emp.phone)) : '',
     email: emp.email ?? '',
-    zip_code: emp.zip_code ?? '',
+    zip_code: emp.zip_code ? maskCep(String(emp.zip_code)) : '',
     street: emp.street ?? '',
     address_number: emp.address_number ?? '',
     address_complement: emp.address_complement ?? '',
@@ -142,7 +162,14 @@ function openEdit(emp: Employee) {
     commission_base: emp.commission_base ?? 'revenue',
     commission_categories: emp.commission_categories ?? [],
     pix_key_type: emp.pix_key_type ?? '',
-    pix_key: emp.pix_key ?? '',
+    pix_key: (() => {
+      const raw = String(emp.pix_key ?? '')
+      const type = String(emp.pix_key_type ?? '')
+      if (type === 'cpf') return maskCpfCnpj(raw, 'pf')
+      if (type === 'cnpj') return maskCpfCnpj(raw, 'pj')
+      if (type === 'phone') return maskPhone(raw)
+      return raw
+    })(),
     termination_date: emp.termination_date ? String(emp.termination_date) : '',
     termination_reason: emp.termination_reason ?? ''
   })
@@ -150,17 +177,25 @@ function openEdit(emp: Employee) {
   isEditing.value = true
   selectedId.value = emp.id as string
   isEmailLocked.value = false
+  editFormHasAuthUser.value = false
+  form.role_id = null
   showModal.value = true
 
   if (emp.has_commission) loadProductCategories()
+  loadRoles()
 
   if (typeof emp.id === 'string') {
     fetchEmployeeAccessStatus(emp.id)
       .then((status) => {
         isEmailLocked.value = status.hasAuthUser
+        editFormHasAuthUser.value = status.hasAuthUser
+        if (status.hasAuthUser && status.role_id) {
+          form.role_id = status.role_id
+        }
       })
       .catch(() => {
         isEmailLocked.value = false
+        editFormHasAuthUser.value = false
       })
   }
 }
@@ -170,6 +205,58 @@ watch(() => form.has_commission, (val) => {
 })
 watch(() => form.pix_key_type, () => {
   form.pix_key = ''
+})
+
+// ─── Mask helpers ─────────────────────────────────────────
+function maskPhone(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 11)
+  if (d.length <= 10)
+    return d.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, a, b, c) => c ? `(${a}) ${b}-${c}` : b ? `(${a}) ${b}` : a ? `(${a}` : '')
+  return d.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, a, b, c) => c ? `(${a}) ${b}-${c}` : `(${a}) ${b}`)
+}
+
+function maskCpfCnpj(raw: string, type: string): string {
+  const d = raw.replace(/\D/g, '')
+  if (type === 'pf') {
+    return d.slice(0, 11)
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+  }
+  return d.slice(0, 14)
+    .replace(/(\d{2})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1/$2')
+    .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+}
+
+function maskCep(raw: string): string {
+  const d = raw.replace(/\D/g, '').slice(0, 8)
+  return d.replace(/(\d{5})(\d)/, '$1-$2')
+}
+
+function onPhoneInput(e: Event) {
+  form.phone = maskPhone((e.target as HTMLInputElement).value)
+}
+
+function onTaxIdInput(e: Event) {
+  form.tax_id = maskCpfCnpj((e.target as HTMLInputElement).value, form.person_type)
+}
+
+function onCepInput(e: Event) {
+  form.zip_code = maskCep((e.target as HTMLInputElement).value)
+}
+
+function onPixKeyInput(e: Event) {
+  const v = (e.target as HTMLInputElement).value
+  if (form.pix_key_type === 'cpf') form.pix_key = maskCpfCnpj(v, 'pf')
+  else if (form.pix_key_type === 'cnpj') form.pix_key = maskCpfCnpj(v, 'pj')
+  else if (form.pix_key_type === 'phone') form.pix_key = maskPhone(v)
+  else form.pix_key = v
+}
+
+watch(() => form.person_type, () => {
+  form.tax_id = maskCpfCnpj(form.tax_id, form.person_type)
 })
 
 // ─── CEP lookup ───────────────────────────────────────────
@@ -246,7 +333,8 @@ async function save() {
       pix_key_type: form.pix_key_type || null,
       pix_key: form.pix_key_type ? cleanPixKey(form.pix_key, form.pix_key_type) : null,
       termination_date: form.termination_date || null,
-      termination_reason: form.termination_reason || null
+      termination_reason: form.termination_reason || null,
+      role_id: isEditing.value && editFormHasAuthUser.value ? (form.role_id || null) : undefined
     }
 
     if (isEditing.value && selectedId.value) {
@@ -302,7 +390,7 @@ const isLoadingAccessStatus = ref(false)
 const isLinkingAccess = ref(false)
 
 async function fetchEmployeeAccessStatus(employeeId: string) {
-  return await $fetch<{ hasAuthUser: boolean, active?: boolean }>('/api/users/employee-auth-status', {
+  return await $fetch<{ hasAuthUser: boolean, active?: boolean, role_id?: string | null }>('/api/users/employee-auth-status', {
     method: 'POST',
     body: { employee_id: employeeId }
   })
@@ -329,6 +417,9 @@ async function grantAccess() {
   try {
     await $fetch(`/api/employees/${accessEmployee.value.id}/grant-access`, { method: 'POST' as const })
     accessStatus.value = { hasAuthUser: true, active: true }
+    if (accessEmployee.value.id === selectedId.value) {
+      editFormHasAuthUser.value = true
+    }
     toast.add({ title: 'Acesso criado!', description: `${accessEmployee.value.name} receberá um email para definir a senha.`, color: 'success' })
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
@@ -543,9 +634,10 @@ const columns = [
             </UFormField>
             <UFormField :label="form.person_type === 'pj' ? 'CNPJ' : 'CPF'" required>
               <UInput
-                v-model="form.tax_id"
+                :model-value="form.tax_id"
                 class="w-full"
                 :placeholder="form.person_type === 'pj' ? '00.000.000/0000-00' : '000.000.000-00'"
+                @input="onTaxIdInput"
               />
             </UFormField>
           </div>
@@ -560,7 +652,12 @@ const columns = [
           </p>
           <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <UFormField label="Telefone / WhatsApp" required>
-              <UInput v-model="form.phone" class="w-full" placeholder="(00) 90000-0000" />
+              <UInput
+                :model-value="form.phone"
+                class="w-full"
+                placeholder="(00) 90000-0000"
+                @input="onPhoneInput"
+              />
             </UFormField>
             <UFormField label="E-mail">
               <UInput
@@ -588,10 +685,11 @@ const columns = [
             <UFormField label="CEP" class="sm:col-span-1">
               <div class="relative">
                 <UInput
-                  v-model="form.zip_code"
+                  :model-value="form.zip_code"
                   class="w-full"
                   placeholder="00000-000"
                   maxlength="9"
+                  @input="onCepInput"
                   @blur="lookupCep"
                 />
                 <UIcon
@@ -648,14 +746,7 @@ const columns = [
             <template v-if="form.has_salary">
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <UFormField label="Valor do salário (R$)">
-                  <UInput
-                    v-model="form.salary_amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    class="w-full"
-                    placeholder="0,00"
-                  />
+                  <UiCurrencyInput v-model="form.salary_amount" class="w-full" />
                 </UFormField>
                 <UFormField label="Dia do pagamento">
                   <UInput
@@ -699,14 +790,7 @@ const columns = [
                     />
                   </UFormField>
                   <UFormField label="Valor (R$)" class="flex-1">
-                    <UInput
-                      v-model="inst.amount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="w-full"
-                      placeholder="0,00"
-                    />
+                    <UiCurrencyInput v-model="inst.amount" class="w-full" />
                   </UFormField>
                   <UButton
                     icon="i-lucide-x"
@@ -727,14 +811,7 @@ const columns = [
 
             <template v-if="form.has_minimum_guarantee">
               <UFormField label="Valor mínimo garantido (R$)">
-                <UInput
-                  v-model="form.minimum_guarantee_amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  class="w-full"
-                  placeholder="0,00"
-                />
+                <UiCurrencyInput v-model="form.minimum_guarantee_amount" class="w-full" />
               </UFormField>
               <p class="text-xs text-muted">
                 Se comissões + salário não atingirem este valor no mês, será gerado um complemento automaticamente.
@@ -767,14 +844,7 @@ const columns = [
                     />
                   </UFormField>
                   <UFormField label="Valor (R$)" class="flex-1">
-                    <UInput
-                      v-model="inst.amount"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      class="w-full"
-                      placeholder="0,00"
-                    />
+                    <UiCurrencyInput v-model="inst.amount" class="w-full" />
                   </UFormField>
                   <UButton
                     icon="i-lucide-x"
@@ -805,13 +875,19 @@ const columns = [
                 </UFormField>
                 <UFormField :label="form.commission_type === 'percentage' ? 'Taxa (%)' : 'Valor fixo (R$)'">
                   <UInput
+                    v-if="form.commission_type === 'percentage'"
                     v-model="form.commission_amount"
                     type="number"
                     min="0"
-                    :max="form.commission_type === 'percentage' ? 100 : undefined"
+                    max="100"
                     step="0.01"
                     class="w-full"
                     placeholder="0"
+                  />
+                  <UiCurrencyInput
+                    v-else
+                    v-model="form.commission_amount"
+                    class="w-full"
                   />
                 </UFormField>
                 <UFormField label="Base de cálculo" class="sm:col-span-2">
@@ -874,7 +950,7 @@ const columns = [
             </UFormField>
             <UFormField v-if="form.pix_key_type" label="Chave PIX">
               <UInput
-                v-model="form.pix_key"
+                :model-value="form.pix_key"
                 class="w-full"
                 :placeholder="
                   form.pix_key_type === 'cpf'
@@ -887,10 +963,41 @@ const columns = [
                           ? 'email@exemplo.com'
                           : 'Chave aleatória gerada pelo banco'
                 "
+                @input="onPixKeyInput"
               />
             </UFormField>
           </div>
         </div>
+
+        <!-- ── Acesso ao sistema (somente ao editar) ── -->
+        <template v-if="isEditing">
+          <USeparator />
+          <div>
+            <p class="mb-3 text-xs font-semibold uppercase tracking-widest text-muted">
+              Acesso ao sistema
+            </p>
+            <UFormField label="Perfil de permissão">
+              <USelectMenu
+                v-model="form.role_id"
+                :items="availableRoles"
+                value-key="id"
+                label-key="display_name"
+                :disabled="!editFormHasAuthUser || isLoadingRoles"
+                :loading="isLoadingRoles"
+                placeholder="Selecionar perfil..."
+                class="w-full"
+              />
+              <p class="mt-1.5 text-xs text-muted">
+                <template v-if="!editFormHasAuthUser">
+                  Gere o acesso ao sistema para este funcionário antes de definir o perfil.
+                </template>
+                <template v-else>
+                  Define as permissões de acesso do funcionário ao sistema.
+                </template>
+              </p>
+            </UFormField>
+          </div>
+        </template>
 
         <!-- ── Demissão (somente ao editar) ── -->
         <template v-if="isEditing">
@@ -901,7 +1008,7 @@ const columns = [
             </p>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <UFormField label="Data de demissão">
-                <UInput v-model="form.termination_date" type="date" class="w-full" />
+                <UiDatePicker v-model="form.termination_date" class="w-full" />
               </UFormField>
               <UFormField label="Motivo" class="sm:col-span-2">
                 <UTextarea
