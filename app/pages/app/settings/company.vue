@@ -305,7 +305,7 @@ const fiscalRegimeOptions = [
           Identificação
         </p>
 
-        <div class="gap-4 grid-cols-2">
+        <div class="grid gap-4 grid-cols-2">
           <UFormField
             name="name"
             label="Razão social"
@@ -378,7 +378,6 @@ const fiscalRegimeOptions = [
           <UFormField
             name="email"
             label="E-mail"
-            description="Para comunicação com clientes e parceiros."
             class="grid gap-4"
           >
             <UInput
