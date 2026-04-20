@@ -330,7 +330,7 @@ onMounted(() => {
     <UPageCard
       variant="subtle"
       :ui="{ container: 'divide-y divide-default' }"
-      class="mb-6"
+      class="mb-4"
     >
       <UFormField
         v-for="field in channelFields"
@@ -358,7 +358,7 @@ onMounted(() => {
     <UPageCard
       variant="subtle"
       :ui="{ container: 'divide-y divide-default' }"
-      class="mb-6"
+      class="mb-4"
     >
       <UFormField
         v-for="field in topicFields"

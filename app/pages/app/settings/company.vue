@@ -1,26 +1,33 @@
 <script setup lang="ts">
-import * as z from 'zod'
-import type { FormSubmitEvent } from '@nuxt/ui'
-import { ActionCode } from '~/constants/action-codes'
+import * as z from "zod";
+import type { FormSubmitEvent } from "@nuxt/ui";
+import { ActionCode } from "~/constants/action-codes";
 
-definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Empresa' })
+definePageMeta({ layout: "app" });
+useSeoMeta({ title: "Empresa" });
 
-const toast = useToast()
-const workshop = useWorkshopPermissions()
-const requestFetch = useRequestFetch()
-const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const toast = useToast();
+const workshop = useWorkshopPermissions();
+const requestFetch = useRequestFetch();
+const requestHeaders = import.meta.server
+  ? useRequestHeaders(["cookie"])
+  : undefined;
 
-const canView = computed(() => workshop.can(ActionCode.SETTINGS_VIEW))
-const canUpdate = computed(() => workshop.can(ActionCode.SETTINGS_UPDATE))
+const canView = computed(() => workshop.can(ActionCode.SETTINGS_VIEW));
+const canUpdate = computed(() => workshop.can(ActionCode.SETTINGS_UPDATE));
 
-type OrgData = Record<string, any>
+type OrgData = Record<string, any>;
 
 const schema = z.object({
-  name: z.string().min(2, 'Nome deve ter ao menos 2 caracteres'),
+  name: z.string().min(2, "Nome deve ter ao menos 2 caracteres"),
   trade_name: z.string().optional().nullable(),
   tax_id: z.string().optional().nullable(),
-  email: z.string().email('E-mail inválido').optional().nullable().or(z.literal('')),
+  email: z
+    .string()
+    .email("E-mail inválido")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
   phone: z.string().optional().nullable(),
   mobile_phone: z.string().optional().nullable(),
   website: z.string().optional().nullable(),
@@ -37,135 +44,171 @@ const schema = z.object({
   state_registration: z.string().optional().nullable(),
   fiscal_regime: z.string().optional().nullable(),
   logo_url: z.string().optional().nullable(),
-  initial_service_order_number: z.number().int().min(1).optional().nullable()
-})
+  initial_service_order_number: z.number().int().min(1).optional().nullable(),
+});
 
-type Schema = z.output<typeof schema>
+type Schema = z.output<typeof schema>;
 
-const { data: orgData, status, refresh } = await useAsyncData(
-  'company-org',
-  () => requestFetch<OrgData>('/api/organizations', { headers: requestHeaders })
-)
+const {
+  data: orgData,
+  status,
+  refresh,
+} = await useAsyncData("company-org", () =>
+  requestFetch<OrgData>("/api/organizations", { headers: requestHeaders }),
+);
 
-const form = reactive<Partial<Schema>>({})
+const form = reactive<Partial<Schema>>({});
 
 function fillForm(data: OrgData | null) {
-  if (!data) return
+  if (!data) return;
   Object.assign(form, {
-    name: data.name ?? '',
-    trade_name: data.trade_name ?? '',
-    tax_id: data.tax_id ?? '',
-    email: data.email ?? '',
-    phone: data.phone ?? '',
-    mobile_phone: data.mobile_phone ?? '',
-    website: data.website ?? '',
-    description: data.description ?? '',
-    address_zip_code: data.address_zip_code ?? '',
-    address_street: data.address_street ?? '',
-    address_number: data.address_number ?? '',
-    address_complement: data.address_complement ?? '',
-    address_neighborhood: data.address_neighborhood ?? '',
-    address_city: data.address_city ?? '',
-    address_state: data.address_state ?? '',
-    address_country: data.address_country ?? 'BR',
-    municipal_registration: data.municipal_registration ?? '',
-    state_registration: data.state_registration ?? '',
-    fiscal_regime: data.fiscal_regime ?? '',
+    name: data.name ?? "",
+    trade_name: data.trade_name ?? "",
+    tax_id: data.tax_id ?? "",
+    email: data.email ?? "",
+    phone: data.phone ?? "",
+    mobile_phone: data.mobile_phone ?? "",
+    website: data.website ?? "",
+    description: data.description ?? "",
+    address_zip_code: data.address_zip_code ?? "",
+    address_street: data.address_street ?? "",
+    address_number: data.address_number ?? "",
+    address_complement: data.address_complement ?? "",
+    address_neighborhood: data.address_neighborhood ?? "",
+    address_city: data.address_city ?? "",
+    address_state: data.address_state ?? "",
+    address_country: data.address_country ?? "BR",
+    municipal_registration: data.municipal_registration ?? "",
+    state_registration: data.state_registration ?? "",
+    fiscal_regime: data.fiscal_regime ?? "",
     logo_url: data.logo_url ?? null,
-    initial_service_order_number: data.initial_service_order_number ?? 1
-  })
+    initial_service_order_number: data.initial_service_order_number ?? 1,
+  });
 }
 
-watch(orgData, fillForm, { immediate: true })
+watch(orgData, fillForm, { immediate: true });
 
-const isSaving = ref(false)
-const isLoadingCep = ref(false)
-const isUploadingLogo = ref(false)
-const logoFileRef = ref<HTMLInputElement>()
+const isSaving = ref(false);
+const isLoadingCep = ref(false);
+const isUploadingLogo = ref(false);
+const logoFileRef = ref<HTMLInputElement>();
 
 async function onLogoFileChange(e: Event) {
-  const input = e.target as HTMLInputElement
-  if (!input.files?.length) return
-  const file = input.files[0]!
-  isUploadingLogo.value = true
+  const input = e.target as HTMLInputElement;
+  if (!input.files?.length) return;
+  const file = input.files[0]!;
+  isUploadingLogo.value = true;
   try {
-    const body = new FormData()
-    body.append('file', file)
-    const result = await $fetch<{ logo_url: string }>('/api/organizations/logo', {
-      method: 'POST',
-      body
-    })
-    form.logo_url = result.logo_url
-    toast.add({ title: 'Logo atualizado', color: 'success' })
+    const body = new FormData();
+    body.append("file", file);
+    const result = await $fetch<{ logo_url: string }>(
+      "/api/organizations/logo",
+      {
+        method: "POST",
+        body,
+      },
+    );
+    form.logo_url = result.logo_url;
+    toast.add({ title: "Logo atualizado", color: "success" });
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro ao enviar logo', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível enviar', color: 'error' })
+    const err = error as {
+      data?: { statusMessage?: string };
+      statusMessage?: string;
+    };
+    toast.add({
+      title: "Erro ao enviar logo",
+      description:
+        err?.data?.statusMessage ||
+        err?.statusMessage ||
+        "Não foi possível enviar",
+      color: "error",
+    });
   } finally {
-    isUploadingLogo.value = false
-    if (input) input.value = ''
+    isUploadingLogo.value = false;
+    if (input) input.value = "";
   }
 }
 
 async function removeLogo() {
-  if (!canUpdate.value) return
+  if (!canUpdate.value) return;
   try {
-    await $fetch('/api/organizations', { method: 'PUT', body: { logo_url: null } })
-    form.logo_url = null
-    toast.add({ title: 'Logo removido', color: 'success' })
+    await $fetch("/api/organizations", {
+      method: "PUT",
+      body: { logo_url: null },
+    });
+    form.logo_url = null;
+    toast.add({ title: "Logo removido", color: "success" });
   } catch {
-    toast.add({ title: 'Erro ao remover logo', color: 'error' })
+    toast.add({ title: "Erro ao remover logo", color: "error" });
   }
 }
 
 async function onSubmit(_event: FormSubmitEvent<Schema>) {
-  if (isSaving.value || !canUpdate.value) return
-  isSaving.value = true
+  if (isSaving.value || !canUpdate.value) return;
+  isSaving.value = true;
   try {
-    await $fetch('/api/organizations', {
-      method: 'PUT',
-      body: form
-    })
-    await refresh()
-    toast.add({ title: 'Empresa atualizada', description: 'Dados salvos com sucesso.', color: 'success' })
+    await $fetch("/api/organizations", {
+      method: "PUT",
+      body: form,
+    });
+    await refresh();
+    toast.add({
+      title: "Empresa atualizada",
+      description: "Dados salvos com sucesso.",
+      color: "success",
+    });
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar', color: 'error' })
+    const err = error as {
+      data?: { statusMessage?: string };
+      statusMessage?: string;
+    };
+    toast.add({
+      title: "Erro",
+      description:
+        err?.data?.statusMessage ||
+        err?.statusMessage ||
+        "Não foi possível salvar",
+      color: "error",
+    });
   } finally {
-    isSaving.value = false
+    isSaving.value = false;
   }
 }
 
 async function lookupCep() {
-  const cep = (form.address_zip_code ?? '').replace(/\D/g, '')
-  if (cep.length !== 8) return
-  isLoadingCep.value = true
+  const cep = (form.address_zip_code ?? "").replace(/\D/g, "");
+  if (cep.length !== 8) return;
+  isLoadingCep.value = true;
   try {
-    const res = await $fetch<any>(`https://viacep.com.br/ws/${cep}/json/`)
+    const res = await $fetch<any>(`https://viacep.com.br/ws/${cep}/json/`);
     if (res.erro) {
-      toast.add({ title: 'CEP não encontrado', color: 'warning' })
-      return
+      toast.add({ title: "CEP não encontrado", color: "warning" });
+      return;
     }
-    form.address_street = res.logradouro || form.address_street
-    form.address_neighborhood = res.bairro || form.address_neighborhood
-    form.address_city = res.localidade || form.address_city
-    form.address_state = res.uf || form.address_state
+    form.address_street = res.logradouro || form.address_street;
+    form.address_neighborhood = res.bairro || form.address_neighborhood;
+    form.address_city = res.localidade || form.address_city;
+    form.address_state = res.uf || form.address_state;
   } catch {
-    toast.add({ title: 'Erro ao buscar CEP', color: 'error' })
+    toast.add({ title: "Erro ao buscar CEP", color: "error" });
   } finally {
-    isLoadingCep.value = false
+    isLoadingCep.value = false;
   }
 }
 
 const fiscalRegimeOptions = [
-  { label: 'Simples Nacional', value: 'simples_nacional' },
-  { label: 'Lucro Presumido', value: 'lucro_presumido' },
-  { label: 'Lucro Real', value: 'lucro_real' },
-  { label: 'MEI', value: 'mei' }
-]
+  { label: "Simples Nacional", value: "simples_nacional" },
+  { label: "Lucro Presumido", value: "lucro_presumido" },
+  { label: "Lucro Real", value: "lucro_real" },
+  { label: "MEI", value: "mei" },
+];
 </script>
 
 <template>
-  <div v-if="!canView" class="rounded-xl border border-default/60 bg-elevated/30 p-6">
+  <div
+    v-if="!canView"
+    class="rounded-xl border border-default/60 bg-elevated/30 p-6"
+  >
     <p class="text-sm text-muted">
       Você não tem permissão para visualizar as configurações da empresa.
     </p>
@@ -243,14 +286,22 @@ const fiscalRegimeOptions = [
                 @click="removeLogo"
               />
             </div>
-            <input ref="logoFileRef" type="file" class="hidden" accept=".jpg,.jpeg,.png,.webp" @change="onLogoFileChange" />
+            <input
+              ref="logoFileRef"
+              type="file"
+              class="hidden"
+              accept=".jpg,.jpeg,.png,.webp"
+              @change="onLogoFileChange"
+            />
           </div>
         </UFormField>
       </UPageCard>
 
       <!-- Identificação -->
       <UPageCard variant="subtle" class="mb-4">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+        <p
+          class="text-xs font-semibold uppercase tracking-widest text-muted mb-4"
+        >
           Identificação
         </p>
 
@@ -259,9 +310,14 @@ const fiscalRegimeOptions = [
           label="Razão social"
           description="Nome jurídico registrado da empresa."
           required
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.name" :disabled="!canUpdate" class="w-full" placeholder="Ex: Oficina Silva LTDA" />
+          <UInput
+            v-model="form.name"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="Ex: Oficina Silva LTDA"
+          />
         </UFormField>
 
         <USeparator />
@@ -270,9 +326,14 @@ const fiscalRegimeOptions = [
           name="trade_name"
           label="Nome fantasia"
           description="Como a oficina é conhecida pelos clientes."
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.trade_name" :disabled="!canUpdate" class="w-full" placeholder="Ex: Oficina do Silva" />
+          <UInput
+            v-model="form.trade_name"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="Ex: Oficina do Silva"
+          />
         </UFormField>
 
         <USeparator />
@@ -281,9 +342,14 @@ const fiscalRegimeOptions = [
           name="tax_id"
           label="CNPJ / CPF"
           description="Documento de identificação fiscal."
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.tax_id" :disabled="!canUpdate" class="w-full" placeholder="00.000.000/0001-00" />
+          <UInput
+            v-model="form.tax_id"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="00.000.000/0001-00"
+          />
         </UFormField>
 
         <USeparator />
@@ -292,7 +358,7 @@ const fiscalRegimeOptions = [
           name="description"
           label="Descrição"
           description="Breve apresentação da oficina (opcional)."
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
           <UTextarea
             v-model="form.description"
@@ -306,7 +372,9 @@ const fiscalRegimeOptions = [
 
       <!-- Contato -->
       <UPageCard variant="subtle" class="mb-4">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+        <p
+          class="text-xs font-semibold uppercase tracking-widest text-muted mb-4"
+        >
           Contato
         </p>
 
@@ -314,9 +382,15 @@ const fiscalRegimeOptions = [
           name="email"
           label="E-mail"
           description="Para comunicação com clientes e parceiros."
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.email" type="email" :disabled="!canUpdate" class="w-full" placeholder="contato@oficina.com.br" />
+          <UInput
+            v-model="form.email"
+            type="email"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="contato@oficina.com.br"
+          />
         </UFormField>
 
         <USeparator />
@@ -324,9 +398,14 @@ const fiscalRegimeOptions = [
         <UFormField
           name="phone"
           label="Telefone fixo"
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.phone" :disabled="!canUpdate" class="w-full" placeholder="(00) 0000-0000" />
+          <UInput
+            v-model="form.phone"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="(00) 0000-0000"
+          />
         </UFormField>
 
         <USeparator />
@@ -334,9 +413,14 @@ const fiscalRegimeOptions = [
         <UFormField
           name="mobile_phone"
           label="Celular / WhatsApp"
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.mobile_phone" :disabled="!canUpdate" class="w-full" placeholder="(00) 90000-0000" />
+          <UInput
+            v-model="form.mobile_phone"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="(00) 90000-0000"
+          />
         </UFormField>
 
         <USeparator />
@@ -344,15 +428,22 @@ const fiscalRegimeOptions = [
         <UFormField
           name="website"
           label="Website"
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.website" :disabled="!canUpdate" class="w-full" placeholder="https://suaoficina.com.br" />
+          <UInput
+            v-model="form.website"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="https://suaoficina.com.br"
+          />
         </UFormField>
       </UPageCard>
 
       <!-- Endereço -->
       <UPageCard variant="subtle" class="mb-4">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+        <p
+          class="text-xs font-semibold uppercase tracking-widest text-muted mb-4"
+        >
           Endereço
         </p>
 
@@ -360,7 +451,7 @@ const fiscalRegimeOptions = [
           name="address_zip_code"
           label="CEP"
           description="Digite o CEP para preencher o endereço automaticamente."
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
           <div class="flex gap-2 w-full">
             <UInput
@@ -387,14 +478,19 @@ const fiscalRegimeOptions = [
         <UFormField
           name="address_street"
           label="Logradouro"
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.address_street" :disabled="!canUpdate" class="w-full" placeholder="Rua, Avenida..." />
+          <UInput
+            v-model="form.address_street"
+            :disabled="!canUpdate"
+            class="w-full"
+            placeholder="Rua, Avenida..."
+          />
         </UFormField>
 
         <USeparator />
 
-        <div class="flex max-sm:flex-col justify-between items-start gap-4">
+        <div class="flex gap-4">
           <div class="min-w-0 flex-1">
             <p class="text-sm font-medium text-highlighted">
               Número e complemento
@@ -402,10 +498,20 @@ const fiscalRegimeOptions = [
           </div>
           <div class="grid grid-cols-2 gap-3 w-full sm:max-w-xs">
             <UFormField name="address_number" label="">
-              <UInput v-model="form.address_number" :disabled="!canUpdate" class="w-full" placeholder="Nº" />
+              <UInput
+                v-model="form.address_number"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="Nº"
+              />
             </UFormField>
             <UFormField name="address_complement" label="">
-              <UInput v-model="form.address_complement" :disabled="!canUpdate" class="w-full" placeholder="Apto, sala..." />
+              <UInput
+                v-model="form.address_complement"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="Apto, sala..."
+              />
             </UFormField>
           </div>
         </div>
@@ -415,22 +521,29 @@ const fiscalRegimeOptions = [
         <UFormField
           name="address_neighborhood"
           label="Bairro"
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.address_neighborhood" :disabled="!canUpdate" class="w-full" />
+          <UInput
+            v-model="form.address_neighborhood"
+            :disabled="!canUpdate"
+            class="w-full"
+          />
         </UFormField>
 
         <USeparator />
 
-        <div class="flex max-sm:flex-col justify-between items-start gap-4">
+        <div class="flex gap-4">
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium text-highlighted">
-              Cidade e estado
-            </p>
+            <p class="text-sm font-medium text-highlighted">Cidade e estado</p>
           </div>
           <div class="grid grid-cols-[1fr_80px] gap-3 w-full sm:max-w-xs">
             <UFormField name="address_city" label="">
-              <UInput v-model="form.address_city" :disabled="!canUpdate" class="w-full" placeholder="Cidade" />
+              <UInput
+                v-model="form.address_city"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="Cidade"
+              />
             </UFormField>
             <UFormField name="address_state" label="">
               <UInput
@@ -447,7 +560,9 @@ const fiscalRegimeOptions = [
 
       <!-- Fiscal -->
       <UPageCard variant="subtle" class="mb-4">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+        <p
+          class="text-xs font-semibold uppercase tracking-widest text-muted mb-4"
+        >
           Fiscal
         </p>
 
@@ -455,7 +570,7 @@ const fiscalRegimeOptions = [
           name="fiscal_regime"
           label="Regime tributário"
           description="Enquadramento fiscal da empresa."
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
           <USelectMenu
             v-model="form.fiscal_regime"
@@ -472,9 +587,13 @@ const fiscalRegimeOptions = [
         <UFormField
           name="municipal_registration"
           label="Inscrição municipal"
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.municipal_registration" :disabled="!canUpdate" class="w-full" />
+          <UInput
+            v-model="form.municipal_registration"
+            :disabled="!canUpdate"
+            class="w-full"
+          />
         </UFormField>
 
         <USeparator />
@@ -482,15 +601,21 @@ const fiscalRegimeOptions = [
         <UFormField
           name="state_registration"
           label="Inscrição estadual"
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
-          <UInput v-model="form.state_registration" :disabled="!canUpdate" class="w-full" />
+          <UInput
+            v-model="form.state_registration"
+            :disabled="!canUpdate"
+            class="w-full"
+          />
         </UFormField>
       </UPageCard>
 
       <!-- Sistema -->
       <UPageCard variant="subtle" class="mb-4">
-        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+        <p
+          class="text-xs font-semibold uppercase tracking-widest text-muted mb-4"
+        >
           Sistema
         </p>
 
@@ -498,7 +623,7 @@ const fiscalRegimeOptions = [
           name="initial_service_order_number"
           label="Número inicial de OS"
           description="As novas ordens de serviço serão numeradas a partir deste valor."
-          class="flex max-sm:flex-col justify-between items-start gap-4"
+          class="flex gap-4"
         >
           <UInput
             v-model.number="form.initial_service_order_number"

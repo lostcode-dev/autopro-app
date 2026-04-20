@@ -317,7 +317,7 @@ async function openInvoice(url: string | null) {
     title="Faturas"
     description="Histórico de cobranças da sua assinatura."
     variant="subtle"
-    class="mt-6"
+    class="mt-4"
   >
     <AppDataTable
       v-model:page="invoicePage"

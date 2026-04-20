@@ -323,7 +323,7 @@ async function deleteAccount() {
     title="Senha"
     description="Confirme sua senha atual antes de definir uma nova."
     variant="subtle"
-    class="mt-6"
+    class="mt-4"
   >
     <UForm
       :schema="passwordSchema"
@@ -365,7 +365,7 @@ async function deleteAccount() {
     title="Fuso horário"
     description="Defina o fuso horário usado para agenda, ordens de serviço e notificações."
     variant="subtle"
-    class="mt-6"
+    class="mt-4"
   >
     <div v-if="preferencesStatus === 'pending'" class="space-y-3">
       <USkeleton class="h-11 w-full" />
@@ -405,7 +405,7 @@ async function deleteAccount() {
   <UPageCard
     title="Excluir conta"
     description="Deseja encerrar sua conta? Essa ação é irreversível. Todos os dados associados serão excluídos permanentemente."
-    class="mt-6 bg-linear-to-tl from-error/10 from-5% to-default"
+    class="mt-4 bg-linear-to-tl from-error/10 from-5% to-default"
   >
     <template #footer>
       <UButton
