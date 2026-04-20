@@ -174,6 +174,57 @@ function getResourceIcon(resource: string | null | undefined) {
   return 'i-lucide-folder'
 }
 
+function formatResourceLabel(resource: string | null | undefined) {
+  const key = normalizeResourceKey(resource)
+
+  if (!key || key === 'geral' || key === 'general')
+    return 'Geral'
+  if (key.includes('appointment') || key.includes('agenda'))
+    return 'Agendamentos'
+  if (key.includes('authorization'))
+    return 'Autorizações'
+  if (key.includes('bank_account') || key.includes('bank'))
+    return 'Contas bancárias'
+  if (key.includes('client') || key.includes('customer'))
+    return 'Clientes'
+  if (key.includes('consult'))
+    return 'Consultas'
+  if (key.includes('employee') || key.includes('team'))
+    return 'Funcionários'
+  if (key.includes('financial') || key.includes('billing'))
+    return 'Financeiro'
+  if (key.includes('inventory'))
+    return 'Estoque'
+  if (key.includes('product'))
+    return 'Produtos'
+  if (key.includes('part'))
+    return 'Peças'
+  if (key.includes('notification'))
+    return 'Notificações'
+  if (key.includes('service_order') || key.includes('order') || key.includes('service'))
+    return 'Ordens de serviço'
+  if (key.includes('purchase'))
+    return 'Compras'
+  if (key.includes('report'))
+    return 'Relatórios'
+  if (key.includes('permission'))
+    return 'Permissões'
+  if (key.includes('role'))
+    return 'Papéis'
+  if (key.includes('setting'))
+    return 'Configurações'
+  if (key.includes('supplier'))
+    return 'Fornecedores'
+  if (key.includes('tax'))
+    return 'Impostos'
+  if (key.includes('vehicle'))
+    return 'Veículos'
+  if (key.includes('user'))
+    return 'Usuários'
+
+  return 'Outros'
+}
+
 const groupedActions = computed<Record<string, ActionItem[]>>(() => {
   if (!actions.value.length)
     return {}
@@ -190,7 +241,7 @@ const groupedActions = computed<Record<string, ActionItem[]>>(() => {
 
 const permissionTabs = computed<PermissionTab[]>(() =>
   Object.entries(groupedActions.value).map(([resource, groupItems]) => ({
-    label: resource,
+    label: formatResourceLabel(resource),
     value: resource,
     count: groupItems.length,
     icon: getResourceIcon(resource)
@@ -233,7 +284,7 @@ const availableUsers = computed(() => {
 const userOptions = computed(() =>
   availableUsers.value
     .map(user => ({
-      label: user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuario sem identificacao',
+      label: user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuário sem identificação',
       value: user.id
     }))
     .sort((first, second) => first.label.localeCompare(second.label, 'pt-BR'))
@@ -272,7 +323,7 @@ function roleLabel(roleItem: RoleItem | null) {
 }
 
 function userLabel(user: AssignedUser) {
-  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuario sem identificacao'
+  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuário sem identificação'
 }
 
 function syncForm() {
@@ -314,7 +365,7 @@ async function updateUserRoleLink(userId: string, nextRoleId: string | null) {
 
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel atualizar o vinculo do usuario',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível atualizar o vínculo do usuário',
       color: 'error'
     })
     return false
@@ -332,7 +383,7 @@ async function addUserLink() {
     return
 
   selectedUserId.value = undefined
-  toast.add({ title: 'Vinculo atualizado', color: 'success' })
+  toast.add({ title: 'Vínculo atualizado', color: 'success' })
 }
 
 async function removeUserLink(userId: string) {
@@ -343,7 +394,7 @@ async function removeUserLink(userId: string) {
   if (!success)
     return
 
-  toast.add({ title: 'Vinculo removido', color: 'success' })
+  toast.add({ title: 'Vínculo removido', color: 'success' })
 }
 
 async function saveRole() {
@@ -385,7 +436,7 @@ async function saveRole() {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel salvar as alteracoes',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar as alterações',
       color: 'error'
     })
   } finally {
@@ -416,33 +467,11 @@ watch(userOptions, (options) => {
 
 <template>
   <UDashboardPanel>
-    <template #header>
-      <AppPageHeader title="Editar papel">
-        <template #right>
-          <UButton
-            label="Voltar"
-            color="neutral"
-            variant="ghost"
-            icon="i-lucide-arrow-left"
-            to="/app/settings/roles"
-          />
-          <UButton
-            label="Salvar alteracoes"
-            color="neutral"
-            icon="i-lucide-save"
-            :loading="isSaving"
-            :disabled="isSaveDisabled"
-            @click="saveRole"
-          />
-        </template>
-      </AppPageHeader>
-    </template>
-
     <template #body>
       <div v-if="!canView" class="p-4">
         <div class="rounded-xl border border-default/60 bg-elevated/30 p-6">
           <p class="text-sm text-muted">
-            Voce nao tem permissao para visualizar papeis.
+            Você não tem permissão para visualizar papéis.
           </p>
         </div>
       </div>
@@ -450,7 +479,7 @@ watch(userOptions, (options) => {
       <div v-else-if="!canAccessEditPage" class="p-4">
         <div class="rounded-xl border border-default/60 bg-elevated/30 p-6">
           <p class="text-sm text-muted">
-            Voce nao tem permissao para editar papeis ou gerenciar permissoes.
+            Você não tem permissão para editar papéis ou gerenciar permissões.
           </p>
         </div>
       </div>
@@ -464,12 +493,12 @@ watch(userOptions, (options) => {
         <template v-else-if="error || !role">
           <div class="rounded-2xl border border-error/30 bg-error/10 p-6">
             <p class="text-sm font-medium text-error">
-              Nao foi possivel carregar este papel.
+              Não foi possível carregar este papel.
             </p>
             <div class="mt-4 flex gap-2">
               <UButton label="Tentar novamente" color="neutral" @click="retryLoad" />
               <UButton
-                label="Voltar para papeis"
+                label="Voltar para papéis"
                 color="neutral"
                 variant="ghost"
                 to="/app/settings/roles"
@@ -498,14 +527,14 @@ watch(userOptions, (options) => {
                 </div>
 
                 <p class="max-w-2xl text-sm text-muted">
-                  Ajuste os dados principais do papel, organize os vinculos com usuarios e marque nas abas quais acoes ficam liberadas para esse perfil.
+                  Ajuste os dados principais do papel, organize os vínculos com usuários e marque nas abas quais ações ficam liberadas para esse perfil.
                 </p>
 
                 <div
                   v-if="role.is_system_role"
                   class="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted"
                 >
-                  Este e um papel de sistema. Os dados e as permissoes podem ser consultados, mas nao podem ser alterados.
+                  Este é um papel de sistema. Os dados e as permissões podem ser consultados, mas não podem ser alterados.
                 </div>
               </div>
 
@@ -513,7 +542,7 @@ watch(userOptions, (options) => {
                 <div class="rounded-2xl border border-default/70 bg-default/40 p-4">
                   <UIcon name="i-lucide-users" class="mb-2 size-4 text-primary/80" />
                   <p class="text-xs uppercase tracking-widest text-muted">
-                    Usuarios vinculados
+                    Usuários vinculados
                   </p>
                   <p class="mt-2 text-2xl font-semibold text-highlighted">
                     {{ summary.assigned_users_count }}
@@ -522,7 +551,7 @@ watch(userOptions, (options) => {
                 <div class="rounded-2xl border border-default/70 bg-default/40 p-4">
                   <UIcon name="i-lucide-badge-check" class="mb-2 size-4 text-success" />
                   <p class="text-xs uppercase tracking-widest text-muted">
-                    Permissoes liberadas
+                    Permissões liberadas
                   </p>
                   <p class="mt-2 text-2xl font-semibold text-highlighted">
                     {{ summary.granted_actions_count }}
@@ -531,7 +560,7 @@ watch(userOptions, (options) => {
                 <div class="rounded-2xl border border-default/70 bg-default/40 p-4">
                   <UIcon name="i-lucide-grid-2x2" class="mb-2 size-4 text-primary/80" />
                   <p class="text-xs uppercase tracking-widest text-muted">
-                    Total de acoes
+                    Total de ações
                   </p>
                   <p class="mt-2 text-2xl font-semibold text-highlighted">
                     {{ summary.total_actions_count }}
@@ -544,7 +573,7 @@ watch(userOptions, (options) => {
           <div class="grid gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
             <UPageCard
               title="Dados do papel"
-              description="Atualize o nome exibido e a descricao usada pela equipe."
+              description="Atualize o nome exibido e a descrição usada pela equipe."
               variant="subtle"
             >
               <div class="space-y-4">
@@ -553,11 +582,11 @@ watch(userOptions, (options) => {
                     v-model="roleForm.display_name"
                     class="w-full"
                     :disabled="!canEditMetadata"
-                    placeholder="Ex: Consultor tecnico"
+                    placeholder="Ex: Consultor técnico"
                   />
                 </UFormField>
 
-                <UFormField label="Descricao">
+                <UFormField label="Descrição">
                   <UTextarea
                     v-model="roleForm.description"
                     class="w-full"
@@ -573,7 +602,7 @@ watch(userOptions, (options) => {
                       <UIcon name="i-lucide-fingerprint" class="size-4" />
                     </div>
                     <p>
-                      Codigo interno: <strong class="text-highlighted break-all">{{ role.name }}</strong>
+                      Código interno: <strong class="text-highlighted break-all">{{ role.name }}</strong>
                     </p>
                   </div>
                 </div>
@@ -581,8 +610,8 @@ watch(userOptions, (options) => {
             </UPageCard>
 
             <UPageCard
-              title="Permissoes"
-              description="As permissoes foram agrupadas por abas para deixar a edicao mais compacta."
+              title="Permissões"
+              description="As permissões foram agrupadas por abas para deixar a edição mais compacta."
               variant="subtle"
             >
               <div v-if="permissionTabs.length" class="space-y-4">
@@ -644,7 +673,7 @@ watch(userOptions, (options) => {
                             {{ action.description }}
                           </p>
                           <p v-else class="mt-1 text-xs text-muted">
-                            Codigo: {{ action.code }}
+                            Código: {{ action.code }}
                           </p>
                         </div>
                       </div>
@@ -656,18 +685,18 @@ watch(userOptions, (options) => {
               <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
                 <UIcon name="i-lucide-ban" class="mx-auto mb-2 size-8 text-muted" />
                 <p class="text-sm font-medium text-highlighted">
-                  Nenhuma acao cadastrada
+                  Nenhuma ação cadastrada
                 </p>
                 <p class="mt-1 text-sm text-muted">
-                  Ainda nao existem acoes disponiveis para este papel.
+                  Ainda não existem ações disponíveis para este papel.
                 </p>
               </div>
             </UPageCard>
           </div>
 
           <UPageCard
-            title="Usuarios vinculados"
-            description="Adicione um vinculo com um usuario ou remova quem nao deve mais usar este papel."
+            title="Usuários vinculados"
+            description="Adicione um vínculo com um usuário ou remova quem não deve mais usar este papel."
             variant="subtle"
           >
             <div class="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
@@ -676,14 +705,14 @@ watch(userOptions, (options) => {
                 :items="userOptions"
                 value-key="value"
                 label-key="label"
-                search-placeholder="Buscar usuario..."
-                placeholder="Selecione um usuario para vincular"
+                search-placeholder="Buscar usuário..."
+                placeholder="Selecione um usuário para vincular"
                 class="w-full"
                 :disabled="!canManageUserLinks || isUpdatingLink || !userOptions.length"
               />
 
               <UButton
-                label="Adicionar vinculo"
+                label="Adicionar vínculo"
                 icon="i-lucide-user-plus"
                 color="neutral"
                 :loading="isUpdatingLink"
@@ -716,7 +745,7 @@ watch(userOptions, (options) => {
                     </div>
                   </div>
 
-                  <UTooltip v-if="canManageUserLinks" text="Remover vinculo">
+                  <UTooltip v-if="canManageUserLinks" text="Remover vínculo">
                     <UButton
                       icon="i-lucide-user-minus"
                       color="error"
@@ -732,7 +761,7 @@ watch(userOptions, (options) => {
                   {{ user.email }}
                 </p>
                 <p v-if="user.employee_name" class="mt-1 text-xs text-muted">
-                  Funcionario: {{ user.employee_name }}
+                  Funcionário: {{ user.employee_name }}
                 </p>
               </div>
             </div>
@@ -743,13 +772,33 @@ watch(userOptions, (options) => {
             >
               <UIcon name="i-lucide-users" class="mx-auto mb-2 size-8 text-muted" />
               <p class="text-sm font-medium text-highlighted">
-                Nenhum usuario vinculado
+                Nenhum usuário vinculado
               </p>
               <p class="mt-1 text-sm text-muted">
-                Quando alguem receber este papel, o usuario aparecera aqui.
+                Quando alguém receber este papel, o usuário aparecerá aqui.
               </p>
             </div>
           </UPageCard>
+
+          <div class="sticky bottom-0 z-10 -mx-4 border-t border-default/70 bg-default/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-default/80">
+            <div class="flex flex-wrap items-center justify-end gap-2">
+              <UButton
+                label="Voltar"
+                color="neutral"
+                variant="ghost"
+                icon="i-lucide-arrow-left"
+                to="/app/settings/roles"
+              />
+              <UButton
+                label="Salvar alterações"
+                color="neutral"
+                icon="i-lucide-save"
+                :loading="isSaving"
+                :disabled="isSaveDisabled"
+                @click="saveRole"
+              />
+            </div>
+          </div>
         </template>
       </div>
     </template>

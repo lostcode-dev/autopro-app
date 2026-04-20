@@ -144,8 +144,59 @@ function getResourceIcon(resource: string | null | undefined) {
   return 'i-lucide-folder'
 }
 
+function formatResourceLabel(resource: string | null | undefined) {
+  const key = normalizeResourceKey(resource)
+
+  if (!key || key === 'geral' || key === 'general')
+    return 'Geral'
+  if (key.includes('appointment') || key.includes('agenda'))
+    return 'Agendamentos'
+  if (key.includes('authorization'))
+    return 'Autorizações'
+  if (key.includes('bank_account') || key.includes('bank'))
+    return 'Contas bancárias'
+  if (key.includes('client') || key.includes('customer'))
+    return 'Clientes'
+  if (key.includes('consult'))
+    return 'Consultas'
+  if (key.includes('employee') || key.includes('team'))
+    return 'Funcionários'
+  if (key.includes('financial') || key.includes('billing'))
+    return 'Financeiro'
+  if (key.includes('inventory'))
+    return 'Estoque'
+  if (key.includes('product'))
+    return 'Produtos'
+  if (key.includes('part'))
+    return 'Peças'
+  if (key.includes('notification'))
+    return 'Notificações'
+  if (key.includes('service_order') || key.includes('order') || key.includes('service'))
+    return 'Ordens de serviço'
+  if (key.includes('purchase'))
+    return 'Compras'
+  if (key.includes('report'))
+    return 'Relatórios'
+  if (key.includes('permission'))
+    return 'Permissões'
+  if (key.includes('role'))
+    return 'Papéis'
+  if (key.includes('setting'))
+    return 'Configurações'
+  if (key.includes('supplier'))
+    return 'Fornecedores'
+  if (key.includes('tax'))
+    return 'Impostos'
+  if (key.includes('vehicle'))
+    return 'Veículos'
+  if (key.includes('user'))
+    return 'Usuários'
+
+  return 'Outros'
+}
+
 function userLabel(user: AssignedUser) {
-  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuario sem identificacao'
+  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuário sem identificação'
 }
 
 function userInitials(user: AssignedUser) {
@@ -182,7 +233,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
 
 const permissionTabs = computed<PermissionTab[]>(() =>
   Object.entries(grantedGroupedActions.value).map(([resource, actions]) => ({
-    label: resource,
+    label: formatResourceLabel(resource),
     value: resource,
     count: actions.length,
     icon: getResourceIcon(resource)
@@ -236,7 +287,7 @@ watch(permissionTabs, (tabs) => {
               </div>
 
               <p class="text-sm text-muted">
-                {{ detail.role.description || 'Sem descricao cadastrada para este papel.' }}
+                {{ detail.role.description || 'Sem descrição cadastrada para este papel.' }}
               </p>
             </div>
 
@@ -244,7 +295,7 @@ watch(permissionTabs, (tabs) => {
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
                 <UIcon name="i-lucide-users" class="mb-2 size-4 text-primary/80" />
                 <p class="text-xs text-muted">
-                  Usuarios vinculados
+                  Usuários vinculados
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.assigned_users_count }}
@@ -253,7 +304,7 @@ watch(permissionTabs, (tabs) => {
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
                 <UIcon name="i-lucide-badge-check" class="mb-2 size-4 text-success" />
                 <p class="text-xs text-muted">
-                  Permissoes liberadas
+                  Permissões liberadas
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.granted_actions_count }}
@@ -262,7 +313,7 @@ watch(permissionTabs, (tabs) => {
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
                 <UIcon name="i-lucide-grid-2x2" class="mb-2 size-4 text-primary/80" />
                 <p class="text-xs text-muted">
-                  Total de acoes
+                  Total de ações
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.total_actions_count }}
@@ -276,7 +327,7 @@ watch(permissionTabs, (tabs) => {
           <div class="flex items-center justify-between gap-3">
             <div class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted">
               <UIcon name="i-lucide-users-round" class="size-4" />
-              <h4>Usuarios com este papel</h4>
+              <h4>Usuários com este papel</h4>
             </div>
           </div>
 
@@ -308,7 +359,7 @@ watch(permissionTabs, (tabs) => {
                 </p>
 
                 <p v-if="user.employee_name" class="text-xs text-muted">
-                  Funcionario vinculado: {{ user.employee_name }}
+                  Funcionário vinculado: {{ user.employee_name }}
                 </p>
               </div>
             </div>
@@ -317,10 +368,10 @@ watch(permissionTabs, (tabs) => {
           <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
             <UIcon name="i-lucide-users" class="mx-auto mb-2 size-8 text-muted" />
             <p class="text-sm font-medium text-highlighted">
-              Nenhum usuario com este papel
+              Nenhum usuário com este papel
             </p>
             <p class="mt-1 text-sm text-muted">
-              Assim que um usuario for vinculado a este papel, ele aparecera aqui.
+              Assim que um usuário for vinculado a este papel, ele aparecerá aqui.
             </p>
           </div>
         </div>
@@ -375,7 +426,7 @@ watch(permissionTabs, (tabs) => {
                         {{ action.description }}
                       </p>
                       <p v-else class="text-xs text-muted">
-                        Codigo: {{ action.code }}
+                        Código: {{ action.code }}
                       </p>
                     </div>
                   </div>
@@ -394,10 +445,10 @@ watch(permissionTabs, (tabs) => {
           <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
             <UIcon name="i-lucide-ban" class="mx-auto mb-2 size-8 text-muted" />
             <p class="text-sm font-medium text-highlighted">
-              Nenhuma permissao liberada
+              Nenhuma permissão liberada
             </p>
             <p class="mt-1 text-sm text-muted">
-              Este papel ainda nao possui acoes marcadas como permitidas.
+              Este papel ainda não possui ações marcadas como permitidas.
             </p>
           </div>
         </div>
@@ -406,7 +457,7 @@ watch(permissionTabs, (tabs) => {
       <div v-else class="p-4">
         <div class="rounded-xl border border-error/30 bg-error/10 p-4">
           <p class="text-sm font-medium text-error">
-            Nao foi possivel carregar os detalhes do papel.
+            Não foi possível carregar os detalhes do papel.
           </p>
         </div>
       </div>
