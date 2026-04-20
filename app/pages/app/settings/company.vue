@@ -259,13 +259,13 @@ const fiscalRegimeOptions = [
                 v-if="form.logo_url"
                 :src="form.logo_url"
                 alt="Logo"
-                class="size-20 rounded-xl object-contain border border-default bg-white p-1"
+                class="size-32 rounded-xl object-contain border border-default bg-white p-1"
               />
               <div
                 v-else
-                class="size-20 rounded-xl border-2 border-dashed border-default/70 flex items-center justify-center bg-elevated/40"
+                class="size-32 rounded-xl border-2 border-dashed border-default/70 flex items-center justify-center bg-elevated/40"
               >
-                <UIcon name="i-lucide-building-2" class="size-6 text-muted" />
+                <UIcon name="i-lucide-building-2" class="size-20 text-muted" />
               </div>
             </div>
             <div class="flex flex-wrap gap-2">
