@@ -3,8 +3,8 @@ import { requireAuthUser } from '../../utils/require-auth'
 
 // ─── Configurable limits ──────────────────────────────────────────────────────
 // These values are mirrored in FeedbackCreateModal.vue — keep in sync.
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024   // 10 MB
-const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024  // 100 MB
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024    // 5 MB
+const MAX_VIDEO_SIZE_BYTES = 10 * 1024 * 1024   // 10 MB
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
 
   const isVideo = ALLOWED_VIDEO_TYPES.includes(contentType)
   const maxBytes = isVideo ? MAX_VIDEO_SIZE_BYTES : MAX_IMAGE_SIZE_BYTES
-  const maxLabel = isVideo ? '100MB' : '10MB'
+  const maxLabel = isVideo ? '10MB' : '5MB'
 
   if (filePart.data.length > maxBytes) {
     throw createError({

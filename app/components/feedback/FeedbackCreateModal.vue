@@ -8,8 +8,8 @@ import type { CreateFeedbackPayload } from '~/types/feedback'
 // Adjust these constants to change upload limits across the app.
 // The server enforces the same limits in server/api/feedback/upload.post.ts
 const MAX_ATTACHMENTS = 5              // max files per ticket
-const MAX_IMAGE_SIZE_MB = 10           // max image size in MB
-const MAX_VIDEO_SIZE_MB = 100          // max video size in MB
+const MAX_IMAGE_SIZE_MB = 5            // max image size in MB
+const MAX_VIDEO_SIZE_MB = 10           // max video size in MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
 const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES]

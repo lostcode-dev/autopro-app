@@ -87,7 +87,7 @@ VALUES (
     'support-attachments',
     'support-attachments',
     true,
-    104857600,  -- 100 MB (bucket-level cap; per-type limits enforced in API)
+    10485760,   -- 10 MB (bucket-level cap; per-type limits enforced in API)
     ARRAY[
         'image/jpeg', 'image/png', 'image/gif', 'image/webp',
         'video/mp4', 'video/webm', 'video/quicktime'
