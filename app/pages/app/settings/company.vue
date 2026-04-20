@@ -251,7 +251,7 @@ const fiscalRegimeOptions = [
           name="logo_url"
           label="Logo da oficina"
           description="JPEG, PNG ou WebP. Máx. 5 MB. Recomendado 200×200 px."
-          class="flex max-sm:flex-col justify-between sm:items-center gap-4"
+          class="grid gap-4"
         >
           <div class="flex flex-wrap items-center gap-3">
             <div class="relative shrink-0">
@@ -259,11 +259,11 @@ const fiscalRegimeOptions = [
                 v-if="form.logo_url"
                 :src="form.logo_url"
                 alt="Logo"
-                class="size-16 rounded-xl object-contain border border-default bg-white p-1"
+                class="size-20 rounded-xl object-contain border border-default bg-white p-1"
               />
               <div
                 v-else
-                class="size-16 rounded-xl border-2 border-dashed border-default/70 flex items-center justify-center bg-elevated/40"
+                class="size-20 rounded-xl border-2 border-dashed border-default/70 flex items-center justify-center bg-elevated/40"
               >
                 <UIcon name="i-lucide-building-2" class="size-6 text-muted" />
               </div>
