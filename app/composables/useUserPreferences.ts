@@ -25,8 +25,10 @@ type PreferencesState = {
 
 type ThemePreset = UserPreferences
 
+let loadPromise: Promise<void> | null = null
+
 const PUBLIC_THEME: ThemePreset = {
-  // Public experience reflects the AutoPro brand identity: purple primary, slate neutral, light mode.
+  // Public pages keep the fixed AutoPro branding.
   primary_color: 'purple',
   neutral_color: 'slate',
   color_mode: ColorModePreference.Light,
@@ -51,28 +53,38 @@ export function useUserPreferences() {
 
   const appConfig = useAppConfig()
   const colorMode = useColorMode()
+  const requestFetch = useRequestFetch()
+  const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 
   function applyTheme(theme: ThemePreset) {
     appConfig.ui.colors.primary = theme.primary_color
     appConfig.ui.colors.neutral = theme.neutral_color
-    // Color mode is locked to light — never apply color_mode from preferences.
-    colorMode.preference = 'light'
+    colorMode.preference = theme.color_mode
   }
 
   async function load() {
     if (state.value.loaded) return
+    if (loadPromise) return loadPromise
 
-    try {
-      const data = await $fetch<UserPreferences>('/api/settings/preferences')
-      state.value.primary_color = data.primary_color
-      state.value.neutral_color = data.neutral_color
-      state.value.color_mode = data.color_mode
-      state.value.timezone = data.timezone
-      state.value.loaded = true
-    } catch {
-      // Keep brand defaults silently when preferences cannot be loaded.
-      state.value.loaded = true
-    }
+    loadPromise = (async () => {
+      try {
+        const data = await requestFetch<UserPreferences>('/api/settings/preferences', {
+          headers: requestHeaders
+        })
+
+        state.value.primary_color = data.primary_color
+        state.value.neutral_color = data.neutral_color
+        state.value.color_mode = data.color_mode
+        state.value.timezone = data.timezone
+      } catch {
+        // Keep brand defaults silently when preferences cannot be loaded.
+      } finally {
+        state.value.loaded = true
+        loadPromise = null
+      }
+    })()
+
+    return loadPromise
   }
 
   function applyStoredTheme() {
@@ -103,12 +115,14 @@ export function useUserPreferences() {
     if (prefs.neutral_color) state.value.neutral_color = prefs.neutral_color
     if (prefs.color_mode) state.value.color_mode = prefs.color_mode
     if (prefs.timezone) state.value.timezone = prefs.timezone
+    state.value.loaded = true
 
     applyStoredTheme()
 
     try {
-      await $fetch('/api/settings/preferences', {
+      await requestFetch('/api/settings/preferences', {
         method: 'PUT',
+        headers: requestHeaders,
         body: {
           primary_color: state.value.primary_color,
           neutral_color: state.value.neutral_color,
@@ -117,7 +131,7 @@ export function useUserPreferences() {
         }
       })
     } catch {
-      // Silently fail — local state already updated
+      // Silently fail; local state is already updated for the current session.
     }
   }
 

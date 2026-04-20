@@ -15,25 +15,25 @@ const { state: prefs, setPrimaryColor, setNeutralColor, setColorMode } = useUser
 const colorLabels: Record<string, string> = {
   red: 'Vermelho',
   orange: 'Laranja',
-  amber: 'Ambar',
+  amber: 'Âmbar',
   yellow: 'Amarelo',
   lime: 'Lima',
   green: 'Verde',
   emerald: 'Esmeralda',
-  teal: 'Azul-petroleo',
+  teal: 'Azul-petróleo',
   cyan: 'Ciano',
   sky: 'Celeste',
   blue: 'Azul',
-  indigo: 'Indigo',
+  indigo: 'Índigo',
   violet: 'Violeta',
   purple: 'Roxo',
-  fuchsia: 'Fucsia',
+  fuchsia: 'Fúcsia',
   pink: 'Rosa',
   rose: 'Rose'
 }
 
 const neutralLabels: Record<string, string> = {
-  slate: 'Ardosia',
+  slate: 'Ardósia',
   gray: 'Cinza',
   zinc: 'Zinco',
   neutral: 'Neutro',
@@ -73,14 +73,14 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
   icon: 'i-lucide-credit-card',
   to: '/app/settings/subscription'
 }, {
-  label: 'Configuracoes',
+  label: 'Configurações',
   icon: 'i-lucide-settings',
   to: '/app/settings'
 }], [{
   label: 'Tema',
   icon: 'i-lucide-palette',
   children: [{
-    label: 'Primaria',
+    label: 'Primária',
     slot: 'chip',
     chip: prefs.value.primary_color,
     content: {
@@ -119,7 +119,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     }))
   }]
 }, {
-  label: 'Aparencia',
+  label: 'Aparência',
   icon: 'i-lucide-sun-moon',
   children: [{
     label: 'Claro',
@@ -141,7 +141,7 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     }
   }]
 }], [{
-  label: 'Documentacao',
+  label: 'Documentação',
   icon: 'i-lucide-book-open',
   to: '/docs'
 }, {
@@ -153,10 +153,10 @@ const items = computed<DropdownMenuItem[][]>(() => ([[{
     try {
       await auth.logout()
       workshop.clear()
-      toast.add({ title: 'Sessao encerrada', color: 'success' })
+      toast.add({ title: 'Sessão encerrada', color: 'success' })
       await router.push('/login')
     } catch {
-      toast.add({ title: 'Erro', description: 'Nao foi possivel sair', color: 'error' })
+      toast.add({ title: 'Erro', description: 'Não foi possível sair', color: 'error' })
     }
   }
 }]]))

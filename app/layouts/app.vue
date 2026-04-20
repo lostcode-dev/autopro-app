@@ -221,11 +221,12 @@ const groups = computed(() => [
 
 const { load: loadPreferences } = useUserPreferences()
 
+await loadPreferences()
+
 onMounted(async () => {
   mediaQuery = window.matchMedia('(max-width: 1023px)')
   syncViewportMode()
   mediaQuery.addEventListener?.('change', syncViewportMode)
-  await loadPreferences()
 })
 
 onBeforeUnmount(() => {
