@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import RoleDetailsSlideover from '~/components/roles/RoleDetailsSlideover.vue'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
@@ -71,14 +72,15 @@ const pendingDeleteRole = ref<Role | null>(null)
 const selectedPermissionsRoleId = ref<string | null>(null)
 const actionsData = ref<RoleActionsResponse | null>(null)
 const isLoadingActions = ref(false)
-const isSavingPermission = ref(false)
+const detailsRoleId = ref<string | null>(null)
+const detailsSlideoverOpen = ref(false)
 
 const selectedRole = computed(() =>
   roles.value.find(role => role.id === selectedPermissionsRoleId.value) ?? null
 )
 
-const selectedRoleCanBeManaged = computed(() =>
-  Boolean(selectedRole.value && canManagePermissions.value && !selectedRole.value.is_system_role)
+const selectedRoleCanBeEdited = computed(() =>
+  Boolean(selectedRole.value && !selectedRole.value.is_system_role && (canUpdate.value || canManagePermissions.value))
 )
 
 const groupedActions = computed<Record<string, ActionItem[]>>(() => {
@@ -94,6 +96,27 @@ const groupedActions = computed<Record<string, ActionItem[]>>(() => {
     return groups
   }, {})
 })
+
+const grantedGroupedActions = computed<Record<string, ActionItem[]>>(() => {
+  if (!actionsData.value?.actions?.length)
+    return {}
+
+  return actionsData.value.actions.reduce<Record<string, ActionItem[]>>((groups, action) => {
+    if (!isGranted(action.id))
+      return groups
+
+    const groupName = action.resource || 'Geral'
+    if (!groups[groupName])
+      groups[groupName] = []
+
+    groups[groupName].push(action)
+    return groups
+  }, {})
+})
+
+const grantedActionsCount = computed(() =>
+  Object.values(grantedGroupedActions.value).reduce((total, actions) => total + actions.length, 0)
+)
 
 function roleLabel(role: Role) {
   return role.display_name?.trim() || role.name
@@ -124,11 +147,7 @@ function openCreateRole() {
 }
 
 function openEditRole(role: Role) {
-  roleForm.display_name = role.display_name ?? role.name
-  roleForm.description = role.description ?? ''
-  isEditingRole.value = true
-  selectedRoleId.value = role.id
-  showRoleModal.value = true
+  return navigateTo(`/app/settings/roles/${role.id}`)
 }
 
 async function saveRole() {
@@ -241,32 +260,12 @@ function isGranted(actionId: string) {
   return actionsData.value?.role_actions.find(roleAction => roleAction.action_id === actionId)?.is_granted ?? false
 }
 
-async function togglePermission(actionId: string) {
-  if (isSavingPermission.value || !selectedPermissionsRoleId.value || !selectedRoleCanBeManaged.value)
+function openRoleDetails(role: Role | null) {
+  if (!role)
     return
 
-  isSavingPermission.value = true
-
-  try {
-    await $fetch(`/api/roles/${selectedPermissionsRoleId.value}/actions`, {
-      method: 'POST',
-      body: {
-        action_id: actionId,
-        is_granted: !isGranted(actionId)
-      }
-    })
-
-    await fetchRolePermissions(selectedPermissionsRoleId.value)
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({
-      title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel atualizar permissao',
-      color: 'error'
-    })
-  } finally {
-    isSavingPermission.value = false
-  }
+  detailsRoleId.value = role.id
+  detailsSlideoverOpen.value = true
 }
 </script>
 
@@ -338,6 +337,13 @@ async function togglePermission(actionId: string) {
 
             <div class="flex shrink-0 items-center gap-1">
               <UButton
+                icon="i-lucide-eye"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click.stop="openRoleDetails(role)"
+              />
+              <UButton
                 :icon="selectedPermissionsRoleId === role.id ? 'i-lucide-panel-right-close' : 'i-lucide-shield-check'"
                 :color="selectedPermissionsRoleId === role.id ? 'primary' : 'neutral'"
                 variant="ghost"
@@ -377,8 +383,8 @@ async function togglePermission(actionId: string) {
       </UPageCard>
 
       <UPageCard
-        :title="selectedRole ? `Permissoes: ${roleLabel(selectedRole)}` : 'Permissoes'"
-        :description="selectedRole ? 'Defina quais acoes esse perfil pode executar.' : 'Selecione um papel para visualizar ou editar as permissoes.'"
+        :title="selectedRole ? `Permissoes liberadas: ${roleLabel(selectedRole)}` : 'Permissoes liberadas'"
+        :description="selectedRole ? 'Visualize o que este papel pode acessar e abra os detalhes para ver os usuarios vinculados.' : 'Selecione um papel para visualizar a previa do acesso liberado.'"
         variant="subtle"
       >
         <div v-if="isLoadingActions" class="space-y-3">
@@ -395,23 +401,53 @@ async function togglePermission(actionId: string) {
         </div>
 
         <div v-else class="space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default/70 bg-elevated/20 px-4 py-3">
+            <div class="space-y-1">
+              <p class="text-sm font-medium text-highlighted">
+                {{ roleLabel(selectedRole) }}
+              </p>
+              <p class="text-xs text-muted">
+                {{ grantedActionsCount }} de {{ actionsData?.actions?.length ?? 0 }} permissoes liberadas neste papel.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              <UButton
+                label="Ver detalhes"
+                icon="i-lucide-eye"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                @click="openRoleDetails(selectedRole)"
+              />
+              <UButton
+                v-if="selectedRoleCanBeEdited"
+                label="Editar papel"
+                icon="i-lucide-pencil"
+                color="neutral"
+                size="sm"
+                @click="openEditRole(selectedRole)"
+              />
+            </div>
+          </div>
+
           <div
             v-if="selectedRole.is_system_role"
             class="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted"
           >
-            Este e um papel de sistema. As permissoes podem ser consultadas aqui, mas nao podem ser alteradas nesta tela.
+            Este e um papel de sistema. As permissoes podem ser consultadas aqui, mas nao podem ser alteradas.
           </div>
 
           <div
-            v-else-if="!canManagePermissions"
+            v-else-if="!selectedRoleCanBeEdited"
             class="rounded-lg border border-default/60 bg-elevated/40 px-4 py-3 text-sm text-muted"
           >
-            Voce pode visualizar os perfis, mas nao tem permissao para editar as permissoes deles.
+            Voce pode visualizar este perfil, mas nao tem permissao para editar seus dados ou permissoes.
           </div>
 
-          <div v-if="Object.keys(groupedActions).length" class="space-y-4">
+          <div v-if="Object.keys(grantedGroupedActions).length" class="space-y-4">
             <div
-              v-for="(actions, resource) in groupedActions"
+              v-for="(actions, resource) in grantedGroupedActions"
               :key="resource"
               class="rounded-xl border border-default/70"
             >
@@ -439,11 +475,7 @@ async function togglePermission(actionId: string) {
                     </p>
                   </div>
 
-                  <UToggle
-                    :model-value="isGranted(action.id)"
-                    :disabled="!selectedRoleCanBeManaged || isSavingPermission"
-                    @update:model-value="togglePermission(action.id)"
-                  />
+                  <UBadge label="Permitido" color="success" variant="subtle" size="xs" />
                 </div>
               </div>
             </div>
@@ -452,10 +484,10 @@ async function togglePermission(actionId: string) {
           <div v-else class="rounded-lg border border-dashed border-default px-4 py-8 text-center">
             <UIcon name="i-lucide-list-x" class="mx-auto mb-2 size-8 text-muted" />
             <p class="text-sm font-medium text-highlighted">
-              Nenhuma permissao encontrada
+              Nenhuma permissao liberada
             </p>
             <p class="mt-1 text-sm text-muted">
-              Ainda nao existem acoes cadastradas para este perfil.
+              Este papel ainda nao possui nenhuma permissao concedida.
             </p>
           </div>
         </div>
@@ -534,4 +566,10 @@ async function togglePermission(actionId: string) {
       </p>
     </template>
   </AppConfirmModal>
+
+  <RoleDetailsSlideover
+    :open="detailsSlideoverOpen"
+    :role-id="detailsRoleId"
+    @update:open="detailsSlideoverOpen = $event"
+  />
 </template>
