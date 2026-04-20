@@ -374,57 +374,53 @@ const fiscalRegimeOptions = [
           Contato
         </p>
 
-        <UFormField
-          name="email"
-          label="E-mail"
-          description="Para comunicação com clientes e parceiros."
-          class="gap-4"
-        >
-          <UInput
-            v-model="form.email"
-            type="email"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="contato@oficina.com.br"
-          />
-        </UFormField>
+        <div class="gap-4 grid grid-cols-2">
+          <UFormField
+            name="email"
+            label="E-mail"
+            description="Para comunicação com clientes e parceiros."
+            class="gap-4"
+          >
+            <UInput
+              v-model="form.email"
+              type="email"
+              :disabled="!canUpdate"
+              class="w-full"
+              placeholder="contato@oficina.com.br"
+            />
+          </UFormField>
 
-        <USeparator />
+          <UFormField name="phone" label="Telefone fixo" class="gap-4">
+            <UInput
+              v-model="form.phone"
+              :disabled="!canUpdate"
+              class="w-full"
+              placeholder="(00) 0000-0000"
+            />
+          </UFormField>
 
-        <UFormField name="phone" label="Telefone fixo" class="gap-4">
-          <UInput
-            v-model="form.phone"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="(00) 0000-0000"
-          />
-        </UFormField>
+          <UFormField
+            name="mobile_phone"
+            label="Celular / WhatsApp"
+            class="gap-4"
+          >
+            <UInput
+              v-model="form.mobile_phone"
+              :disabled="!canUpdate"
+              class="w-full"
+              placeholder="(00) 90000-0000"
+            />
+          </UFormField>
 
-        <USeparator />
-
-        <UFormField
-          name="mobile_phone"
-          label="Celular / WhatsApp"
-          class="gap-4"
-        >
-          <UInput
-            v-model="form.mobile_phone"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="(00) 90000-0000"
-          />
-        </UFormField>
-
-        <USeparator />
-
-        <UFormField name="website" label="Website" class="gap-4">
-          <UInput
-            v-model="form.website"
-            :disabled="!canUpdate"
-            class="w-full"
-            placeholder="https://suaoficina.com.br"
-          />
-        </UFormField>
+          <UFormField name="website" label="Website" class="gap-4">
+            <UInput
+              v-model="form.website"
+              :disabled="!canUpdate"
+              class="w-full"
+              placeholder="https://suaoficina.com.br"
+            />
+          </UFormField>
+        </div>
       </UPageCard>
 
       <!-- Endereço -->
