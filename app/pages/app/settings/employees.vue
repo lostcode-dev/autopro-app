@@ -118,7 +118,7 @@ const emptyForm = () => ({
   termination_date: '',
   termination_reason: '',
   // System access role (only relevant when employee has an auth user)
-  role_id: null as string | null
+  role_id: undefined as string | undefined
 })
 
 const form = reactive(emptyForm())
@@ -129,6 +129,11 @@ function openCreate() {
   selectedId.value = null
   isEmailLocked.value = false
   showModal.value = true
+}
+
+function openDetails(emp: Employee) {
+  if (typeof emp.id !== 'string') return
+  navigateTo(`/app/settings/employees/${emp.id}`)
 }
 
 function openEdit(emp: Employee) {
@@ -178,7 +183,7 @@ function openEdit(emp: Employee) {
   selectedId.value = emp.id as string
   isEmailLocked.value = false
   editFormHasAuthUser.value = false
-  form.role_id = null
+  form.role_id = undefined
   showModal.value = true
 
   if (emp.has_commission) loadProductCategories()
@@ -569,6 +574,15 @@ const columns = [
 
       <template #actions-cell="{ row }">
         <div class="flex items-center justify-end gap-1">
+          <UTooltip text="Ver detalhes">
+            <UButton
+              icon="i-lucide-eye"
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              @click="openDetails(row.original)"
+            />
+          </UTooltip>
           <UTooltip v-if="row.original.email" text="Gerenciar acesso">
             <UButton
               icon="i-lucide-key-round"
@@ -978,7 +992,7 @@ const columns = [
             </p>
             <UFormField label="Perfil de permissão">
               <USelectMenu
-                v-model="form.role_id"
+                :model-value="form.role_id ?? undefined"
                 :items="availableRoles"
                 value-key="id"
                 label-key="display_name"
@@ -986,6 +1000,7 @@ const columns = [
                 :loading="isLoadingRoles"
                 placeholder="Selecionar perfil..."
                 class="w-full"
+                @update:model-value="form.role_id = $event ?? undefined"
               />
               <p class="mt-1.5 text-xs text-muted">
                 <template v-if="!editFormHasAuthUser">
