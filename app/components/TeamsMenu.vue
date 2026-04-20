@@ -11,7 +11,7 @@ const orgName = computed(() => workshop.organization.value?.trade_name || worksh
 <template>
   <NuxtLink
     to="/app/"
-    class="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
+    class="flex min-w-0 items-center gap-2 rounded-md px-2 py-2 hover:bg-elevated"
   >
     <img
       v-if="orgLogoUrl"
@@ -22,7 +22,7 @@ const orgName = computed(() => workshop.organization.value?.trade_name || worksh
     <AppLogo v-else size="sm" />
     <span
       v-if="!collapsed && orgLogoUrl"
-      class="truncate text-sm font-semibold text-highlighted"
+      class="min-w-0 flex-1 truncate text-sm font-semibold text-highlighted"
     >
       {{ orgName }}
     </span>
