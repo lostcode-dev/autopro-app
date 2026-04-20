@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       .eq('role_id', id),
     supabase
       .from('user_profiles')
-      .select('id, email, full_name, display_name, employee_id, role_id, active')
+      .select('id, email, display_name, employee_id, role_id, is_active')
       .eq('organization_id', organizationId)
       .eq('role_id', id)
       .order('display_name', { ascending: true })
@@ -84,11 +84,11 @@ export default defineEventHandler(async (event) => {
   const assignedUsers = (users ?? []).map(user => ({
     id: user.id as string,
     email: user.email as string | null,
-    full_name: user.full_name as string | null,
+    full_name: null,
     display_name: user.display_name as string | null,
     employee_id: user.employee_id as string | null,
     employee_name: user.employee_id ? (employeeNameMap.get(user.employee_id as string) ?? null) : null,
-    active: Boolean(user.active)
+    active: user.is_active !== false
   }))
 
   return {

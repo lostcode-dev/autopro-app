@@ -15,7 +15,7 @@ export default eventHandler(async (event) => {
 
   const { data: users, error } = await supabase
     .from('user_profiles')
-    .select('id, email, full_name, display_name, organization_id, employee_id, role_id, active')
+    .select('id, email, display_name, organization_id, employee_id, role_id, is_active')
     .eq('organization_id', organizationId)
 
   if (error) {
@@ -23,7 +23,11 @@ export default eventHandler(async (event) => {
   }
 
   return {
-    users: users || [],
+    users: (users || []).map(user => ({
+      ...user,
+      full_name: null,
+      active: user.is_active !== false
+    })),
     organization_id: organizationId
   }
 })

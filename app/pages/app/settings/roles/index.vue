@@ -14,7 +14,6 @@ const canView = computed(() => workshop.can(ActionCode.ROLES_VIEW))
 const canCreate = computed(() => workshop.can(ActionCode.ROLES_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.ROLES_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.ROLES_DELETE))
-const canManagePermissions = computed(() => workshop.can(ActionCode.ROLES_MANAGE_PERMISSIONS))
 
 type Role = {
   id: string
@@ -74,49 +73,6 @@ const actionsData = ref<RoleActionsResponse | null>(null)
 const isLoadingActions = ref(false)
 const detailsRoleId = ref<string | null>(null)
 const detailsSlideoverOpen = ref(false)
-
-const selectedRole = computed(() =>
-  roles.value.find(role => role.id === selectedPermissionsRoleId.value) ?? null
-)
-
-const selectedRoleCanBeEdited = computed(() =>
-  Boolean(selectedRole.value && !selectedRole.value.is_system_role && (canUpdate.value || canManagePermissions.value))
-)
-
-const groupedActions = computed<Record<string, ActionItem[]>>(() => {
-  if (!actionsData.value?.actions?.length)
-    return {}
-
-  return actionsData.value.actions.reduce<Record<string, ActionItem[]>>((groups, action) => {
-    const groupName = action.resource || 'Geral'
-    if (!groups[groupName])
-      groups[groupName] = []
-
-    groups[groupName].push(action)
-    return groups
-  }, {})
-})
-
-const grantedGroupedActions = computed<Record<string, ActionItem[]>>(() => {
-  if (!actionsData.value?.actions?.length)
-    return {}
-
-  return actionsData.value.actions.reduce<Record<string, ActionItem[]>>((groups, action) => {
-    if (!isGranted(action.id))
-      return groups
-
-    const groupName = action.resource || 'Geral'
-    if (!groups[groupName])
-      groups[groupName] = []
-
-    groups[groupName].push(action)
-    return groups
-  }, {})
-})
-
-const grantedActionsCount = computed(() =>
-  Object.values(grantedGroupedActions.value).reduce((total, actions) => total + actions.length, 0)
-)
 
 function roleLabel(role: Role) {
   return role.display_name?.trim() || role.name
@@ -256,10 +212,6 @@ async function openPermissions(role: Role) {
   }
 }
 
-function isGranted(actionId: string) {
-  return actionsData.value?.role_actions.find(roleAction => roleAction.action_id === actionId)?.is_granted ?? false
-}
-
 function openRoleDetails(role: Role | null) {
   if (!role)
     return
@@ -336,37 +288,34 @@ function openRoleDetails(role: Role | null) {
             </div>
 
             <div class="flex shrink-0 items-center gap-1">
-              <UButton
-                icon="i-lucide-eye"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                @click.stop="openRoleDetails(role)"
-              />
-              <UButton
-                :icon="selectedPermissionsRoleId === role.id ? 'i-lucide-panel-right-close' : 'i-lucide-shield-check'"
-                :color="selectedPermissionsRoleId === role.id ? 'primary' : 'neutral'"
-                variant="ghost"
-                size="xs"
-                @click.stop="openPermissions(role)"
-              />
-              <UButton
-                v-if="canUpdate && !role.is_system_role"
-                icon="i-lucide-pencil"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                @click.stop="openEditRole(role)"
-              />
-              <UButton
-                v-if="canDelete && !role.is_system_role"
-                icon="i-lucide-trash-2"
-                color="error"
-                variant="ghost"
-                size="xs"
-                :loading="deletingRoleId === role.id"
-                @click.stop="requestDeleteRole(role)"
-              />
+              <UTooltip text="Ver detalhes">
+                <UButton
+                  icon="i-lucide-eye"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click.stop="openRoleDetails(role)"
+                />
+              </UTooltip>
+              <UTooltip v-if="canUpdate && !role.is_system_role" text="Editar papel">
+                <UButton
+                  icon="i-lucide-pencil"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click.stop="openEditRole(role)"
+                />
+              </UTooltip>
+              <UTooltip v-if="canDelete && !role.is_system_role" text="Remover papel">
+                <UButton
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  :loading="deletingRoleId === role.id"
+                  @click.stop="requestDeleteRole(role)"
+                />
+              </UTooltip>
             </div>
           </div>
         </div>
@@ -379,117 +328,6 @@ function openRoleDetails(role: Role | null) {
           <p class="mt-1 text-sm text-muted">
             Crie um papel para organizar o acesso da equipe.
           </p>
-        </div>
-      </UPageCard>
-
-      <UPageCard
-        :title="selectedRole ? `Permissoes liberadas: ${roleLabel(selectedRole)}` : 'Permissoes liberadas'"
-        :description="selectedRole ? 'Visualize o que este papel pode acessar e abra os detalhes para ver os usuarios vinculados.' : 'Selecione um papel para visualizar a previa do acesso liberado.'"
-        variant="subtle"
-      >
-        <div v-if="isLoadingActions" class="space-y-3">
-          <USkeleton v-for="i in 7" :key="i" class="h-12 w-full rounded-lg" />
-        </div>
-
-        <div v-else-if="!selectedRole" class="flex items-center justify-center py-12 text-muted">
-          <div class="text-center">
-            <UIcon name="i-lucide-shield" class="mx-auto mb-2 size-10 opacity-30" />
-            <p class="text-sm">
-              Selecione um papel ao lado para continuar.
-            </p>
-          </div>
-        </div>
-
-        <div v-else class="space-y-4">
-          <div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-default/70 bg-elevated/20 px-4 py-3">
-            <div class="space-y-1">
-              <p class="text-sm font-medium text-highlighted">
-                {{ roleLabel(selectedRole) }}
-              </p>
-              <p class="text-xs text-muted">
-                {{ grantedActionsCount }} de {{ actionsData?.actions?.length ?? 0 }} permissoes liberadas neste papel.
-              </p>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2">
-              <UButton
-                label="Ver detalhes"
-                icon="i-lucide-eye"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                @click="openRoleDetails(selectedRole)"
-              />
-              <UButton
-                v-if="selectedRoleCanBeEdited"
-                label="Editar papel"
-                icon="i-lucide-pencil"
-                color="neutral"
-                size="sm"
-                @click="openEditRole(selectedRole)"
-              />
-            </div>
-          </div>
-
-          <div
-            v-if="selectedRole.is_system_role"
-            class="rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted"
-          >
-            Este e um papel de sistema. As permissoes podem ser consultadas aqui, mas nao podem ser alteradas.
-          </div>
-
-          <div
-            v-else-if="!selectedRoleCanBeEdited"
-            class="rounded-lg border border-default/60 bg-elevated/40 px-4 py-3 text-sm text-muted"
-          >
-            Voce pode visualizar este perfil, mas nao tem permissao para editar seus dados ou permissoes.
-          </div>
-
-          <div v-if="Object.keys(grantedGroupedActions).length" class="space-y-4">
-            <div
-              v-for="(actions, resource) in grantedGroupedActions"
-              :key="resource"
-              class="rounded-xl border border-default/70"
-            >
-              <div class="border-b border-default/70 px-4 py-3">
-                <p class="text-xs font-semibold uppercase tracking-widest text-muted">
-                  {{ resource }}
-                </p>
-              </div>
-
-              <div class="divide-y divide-default/60">
-                <div
-                  v-for="action in actions"
-                  :key="action.id"
-                  class="flex items-center justify-between gap-4 px-4 py-3"
-                >
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-highlighted">
-                      {{ action.name || action.code }}
-                    </p>
-                    <p v-if="action.description" class="text-xs text-muted">
-                      {{ action.description }}
-                    </p>
-                    <p v-else class="text-xs text-muted">
-                      Codigo: {{ action.code }}
-                    </p>
-                  </div>
-
-                  <UBadge label="Permitido" color="success" variant="subtle" size="xs" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div v-else class="rounded-lg border border-dashed border-default px-4 py-8 text-center">
-            <UIcon name="i-lucide-list-x" class="mx-auto mb-2 size-8 text-muted" />
-            <p class="text-sm font-medium text-highlighted">
-              Nenhuma permissao liberada
-            </p>
-            <p class="mt-1 text-sm text-muted">
-              Este papel ainda nao possui nenhuma permissao concedida.
-            </p>
-          </div>
         </div>
       </UPageCard>
     </div>
