@@ -46,6 +46,13 @@ type RoleDetailResponse = {
   }
 }
 
+type PermissionTab = {
+  label: string
+  value: string
+  count: number
+  icon: string
+}
+
 const props = defineProps<{
   open: boolean
   roleId: string | null
@@ -87,8 +94,58 @@ function roleLabel(role: RoleItem | null) {
   return role.display_name?.trim() || role.name
 }
 
+function normalizeResourceKey(resource: string | null | undefined) {
+  return String(resource || 'geral')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}
+
+function getResourceIcon(resource: string | null | undefined) {
+  const key = normalizeResourceKey(resource)
+
+  if (key.includes('appointment') || key.includes('agenda'))
+    return 'i-lucide-calendar-days'
+  if (key.includes('authorization'))
+    return 'i-lucide-badge-check'
+  if (key.includes('bank_account') || key.includes('bank'))
+    return 'i-lucide-landmark'
+  if (key.includes('client') || key.includes('customer'))
+    return 'i-lucide-users'
+  if (key.includes('consult'))
+    return 'i-lucide-stethoscope'
+  if (key.includes('employee') || key.includes('team'))
+    return 'i-lucide-users-round'
+  if (key.includes('financial') || key.includes('billing'))
+    return 'i-lucide-badge-dollar-sign'
+  if (key.includes('inventory') || key.includes('product') || key.includes('part'))
+    return 'i-lucide-package'
+  if (key.includes('notification'))
+    return 'i-lucide-bell'
+  if (key.includes('order') || key.includes('service'))
+    return 'i-lucide-clipboard-list'
+  if (key.includes('purchase'))
+    return 'i-lucide-shopping-cart'
+  if (key.includes('report'))
+    return 'i-lucide-bar-chart-3'
+  if (key.includes('role') || key.includes('permission'))
+    return 'i-lucide-shield-check'
+  if (key.includes('setting'))
+    return 'i-lucide-settings-2'
+  if (key.includes('supplier'))
+    return 'i-lucide-truck'
+  if (key.includes('tax'))
+    return 'i-lucide-percent'
+  if (key.includes('vehicle'))
+    return 'i-lucide-car-front'
+
+  return 'i-lucide-folder'
+}
+
 function userLabel(user: AssignedUser) {
-  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuário sem identificação'
+  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuario sem identificacao'
 }
 
 function userInitials(user: AssignedUser) {
@@ -123,10 +180,14 @@ function onClose() {
 
 watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
 
-const permissionTabs = computed(() => Object.entries(grantedGroupedActions.value).map(([resource, actions]) => ({
-  label: `${resource} (${actions.length})`,
-  value: resource
-})))
+const permissionTabs = computed<PermissionTab[]>(() =>
+  Object.entries(grantedGroupedActions.value).map(([resource, actions]) => ({
+    label: resource,
+    value: resource,
+    count: actions.length,
+    icon: getResourceIcon(resource)
+  }))
+)
 
 const activeTabActions = computed(() => {
   if (!activePermissionTab.value)
@@ -160,6 +221,9 @@ watch(permissionTabs, (tabs) => {
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="space-y-2">
               <div class="flex flex-wrap items-center gap-2">
+                <div class="flex size-10 items-center justify-center rounded-2xl bg-primary/12 text-primary">
+                  <UIcon name="i-lucide-shield-check" class="size-5" />
+                </div>
                 <h3 class="text-lg font-semibold text-highlighted">
                   {{ roleLabel(detail.role) }}
                 </h3>
@@ -172,30 +236,33 @@ watch(permissionTabs, (tabs) => {
               </div>
 
               <p class="text-sm text-muted">
-                {{ detail.role.description || 'Sem descrição cadastrada para este papel.' }}
+                {{ detail.role.description || 'Sem descricao cadastrada para este papel.' }}
               </p>
             </div>
 
             <div class="grid min-w-55 gap-2 sm:grid-cols-3">
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
+                <UIcon name="i-lucide-users" class="mb-2 size-4 text-primary/80" />
                 <p class="text-xs text-muted">
-                  Usuários vinculados
+                  Usuarios vinculados
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.assigned_users_count }}
                 </p>
               </div>
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
+                <UIcon name="i-lucide-badge-check" class="mb-2 size-4 text-success" />
                 <p class="text-xs text-muted">
-                  Permissões liberadas
+                  Permissoes liberadas
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.granted_actions_count }}
                 </p>
               </div>
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
+                <UIcon name="i-lucide-grid-2x2" class="mb-2 size-4 text-primary/80" />
                 <p class="text-xs text-muted">
-                  Total de ações
+                  Total de acoes
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.total_actions_count }}
@@ -207,9 +274,10 @@ watch(permissionTabs, (tabs) => {
 
         <div class="space-y-3">
           <div class="flex items-center justify-between gap-3">
-            <h4 class="text-sm font-semibold uppercase tracking-widest text-muted">
-              Usuários com este papel
-            </h4>
+            <div class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted">
+              <UIcon name="i-lucide-users-round" class="size-4" />
+              <h4>Usuarios com este papel</h4>
+            </div>
           </div>
 
           <div v-if="detail.assigned_users.length" class="space-y-2">
@@ -240,7 +308,7 @@ watch(permissionTabs, (tabs) => {
                 </p>
 
                 <p v-if="user.employee_name" class="text-xs text-muted">
-                  Funcionário vinculado: {{ user.employee_name }}
+                  Funcionario vinculado: {{ user.employee_name }}
                 </p>
               </div>
             </div>
@@ -249,25 +317,43 @@ watch(permissionTabs, (tabs) => {
           <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
             <UIcon name="i-lucide-users" class="mx-auto mb-2 size-8 text-muted" />
             <p class="text-sm font-medium text-highlighted">
-              Nenhum usuário com este papel
+              Nenhum usuario com este papel
             </p>
             <p class="mt-1 text-sm text-muted">
-              Assim que um usuário for vinculado a este papel, ele aparecerá aqui.
+              Assim que um usuario for vinculado a este papel, ele aparecera aqui.
             </p>
           </div>
         </div>
 
         <div class="space-y-3">
-          <h4 class="text-sm font-semibold uppercase tracking-widest text-muted">
-            O que este papel pode fazer
-          </h4>
+          <div class="flex items-center gap-2 text-sm font-semibold uppercase tracking-widest text-muted">
+            <UIcon name="i-lucide-sparkles" class="size-4" />
+            <h4>O que este papel pode fazer</h4>
+          </div>
 
           <div v-if="Object.keys(grantedGroupedActions).length" class="space-y-4">
-            <UTabs
-              :items="permissionTabs"
-              :model-value="activePermissionTab"
-              @update:model-value="activePermissionTab = $event as string"
-            />
+            <div class="rounded-2xl border border-default/70 bg-default/20 p-2">
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="tab in permissionTabs"
+                  :key="tab.value"
+                  type="button"
+                  class="inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm transition-colors"
+                  :class="activePermissionTab === tab.value
+                    ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                    : 'border-default bg-default/60 text-muted hover:bg-elevated'"
+                  @click="activePermissionTab = tab.value"
+                >
+                  <UIcon :name="tab.icon" class="size-4 shrink-0" />
+                  <span class="break-all">
+                    {{ tab.label }}
+                  </span>
+                  <span class="rounded-full bg-black/8 px-1.5 py-0.5 text-[11px] font-semibold leading-none">
+                    {{ tab.count }}
+                  </span>
+                </button>
+              </div>
+            </div>
 
             <div class="rounded-xl border border-default/70">
               <div class="divide-y divide-default/60">
@@ -276,16 +362,22 @@ watch(permissionTabs, (tabs) => {
                   :key="action.id"
                   class="flex items-center justify-between gap-4 px-4 py-3"
                 >
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-highlighted">
-                      {{ action.name || action.code }}
-                    </p>
-                    <p v-if="action.description" class="text-xs text-muted">
-                      {{ action.description }}
-                    </p>
-                    <p v-else class="text-xs text-muted">
-                      Código: {{ action.code }}
-                    </p>
+                  <div class="flex min-w-0 items-start gap-3">
+                    <div class="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                      <UIcon :name="getResourceIcon(action.resource || activePermissionTab)" class="size-4" />
+                    </div>
+
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-highlighted">
+                        {{ action.name || action.code }}
+                      </p>
+                      <p v-if="action.description" class="text-xs text-muted">
+                        {{ action.description }}
+                      </p>
+                      <p v-else class="text-xs text-muted">
+                        Codigo: {{ action.code }}
+                      </p>
+                    </div>
                   </div>
 
                   <UBadge
@@ -302,10 +394,10 @@ watch(permissionTabs, (tabs) => {
           <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
             <UIcon name="i-lucide-ban" class="mx-auto mb-2 size-8 text-muted" />
             <p class="text-sm font-medium text-highlighted">
-              Nenhuma permissão liberada
+              Nenhuma permissao liberada
             </p>
             <p class="mt-1 text-sm text-muted">
-              Este papel ainda não possui ações marcadas como permitidas.
+              Este papel ainda nao possui acoes marcadas como permitidas.
             </p>
           </div>
         </div>
@@ -314,7 +406,7 @@ watch(permissionTabs, (tabs) => {
       <div v-else class="p-4">
         <div class="rounded-xl border border-error/30 bg-error/10 p-4">
           <p class="text-sm font-medium text-error">
-            Não foi possível carregar os detalhes do papel.
+            Nao foi possivel carregar os detalhes do papel.
           </p>
         </div>
       </div>
