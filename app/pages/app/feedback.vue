@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { SortingState } from '@tanstack/table-core'
 import type { Feedback, CreateFeedbackPayload } from '~/types/feedback'
 import {
   FeedbackType,
@@ -25,8 +24,6 @@ const {
   listType,
   listStatus,
   listSearch,
-  listSortBy,
-  listSortOrder,
   createFeedback,
   deleteFeedback,
   addResponse
@@ -50,17 +47,6 @@ const listStatusModel = computed({
 
 const tickets = computed(() => (listData.value?.data ?? []) as unknown as Record<string, unknown>[])
 const total = computed(() => listData.value?.total ?? 0)
-const sorting = computed<SortingState>({
-  get: () => [{
-    id: listSortBy.value,
-    desc: listSortOrder.value === 'desc'
-  }],
-  set: (value) => {
-    const nextSort = value[0]
-    listSortBy.value = nextSort?.id === 'id' ? 'id' : 'created_at'
-    listSortOrder.value = nextSort?.desc === false ? 'asc' : 'desc'
-  }
-})
 
 const typeFilterOptions = [
   { label: 'Todos os tipos', value: ALL_FILTER_VALUE },
@@ -73,7 +59,7 @@ const statusFilterOptions = [
 ]
 
 const columns = [
-  { accessorKey: 'id', header: 'Identificador', enableSorting: true },
+  { id: 'ticket_id', header: '#', enableSorting: false },
   { accessorKey: 'title', header: 'Assunto', enableSorting: false },
   { accessorKey: 'type', header: 'Tipo', enableSorting: false },
   { accessorKey: 'status', header: 'Status', enableSorting: false },
@@ -113,7 +99,11 @@ async function onRespond(feedbackId: string, content: string) {
 <template>
   <UDashboardPanel id="support">
     <template #header>
-      <AppPageHeader title="Suporte" />
+      <AppPageHeader title="Suporte">
+        <template #right>
+          <UButton label="Novo chamado" icon="i-lucide-plus" @click="createModalOpen = true" />
+        </template>
+      </AppPageHeader>
     </template>
 
     <template #body>
@@ -123,7 +113,6 @@ async function onRespond(feedbackId: string, content: string) {
             v-model:search-term="listSearch"
             v-model:page="listPage"
             v-model:page-size="listPageSize"
-            v-model:sorting="sorting"
             :columns="columns"
             :data="tickets"
             :loading="listFetchStatus === 'pending'"
@@ -131,7 +120,7 @@ async function onRespond(feedbackId: string, content: string) {
             :show-search="true"
             :show-view-mode-toggle="false"
             :show-page-size-selector="true"
-            search-placeholder="Buscar por identificador ou assunto..."
+            search-placeholder="Buscar por assunto..."
             empty-icon="i-lucide-headset"
             empty-title="Nenhum chamado encontrado"
             empty-description="Abra um chamado para entrar em contato com o suporte."
@@ -162,7 +151,7 @@ async function onRespond(feedbackId: string, content: string) {
               />
             </template>
 
-            <template #id-cell="{ row }">
+            <template #ticket_id-cell="{ row }">
               <span class="font-mono text-xs text-muted">
                 #{{ (row.original.id as string)?.slice(-5).toUpperCase() }}
               </span>

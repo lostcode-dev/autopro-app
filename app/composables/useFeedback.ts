@@ -15,17 +15,21 @@ export function useFeedback() {
   const listType = ref('')
   const listStatus = ref('')
   const listSearch = ref('')
+  const listSortBy = ref<'created_at' | 'id'>('created_at')
+  const listSortOrder = ref<'asc' | 'desc'>('desc')
 
   const debouncedListSearch = refDebounced(listSearch, 400)
 
-  watch([listType, listStatus, debouncedListSearch], () => {
+  watch([listType, listStatus, debouncedListSearch, listSortBy, listSortOrder], () => {
     if (listPage.value !== 1) listPage.value = 1
   })
 
   const listParams = computed(() => {
     const p: Record<string, string | number> = {
       page: listPage.value,
-      pageSize: listPageSize.value
+      pageSize: listPageSize.value,
+      sort_by: listSortBy.value,
+      sort_order: listSortOrder.value
     }
     if (listType.value) p.type = listType.value
     if (listStatus.value) p.status = listStatus.value
@@ -41,7 +45,7 @@ export function useFeedback() {
     params: listParams,
     lazy: true,
     server: false,
-    watch: [listPage, listPageSize, listType, listStatus, debouncedListSearch]
+    watch: [listPage, listPageSize, listType, listStatus, debouncedListSearch, listSortBy, listSortOrder]
   })
 
   // ─── User: Create feedback ───────────────────────────
@@ -104,6 +108,8 @@ export function useFeedback() {
     listType,
     listStatus,
     listSearch,
+    listSortBy,
+    listSortOrder,
     refreshList,
     createFeedback,
     fetchFeedback,

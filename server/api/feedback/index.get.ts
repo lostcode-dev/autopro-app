@@ -7,7 +7,9 @@ const querySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   type: z.enum(['bug', 'suggestion', 'improvement', 'praise']).optional(),
   status: z.enum(['submitted', 'in_review', 'resolved', 'closed']).optional(),
-  search: z.string().optional()
+  search: z.string().optional(),
+  sort_by: z.enum(['created_at', 'id']).default('created_at'),
+  sort_order: z.enum(['asc', 'desc']).default('desc')
 })
 
 export default eventHandler(async (event) => {
@@ -19,17 +21,18 @@ export default eventHandler(async (event) => {
 
   const from = (params.page - 1) * params.pageSize
   const to = from + params.pageSize - 1
+  const searchTerm = params.search?.replaceAll('#', '').trim()
 
   let qb = supabase
     .from('feedbacks')
     .select('*, feedback_attachments(*), feedback_responses(count)', { count: 'exact' })
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+    .order(params.sort_by, { ascending: params.sort_order === 'asc' })
     .range(from, to)
 
   if (params.type) qb = qb.eq('type', params.type)
   if (params.status) qb = qb.eq('status', params.status)
-  if (params.search) qb = qb.or(`title.ilike.%${params.search}%,description.ilike.%${params.search}%`)
+  if (searchTerm) qb = qb.or(`id.ilike.%${searchTerm}%,title.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`)
 
   const { data, error, count } = await qb
 

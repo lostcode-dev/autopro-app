@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
+import type { RowSelectionState } from '@tanstack/table-core'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
@@ -33,8 +34,26 @@ type FinancialResponse = {
   page_size: number
 }
 
+type SummarySection = {
+  income: number
+  expense: number
+  balance: number
+}
+
+type SummaryResponse = {
+  total: SummarySection
+  paid: SummarySection
+  pending: SummarySection
+}
+
 const PAGE_SIZE = 20
 const MANAGED_QUERY_KEYS = ['search', 'status', 'type', 'dateFrom', 'dateTo', 'page'] as const
+
+const defaultSummary: SummaryResponse = {
+  total: { income: 0, expense: 0, balance: 0 },
+  paid: { income: 0, expense: 0, balance: 0 },
+  pending: { income: 0, expense: 0, balance: 0 }
+}
 
 const toast = useToast()
 const workshop = useWorkshopPermissions()
@@ -53,11 +72,7 @@ function getDefaultDateRange() {
   const year = now.getFullYear()
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const lastDay = String(new Date(year, now.getMonth() + 1, 0).getDate()).padStart(2, '0')
-
-  return {
-    from: `${year}-${month}-01`,
-    to: `${year}-${month}-${lastDay}`
-  }
+  return { from: `${year}-${month}-01`, to: `${year}-${month}-${lastDay}` }
 }
 
 function parsePage(value: unknown) {
@@ -68,10 +83,8 @@ function parsePage(value: unknown) {
 function parseArrayQuery(value: unknown) {
   if (Array.isArray(value))
     return value.flatMap(item => String(item || '').split(',')).map(item => item.trim()).filter(Boolean)
-
   if (typeof value === 'string')
     return value.split(',').map(item => item.trim()).filter(Boolean)
-
   return []
 }
 
@@ -89,8 +102,7 @@ function normalizeStatusForApi(value: string) {
 
 function normalizeRecurrenceValue(value: unknown) {
   const normalized = String(value || '').trim().toLowerCase()
-  if (!normalized || normalized === 'null' || normalized === 'none' || normalized === 'nao_recorrente')
-    return null
+  if (!normalized || normalized === 'null' || normalized === 'none' || normalized === 'nao_recorrente') return null
   if (normalized === 'mensal') return 'monthly'
   if (normalized === 'anual') return 'yearly'
   if (normalized === 'semanal') return 'weekly'
@@ -121,32 +133,33 @@ const requestQuery = computed(() => ({
   page_size: PAGE_SIZE
 }))
 
+// Summary query — excludes status so the breakdown is always full
+const summaryQuery = computed(() => ({
+  search: debouncedSearch.value || undefined,
+  type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
+  date_from: dateFrom.value || undefined,
+  date_to: dateTo.value || undefined
+}))
+
 const { data, status, refresh } = await useAsyncData(
   () => `financial-${debouncedSearch.value}-${statusFilters.value.join(',')}-${typeFilters.value.join(',')}-${dateFrom.value}-${dateTo.value}-${page.value}`,
   async () => {
-    if (!canRead.value) {
-      return {
-        items: [],
-        total: 0,
-        page: 1,
-        page_size: PAGE_SIZE
-      } satisfies FinancialResponse
-    }
-
-    return requestFetch<FinancialResponse>('/api/financial', {
-      headers: requestHeaders,
-      query: requestQuery.value
-    })
+    if (!canRead.value) return { items: [], total: 0, page: 1, page_size: PAGE_SIZE } satisfies FinancialResponse
+    return requestFetch<FinancialResponse>('/api/financial', { headers: requestHeaders, query: requestQuery.value })
   },
   {
     watch: [requestQuery],
-    default: () => ({
-      items: [],
-      total: 0,
-      page: 1,
-      page_size: PAGE_SIZE
-    })
+    default: () => ({ items: [], total: 0, page: 1, page_size: PAGE_SIZE })
   }
+)
+
+const { data: summaryData, refresh: refreshSummary } = await useAsyncData(
+  () => `financial-summary-${debouncedSearch.value}-${typeFilters.value.join(',')}-${dateFrom.value}-${dateTo.value}`,
+  async () => {
+    if (!canRead.value) return defaultSummary
+    return requestFetch<SummaryResponse>('/api/financial/summary', { headers: requestHeaders, query: summaryQuery.value })
+  },
+  { watch: [summaryQuery], default: () => defaultSummary }
 )
 
 const { data: bankAccountsData } = await useAsyncData(
@@ -160,19 +173,12 @@ const { data: bankAccountsData } = await useAsyncData(
 
 const bankAccountOptions = computed<BankAccountOption[]>(() => {
   const raw = bankAccountsData.value
-  const items = Array.isArray(raw)
-    ? raw
-    : ((raw as Record<string, unknown>)?.items as Array<Record<string, unknown>> | undefined) ?? []
-
-  return items.map(item => ({
-    label: String(item.name ?? item.label ?? 'Conta bancária'),
-    value: String(item.id ?? item.value ?? '')
-  })).filter(item => item.value)
+  if (!raw) return []
+  const list = Array.isArray(raw) ? raw : ((raw as { items?: BankAccountOption[] }).items ?? [])
+  return list.filter(item => item.value)
 })
 
-const bankAccountById = computed(() =>
-  new Map(bankAccountOptions.value.map(option => [option.value, option.label]))
-)
+const bankAccountById = computed(() => new Map(bankAccountOptions.value.map(opt => [opt.value, opt.label])))
 
 const accumulatedItems = ref<Entry[]>([])
 const totalFromServer = ref(0)
@@ -193,28 +199,10 @@ watch(data, (newData) => {
   ]
 }, { immediate: true })
 
+const summary = computed(() => summaryData.value ?? defaultSummary)
+
 const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.value)
 const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
-
-const loadedSummary = computed(() => {
-  const income = accumulatedItems.value
-    .filter(entry => String(entry.type || '').toLowerCase() === 'income')
-    .reduce((sum, entry) => sum + Number.parseFloat(String(entry.amount || 0)), 0)
-
-  const expense = accumulatedItems.value
-    .filter(entry => String(entry.type || '').toLowerCase() === 'expense')
-    .reduce((sum, entry) => sum + Number.parseFloat(String(entry.amount || 0)), 0)
-
-  const paidCount = accumulatedItems.value.filter(entry => isPaidStatus(entry.status)).length
-
-  return {
-    income,
-    expense,
-    balance: income - expense,
-    paidCount,
-    pendingCount: Math.max(0, accumulatedItems.value.length - paidCount)
-  }
-})
 
 const hasActiveFilters = computed(() =>
   Boolean(
@@ -225,6 +213,40 @@ const hasActiveFilters = computed(() =>
     || dateTo.value !== defaultDateRange.to
   )
 )
+
+// ── Summary sections ──────────────────────────────────────────────────────────
+
+const summarySections = computed(() => [
+  {
+    key: 'total',
+    label: 'Total',
+    cards: [
+      { key: 'income', label: 'Entradas (Total)', value: summary.value.total.income, colorClass: 'text-success' },
+      { key: 'expense', label: 'Saídas (Total)', value: summary.value.total.expense, colorClass: 'text-error' },
+      { key: 'balance', label: 'Saldo Total', value: summary.value.total.balance, colorClass: summary.value.total.balance >= 0 ? 'text-success' : 'text-error' }
+    ]
+  },
+  {
+    key: 'paid',
+    label: 'Pagos',
+    cards: [
+      { key: 'income', label: 'Entradas (Pagas)', value: summary.value.paid.income, colorClass: 'text-success' },
+      { key: 'expense', label: 'Saídas (Pagas)', value: summary.value.paid.expense, colorClass: 'text-error' },
+      { key: 'balance', label: 'Saldo Pago', value: summary.value.paid.balance, colorClass: summary.value.paid.balance >= 0 ? 'text-success' : 'text-error' }
+    ]
+  },
+  {
+    key: 'pending',
+    label: 'Pendentes',
+    cards: [
+      { key: 'income', label: 'Entradas (Pendentes)', value: summary.value.pending.income, colorClass: 'text-warning' },
+      { key: 'expense', label: 'Saídas (Pendentes)', value: summary.value.pending.expense, colorClass: 'text-warning' },
+      { key: 'balance', label: 'Saldo Pendente', value: summary.value.pending.balance, colorClass: 'text-muted' }
+    ]
+  }
+])
+
+// ── Query sync ────────────────────────────────────────────────────────────────
 
 function buildManagedQuery() {
   return {
@@ -239,16 +261,11 @@ function buildManagedQuery() {
 
 async function syncQuery() {
   const nextQuery = Object.fromEntries(
-    Object.entries(route.query).filter(
-      ([key]) => !MANAGED_QUERY_KEYS.includes(key as typeof MANAGED_QUERY_KEYS[number])
-    )
+    Object.entries(route.query).filter(([key]) => !MANAGED_QUERY_KEYS.includes(key as typeof MANAGED_QUERY_KEYS[number]))
   ) as Record<string, string | string[] | undefined>
 
   Object.assign(nextQuery, buildManagedQuery())
-
-  if (JSON.stringify(route.query) === JSON.stringify(nextQuery))
-    return
-
+  if (JSON.stringify(route.query) === JSON.stringify(nextQuery)) return
   await router.replace({ query: nextQuery })
 }
 
@@ -262,17 +279,9 @@ watch(
     const nextDateTo = typeof query.dateTo === 'string' ? query.dateTo : defaultDateRange.to
     const nextPage = parsePage(query.page)
 
-    if (search.value !== nextSearch) {
-      search.value = nextSearch
-      debouncedSearch.value = nextSearch
-    }
-
-    if (JSON.stringify(statusFilters.value) !== JSON.stringify(nextStatus))
-      statusFilters.value = nextStatus
-
-    if (JSON.stringify(typeFilters.value) !== JSON.stringify(nextType))
-      typeFilters.value = nextType
-
+    if (search.value !== nextSearch) { search.value = nextSearch; debouncedSearch.value = nextSearch }
+    if (JSON.stringify(statusFilters.value) !== JSON.stringify(nextStatus)) statusFilters.value = nextStatus
+    if (JSON.stringify(typeFilters.value) !== JSON.stringify(nextType)) typeFilters.value = nextType
     if (dateFrom.value !== nextDateFrom) dateFrom.value = nextDateFrom
     if (dateTo.value !== nextDateTo) dateTo.value = nextDateTo
     if (page.value !== nextPage) page.value = nextPage
@@ -284,6 +293,7 @@ watchDebounced(
   async (value) => {
     debouncedSearch.value = value
     accumulatedItems.value = []
+    rowSelection.value = {}
     page.value = 1
     await syncQuery()
   },
@@ -294,6 +304,7 @@ watch(
   [statusFilters, typeFilters, dateFrom, dateTo],
   async () => {
     accumulatedItems.value = []
+    rowSelection.value = {}
     page.value = 1
     await syncQuery()
   },
@@ -303,8 +314,7 @@ watch(
 watch(page, syncQuery)
 
 function loadMore() {
-  if (hasMore.value && status.value !== 'pending')
-    page.value += 1
+  if (hasMore.value && status.value !== 'pending') page.value += 1
 }
 
 function resetFilters() {
@@ -315,64 +325,90 @@ function resetFilters() {
   dateFrom.value = defaultDateRange.from
   dateTo.value = defaultDateRange.to
   accumulatedItems.value = []
+  rowSelection.value = {}
   page.value = 1
 }
 
 async function resetAndRefresh() {
   accumulatedItems.value = []
-
-  if (page.value !== 1) {
-    page.value = 1
-    return
-  }
-
-  await refresh()
+  rowSelection.value = {}
+  if (page.value !== 1) { page.value = 1; return }
+  await Promise.all([refresh(), refreshSummary()])
 }
+
+// ── Row selection ─────────────────────────────────────────────────────────────
+
+const rowSelection = ref<RowSelectionState>({})
+const selectedIds = computed(() =>
+  Object.entries(rowSelection.value).filter(([, v]) => v).map(([id]) => id)
+)
+const selectedCount = computed(() => selectedIds.value.length)
+const selectedEntries = computed(() =>
+  accumulatedItems.value.filter(entry => selectedIds.value.includes(String(entry.id)))
+)
+const pendingSelectedCount = computed(() =>
+  selectedEntries.value.filter(e => !isPaidStatus(e.status)).length
+)
+
+// ── Pay single ────────────────────────────────────────────────────────────────
 
 const isPaying = ref(false)
 const payingEntryId = ref<string | null>(null)
 
 async function pay(entry: Entry) {
   if (isPaying.value || isPaidStatus(entry.status)) return
-
   isPaying.value = true
   payingEntryId.value = String(entry.id)
-
   try {
     await $fetch(`/api/financial/${String(entry.id)}/pay`, { method: 'POST' })
     toast.add({ title: 'Lançamento marcado como pago', color: 'success' })
     await resetAndRefresh()
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({
-      title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao pagar',
-      color: 'error'
-    })
-  } finally {
-    isPaying.value = false
-    payingEntryId.value = null
   }
+  catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao pagar', color: 'error' })
+  }
+  finally { isPaying.value = false; payingEntryId.value = null }
 }
+
+// ── Bulk pay ──────────────────────────────────────────────────────────────────
+
+const showBulkPayModal = ref(false)
+const isBulkPaying = ref(false)
+
+async function confirmBulkPay() {
+  if (!pendingSelectedCount.value || isBulkPaying.value) return
+  isBulkPaying.value = true
+  try {
+    const pendingIds = selectedEntries.value.filter(e => !isPaidStatus(e.status)).map(e => String(e.id))
+    await $fetch('/api/financial/pay-entries-bulk', { method: 'POST', body: { entryIds: pendingIds } })
+    toast.add({ title: `${pendingIds.length} lançamento(s) marcado(s) como pago`, color: 'success' })
+    rowSelection.value = {}
+    showBulkPayModal.value = false
+    await resetAndRefresh()
+  }
+  catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao pagar em massa', color: 'error' })
+  }
+  finally { isBulkPaying.value = false }
+}
+
+// ── Create / Edit ─────────────────────────────────────────────────────────────
 
 const showFormModal = ref(false)
 const selectedEntry = ref<Entry | null>(null)
 
-function openCreate() {
-  selectedEntry.value = null
-  showFormModal.value = true
-}
-
-function openEdit(entry: Entry) {
-  selectedEntry.value = entry
-  showFormModal.value = true
-}
+function openCreate() { selectedEntry.value = null; showFormModal.value = true }
+function openEdit(entry: Entry) { selectedEntry.value = entry; showFormModal.value = true }
 
 async function onEntrySaved() {
   showFormModal.value = false
   selectedEntry.value = null
   await resetAndRefresh()
 }
+
+// ── Delete single ─────────────────────────────────────────────────────────────
 
 const isDeleting = ref(false)
 const showDeleteModal = ref(false)
@@ -386,40 +422,156 @@ function requestRemove(entry: Entry) {
 
 async function confirmRemove() {
   if (!entryPendingDeletion.value || isDeleting.value) return
-
   isDeleting.value = true
-
   try {
     await $fetch(`/api/financial/${String(entryPendingDeletion.value.id)}`, { method: 'DELETE' })
     toast.add({ title: 'Lançamento removido', color: 'success' })
     showDeleteModal.value = false
     entryPendingDeletion.value = null
     await resetAndRefresh()
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
-    toast.add({
-      title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao remover',
-      color: 'error'
-    })
-  } finally {
-    isDeleting.value = false
   }
+  catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao remover', color: 'error' })
+  }
+  finally { isDeleting.value = false }
 }
+
+// ── Bulk delete ───────────────────────────────────────────────────────────────
+
+const showBulkDeleteModal = ref(false)
+const isBulkDeleting = ref(false)
+
+async function confirmBulkDelete() {
+  if (!selectedIds.value.length || isBulkDeleting.value) return
+  isBulkDeleting.value = true
+  try {
+    await Promise.all(selectedIds.value.map(id => $fetch(`/api/financial/${id}`, { method: 'DELETE' })))
+    toast.add({ title: `${selectedIds.value.length} lançamento(s) removido(s)`, color: 'success' })
+    rowSelection.value = {}
+    showBulkDeleteModal.value = false
+    await resetAndRefresh()
+  }
+  catch { toast.add({ title: 'Erro ao excluir lançamentos', color: 'error' }) }
+  finally { isBulkDeleting.value = false }
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+
+async function fetchAllForExport() {
+  return $fetch<FinancialResponse>('/api/financial', {
+    query: {
+      search: debouncedSearch.value || undefined,
+      status: statusFilters.value.length === 1 ? normalizeStatusForApi(statusFilters.value[0]!) : undefined,
+      type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
+      date_from: dateFrom.value || undefined,
+      date_to: dateTo.value || undefined,
+      page: 1,
+      page_size: 2000
+    }
+  })
+}
+
+async function exportCsv() {
+  try {
+    const all = await fetchAllForExport()
+    if (!all.items.length) { toast.add({ title: 'Nenhum lançamento para exportar', color: 'warning' }); return }
+
+    const headers = ['descricao', 'categoria', 'tipo', 'status', 'valor', 'vencimento', 'recorrencia', 'notas']
+    const rows = all.items.map(item =>
+      [
+        item.description,
+        item.category || '',
+        item.type === 'income' ? 'Receita' : 'Despesa',
+        isPaidStatus(item.status) ? 'Pago' : 'Pendente',
+        Number.parseFloat(String(item.amount || 0)).toFixed(2).replace('.', ','),
+        formatDate(String(item.due_date || '')),
+        formatRecurrence(item.recurrence),
+        item.notes || ''
+      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    )
+
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `financeiro_${new Date().toISOString().slice(0, 10)}.csv`
+    anchor.click()
+    URL.revokeObjectURL(url)
+  }
+  catch { toast.add({ title: 'Erro ao exportar CSV', color: 'error' }) }
+}
+
+async function exportPdf() {
+  try {
+    const all = await fetchAllForExport()
+    if (!all.items.length) { toast.add({ title: 'Nenhum lançamento para exportar', color: 'warning' }); return }
+
+    const tableRows = all.items.map(item => `
+      <tr>
+        <td>${item.description}</td>
+        <td>${item.category || '—'}</td>
+        <td>${item.type === 'income' ? 'Receita' : 'Despesa'}</td>
+        <td>${isPaidStatus(item.status) ? 'Pago' : 'Pendente'}</td>
+        <td style="text-align:right">${formatCurrency(item.amount as string | number)}</td>
+        <td>${formatDate(String(item.due_date || ''))}</td>
+      </tr>`).join('')
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Financeiro</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12px; margin: 24px; color: #111; }
+    h2 { margin-bottom: 4px; font-size: 16px; }
+    p.period { color: #666; margin-bottom: 16px; font-size: 11px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #ddd; padding: 5px 8px; text-align: left; }
+    th { background: #f3f4f6; font-weight: 600; }
+    tr:nth-child(even) { background: #fafafa; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  <h2>Lançamentos Financeiros</h2>
+  <p class="period">Período: ${dateFrom.value} a ${dateTo.value} &nbsp;|&nbsp; Total: ${all.total} registro(s)</p>
+  <table>
+    <thead><tr><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Valor</th><th>Vencimento</th></tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    if (!win) { toast.add({ title: 'Popup bloqueado', description: 'Permita popups para exportar PDF', color: 'warning' }); return }
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+  catch { toast.add({ title: 'Erro ao exportar PDF', color: 'error' }) }
+}
+
+const exportItems = [
+  [
+    { label: 'Exportar CSV', icon: 'i-lucide-file-spreadsheet', onSelect: exportCsv },
+    { label: 'Exportar PDF', icon: 'i-lucide-file-text', onSelect: exportPdf }
+  ]
+]
+
+// ── Formatters ────────────────────────────────────────────────────────────────
 
 function formatCurrency(value: number | string) {
   const parsed = Number.parseFloat(String(value || 0))
-  return Number.isFinite(parsed)
-    ? parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-    : 'R$ 0,00'
+  return Number.isFinite(parsed) ? parsed.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00'
 }
 
 function formatDate(value: string | null | undefined) {
   if (!value) return '—'
-
   const [year, month, day] = String(value).split('-')
   if (!year || !month || !day) return value
-
   return `${day}/${month}/${year}`
 }
 
@@ -445,20 +597,9 @@ function getBankAccountLabel(entry: Entry) {
   return bankAccountById.value.get(accountId) || 'Conta vinculada'
 }
 
-const typeBadgeColor: Record<string, BadgeColor> = {
-  income: 'success',
-  expense: 'error'
-}
-
-const typeBadgeLabel: Record<string, string> = {
-  income: 'Receita',
-  expense: 'Despesa'
-}
-
-const statusBadgeColor: Record<string, BadgeColor> = {
-  paid: 'success',
-  pending: 'warning'
-}
+const typeBadgeColor: Record<string, BadgeColor> = { income: 'success', expense: 'error' }
+const typeBadgeLabel: Record<string, string> = { income: 'Receita', expense: 'Despesa' }
+const statusBadgeColor: Record<string, BadgeColor> = { paid: 'success', pending: 'warning' }
 
 const columns = [
   { accessorKey: 'description', header: 'Lançamento', enableSorting: false },
@@ -485,116 +626,48 @@ const columns = [
       </div>
 
       <div v-else class="space-y-4 p-4">
-        <FinancialEntriesFilters
-          v-model:date-from="dateFrom"
-          v-model:date-to="dateTo"
-          v-model:type-filters="typeFilters"
-          v-model:status-filters="statusFilters"
-        />
-
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div class="rounded-2xl border border-default/80 bg-default/60 p-4">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-xs font-medium uppercase tracking-[0.08em] text-muted">
-                  Resultados filtrados
-                </p>
-                <p class="mt-2 text-2xl font-semibold text-highlighted">
-                  {{ totalFromServer }}
-                </p>
-              </div>
-              <div class="flex size-11 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-                <UIcon name="i-lucide-list-filter" class="size-5" />
-              </div>
+        <!-- Summary cards -->
+        <div class="overflow-hidden rounded-xl border border-default/80 bg-default/60">
+          <div
+            v-for="(section, idx) in summarySections"
+            :key="section.key"
+            :class="[
+              'grid grid-cols-[80px_repeat(3,1fr)] divide-x divide-default/60',
+              idx < summarySections.length - 1 ? 'border-b border-default/60' : ''
+            ]"
+          >
+            <div class="flex items-center justify-center bg-default/40 p-3">
+              <span class="text-center text-xs font-semibold uppercase tracking-wider text-muted">
+                {{ section.label }}
+              </span>
             </div>
-            <p class="mt-3 text-sm text-muted">
-              {{ accumulatedItems.length }} carregado(s) até agora.
-            </p>
-          </div>
-
-          <div class="rounded-2xl border border-default/80 bg-default/60 p-4">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-xs font-medium uppercase tracking-[0.08em] text-muted">
-                  Receitas carregadas
-                </p>
-                <p class="mt-2 text-2xl font-semibold text-success">
-                  {{ formatCurrency(loadedSummary.income) }}
-                </p>
-              </div>
-              <div class="flex size-11 items-center justify-center rounded-2xl bg-success/12 text-success">
-                <UIcon name="i-lucide-trending-up" class="size-5" />
-              </div>
-            </div>
-            <p class="mt-3 text-sm text-muted">
-              Somatório das entradas já carregadas no scroll.
-            </p>
-          </div>
-
-          <div class="rounded-2xl border border-default/80 bg-default/60 p-4">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-xs font-medium uppercase tracking-[0.08em] text-muted">
-                  Despesas carregadas
-                </p>
-                <p class="mt-2 text-2xl font-semibold text-error">
-                  {{ formatCurrency(loadedSummary.expense) }}
-                </p>
-              </div>
-              <div class="flex size-11 items-center justify-center rounded-2xl bg-error/12 text-error">
-                <UIcon name="i-lucide-trending-down" class="size-5" />
-              </div>
-            </div>
-            <p class="mt-3 text-sm text-muted">
-              Somatório das saídas já carregadas no scroll.
-            </p>
-          </div>
-
-          <div class="rounded-2xl border border-default/80 bg-default/60 p-4">
-            <div class="flex items-center justify-between gap-3">
-              <div>
-                <p class="text-xs font-medium uppercase tracking-[0.08em] text-muted">
-                  Saldo carregado
-                </p>
-                <p
-                  class="mt-2 text-2xl font-semibold"
-                  :class="loadedSummary.balance >= 0 ? 'text-success' : 'text-error'"
-                >
-                  {{ formatCurrency(loadedSummary.balance) }}
-                </p>
-              </div>
-              <div
-                class="flex size-11 items-center justify-center rounded-2xl"
-                :class="loadedSummary.balance >= 0 ? 'bg-success/12 text-success' : 'bg-error/12 text-error'"
-              >
-                <UIcon name="i-lucide-wallet" class="size-5" />
-              </div>
-            </div>
-            <div class="mt-3 flex flex-wrap gap-2">
-              <UBadge
-                :label="`${loadedSummary.pendingCount} pendente(s)`"
-                color="warning"
-                variant="subtle"
-                size="xs"
-              />
-              <UBadge
-                :label="`${loadedSummary.paidCount} pago(s)`"
-                color="success"
-                variant="subtle"
-                size="xs"
-              />
+            <div
+              v-for="card in section.cards"
+              :key="card.key"
+              class="min-w-0 px-4 py-3"
+            >
+              <p class="truncate text-xs text-muted">
+                {{ card.label }}
+              </p>
+              <p class="mt-1 text-base font-semibold" :class="card.colorClass">
+                {{ formatCurrency(card.value) }}
+              </p>
             </div>
           </div>
         </div>
 
+        <!-- Table -->
         <AppDataTableInfinite
           v-model:search-term="search"
+          v-model:row-selection="rowSelection"
           :columns="columns"
           :data="accumulatedItems as Record<string, unknown>[]"
           :loading="status === 'pending' && page === 1"
           :loading-more="loadingMore"
           :has-more="hasMore"
           :total="totalFromServer"
+          :selectable="true"
+          :get-row-id="(row) => String(row.id ?? '')"
           show-search
           search-placeholder="Buscar por descrição..."
           empty-icon="i-lucide-wallet-cards"
@@ -623,12 +696,60 @@ const columns = [
               @click="resetFilters"
             />
 
+            <UTooltip
+              v-if="canUpdate"
+              :text="pendingSelectedCount > 0 ? `Pagar ${pendingSelectedCount} selecionado(s)` : 'Selecione lançamentos pendentes'"
+            >
+              <UButton
+                icon="i-lucide-check-circle"
+                color="success"
+                variant="outline"
+                size="sm"
+                :disabled="pendingSelectedCount === 0"
+                @click="showBulkPayModal = true"
+              />
+            </UTooltip>
+
+            <UTooltip
+              v-if="canDelete"
+              :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionado(s)` : 'Selecione lançamentos para excluir'"
+            >
+              <UButton
+                icon="i-lucide-trash-2"
+                color="error"
+                variant="outline"
+                size="sm"
+                :disabled="selectedCount === 0"
+                @click="showBulkDeleteModal = true"
+              />
+            </UTooltip>
+
+            <UDropdownMenu :items="exportItems">
+              <UButton
+                icon="i-lucide-download"
+                label="Exportar"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                trailing-icon="i-lucide-chevron-down"
+              />
+            </UDropdownMenu>
+
             <UButton
               v-if="canCreate"
               label="Novo lançamento"
               icon="i-lucide-plus"
               size="sm"
               @click="openCreate"
+            />
+          </template>
+
+          <template #filters>
+            <FinancialEntriesFilters
+              v-model:date-from="dateFrom"
+              v-model:date-to="dateTo"
+              v-model:type-filters="typeFilters"
+              v-model:status-filters="statusFilters"
             />
           </template>
 
@@ -760,6 +881,40 @@ const columns = [
         Tem certeza que deseja excluir
         <strong class="text-highlighted">{{ entryPendingDeletion?.description || 'este lançamento' }}</strong>?
         Esta ação não pode ser desfeita.
+      </p>
+    </template>
+  </AppConfirmModal>
+
+  <AppConfirmModal
+    v-model:open="showBulkDeleteModal"
+    title="Excluir lançamentos selecionados"
+    confirm-label="Excluir todos"
+    confirm-color="error"
+    :loading="isBulkDeleting"
+    @confirm="confirmBulkDelete"
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Tem certeza que deseja excluir
+        <strong class="text-highlighted">{{ selectedCount }} lançamento(s)</strong>?
+        Esta ação não pode ser desfeita.
+      </p>
+    </template>
+  </AppConfirmModal>
+
+  <AppConfirmModal
+    v-model:open="showBulkPayModal"
+    title="Pagar lançamentos selecionados"
+    confirm-label="Confirmar pagamento"
+    confirm-color="success"
+    :loading="isBulkPaying"
+    @confirm="confirmBulkPay"
+  >
+    <template #description>
+      <p class="text-sm text-muted">
+        Marcar
+        <strong class="text-highlighted">{{ pendingSelectedCount }} lançamento(s)</strong>
+        como pagos? Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>
