@@ -302,13 +302,16 @@ async function togglePermission(actionId: string) {
         </div>
 
         <div v-else-if="roles.length" class="space-y-2">
-          <button
+          <div
             v-for="role in roles"
             :key="role.id"
-            type="button"
+            role="button"
+            tabindex="0"
             class="flex w-full items-start justify-between gap-3 rounded-lg border px-3 py-3 text-left transition-colors"
             :class="selectedPermissionsRoleId === role.id ? 'border-primary bg-primary/5' : 'border-default hover:bg-elevated/60'"
             @click="openPermissions(role)"
+            @keydown.enter.prevent="openPermissions(role)"
+            @keydown.space.prevent="openPermissions(role)"
           >
             <div class="min-w-0 space-y-1">
               <div class="flex flex-wrap items-center gap-2">
@@ -359,7 +362,7 @@ async function togglePermission(actionId: string) {
                 @click.stop="requestDeleteRole(role)"
               />
             </div>
-          </button>
+          </div>
         </div>
 
         <div v-else class="rounded-lg border border-dashed border-default px-4 py-8 text-center">
