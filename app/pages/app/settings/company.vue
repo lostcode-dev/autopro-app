@@ -352,7 +352,7 @@ const fiscalRegimeOptions = [
           <UFormField
             name="description"
             label="Descrição"
-            description="Breve apresentação da oficina (opcional)."
+            description="Breve apresentação da oficina"
             class="grid gap-2"
           >
             <UTextarea
@@ -375,11 +375,7 @@ const fiscalRegimeOptions = [
         </p>
 
         <div class="gap-4 grid grid-cols-2">
-          <UFormField
-            name="email"
-            label="E-mail"
-            class="grid gap-2"
-          >
+          <UFormField name="email" label="E-mail" class="grid gap-2">
             <UInput
               v-model="form.email"
               type="email"
@@ -431,12 +427,7 @@ const fiscalRegimeOptions = [
         </p>
 
         <div class="gap-4 grid grid-cols-2">
-          <UFormField
-            name="address_zip_code"
-            label="CEP"
-            description="Digite o CEP para preencher o endereço automaticamente."
-            class="grid gap-2"
-          >
+          <UFormField name="address_zip_code" label="CEP" class="grid gap-2">
             <div class="flex gap-2 w-full">
               <UInput
                 v-model="form.address_zip_code"
@@ -470,27 +461,29 @@ const fiscalRegimeOptions = [
             />
           </UFormField>
 
-          <UFormField name="address_number" label="Número" class="grid gap-2">
-            <UInput
-              v-model="form.address_number"
-              :disabled="!canUpdate"
-              class="w-full"
-              placeholder="Nº"
-            />
-          </UFormField>
+          <div class="grid gap-4 grid-cols-2">
+            <UFormField name="address_number" label="Número" class="grid gap-2">
+              <UInput
+                v-model="form.address_number"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="Nº"
+              />
+            </UFormField>
 
-          <UFormField
-            name="address_complement"
-            label="Complemento"
-            class="grid gap-2"
-          >
-            <UInput
-              v-model="form.address_complement"
-              :disabled="!canUpdate"
-              class="w-full"
-              placeholder="Apto, sala..."
-            />
-          </UFormField>
+            <UFormField
+              name="address_complement"
+              label="Complemento"
+              class="grid gap-2"
+            >
+              <UInput
+                v-model="form.address_complement"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="Apto, sala..."
+              />
+            </UFormField>
+          </div>
 
           <UFormField
             name="address_neighborhood"
@@ -504,24 +497,26 @@ const fiscalRegimeOptions = [
             />
           </UFormField>
 
-          <UFormField name="address_city" label="Cidade" class="grid gap-2">
-            <UInput
-              v-model="form.address_city"
-              :disabled="!canUpdate"
-              class="w-full"
-              placeholder="Cidade"
-            />
-          </UFormField>
+          <div class="grid gap-4 grid-cols-2">
+            <UFormField name="address_city" label="Cidade" class="grid gap-2">
+              <UInput
+                v-model="form.address_city"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="Cidade"
+              />
+            </UFormField>
 
-          <UFormField name="address_state" label="Estado" class="grid gap-2">
-            <UInput
-              v-model="form.address_state"
-              :disabled="!canUpdate"
-              maxlength="2"
-              class="w-full uppercase"
-              placeholder="UF"
-            />
-          </UFormField>
+            <UFormField name="address_state" label="Estado" class="grid gap-2">
+              <UInput
+                v-model="form.address_state"
+                :disabled="!canUpdate"
+                maxlength="2"
+                class="w-full uppercase"
+                placeholder="UF"
+              />
+            </UFormField>
+          </div>
         </div>
       </UPageCard>
 
