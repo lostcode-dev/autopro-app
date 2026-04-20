@@ -186,7 +186,7 @@ const bankAccountById = computed(() => new Map(bankAccountOptions.value.map(opt 
 const accumulatedItems = ref<Entry[]>([])
 const totalFromServer = ref(0)
 
-watch(data, (newData) => {
+function mergeIncomingData(newData: typeof data.value) {
   const newItems = newData?.items ?? []
   totalFromServer.value = newData?.total ?? 0
 
@@ -200,7 +200,9 @@ watch(data, (newData) => {
     ...accumulatedItems.value,
     ...newItems.filter(item => !existingIds.has(item.id))
   ]
-}, { immediate: true })
+}
+
+watch(data, mergeIncomingData)
 
 const summary = computed(() => summaryData.value ?? defaultSummary)
 
@@ -208,9 +210,14 @@ const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.v
 const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
 
 // ── Bootstrap: load preceding pages when entering at page > 1 ────────────────
+const isHydrated = ref(false)
 const isBootstrapping = ref(false)
 
 onMounted(async () => {
+  // Populate items from SSR payload (or default) before showing content
+  mergeIncomingData(data.value)
+  isHydrated.value = true
+
   const initialPage = page.value
   if (initialPage <= 1 || !canRead.value) return
 
@@ -692,7 +699,7 @@ const columns = [
           v-model:row-selection="rowSelection"
           :columns="columns"
           :data="accumulatedItems as Record<string, unknown>[]"
-          :loading="(status === 'pending' && page === 1) || isBootstrapping"
+          :loading="!isHydrated || (status === 'pending' && page === 1) || isBootstrapping"
           :loading-more="loadingMore"
           :has-more="hasMore"
           :total="totalFromServer"
