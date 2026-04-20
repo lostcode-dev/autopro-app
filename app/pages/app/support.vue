@@ -98,11 +98,7 @@ async function onRespond(feedbackId: string, content: string) {
 <template>
   <UDashboardPanel id="support">
     <template #header>
-      <AppPageHeader title="Suporte">
-        <template #right>
-          <UButton label="Novo chamado" icon="i-lucide-plus" @click="createModalOpen = true" />
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Suporte" />
     </template>
 
     <template #body>

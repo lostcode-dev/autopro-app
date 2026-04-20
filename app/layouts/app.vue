@@ -197,7 +197,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
   ]
 
   const secondaryLinks: NavigationMenuItem[] = [
-    item('Enviar feedback', 'i-lucide-message-circle', '/app/feedback'),
+    item('Suporte', 'i-lucide-message-circle', '/app/support'),
     {
       label: 'Ajuda',
       icon: 'i-lucide-info',
