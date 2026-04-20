@@ -268,7 +268,7 @@ const fiscalRegimeOptions = [
                 <UIcon name="i-lucide-building-2" class="size-20 text-muted" />
               </div>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-col flex-wrap gap-2">
               <UTooltip text="Enviar logo">
                 <UButton
                   color="neutral"
