@@ -594,7 +594,12 @@ const columns = [
     <template #body>
       <div v-if="!canRead" class="p-6">
         <p class="text-sm text-muted">
-          Você não tgrid grid-cols-1 gap-4 sm:grid-cols-3">
+          Você não tem permissão para visualizar lançamentos financeiros.
+        </p>
+      </div>
+      <div v-else class="space-y-4 p-4">
+        <!-- Summary cards -->
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div
             v-for="card in summaryCards"
             :key="card.key"
@@ -613,17 +618,6 @@ const columns = [
                 <UIcon :name="card.icon" class="size-5" :class="card.iconClass" />
               </div>
             </div>
-            <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-default/60 pt-3">
-              <div class="flex items-center gap-1 text-xs">
-                <UIcon name="i-lucide-circle-check" class="size-3.5 shrink-0 text-success" />
-                <span class="text-muted">Pago:</span>
-                <span class="font-semibold text-highlighted">{{ formatCurrency(card.paid) }}</span>
-              </div>
-              <div class="flex items-center gap-1 text-xs">
-                <UIcon name="i-lucide-clock" class="size-3.5 shrink-0 text-warning" />
-                <span class="text-muted">Pendente:</span>
-                <span class="font-semibold text-highlighted">{{ formatCurrency(card.pending) }}</span>
-              </div>
             <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-default/60 pt-3">
               <div class="flex items-center gap-1 text-xs">
                 <UIcon name="i-lucide-circle-check" class="size-3.5 shrink-0 text-success" />
@@ -723,13 +717,25 @@ const columns = [
           </template>
 
           <template #description-cell="{ row }">
-            <div class="min-w-0 space-y-1">
-              <p class="truncate font-semibold text-highlighted">
-                {{ row.original.description }}
-              </p>
-              <p class="truncate text-xs text-muted">
-                {{ getBankAccountLabel(row.original as Entry) }}
-              </p>
+            <div class="flex items-center gap-3">
+              <div
+                class="flex size-8 shrink-0 items-center justify-center rounded-full"
+                :class="row.original.type === 'income' ? 'bg-success/10' : 'bg-error/10'"
+              >
+                <UIcon
+                  :name="row.original.type === 'income' ? 'i-lucide-trending-up' : 'i-lucide-trending-down'"
+                  class="size-4"
+                  :class="row.original.type === 'income' ? 'text-success' : 'text-error'"
+                />
+              </div>
+              <div class="min-w-0 space-y-1">
+                <p class="truncate font-semibold text-highlighted">
+                  {{ row.original.description }}
+                </p>
+                <p class="truncate text-xs text-muted">
+                  {{ getBankAccountLabel(row.original as Entry) }}
+                </p>
+              </div>
             </div>
           </template>
 
