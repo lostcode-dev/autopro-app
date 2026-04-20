@@ -3,16 +3,17 @@ import type { Feedback, CreateFeedbackPayload } from '~/types/feedback'
 import {
   FeedbackType,
   FeedbackStatus,
-  FeedbackPriority,
   feedbackTypeLabels,
+  feedbackTypeIcons,
+  feedbackTypeColors,
   feedbackStatusLabels,
-  feedbackPriorityLabels
+  feedbackStatusColors
 } from '~/types/feedback'
 
 definePageMeta({ layout: 'app' })
 
 useSeoMeta({
-  title: 'Feedback'
+  title: 'Suporte'
 })
 
 const {
@@ -24,275 +25,204 @@ const {
   listStatus,
   listSearch,
   createFeedback,
-  fetchFeedback,
   deleteFeedback,
-  addResponse,
-  adminListData,
-  adminListFetchStatus,
-  adminPage,
-  adminPageSize,
-  adminType,
-  adminStatus,
-  adminPriority,
-  adminSearch,
-  refreshAdminList,
-  adminUpdateFeedback,
-  adminLinkEntity
+  addResponse
 } = useFeedback()
-
-const activeTab = ref('my')
-const tabs = [
-  { label: 'Meus feedbacks', value: 'my', icon: 'i-lucide-message-circle' },
-  { label: 'Admin', value: 'admin', icon: 'i-lucide-shield' }
-]
 
 const createModalOpen = ref(false)
 const detailSlideoverOpen = ref(false)
-const adminSlideoverOpen = ref(false)
-const selectedFeedback = ref<Feedback | null>(null)
+const selectedTicket = ref<Feedback | null>(null)
 
 const ALL_FILTER_VALUE = '__all__'
 
 const listTypeModel = computed({
   get: () => listType.value || ALL_FILTER_VALUE,
-  set: (value: string) => {
-    listType.value = value === ALL_FILTER_VALUE ? '' : value
-  }
+  set: (value: string) => { listType.value = value === ALL_FILTER_VALUE ? '' : value }
 })
 
 const listStatusModel = computed({
   get: () => listStatus.value || ALL_FILTER_VALUE,
-  set: (value: string) => {
-    listStatus.value = value === ALL_FILTER_VALUE ? '' : value
-  }
+  set: (value: string) => { listStatus.value = value === ALL_FILTER_VALUE ? '' : value }
 })
 
-const adminTypeModel = computed({
-  get: () => adminType.value || ALL_FILTER_VALUE,
-  set: (value: string) => {
-    adminType.value = value === ALL_FILTER_VALUE ? '' : value
-  }
-})
-
-const adminStatusModel = computed({
-  get: () => adminStatus.value || ALL_FILTER_VALUE,
-  set: (value: string) => {
-    adminStatus.value = value === ALL_FILTER_VALUE ? '' : value
-  }
-})
-
-const adminPriorityModel = computed({
-  get: () => adminPriority.value || ALL_FILTER_VALUE,
-  set: (value: string) => {
-    adminPriority.value = value === ALL_FILTER_VALUE ? '' : value
-  }
-})
-
-const userFeedbacks = computed(() => listData.value?.data ?? [])
-const userTotal = computed(() => listData.value?.total ?? 0)
-const adminFeedbacks = computed(() => adminListData.value?.data ?? [])
-const adminTotal = computed(() => adminListData.value?.total ?? 0)
+const tickets = computed(() => (listData.value?.data ?? []) as unknown as Record<string, unknown>[])
+const total = computed(() => listData.value?.total ?? 0)
 
 const typeFilterOptions = [
   { label: 'Todos os tipos', value: ALL_FILTER_VALUE },
-  ...Object.values(FeedbackType).map(t => ({
-    label: feedbackTypeLabels[t],
-    value: t
-  }))
+  ...Object.values(FeedbackType).map(t => ({ label: feedbackTypeLabels[t], value: t }))
 ]
 
 const statusFilterOptions = [
   { label: 'Todos os status', value: ALL_FILTER_VALUE },
-  ...Object.values(FeedbackStatus).map(s => ({
-    label: feedbackStatusLabels[s],
-    value: s
-  }))
+  ...Object.values(FeedbackStatus).map(s => ({ label: feedbackStatusLabels[s], value: s }))
 ]
 
-const priorityFilterOptions = [
-  { label: 'Todas prioridades', value: ALL_FILTER_VALUE },
-  ...Object.values(FeedbackPriority).map(p => ({
-    label: feedbackPriorityLabels[p],
-    value: p
-  }))
+const columns = [
+  { accessorKey: 'title', header: 'Assunto', enableSorting: false },
+  { accessorKey: 'type', header: 'Tipo', enableSorting: false },
+  { accessorKey: 'status', header: 'Status', enableSorting: false },
+  { accessorKey: 'created_at', header: 'Abertura', enableSorting: false },
+  { id: 'actions', header: '', enableSorting: false }
 ]
 
-// ─── Handlers ────────────────────────────────────────
-async function onCreateSubmit(payload: CreateFeedbackPayload) {
-  await createFeedback(payload)
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  })
 }
 
-function onSelectFeedback(fb: Feedback) {
-  selectedFeedback.value = fb
+function openDetail(row: Record<string, unknown>) {
+  selectedTicket.value = row as unknown as Feedback
   detailSlideoverOpen.value = true
 }
 
-function onSelectAdminFeedback(fb: Feedback) {
-  selectedFeedback.value = fb
-  adminSlideoverOpen.value = true
+async function onCreateSubmit(payload: CreateFeedbackPayload) {
+  await createFeedback(payload)
+  createModalOpen.value = false
 }
 
-async function onDeleteFeedback(id: string) {
+async function onDeleteTicket(id: string) {
   await deleteFeedback(id)
   detailSlideoverOpen.value = false
-  selectedFeedback.value = null
+  selectedTicket.value = null
 }
 
 async function onRespond(feedbackId: string, content: string) {
   await addResponse(feedbackId, { content })
-  if (selectedFeedback.value) {
-    selectedFeedback.value = await fetchFeedback(feedbackId)
-  }
-}
-
-async function onAdminUpdateStatus(id: string, status: FeedbackStatus) {
-  await adminUpdateFeedback(id, { status })
-}
-
-async function onAdminUpdatePriority(id: string, priority: FeedbackPriority) {
-  await adminUpdateFeedback(id, { priority })
-}
-
-async function onAdminRespond(feedbackId: string, content: string) {
-  await addResponse(feedbackId, { content })
-  await refreshAdminList()
-}
-
-async function onAdminLinkEntity(feedbackId: string, entityType: string, entityId: string | undefined, externalUrl: string | undefined) {
-  await adminLinkEntity(feedbackId, { entityType, entityId, externalUrl })
-}
-
-function onUserPageUpdate(page: number) {
-  listPage.value = page
-}
-
-function onAdminPageUpdate(page: number) {
-  adminPage.value = page
 }
 </script>
 
 <template>
-  <UDashboardPanel id="feedback">
+  <UDashboardPanel id="support">
     <template #header>
-      <AppPageHeader title="Feedback">
+      <AppPageHeader title="Suporte">
         <template #right>
-          <UButton label="Novo feedback" icon="i-lucide-plus" @click="createModalOpen = true" />
+          <UButton label="Novo chamado" icon="i-lucide-plus" @click="createModalOpen = true" />
         </template>
       </AppPageHeader>
     </template>
 
     <template #body>
-      <div class="p-4 space-y-4">
-        <UTabs
-          :items="tabs"
-          :model-value="activeTab"
-          @update:model-value="activeTab = $event as string"
-        />
-
-        <!-- My Feedbacks Tab -->
-        <div v-if="activeTab === 'my'" class="space-y-4">
-          <div class="flex flex-wrap items-center gap-3">
-            <UInput
-              v-model="listSearch"
-              icon="i-lucide-search"
-              placeholder="Buscar feedbacks..."
-              class="w-full sm:w-64"
-            />
-            <USelect
-              v-model="listTypeModel"
-              :items="typeFilterOptions"
-              value-key="value"
-              class="w-40"
-            />
-            <USelect
-              v-model="listStatusModel"
-              :items="statusFilterOptions"
-              value-key="value"
-              class="w-40"
-            />
-          </div>
-
-          <FeedbackList
-            :feedbacks="userFeedbacks"
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div class="flex min-h-0 flex-1 flex-col p-4">
+          <AppDataTable
+            v-model:search-term="listSearch"
+            v-model:page="listPage"
+            v-model:page-size="listPageSize"
+            :columns="columns"
+            :data="tickets"
             :loading="listFetchStatus === 'pending'"
-            :total="userTotal"
-            :page="listPage"
-            :page-size="listPageSize"
-            @select="onSelectFeedback"
-            @delete="onDeleteFeedback"
-            @update:page="onUserPageUpdate"
-          />
-        </div>
+            :total="total"
+            :show-search="true"
+            :show-view-mode-toggle="false"
+            :show-page-size-selector="true"
+            search-placeholder="Buscar por assunto..."
+            empty-icon="i-lucide-headset"
+            empty-title="Nenhum chamado encontrado"
+            empty-description="Abra um chamado para entrar em contato com o suporte."
+          >
+            <template #toolbar-right>
+              <UButton
+                label="Novo chamado"
+                icon="i-lucide-plus"
+                size="sm"
+                @click="createModalOpen = true"
+              />
+            </template>
 
-        <!-- Admin Tab -->
-        <div v-if="activeTab === 'admin'" class="space-y-4">
-          <div class="flex flex-wrap items-center gap-3">
-            <UInput
-              v-model="adminSearch"
-              icon="i-lucide-search"
-              placeholder="Buscar feedbacks..."
-              class="w-full sm:w-64"
-            />
-            <USelect
-              v-model="adminTypeModel"
-              :items="typeFilterOptions"
-              value-key="value"
-              class="w-40"
-            />
-            <USelect
-              v-model="adminStatusModel"
-              :items="statusFilterOptions"
-              value-key="value"
-              class="w-40"
-            />
-            <USelect
-              v-model="adminPriorityModel"
-              :items="priorityFilterOptions"
-              value-key="value"
-              class="w-40"
-            />
-          </div>
+            <template #filters>
+              <USelectMenu
+                v-model="listTypeModel"
+                :items="typeFilterOptions"
+                value-key="value"
+                class="w-full sm:w-44"
+                :search-input="false"
+              />
+              <USelectMenu
+                v-model="listStatusModel"
+                :items="statusFilterOptions"
+                value-key="value"
+                class="w-full sm:w-44"
+                :search-input="false"
+              />
+            </template>
 
-          <FeedbackAdminList
-            :feedbacks="adminFeedbacks"
-            :loading="adminListFetchStatus === 'pending'"
-            :total="adminTotal"
-            :page="adminPage"
-            :page-size="adminPageSize"
-            @select="onSelectAdminFeedback"
-            @update-status="onAdminUpdateStatus"
-            @update-priority="onAdminUpdatePriority"
-            @update:page="onAdminPageUpdate"
-          />
+            <template #title-cell="{ row }">
+              <button
+                class="text-left max-w-xs truncate font-medium hover:text-primary transition-colors"
+                @click="openDetail(row.original)"
+              >
+                {{ row.original.title }}
+              </button>
+            </template>
+
+            <template #type-cell="{ row }">
+              <UBadge
+                :label="feedbackTypeLabels[row.original.type as FeedbackType]"
+                :color="feedbackTypeColors[row.original.type as FeedbackType]"
+                variant="subtle"
+                size="sm"
+              >
+                <template #leading>
+                  <UIcon :name="feedbackTypeIcons[row.original.type as FeedbackType]" class="size-3" />
+                </template>
+              </UBadge>
+            </template>
+
+            <template #status-cell="{ row }">
+              <UBadge
+                :label="feedbackStatusLabels[row.original.status as FeedbackStatus]"
+                :color="feedbackStatusColors[row.original.status as FeedbackStatus]"
+                variant="subtle"
+                size="sm"
+              />
+            </template>
+
+            <template #created_at-cell="{ row }">
+              <span class="text-sm text-muted">
+                {{ formatDate(row.original.created_at as string) }}
+              </span>
+            </template>
+
+            <template #actions-cell="{ row }">
+              <div class="flex items-center justify-end gap-1">
+                <UButton
+                  icon="i-lucide-eye"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="openDetail(row.original)"
+                />
+                <UButton
+                  v-if="(row.original.status as string) === 'submitted'"
+                  icon="i-lucide-trash-2"
+                  color="error"
+                  variant="ghost"
+                  size="xs"
+                  @click="onDeleteTicket(row.original.id as string)"
+                />
+              </div>
+            </template>
+          </AppDataTable>
         </div>
       </div>
     </template>
   </UDashboardPanel>
 
-  <!-- Create Modal -->
   <FeedbackCreateModal
     :open="createModalOpen"
     @update:open="createModalOpen = $event"
     @submit="onCreateSubmit"
   />
 
-  <!-- User Detail Slideover -->
   <FeedbackDetailSlideover
     :open="detailSlideoverOpen"
-    :feedback="selectedFeedback"
+    :feedback="selectedTicket"
     @update:open="detailSlideoverOpen = $event"
-    @delete="onDeleteFeedback"
+    @delete="onDeleteTicket"
     @respond="onRespond"
-  />
-
-  <!-- Admin Detail Slideover -->
-  <FeedbackAdminSlideover
-    :open="adminSlideoverOpen"
-    :feedback="selectedFeedback"
-    @update:open="adminSlideoverOpen = $event"
-    @update-status="onAdminUpdateStatus"
-    @update-priority="onAdminUpdatePriority"
-    @respond="onAdminRespond"
-    @link-entity="onAdminLinkEntity"
   />
 </template>

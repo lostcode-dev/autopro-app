@@ -113,17 +113,17 @@ export interface FeedbackInsights {
 }
 
 export const feedbackTypeLabels: Record<FeedbackType, string> = {
-  [FeedbackType.Bug]: 'Bug',
+  [FeedbackType.Bug]: 'Problema / Bug',
   [FeedbackType.Suggestion]: 'Sugestão',
-  [FeedbackType.Improvement]: 'Melhoria',
-  [FeedbackType.Praise]: 'Elogio'
+  [FeedbackType.Improvement]: 'Dúvida',
+  [FeedbackType.Praise]: 'Outro'
 }
 
 export const feedbackTypeIcons: Record<FeedbackType, string> = {
   [FeedbackType.Bug]: 'i-lucide-bug',
   [FeedbackType.Suggestion]: 'i-lucide-lightbulb',
-  [FeedbackType.Improvement]: 'i-lucide-trending-up',
-  [FeedbackType.Praise]: 'i-lucide-heart'
+  [FeedbackType.Improvement]: 'i-lucide-help-circle',
+  [FeedbackType.Praise]: 'i-lucide-circle-dot'
 }
 
 export type BadgeColor = 'error' | 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'neutral'
@@ -136,7 +136,7 @@ export const feedbackTypeColors: Record<FeedbackType, BadgeColor> = {
 }
 
 export const feedbackStatusLabels: Record<FeedbackStatus, string> = {
-  [FeedbackStatus.Submitted]: 'Enviado',
+  [FeedbackStatus.Submitted]: 'Aberto',
   [FeedbackStatus.InReview]: 'Em análise',
   [FeedbackStatus.Resolved]: 'Resolvido',
   [FeedbackStatus.Closed]: 'Fechado'

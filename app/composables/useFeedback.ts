@@ -3,10 +3,7 @@ import type {
   FeedbackListResponse,
   FeedbackResponse,
   CreateFeedbackPayload,
-  CreateFeedbackResponsePayload,
-  AdminUpdateFeedbackPayload,
-  CreateEntityLinkPayload,
-  FeedbackEntityLink
+  CreateFeedbackResponsePayload
 } from '~/types/feedback'
 
 export function useFeedback() {
@@ -99,85 +96,7 @@ export function useFeedback() {
     }
   }
 
-  // ─── Admin: List all feedbacks ────────────────────────
-  const adminPage = ref(1)
-  const adminPageSize = ref(20)
-  const adminType = ref('')
-  const adminStatus = ref('')
-  const adminPriority = ref('')
-  const adminSearch = ref('')
-
-  const debouncedAdminSearch = refDebounced(adminSearch, 400)
-
-  watch([adminType, adminStatus, adminPriority, debouncedAdminSearch], () => {
-    if (adminPage.value !== 1) adminPage.value = 1
-  })
-
-  const adminParams = computed(() => {
-    const p: Record<string, string | number> = {
-      page: adminPage.value,
-      pageSize: adminPageSize.value
-    }
-    if (adminType.value) p.type = adminType.value
-    if (adminStatus.value) p.status = adminStatus.value
-    if (adminPriority.value) p.priority = adminPriority.value
-    if (debouncedAdminSearch.value) p.search = debouncedAdminSearch.value
-    return p
-  })
-
-  const {
-    data: adminListData,
-    status: adminListFetchStatus,
-    refresh: refreshAdminList
-  } = useFetch<FeedbackListResponse>('/api/feedback/admin', {
-    params: adminParams,
-    lazy: true,
-    server: false,
-    watch: [adminPage, adminPageSize, adminType, adminStatus, adminPriority, debouncedAdminSearch]
-  })
-
-  // ─── Admin: Update status/priority ────────────────────
-  async function adminUpdateFeedback(id: string, payload: AdminUpdateFeedbackPayload) {
-    try {
-      const result = await $fetch<Feedback>(`/api/feedback/admin/${id}`, { method: 'PUT', body: payload })
-      toast.add({ title: 'Feedback atualizado', description: 'Status/prioridade atualizados.', color: 'success' })
-      await refreshAdminList()
-      return result
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      toast.add({ title: 'Erro', description: msg, color: 'error' })
-      throw err
-    }
-  }
-
-  // ─── Admin: Link entity ──────────────────────────────
-  async function adminLinkEntity(feedbackId: string, payload: CreateEntityLinkPayload) {
-    try {
-      const result = await $fetch<FeedbackEntityLink>(`/api/feedback/admin/${feedbackId}/link`, { method: 'POST', body: payload })
-      toast.add({ title: 'Vínculo criado', description: 'Entidade vinculada ao feedback.', color: 'success' })
-      return result
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      toast.add({ title: 'Erro', description: msg, color: 'error' })
-      throw err
-    }
-  }
-
-  // ─── Admin: Unlink entity ────────────────────────────
-  async function adminUnlinkEntity(feedbackId: string, linkId: string) {
-    try {
-      const endpoint: string = `/api/feedback/admin/${feedbackId}/link`
-      await $fetch(endpoint, { method: 'DELETE', params: { linkId } })
-      toast.add({ title: 'Vínculo removido', description: 'Entidade desvinculada.', color: 'success' })
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erro desconhecido'
-      toast.add({ title: 'Erro', description: msg, color: 'error' })
-      throw err
-    }
-  }
-
   return {
-    // User
     listData,
     listFetchStatus,
     listPage,
@@ -189,19 +108,6 @@ export function useFeedback() {
     createFeedback,
     fetchFeedback,
     deleteFeedback,
-    addResponse,
-    // Admin
-    adminListData,
-    adminListFetchStatus,
-    adminPage,
-    adminPageSize,
-    adminType,
-    adminStatus,
-    adminPriority,
-    adminSearch,
-    refreshAdminList,
-    adminUpdateFeedback,
-    adminLinkEntity,
-    adminUnlinkEntity
+    addResponse
   }
 }
