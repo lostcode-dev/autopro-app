@@ -97,7 +97,7 @@ function normalizeStatusValue(value: unknown) {
 }
 
 function normalizeStatusForApi(value: string) {
-  return value === 'paid' ? 'pago' : value === 'pending' ? 'pendente' : value
+  return value
 }
 
 function normalizeRecurrenceValue(value: unknown) {
@@ -204,7 +204,7 @@ const summary = computed(() => summaryData.value ?? defaultSummary)
 const hasMore = computed(() => accumulatedItems.value.length < totalFromServer.value)
 const loadingMore = computed(() => status.value === 'pending' && page.value > 1)
 
-const hasActiveFilters = computed(() =>
+const _hasActiveFilters = computed(() =>
   Boolean(
     search.value
     || statusFilters.value.length
@@ -279,7 +279,10 @@ watch(
     const nextDateTo = typeof query.dateTo === 'string' ? query.dateTo : defaultDateRange.to
     const nextPage = parsePage(query.page)
 
-    if (search.value !== nextSearch) { search.value = nextSearch; debouncedSearch.value = nextSearch }
+    if (search.value !== nextSearch) {
+      search.value = nextSearch
+      debouncedSearch.value = nextSearch
+    }
     if (JSON.stringify(statusFilters.value) !== JSON.stringify(nextStatus)) statusFilters.value = nextStatus
     if (JSON.stringify(typeFilters.value) !== JSON.stringify(nextType)) typeFilters.value = nextType
     if (dateFrom.value !== nextDateFrom) dateFrom.value = nextDateFrom
@@ -317,7 +320,7 @@ function loadMore() {
   if (hasMore.value && status.value !== 'pending') page.value += 1
 }
 
-function resetFilters() {
+function _resetFilters() {
   search.value = ''
   debouncedSearch.value = ''
   statusFilters.value = []
@@ -332,7 +335,10 @@ function resetFilters() {
 async function resetAndRefresh() {
   accumulatedItems.value = []
   rowSelection.value = {}
-  if (page.value !== 1) { page.value = 1; return }
+  if (page.value !== 1) {
+    page.value = 1
+    return
+  }
   await Promise.all([refresh(), refreshSummary()])
 }
 
@@ -363,12 +369,13 @@ async function pay(entry: Entry) {
     await $fetch(`/api/financial/${String(entry.id)}/pay`, { method: 'POST' })
     toast.add({ title: 'Lançamento marcado como pago', color: 'success' })
     await resetAndRefresh()
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao pagar', color: 'error' })
+  } finally {
+    isPaying.value = false
+    payingEntryId.value = null
   }
-  finally { isPaying.value = false; payingEntryId.value = null }
 }
 
 // ── Bulk pay ──────────────────────────────────────────────────────────────────
@@ -386,12 +393,12 @@ async function confirmBulkPay() {
     rowSelection.value = {}
     showBulkPayModal.value = false
     await resetAndRefresh()
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao pagar em massa', color: 'error' })
+  } finally {
+    isBulkPaying.value = false
   }
-  finally { isBulkPaying.value = false }
 }
 
 // ── Create / Edit ─────────────────────────────────────────────────────────────
@@ -399,8 +406,14 @@ async function confirmBulkPay() {
 const showFormModal = ref(false)
 const selectedEntry = ref<Entry | null>(null)
 
-function openCreate() { selectedEntry.value = null; showFormModal.value = true }
-function openEdit(entry: Entry) { selectedEntry.value = entry; showFormModal.value = true }
+function openCreate() {
+  selectedEntry.value = null
+  showFormModal.value = true
+}
+function openEdit(entry: Entry) {
+  selectedEntry.value = entry
+  showFormModal.value = true
+}
 
 async function onEntrySaved() {
   showFormModal.value = false
@@ -429,12 +442,12 @@ async function confirmRemove() {
     showDeleteModal.value = false
     entryPendingDeletion.value = null
     await resetAndRefresh()
-  }
-  catch (error: unknown) {
+  } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({ title: 'Erro', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao remover', color: 'error' })
+  } finally {
+    isDeleting.value = false
   }
-  finally { isDeleting.value = false }
 }
 
 // ── Bulk delete ───────────────────────────────────────────────────────────────
@@ -451,115 +464,69 @@ async function confirmBulkDelete() {
     rowSelection.value = {}
     showBulkDeleteModal.value = false
     await resetAndRefresh()
+  } catch {
+    toast.add({ title: 'Erro ao excluir lançamentos', color: 'error' })
+  } finally {
+    isBulkDeleting.value = false
   }
-  catch { toast.add({ title: 'Erro ao excluir lançamentos', color: 'error' }) }
-  finally { isBulkDeleting.value = false }
 }
 
 // ── Export ────────────────────────────────────────────────────────────────────
 
-async function fetchAllForExport() {
-  return $fetch<FinancialResponse>('/api/financial', {
-    query: {
-      search: debouncedSearch.value || undefined,
-      status: statusFilters.value.length === 1 ? normalizeStatusForApi(statusFilters.value[0]!) : undefined,
-      type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
-      date_from: dateFrom.value || undefined,
-      date_to: dateTo.value || undefined,
-      page: 1,
-      page_size: 2000
-    }
-  })
-}
+type ExportFormat = 'csv' | 'pdf'
+const exporting = ref<ExportFormat | null>(null)
 
-async function exportCsv() {
+async function exportReport(format: ExportFormat) {
+  exporting.value = format
   try {
-    const all = await fetchAllForExport()
-    if (!all.items.length) { toast.add({ title: 'Nenhum lançamento para exportar', color: 'warning' }); return }
-
-    const headers = ['descricao', 'categoria', 'tipo', 'status', 'valor', 'vencimento', 'recorrencia', 'notas']
-    const rows = all.items.map(item =>
-      [
-        item.description,
-        item.category || '',
-        item.type === 'income' ? 'Receita' : 'Despesa',
-        isPaidStatus(item.status) ? 'Pago' : 'Pendente',
-        Number.parseFloat(String(item.amount || 0)).toFixed(2).replace('.', ','),
-        formatDate(String(item.due_date || '')),
-        formatRecurrence(item.recurrence),
-        item.notes || ''
-      ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+    const res = await $fetch<{ success: boolean, data: { fileName: string, contentType: string, base64: string } }>(
+      '/api/financial/export',
+      {
+        method: 'POST',
+        body: {
+          format,
+          search: debouncedSearch.value || undefined,
+          status: statusFilters.value.length === 1 ? normalizeStatusForApi(statusFilters.value[0]!) : undefined,
+          type: typeFilters.value.length === 1 ? typeFilters.value[0] : undefined,
+          dateFrom: dateFrom.value || undefined,
+          dateTo: dateTo.value || undefined
+        }
+      }
     )
 
-    const csv = [headers.join(','), ...rows].join('\n')
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = `financeiro_${new Date().toISOString().slice(0, 10)}.csv`
-    anchor.click()
-    URL.revokeObjectURL(url)
+    if (res.data?.base64) {
+      const binary = atob(res.data.base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const blob = new Blob([bytes], { type: res.data.contentType })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = res.data.fileName
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+  } catch {
+    toast.add({ title: 'Erro ao exportar lançamentos', color: 'error' })
+  } finally {
+    exporting.value = null
   }
-  catch { toast.add({ title: 'Erro ao exportar CSV', color: 'error' }) }
 }
 
-async function exportPdf() {
-  try {
-    const all = await fetchAllForExport()
-    if (!all.items.length) { toast.add({ title: 'Nenhum lançamento para exportar', color: 'warning' }); return }
-
-    const tableRows = all.items.map(item => `
-      <tr>
-        <td>${item.description}</td>
-        <td>${item.category || '—'}</td>
-        <td>${item.type === 'income' ? 'Receita' : 'Despesa'}</td>
-        <td>${isPaidStatus(item.status) ? 'Pago' : 'Pendente'}</td>
-        <td style="text-align:right">${formatCurrency(item.amount as string | number)}</td>
-        <td>${formatDate(String(item.due_date || ''))}</td>
-      </tr>`).join('')
-
-    const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Financeiro</title>
-  <style>
-    body { font-family: Arial, sans-serif; font-size: 12px; margin: 24px; color: #111; }
-    h2 { margin-bottom: 4px; font-size: 16px; }
-    p.period { color: #666; margin-bottom: 16px; font-size: 11px; }
-    table { width: 100%; border-collapse: collapse; }
-    th, td { border: 1px solid #ddd; padding: 5px 8px; text-align: left; }
-    th { background: #f3f4f6; font-weight: 600; }
-    tr:nth-child(even) { background: #fafafa; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-  <h2>Lançamentos Financeiros</h2>
-  <p class="period">Período: ${dateFrom.value} a ${dateTo.value} &nbsp;|&nbsp; Total: ${all.total} registro(s)</p>
-  <table>
-    <thead><tr><th>Descrição</th><th>Categoria</th><th>Tipo</th><th>Status</th><th>Valor</th><th>Vencimento</th></tr></thead>
-    <tbody>${tableRows}</tbody>
-  </table>
-</body>
-</html>`
-
-    const win = window.open('', '_blank')
-    if (!win) { toast.add({ title: 'Popup bloqueado', description: 'Permita popups para exportar PDF', color: 'warning' }); return }
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
+const exportItems = computed(() => [[
+  {
+    label: 'Exportar CSV',
+    icon: 'i-lucide-file-spreadsheet',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('csv')
+  },
+  {
+    label: 'Exportar PDF',
+    icon: 'i-lucide-file-text',
+    disabled: exporting.value !== null,
+    onSelect: () => exportReport('pdf')
   }
-  catch { toast.add({ title: 'Erro ao exportar PDF', color: 'error' }) }
-}
-
-const exportItems = [
-  [
-    { label: 'Exportar CSV', icon: 'i-lucide-file-spreadsheet', onSelect: exportCsv },
-    { label: 'Exportar PDF', icon: 'i-lucide-file-text', onSelect: exportPdf }
-  ]
-]
+]])
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
@@ -676,26 +643,6 @@ const columns = [
           @load-more="loadMore"
         >
           <template #toolbar-right>
-            <UTooltip text="Atualizar listagem">
-              <UButton
-                icon="i-lucide-refresh-cw"
-                color="neutral"
-                variant="outline"
-                size="sm"
-                :loading="status === 'pending' && page === 1"
-                @click="resetAndRefresh()"
-              />
-            </UTooltip>
-
-            <UButton
-              v-if="hasActiveFilters"
-              label="Limpar filtros"
-              color="neutral"
-              variant="ghost"
-              size="sm"
-              @click="resetFilters"
-            />
-
             <UTooltip
               v-if="canUpdate"
               :text="pendingSelectedCount > 0 ? `Pagar ${pendingSelectedCount} selecionado(s)` : 'Selecione lançamentos pendentes'"
@@ -724,16 +671,22 @@ const columns = [
               />
             </UTooltip>
 
-            <UDropdownMenu :items="exportItems">
-              <UButton
-                icon="i-lucide-download"
-                label="Exportar"
-                color="neutral"
-                variant="outline"
-                size="sm"
-                trailing-icon="i-lucide-chevron-down"
-              />
-            </UDropdownMenu>
+            <UTooltip text="Exportar lançamentos">
+              <UDropdownMenu
+                :items="exportItems"
+                :content="{ align: 'end' }"
+                :ui="{ content: 'min-w-44' }"
+              >
+                <UButton
+                  icon="i-lucide-download"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  square
+                  :loading="exporting !== null"
+                />
+              </UDropdownMenu>
+            </UTooltip>
 
             <UButton
               v-if="canCreate"

@@ -47,11 +47,11 @@ export default defineEventHandler(async (event) => {
 
     if (type === 'income') {
       totalIncome += amount
-      if (status === 'pago') paidIncome += amount
+      if (status === 'paid') paidIncome += amount
       else pendingIncome += amount
     } else if (type === 'expense') {
       totalExpense += amount
-      if (status === 'pago') paidExpense += amount
+      if (status === 'paid') paidExpense += amount
       else pendingExpense += amount
     }
   }
