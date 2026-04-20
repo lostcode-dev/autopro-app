@@ -3,7 +3,7 @@ import RoleDetailsSlideover from '~/components/roles/RoleDetailsSlideover.vue'
 import { ActionCode } from '~/constants/action-codes'
 
 definePageMeta({ layout: 'app' })
-useSeoMeta({ title: 'Permissoes' })
+useSeoMeta({ title: 'Permissões' })
 
 const toast = useToast()
 const workshop = useWorkshopPermissions()
@@ -137,7 +137,7 @@ async function saveRole() {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel salvar',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar',
       color: 'error'
     })
   } finally {
@@ -172,7 +172,7 @@ async function confirmDeleteRole() {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel remover',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover',
       color: 'error'
     })
   } finally {
@@ -204,7 +204,7 @@ async function openPermissions(role: Role) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel carregar permissoes',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível carregar permissões',
       color: 'error'
     })
   } finally {
@@ -224,13 +224,13 @@ function openRoleDetails(role: Role | null) {
 <template>
   <div v-if="!canView" class="rounded-xl border border-default/60 bg-elevated/30 p-6">
     <p class="text-sm text-muted">
-      Voce nao tem permissao para visualizar papeis.
+      Você não tem permissão para visualizar papéis.
     </p>
   </div>
 
   <template v-else>
     <UPageCard
-      title="Papeis e permissoes"
+      title="Papéis e permissões"
       description="Gerencie os perfis da equipe e o acesso de cada um no sistema."
       variant="naked"
       orientation="horizontal"
@@ -247,7 +247,7 @@ function openRoleDetails(role: Role | null) {
     </UPageCard>
 
     <div class="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
-      <UPageCard title="Papeis" description="Perfis disponiveis para vincular aos usuarios." variant="subtle">
+      <UPageCard title="Papéis" description="Perfis disponíveis para vincular aos usuários." variant="subtle">
         <div v-if="status === 'pending'" class="space-y-3">
           <USkeleton v-for="i in 5" :key="i" class="h-16 w-full rounded-lg" />
         </div>
@@ -283,7 +283,7 @@ function openRoleDetails(role: Role | null) {
               </p>
 
               <p v-else class="text-xs text-muted">
-                Sem descricao.
+                Sem descrição.
               </p>
             </div>
 
@@ -336,23 +336,23 @@ function openRoleDetails(role: Role | null) {
   <UModal
     v-model:open="showRoleModal"
     :title="isEditingRole ? 'Editar papel' : 'Novo papel'"
-    :description="isEditingRole ? 'Atualize o nome exibido e a descricao do perfil.' : 'Crie um novo perfil para organizar o acesso da equipe.'"
+    :description="isEditingRole ? 'Atualize o nome exibido e a descrição do perfil.' : 'Crie um novo perfil para organizar o acesso da equipe.'"
   >
     <template #body>
       <div class="space-y-4">
         <UFormField
           label="Nome exibido"
-          description="Esse nome aparece na selecao de perfis e nas configuracoes da equipe."
+          description="Esse nome aparece na seleção de perfis e nas configurações da equipe."
           required
         >
           <UInput
             v-model="roleForm.display_name"
             class="w-full"
-            placeholder="Ex: Consultor tecnico"
+            placeholder="Ex: Consultor técnico"
           />
         </UFormField>
 
-        <UFormField label="Descricao" description="Opcional. Use para explicar quando esse papel deve ser usado.">
+        <UFormField label="Descrição" description="Opcional. Use para explicar quando esse papel deve ser usado.">
           <UTextarea
             v-model="roleForm.description"
             class="w-full"
@@ -372,7 +372,7 @@ function openRoleDetails(role: Role | null) {
           @click="showRoleModal = false"
         />
         <UButton
-          :label="isEditingRole ? 'Salvar alteracoes' : 'Criar papel'"
+          :label="isEditingRole ? 'Salvar alterações' : 'Criar papel'"
           color="neutral"
           :loading="isSavingRole"
           :disabled="isSavingRole || !roleForm.display_name.trim()"
@@ -400,7 +400,7 @@ function openRoleDetails(role: Role | null) {
       <p class="text-sm text-muted">
         Tem certeza que deseja remover o papel
         <strong class="text-highlighted">{{ pendingDeleteRole ? roleLabel(pendingDeleteRole) : 'selecionado' }}</strong>?
-        Esta acao nao pode ser desfeita.
+        Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>

@@ -51,6 +51,20 @@ type RoleDetailResponse = {
   }
 }
 
+type OrganizationUser = {
+  id: string
+  email: string | null
+  full_name: string | null
+  display_name: string | null
+  employee_id: string | null
+  role_id: string | null
+  active: boolean
+}
+
+type OrganizationUsersResponse = {
+  users?: OrganizationUser[]
+}
+
 const route = useRoute()
 const toast = useToast()
 const workshop = useWorkshopPermissions()
@@ -62,6 +76,8 @@ const canUpdate = computed(() => workshop.can(ActionCode.ROLES_UPDATE))
 const canManagePermissions = computed(() => workshop.can(ActionCode.ROLES_MANAGE_PERMISSIONS))
 const canAccessEditPage = computed(() => canUpdate.value || canManagePermissions.value)
 const roleId = computed(() => String(route.params.id || ''))
+const activePermissionTab = ref('')
+const selectedUserId = ref<string | undefined>()
 
 const { data, status, error, refresh } = await useAsyncData(
   () => `role-detail-${roleId.value}`,
@@ -72,10 +88,20 @@ const { data, status, error, refresh } = await useAsyncData(
   }
 )
 
+const { data: usersData, refresh: refreshUsers } = await useAsyncData(
+  'organization-users-for-roles',
+  () => requestFetch<OrganizationUsersResponse>('/api/users/list-organization', {
+    method: 'POST',
+    headers: requestHeaders
+  }),
+  { server: true }
+)
+
 const role = computed(() => data.value?.item?.role ?? null)
 const actions = computed(() => data.value?.item?.actions ?? [])
 const roleActions = computed(() => data.value?.item?.role_actions ?? [])
 const assignedUsers = computed(() => data.value?.item?.assigned_users ?? [])
+const organizationUsers = computed(() => usersData.value?.users ?? [])
 const summary = computed(() => data.value?.item?.summary ?? {
   granted_actions_count: 0,
   total_actions_count: 0,
@@ -89,6 +115,7 @@ const roleForm = reactive({
 
 const permissionState = ref<Record<string, boolean>>({})
 const isSaving = ref(false)
+const isUpdatingLink = ref(false)
 
 const groupedActions = computed<Record<string, ActionItem[]>>(() => {
   if (!actions.value.length)
@@ -104,8 +131,24 @@ const groupedActions = computed<Record<string, ActionItem[]>>(() => {
   }, {})
 })
 
+const permissionTabs = computed(() =>
+  Object.entries(groupedActions.value).map(([resource, groupItems]) => ({
+    label: `${resource} (${groupItems.length})`,
+    value: resource
+  }))
+)
+
+const activeTabActions = computed(() => {
+  if (!activePermissionTab.value)
+    return []
+
+  return groupedActions.value[activePermissionTab.value] ?? []
+})
+
 const originalPermissionState = computed<Record<string, boolean>>(() => {
-  const grantedIds = new Set(roleActions.value.filter(action => action.is_granted).map(action => action.action_id))
+  const grantedIds = new Set(roleActions.value
+    .filter(action => action.is_granted)
+    .map(action => action.action_id))
 
   return actions.value.reduce<Record<string, boolean>>((result, action) => {
     result[action.id] = grantedIds.has(action.id)
@@ -115,6 +158,28 @@ const originalPermissionState = computed<Record<string, boolean>>(() => {
 
 const canEditMetadata = computed(() => Boolean(role.value && canUpdate.value && !role.value.is_system_role))
 const canEditPermissions = computed(() => Boolean(role.value && canManagePermissions.value && !role.value.is_system_role))
+const canManageUserLinks = computed(() => Boolean(
+  role.value
+  && !role.value.is_system_role
+  && (canUpdate.value || canManagePermissions.value)
+))
+
+const availableUsers = computed(() => {
+  if (!role.value)
+    return []
+
+  return organizationUsers.value.filter(user => user.role_id !== role.value!.id)
+})
+
+const userOptions = computed(() =>
+  availableUsers.value
+    .map(user => ({
+      label: user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuário sem identificação',
+      value: user.id
+    }))
+    .sort((first, second) => first.label.localeCompare(second.label, 'pt-BR'))
+)
+
 const hasMetadataChanges = computed(() => {
   if (!role.value)
     return false
@@ -148,7 +213,7 @@ function roleLabel(roleItem: RoleItem | null) {
 }
 
 function userLabel(user: AssignedUser) {
-  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuario sem identificacao'
+  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuário sem identificação'
 }
 
 function syncForm() {
@@ -165,6 +230,61 @@ function updatePermission(actionId: string, value: boolean | 'indeterminate') {
     ...permissionState.value,
     [actionId]: Boolean(value)
   }
+}
+
+function retryLoad() {
+  return refresh()
+}
+
+async function updateUserRoleLink(userId: string, nextRoleId: string | null) {
+  isUpdatingLink.value = true
+
+  try {
+    await $fetch('/api/users/update-fields', {
+      method: 'POST',
+      body: {
+        user_id: userId,
+        role_id: nextRoleId
+      }
+    })
+
+    await Promise.all([refresh(), refreshUsers()])
+    return true
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+
+    toast.add({
+      title: 'Erro',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível atualizar o vínculo do usuário',
+      color: 'error'
+    })
+    return false
+  } finally {
+    isUpdatingLink.value = false
+  }
+}
+
+async function addUserLink() {
+  if (!role.value || !selectedUserId.value || isUpdatingLink.value)
+    return
+
+  const success = await updateUserRoleLink(selectedUserId.value, role.value.id)
+  if (!success)
+    return
+
+  selectedUserId.value = undefined
+  toast.add({ title: 'Vínculo atualizado', color: 'success' })
+}
+
+async function removeUserLink(userId: string) {
+  if (isUpdatingLink.value)
+    return
+
+  const success = await updateUserRoleLink(userId, null)
+  if (!success)
+    return
+
+  toast.add({ title: 'Vínculo removido', color: 'success' })
 }
 
 async function saveRole() {
@@ -189,13 +309,15 @@ async function saveRole() {
         Boolean(permissionState.value[action.id]) !== Boolean(originalPermissionState.value[action.id])
       )
 
-      await Promise.all(changedActions.map(action => $fetch(`/api/roles/${role.value!.id}/actions`, {
-        method: 'POST',
-        body: {
-          action_id: action.id,
-          is_granted: Boolean(permissionState.value[action.id])
-        }
-      })))
+      await Promise.all(changedActions.map(action =>
+        $fetch(`/api/roles/${role.value!.id}/actions`, {
+          method: 'POST',
+          body: {
+            action_id: action.id,
+            is_granted: Boolean(permissionState.value[action.id])
+          }
+        })
+      ))
     }
 
     toast.add({ title: 'Papel atualizado', color: 'success' })
@@ -204,7 +326,7 @@ async function saveRole() {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Nao foi possivel salvar as alteracoes',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar as alterações',
       color: 'error'
     })
   } finally {
@@ -212,8 +334,24 @@ async function saveRole() {
   }
 }
 
-watch([role, actions, roleActions], () => {
-  syncForm()
+watch([role, actions, roleActions], syncForm, { immediate: true })
+
+watch(permissionTabs, (tabs) => {
+  if (!tabs.length) {
+    activePermissionTab.value = ''
+    return
+  }
+
+  if (!tabs.some(tab => tab.value === activePermissionTab.value))
+    activePermissionTab.value = tabs[0]!.value
+}, { immediate: true })
+
+watch(userOptions, (options) => {
+  if (!selectedUserId.value)
+    return
+
+  if (!options.some(option => option.value === selectedUserId.value))
+    selectedUserId.value = undefined
 }, { immediate: true })
 </script>
 
@@ -230,7 +368,7 @@ watch([role, actions, roleActions], () => {
             to="/app/settings/roles"
           />
           <UButton
-            label="Salvar alteracoes"
+            label="Salvar alterações"
             color="neutral"
             icon="i-lucide-save"
             :loading="isSaving"
@@ -245,7 +383,7 @@ watch([role, actions, roleActions], () => {
       <div v-if="!canView" class="p-4">
         <div class="rounded-xl border border-default/60 bg-elevated/30 p-6">
           <p class="text-sm text-muted">
-            Voce nao tem permissao para visualizar papeis.
+            Você não tem permissão para visualizar papéis.
           </p>
         </div>
       </div>
@@ -253,7 +391,7 @@ watch([role, actions, roleActions], () => {
       <div v-else-if="!canAccessEditPage" class="p-4">
         <div class="rounded-xl border border-default/60 bg-elevated/30 p-6">
           <p class="text-sm text-muted">
-            Voce nao tem permissao para editar papeis ou gerenciar permissoes.
+            Você não tem permissão para editar papéis ou gerenciar permissões.
           </p>
         </div>
       </div>
@@ -267,11 +405,16 @@ watch([role, actions, roleActions], () => {
         <template v-else-if="error || !role">
           <div class="rounded-2xl border border-error/30 bg-error/10 p-6">
             <p class="text-sm font-medium text-error">
-              Nao foi possivel carregar este papel.
+              Não foi possível carregar este papel.
             </p>
             <div class="mt-4 flex gap-2">
-              <UButton label="Tentar novamente" color="neutral" @click="refresh" />
-              <UButton label="Voltar para papeis" color="neutral" variant="ghost" to="/app/settings/roles" />
+              <UButton label="Tentar novamente" color="neutral" @click="retryLoad" />
+              <UButton
+                label="Voltar para papéis"
+                color="neutral"
+                variant="ghost"
+                to="/app/settings/roles"
+              />
             </div>
           </div>
         </template>
@@ -293,18 +436,21 @@ watch([role, actions, roleActions], () => {
                 </div>
 
                 <p class="max-w-2xl text-sm text-muted">
-                  Ajuste os dados principais do papel e marque, com checkbox, quais acoes ficam liberadas para esse perfil.
+                  Ajuste os dados principais do papel, organize os vínculos com usuários e marque nas abas quais ações ficam liberadas para esse perfil.
                 </p>
 
-                <div v-if="role.is_system_role" class="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted">
-                  Este e um papel de sistema. Os dados e permissoes podem ser consultados, mas nao podem ser alterados.
+                <div
+                  v-if="role.is_system_role"
+                  class="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-muted"
+                >
+                  Este é um papel de sistema. Os dados e as permissões podem ser consultados, mas não podem ser alterados.
                 </div>
               </div>
 
               <div class="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                 <div class="rounded-2xl border border-default/70 bg-default/40 p-4">
                   <p class="text-xs uppercase tracking-widest text-muted">
-                    Usuarios vinculados
+                    Usuários vinculados
                   </p>
                   <p class="mt-2 text-2xl font-semibold text-highlighted">
                     {{ summary.assigned_users_count }}
@@ -312,7 +458,7 @@ watch([role, actions, roleActions], () => {
                 </div>
                 <div class="rounded-2xl border border-default/70 bg-default/40 p-4">
                   <p class="text-xs uppercase tracking-widest text-muted">
-                    Permissoes liberadas
+                    Permissões liberadas
                   </p>
                   <p class="mt-2 text-2xl font-semibold text-highlighted">
                     {{ summary.granted_actions_count }}
@@ -320,7 +466,7 @@ watch([role, actions, roleActions], () => {
                 </div>
                 <div class="rounded-2xl border border-default/70 bg-default/40 p-4">
                   <p class="text-xs uppercase tracking-widest text-muted">
-                    Total de acoes
+                    Total de ações
                   </p>
                   <p class="mt-2 text-2xl font-semibold text-highlighted">
                     {{ summary.total_actions_count }}
@@ -331,18 +477,22 @@ watch([role, actions, roleActions], () => {
           </div>
 
           <div class="grid gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-            <UPageCard title="Dados do papel" description="Atualize o nome exibido e a descricao usada pela equipe." variant="subtle">
+            <UPageCard
+              title="Dados do papel"
+              description="Atualize o nome exibido e a descrição usada pela equipe."
+              variant="subtle"
+            >
               <div class="space-y-4">
                 <UFormField label="Nome exibido" required>
                   <UInput
                     v-model="roleForm.display_name"
                     class="w-full"
                     :disabled="!canEditMetadata"
-                    placeholder="Ex: Consultor tecnico"
+                    placeholder="Ex: Consultor técnico"
                   />
                 </UFormField>
 
-                <UFormField label="Descricao">
+                <UFormField label="Descrição">
                   <UTextarea
                     v-model="roleForm.description"
                     class="w-full"
@@ -354,28 +504,28 @@ watch([role, actions, roleActions], () => {
 
                 <div class="rounded-xl border border-default/70 bg-default/30 px-4 py-3 text-sm text-muted">
                   <p>
-                    Codigo interno: <strong class="text-highlighted">{{ role.name }}</strong>
+                    Código interno: <strong class="text-highlighted">{{ role.name }}</strong>
                   </p>
                 </div>
               </div>
             </UPageCard>
 
-            <UPageCard title="Permissoes" description="Marque no checkbox cada acao que este papel pode executar." variant="subtle">
-              <div class="space-y-4">
-                <div
-                  v-for="(groupItems, resource) in groupedActions"
-                  :key="resource"
-                  class="rounded-xl border border-default/70"
-                >
-                  <div class="border-b border-default/70 px-4 py-3">
-                    <p class="text-xs font-semibold uppercase tracking-widest text-muted">
-                      {{ resource }}
-                    </p>
-                  </div>
+            <UPageCard
+              title="Permissões"
+              description="As permissões foram agrupadas por abas para deixar a edição mais compacta."
+              variant="subtle"
+            >
+              <div v-if="permissionTabs.length" class="space-y-4">
+                <UTabs
+                  :items="permissionTabs"
+                  :model-value="activePermissionTab"
+                  @update:model-value="activePermissionTab = $event as string"
+                />
 
+                <div class="rounded-xl border border-default/70">
                   <div class="divide-y divide-default/60">
                     <div
-                      v-for="action in groupItems"
+                      v-for="action in activeTabActions"
                       :key="action.id"
                       class="flex items-start gap-3 px-4 py-3"
                     >
@@ -402,50 +552,112 @@ watch([role, actions, roleActions], () => {
                           {{ action.description }}
                         </p>
                         <p v-else class="mt-1 text-xs text-muted">
-                          Codigo: {{ action.code }}
+                          Código: {{ action.code }}
                         </p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
+
+              <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
+                <UIcon name="i-lucide-ban" class="mx-auto mb-2 size-8 text-muted" />
+                <p class="text-sm font-medium text-highlighted">
+                  Nenhuma ação cadastrada
+                </p>
+                <p class="mt-1 text-sm text-muted">
+                  Ainda não existem ações disponíveis para este papel.
+                </p>
+              </div>
             </UPageCard>
           </div>
 
-          <UPageCard title="Usuarios vinculados" description="Pessoas da organizacao que atualmente usam este papel." variant="subtle">
-            <div v-if="assignedUsers.length" class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <UPageCard
+            title="Usuários vinculados"
+            description="Adicione um vínculo com um usuário ou remova quem não deve mais usar este papel."
+            variant="subtle"
+          >
+            <div class="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+              <USelectMenu
+                v-model="selectedUserId"
+                :items="userOptions"
+                value-key="value"
+                label-key="label"
+                search-placeholder="Buscar usuário..."
+                placeholder="Selecione um usuário para vincular"
+                class="w-full"
+                :disabled="!canManageUserLinks || isUpdatingLink || !userOptions.length"
+              />
+
+              <UButton
+                label="Adicionar vínculo"
+                icon="i-lucide-user-plus"
+                color="neutral"
+                :loading="isUpdatingLink"
+                :disabled="!canManageUserLinks || !selectedUserId"
+                @click="addUserLink"
+              />
+            </div>
+
+            <p class="mb-4 text-xs text-muted">
+              Se o usuário já estiver vinculado a outro papel, o vínculo anterior será substituído ao adicionar aqui.
+            </p>
+
+            <div
+              v-if="assignedUsers.length"
+              class="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+            >
               <div
                 v-for="user in assignedUsers"
                 :key="user.id"
                 class="rounded-xl border border-default/70 px-4 py-3"
               >
-                <div class="flex items-center justify-between gap-2">
-                  <p class="text-sm font-medium text-highlighted">
-                    {{ userLabel(user) }}
-                  </p>
-                  <UBadge
-                    :label="user.active ? 'Ativo' : 'Inativo'"
-                    :color="user.active ? 'success' : 'neutral'"
-                    variant="subtle"
-                    size="xs"
-                  />
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <p class="text-sm font-medium text-highlighted">
+                      {{ userLabel(user) }}
+                    </p>
+                    <div class="mt-1 flex flex-wrap items-center gap-2">
+                      <UBadge
+                        :label="user.active ? 'Ativo' : 'Inativo'"
+                        :color="user.active ? 'success' : 'neutral'"
+                        variant="subtle"
+                        size="xs"
+                      />
+                    </div>
+                  </div>
+
+                  <UTooltip v-if="canManageUserLinks" text="Remover vínculo">
+                    <UButton
+                      icon="i-lucide-user-minus"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      :loading="isUpdatingLink"
+                      @click="removeUserLink(user.id)"
+                    />
+                  </UTooltip>
                 </div>
+
                 <p v-if="user.email" class="mt-1 text-xs text-muted">
                   {{ user.email }}
                 </p>
                 <p v-if="user.employee_name" class="mt-1 text-xs text-muted">
-                  Funcionario: {{ user.employee_name }}
+                  Funcionário: {{ user.employee_name }}
                 </p>
               </div>
             </div>
 
-            <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
+            <div
+              v-else
+              class="rounded-xl border border-dashed border-default px-4 py-8 text-center"
+            >
               <UIcon name="i-lucide-users" class="mx-auto mb-2 size-8 text-muted" />
               <p class="text-sm font-medium text-highlighted">
-                Nenhum usuario vinculado
+                Nenhum usuário vinculado
               </p>
               <p class="mt-1 text-sm text-muted">
-                Quando alguem receber este papel, o usuario aparecera aqui.
+                Quando alguém receber este papel, o usuário aparecerá aqui.
               </p>
             </div>
           </UPageCard>

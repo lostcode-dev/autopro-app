@@ -57,6 +57,7 @@ const emit = defineEmits<{
 
 const loading = ref(false)
 const detail = ref<RoleDetailResponse['item'] | null>(null)
+const activePermissionTab = ref('')
 
 const grantedGroupedActions = computed<Record<string, ActionItem[]>>(() => {
   if (!detail.value)
@@ -87,7 +88,7 @@ function roleLabel(role: RoleItem | null) {
 }
 
 function userLabel(user: AssignedUser) {
-  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuario sem identificacao'
+  return user.display_name?.trim() || user.full_name?.trim() || user.email || 'Usuário sem identificação'
 }
 
 function userInitials(user: AssignedUser) {
@@ -121,6 +122,28 @@ function onClose() {
 }
 
 watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
+
+const permissionTabs = computed(() => Object.entries(grantedGroupedActions.value).map(([resource, actions]) => ({
+  label: `${resource} (${actions.length})`,
+  value: resource
+})))
+
+const activeTabActions = computed(() => {
+  if (!activePermissionTab.value)
+    return []
+
+  return grantedGroupedActions.value[activePermissionTab.value] ?? []
+})
+
+watch(permissionTabs, (tabs) => {
+  if (!tabs.length) {
+    activePermissionTab.value = ''
+    return
+  }
+
+  if (!tabs.some(tab => tab.value === activePermissionTab.value))
+    activePermissionTab.value = tabs[0]!.value
+}, { immediate: true })
 </script>
 
 <template>
@@ -132,7 +155,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
         <USkeleton class="h-52 w-full rounded-2xl" />
       </div>
 
-      <div v-else-if="detail" class="space-y-6 p-4">
+      <div v-else-if="detail" class="space-y-6">
         <div class="rounded-2xl border border-default/70 bg-elevated/20 p-4">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div class="space-y-2">
@@ -149,14 +172,14 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
               </div>
 
               <p class="text-sm text-muted">
-                {{ detail.role.description || 'Sem descricao cadastrada para este papel.' }}
+                {{ detail.role.description || 'Sem descrição cadastrada para este papel.' }}
               </p>
             </div>
 
-            <div class="grid min-w-[220px] gap-2 sm:grid-cols-3">
+            <div class="grid min-w-55 gap-2 sm:grid-cols-3">
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
                 <p class="text-xs text-muted">
-                  Usuarios vinculados
+                  Usuários vinculados
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.assigned_users_count }}
@@ -164,7 +187,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
               </div>
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
                 <p class="text-xs text-muted">
-                  Permissoes liberadas
+                  Permissões liberadas
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.granted_actions_count }}
@@ -172,7 +195,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
               </div>
               <div class="rounded-xl border border-default/70 bg-default/40 px-3 py-2">
                 <p class="text-xs text-muted">
-                  Total de acoes
+                  Total de ações
                 </p>
                 <p class="text-lg font-semibold text-highlighted">
                   {{ detail.summary.total_actions_count }}
@@ -185,7 +208,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
         <div class="space-y-3">
           <div class="flex items-center justify-between gap-3">
             <h4 class="text-sm font-semibold uppercase tracking-widest text-muted">
-              Usuarios com este papel
+              Usuários com este papel
             </h4>
           </div>
 
@@ -217,7 +240,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
                 </p>
 
                 <p v-if="user.employee_name" class="text-xs text-muted">
-                  Funcionario vinculado: {{ user.employee_name }}
+                  Funcionário vinculado: {{ user.employee_name }}
                 </p>
               </div>
             </div>
@@ -226,10 +249,10 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
           <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
             <UIcon name="i-lucide-users" class="mx-auto mb-2 size-8 text-muted" />
             <p class="text-sm font-medium text-highlighted">
-              Nenhum usuario com este papel
+              Nenhum usuário com este papel
             </p>
             <p class="mt-1 text-sm text-muted">
-              Assim que um usuario for vinculado a este papel, ele aparecera aqui.
+              Assim que um usuário for vinculado a este papel, ele aparecerá aqui.
             </p>
           </div>
         </div>
@@ -240,20 +263,16 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
           </h4>
 
           <div v-if="Object.keys(grantedGroupedActions).length" class="space-y-4">
-            <div
-              v-for="(actions, resource) in grantedGroupedActions"
-              :key="resource"
-              class="rounded-xl border border-default/70"
-            >
-              <div class="border-b border-default/70 px-4 py-3">
-                <p class="text-xs font-semibold uppercase tracking-widest text-muted">
-                  {{ resource }}
-                </p>
-              </div>
+            <UTabs
+              :items="permissionTabs"
+              :model-value="activePermissionTab"
+              @update:model-value="activePermissionTab = $event as string"
+            />
 
+            <div class="rounded-xl border border-default/70">
               <div class="divide-y divide-default/60">
                 <div
-                  v-for="action in actions"
+                  v-for="action in activeTabActions"
                   :key="action.id"
                   class="flex items-center justify-between gap-4 px-4 py-3"
                 >
@@ -265,11 +284,16 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
                       {{ action.description }}
                     </p>
                     <p v-else class="text-xs text-muted">
-                      Codigo: {{ action.code }}
+                      Código: {{ action.code }}
                     </p>
                   </div>
 
-                  <UBadge label="Permitido" color="success" variant="subtle" size="xs" />
+                  <UBadge
+                    label="Permitido"
+                    color="success"
+                    variant="subtle"
+                    size="xs"
+                  />
                 </div>
               </div>
             </div>
@@ -278,10 +302,10 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
           <div v-else class="rounded-xl border border-dashed border-default px-4 py-8 text-center">
             <UIcon name="i-lucide-ban" class="mx-auto mb-2 size-8 text-muted" />
             <p class="text-sm font-medium text-highlighted">
-              Nenhuma permissao liberada
+              Nenhuma permissão liberada
             </p>
             <p class="mt-1 text-sm text-muted">
-              Este papel ainda nao possui acoes marcadas como permitidas.
+              Este papel ainda não possui ações marcadas como permitidas.
             </p>
           </div>
         </div>
@@ -290,7 +314,7 @@ watch(() => [props.open, props.roleId], loadRoleDetail, { immediate: true })
       <div v-else class="p-4">
         <div class="rounded-xl border border-error/30 bg-error/10 p-4">
           <p class="text-sm font-medium text-error">
-            Nao foi possivel carregar os detalhes do papel.
+            Não foi possível carregar os detalhes do papel.
           </p>
         </div>
       </div>

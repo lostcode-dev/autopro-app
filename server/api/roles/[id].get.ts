@@ -10,13 +10,13 @@ export default defineEventHandler(async (event) => {
     .eq('email', authUser.email!).maybeSingle()
 
   if (!profile?.organization_id)
-    throw createError({ statusCode: 403, statusMessage: 'Usuario nao vinculado a uma organizacao' })
+    throw createError({ statusCode: 403, statusMessage: 'Usuário não vinculado a uma organização' })
 
   const organizationId = profile.organization_id as string
 
   const id = getRouterParam(event, 'id')
   if (!id)
-    throw createError({ statusCode: 400, statusMessage: 'ID obrigatorio' })
+    throw createError({ statusCode: 400, statusMessage: 'ID obrigatório' })
 
   const { data: role, error: roleError } = await supabase
     .from('roles')
@@ -30,7 +30,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: roleError.message })
 
   if (!role)
-    throw createError({ statusCode: 404, statusMessage: 'Perfil nao encontrado' })
+    throw createError({ statusCode: 404, statusMessage: 'Perfil não encontrado' })
 
   const [{ data: actions, error: actionsError }, { data: roleActions, error: roleActionsError }, { data: users, error: usersError }] = await Promise.all([
     supabase
@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
       .eq('role_id', id),
     supabase
       .from('user_profiles')
-      .select('id, email, display_name, employee_id, role_id, is_active')
+      .select('id, email, full_name, display_name, employee_id, role_id, active')
       .eq('organization_id', organizationId)
       .eq('role_id', id)
       .order('display_name', { ascending: true })
@@ -84,11 +84,11 @@ export default defineEventHandler(async (event) => {
   const assignedUsers = (users ?? []).map(user => ({
     id: user.id as string,
     email: user.email as string | null,
-    full_name: null,
+    full_name: user.full_name as string | null,
     display_name: user.display_name as string | null,
     employee_id: user.employee_id as string | null,
     employee_name: user.employee_id ? (employeeNameMap.get(user.employee_id as string) ?? null) : null,
-    active: user.is_active !== false
+    active: user.active !== false
   }))
 
   return {
