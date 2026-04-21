@@ -1,16 +1,23 @@
 <script setup lang="ts">
 import type { ServiceOrder } from '~/types/service-orders'
 
-defineProps<{
+const props = defineProps<{
   order: ServiceOrder
   canCancel?: boolean
   canDelete?: boolean
+  canCreate?: boolean
+  canUpdate?: boolean
+  isAdvancing?: boolean
+  isDuplicating?: boolean
 }>()
 
 const emit = defineEmits<{
   view: [order: ServiceOrder]
   cancel: [order: ServiceOrder]
   delete: [order: ServiceOrder]
+  'advance-status': [order: ServiceOrder]
+  duplicate: [order: ServiceOrder]
+  pay: [order: ServiceOrder]
 }>()
 
 const statusColorMap: Record<string, string> = {
@@ -42,6 +49,22 @@ const paymentStatusLabelMap: Record<string, string> = {
   partial: 'Parcial'
 }
 
+type AdvanceInfo = { label: string; icon: string; color: 'info' | 'warning' | 'success' }
+
+const nextStatusAdvanceMap: Record<string, AdvanceInfo> = {
+  estimate: { label: 'Abrir OS', icon: 'i-lucide-circle-dot', color: 'info' },
+  open: { label: 'Iniciar', icon: 'i-lucide-wrench', color: 'warning' },
+  in_progress: { label: 'Concluir', icon: 'i-lucide-circle-check', color: 'success' }
+}
+
+const nextAdvanceInfo = computed(() => nextStatusAdvanceMap[props.order.status] ?? null)
+const canAdvance = computed(() => props.canUpdate && nextAdvanceInfo.value !== null)
+const canPay = computed(() =>
+  props.canUpdate
+  && props.order.payment_status === 'pending'
+  && !['estimate', 'cancelled'].includes(props.order.status)
+)
+
 function formatCurrency(value: number | string | null | undefined) {
   return parseFloat(String(value || 0)).toLocaleString('pt-BR', {
     style: 'currency',
@@ -58,13 +81,16 @@ function formatDate(value: string | null | undefined) {
 
 <template>
   <UCard
-    class="h-full cursor-pointer border border-default/80 shadow-sm transition-colors hover:bg-elevated"
+    class="cursor-pointer border border-default/80 shadow-sm transition-colors hover:bg-elevated"
     @click="emit('view', order)"
   >
-    <div class="flex h-full items-start gap-4">
+    <div class="flex items-start gap-4">
       <!-- Icon -->
-      <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/12 text-primary">
-        <UIcon name="i-lucide-wrench" class="size-6" />
+      <div
+        class="flex size-10 shrink-0 items-center justify-center rounded-xl"
+        :class="order.status === 'cancelled' ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'"
+      >
+        <UIcon name="i-lucide-clipboard-list" class="size-5" />
       </div>
 
       <div class="min-w-0 flex-1 space-y-2">
@@ -81,7 +107,31 @@ function formatDate(value: string | null | undefined) {
             </p>
           </div>
 
-          <div class="flex shrink-0 items-center gap-1" @click.stop>
+          <div class="flex shrink-0 flex-wrap items-center justify-end gap-1" @click.stop>
+            <!-- Receber pagamento -->
+            <UTooltip v-if="canPay" text="Receber pagamento">
+              <UButton
+                icon="i-lucide-credit-card"
+                color="success"
+                variant="ghost"
+                size="xs"
+                @click="emit('pay', order)"
+              />
+            </UTooltip>
+
+            <!-- Avançar status -->
+            <UTooltip v-if="canAdvance" :text="nextAdvanceInfo!.label">
+              <UButton
+                :icon="nextAdvanceInfo!.icon"
+                :color="nextAdvanceInfo!.color"
+                variant="ghost"
+                size="xs"
+                :loading="isAdvancing"
+                @click="emit('advance-status', order)"
+              />
+            </UTooltip>
+
+            <!-- Ver detalhes -->
             <UTooltip text="Ver detalhes">
               <UButton
                 icon="i-lucide-eye"
@@ -91,6 +141,20 @@ function formatDate(value: string | null | undefined) {
                 @click="emit('view', order)"
               />
             </UTooltip>
+
+            <!-- Duplicar -->
+            <UTooltip v-if="canCreate" text="Duplicar OS">
+              <UButton
+                icon="i-lucide-copy"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                :loading="isDuplicating"
+                @click="emit('duplicate', order)"
+              />
+            </UTooltip>
+
+            <!-- Cancelar -->
             <UTooltip
               v-if="canCancel && !['cancelled', 'delivered'].includes(order.status)"
               text="Cancelar OS"
@@ -103,6 +167,8 @@ function formatDate(value: string | null | undefined) {
                 @click="emit('cancel', order)"
               />
             </UTooltip>
+
+            <!-- Excluir -->
             <UTooltip v-if="canDelete" text="Excluir OS">
               <UButton
                 icon="i-lucide-trash-2"
@@ -116,12 +182,12 @@ function formatDate(value: string | null | undefined) {
         </div>
 
         <!-- Row 2: defect -->
-        <p class="truncate text-sm text-muted">
-          {{ order.reported_defect || 'Sem defeito relatado' }}
+        <p v-if="order.reported_defect" class="truncate text-sm text-muted">
+          {{ order.reported_defect }}
         </p>
 
-        <!-- Row 3: badges + value + date -->
-        <div class="flex items-center justify-between gap-2">
+        <!-- Row 3: badges + responsible + value + date -->
+        <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap items-center gap-1.5">
             <UBadge
               :color="statusColorMap[order.status] ?? 'neutral'"
@@ -136,6 +202,9 @@ function formatDate(value: string | null | undefined) {
               variant="soft"
               size="xs"
             />
+            <span v-if="order.responsible_name" class="text-xs text-muted">
+              · {{ order.responsible_name }}
+            </span>
           </div>
           <div class="shrink-0 text-right">
             <p class="text-sm font-semibold text-highlighted">

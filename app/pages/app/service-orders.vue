@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watchDebounced, useVirtualList, useIntersectionObserver } from '@vueuse/core'
+import { watchDebounced, useIntersectionObserver } from '@vueuse/core'
 import { ActionCode } from '~/constants/action-codes'
 
 import type { ServiceOrder } from '~/types/service-orders'
@@ -97,25 +97,18 @@ function resetAndLoad() {
   loadMore()
 }
 
-// ─── Virtual list ──────────────────────────────────────────────────────────────
+// ─── Sentinel (infinite scroll trigger) ───────────────────────────────────────
 
-// Altura fixa por item = card (144px) + padding vertical (16px) = 160px
-const ITEM_HEIGHT = 160
-
-const { list: virtualList, containerProps, wrapperProps } = useVirtualList(
-  allOrders,
-  { itemHeight: ITEM_HEIGHT, overscan: 6 }
-)
-
-// Sentinel no fim do scroll
+const listContainerRef = ref<HTMLElement | null>(null)
 const sentinelRef = ref<HTMLElement | null>(null)
+
 useIntersectionObserver(
   sentinelRef,
-  ([entry]) => {
-    if (entry.isIntersecting && hasMore.value && !isLoadingMore.value)
+  (entries) => {
+    if (entries[0]?.isIntersecting && hasMore.value && !isLoadingMore.value)
       loadMore()
   },
-  { root: containerProps.ref, rootMargin: '300px' }
+  { root: listContainerRef, rootMargin: '300px' }
 )
 
 // ─── Watchers ──────────────────────────────────────────────────────────────────
@@ -140,7 +133,10 @@ watch(
   (q) => {
     const s = typeof q.search === 'string' ? q.search : ''
     const st = typeof q.status === 'string' ? q.status : 'all'
-    if (search.value !== s) { search.value = s; debouncedSearch.value = s }
+    if (search.value !== s) {
+      search.value = s
+      debouncedSearch.value = s
+    }
     if (statusFilter.value !== st) statusFilter.value = st
   }
 )
@@ -161,6 +157,106 @@ function openDetail(order: ServiceOrder) {
 function closeDetail() {
   showDetail.value = false
   selectedOrder.value = null
+}
+
+// ─── Advance status ────────────────────────────────────────────────────────────
+
+const advancingIds = ref(new Set<string>())
+
+function getNextStatus(status: string): string | null {
+  if (status === 'estimate') return 'open'
+  if (status === 'open') return 'in_progress'
+  if (status === 'in_progress') return 'completed'
+  return null
+}
+
+async function advanceStatus(order: ServiceOrder) {
+  const nextStatus = getNextStatus(order.status)
+  if (!nextStatus || advancingIds.value.has(order.id)) return
+
+  advancingIds.value.add(order.id)
+  try {
+    await $fetch('/api/service-orders', {
+      method: 'POST',
+      body: { orderId: order.id, orderData: { status: nextStatus } }
+    })
+    toast.add({ title: 'Status atualizado', color: 'success' })
+    resetAndLoad()
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({
+      title: 'Erro ao atualizar status',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    advancingIds.value.delete(order.id)
+  }
+}
+
+// ─── Duplicate ─────────────────────────────────────────────────────────────────
+
+const duplicatingIds = ref(new Set<string>())
+
+async function duplicate(order: ServiceOrder) {
+  if (duplicatingIds.value.has(order.id)) return
+
+  duplicatingIds.value.add(order.id)
+  try {
+    const res = await $fetch<{ data: { order: Record<string, unknown> } }>(`/api/service-orders/${order.id}`)
+    const orig = res.data.order
+
+    await $fetch('/api/service-orders', {
+      method: 'POST',
+      body: {
+        orderData: {
+          client_id: orig.client_id || null,
+          vehicle_id: orig.vehicle_id || null,
+          master_product_id: orig.master_product_id || null,
+          employee_responsible_id: orig.employee_responsible_id || null,
+          responsible_employees: orig.responsible_employees || [],
+          reported_defect: orig.reported_defect || null,
+          diagnosis: orig.diagnosis || null,
+          status: 'open',
+          payment_status: 'pending',
+          entry_date: new Date().toISOString().split('T')[0],
+          items: orig.items || [],
+          apply_taxes: orig.apply_taxes || false,
+          selected_taxes: orig.selected_taxes || [],
+          total_amount: orig.total_amount || 0,
+          discount: orig.discount || 0,
+          notes: orig.notes || null
+        }
+      }
+    })
+    toast.add({ title: 'OS duplicada com sucesso', color: 'success' })
+    resetAndLoad()
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({
+      title: 'Erro ao duplicar OS',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    duplicatingIds.value.delete(order.id)
+  }
+}
+
+// ─── Payment ───────────────────────────────────────────────────────────────────
+
+const showPaymentModal = ref(false)
+const paymentOrder = ref<ServiceOrder | null>(null)
+
+function requestPay(order: ServiceOrder) {
+  paymentOrder.value = order
+  showPaymentModal.value = true
+}
+
+function onPaymentDone() {
+  showPaymentModal.value = false
+  paymentOrder.value = null
+  resetAndLoad()
 }
 
 // ─── Cancel ────────────────────────────────────────────────────────────────────
@@ -270,9 +366,7 @@ const statusFilterOptions = [
 
       <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
         <!-- Filtros -->
-        <div
-          class="flex shrink-0 flex-wrap items-center gap-3 border-b border-default p-4"
-        >
+        <div class="flex shrink-0 flex-wrap items-center gap-3 border-b border-default p-4">
           <UInput
             v-model="search"
             placeholder="Buscar por número ou cliente..."
@@ -286,11 +380,11 @@ const statusFilterOptions = [
             class="w-44"
           />
           <span class="ml-auto text-sm text-muted">
-            {{ totalFiltered }} resultado{{ totalFiltered !== 1 ? "s" : "" }}
+            {{ totalFiltered }} resultado{{ totalFiltered !== 1 ? 's' : '' }}
           </span>
         </div>
 
-        <!-- Estado vazio (sem permissão ou sem itens e não carregando) -->
+        <!-- Estado vazio -->
         <div
           v-if="allOrders.length === 0 && !isLoadingMore"
           class="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center"
@@ -307,45 +401,39 @@ const statusFilterOptions = [
         <!-- Skeleton inicial -->
         <div
           v-else-if="allOrders.length === 0 && isLoadingMore"
-          class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2"
+          class="space-y-3 p-4"
         >
-          <USkeleton v-for="i in 6" :key="i" class="h-36 w-full rounded-xl" />
+          <USkeleton v-for="i in 6" :key="i" class="h-24 w-full rounded-xl" />
         </div>
 
-        <!-- Lista virtualizada -->
-        <div
-          v-else
-          v-bind="containerProps"
-          class="flex-1 min-h-0 overflow-y-auto"
-        >
-          <div v-bind="wrapperProps">
-            <div
-              v-for="{ data: order, index } in virtualList"
+        <!-- Lista com scroll -->
+        <div v-else ref="listContainerRef" class="min-h-0 flex-1 overflow-y-auto">
+          <div class="space-y-3 p-4">
+            <ServiceOrdersOrderCard
+              v-for="order in allOrders"
               :key="order.id"
-              :style="{ height: `${ITEM_HEIGHT}px` }"
-              class="grid grid-cols-1 gap-0 px-4 py-2 xl:grid-cols-2 xl:gap-4"
-            >
-              <!-- Card da OS -->
-              <ServiceOrdersOrderCard
-                :order="order"
-                :can-cancel="canCancel"
-                :can-delete="canDelete"
-                @view="openDetail"
-                @cancel="requestCancel"
-                @delete="requestDelete"
-              />
-
-              <!-- Coluna direita vazia no xl (grid 2 colunas) — preenchida pelo próximo item -->
-              <div v-if="index % 2 !== 0" class="hidden xl:block" />
-            </div>
+              :order="order"
+              :can-cancel="canCancel"
+              :can-delete="canDelete"
+              :can-create="canCreate"
+              :can-update="canUpdate"
+              :is-advancing="advancingIds.has(order.id)"
+              :is-duplicating="duplicatingIds.has(order.id)"
+              @view="openDetail"
+              @advance-status="advanceStatus"
+              @duplicate="duplicate"
+              @pay="requestPay"
+              @cancel="requestCancel"
+              @delete="requestDelete"
+            />
           </div>
 
-          <!-- Sentinel — dispara loadMore quando entra na viewport -->
+          <!-- Sentinel -->
           <div ref="sentinelRef" class="h-px" />
 
           <!-- Skeleton de carregamento incremental -->
-          <div v-if="isLoadingMore" class="grid grid-cols-1 gap-4 p-4 xl:grid-cols-2">
-            <USkeleton v-for="i in 4" :key="i" class="h-36 w-full rounded-xl" />
+          <div v-if="isLoadingMore" class="space-y-3 px-4 pb-4">
+            <USkeleton v-for="i in 3" :key="i" class="h-24 w-full rounded-xl" />
           </div>
 
           <!-- Fim da lista -->
@@ -371,8 +459,8 @@ const statusFilterOptions = [
     @confirm="confirmCancel"
     @update:open="
       (v) => {
-        showCancelModal = v;
-        if (!v && !isCancelling) orderPendingCancel = null;
+        showCancelModal = v
+        if (!v && !isCancelling) orderPendingCancel = null
       }
     "
   >
@@ -380,7 +468,7 @@ const statusFilterOptions = [
       <p class="text-sm text-muted">
         Tem certeza que deseja cancelar a
         <strong class="text-highlighted">
-          OS #{{ orderPendingCancel?.number ?? "" }}
+          OS #{{ orderPendingCancel?.number ?? '' }}
         </strong>?
         Esta ação não pode ser desfeita.
       </p>
@@ -397,8 +485,8 @@ const statusFilterOptions = [
     @confirm="confirmDelete"
     @update:open="
       (v) => {
-        showDeleteModal = v;
-        if (!v && !isDeleting) orderPendingDeletion = null;
+        showDeleteModal = v
+        if (!v && !isDeleting) orderPendingDeletion = null
       }
     "
   >
@@ -406,7 +494,7 @@ const statusFilterOptions = [
       <p class="text-sm text-muted">
         Tem certeza que deseja excluir a
         <strong class="text-highlighted">
-          OS #{{ orderPendingDeletion?.number ?? "" }}
+          OS #{{ orderPendingDeletion?.number ?? '' }}
         </strong>?
         Esta ação não pode ser desfeita.
       </p>
@@ -420,5 +508,12 @@ const statusFilterOptions = [
     :can-cancel="canCancel"
     :is-cancelling="isCancelling"
     @cancel="requestCancel"
+  />
+
+  <!-- ── Payment Modal ────────────────────────────────────────────────────────── -->
+  <ServiceOrdersPaymentModal
+    v-model:open="showPaymentModal"
+    :order="paymentOrder"
+    @paid="onPaymentDone"
   />
 </template>
