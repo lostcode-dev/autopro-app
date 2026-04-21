@@ -1,283 +1,322 @@
 <script setup lang="ts">
-import { addMonths, format, parseISO } from 'date-fns'
+import { addMonths, format, parseISO } from "date-fns";
 
-type Entry = Record<string, unknown>
+type Entry = Record<string, unknown>;
 type BankAccountItem = {
-  id: string
-  account_name: string
-  bank_name?: string | null
-}
-type CategoryDefault = { name: string; type: 'income' | 'expense' }
-type CategoryCustom = { id: string; name: string; type: 'income' | 'expense' }
-type CategoryResponse = { defaults: CategoryDefault[]; custom: CategoryCustom[] }
+  id: string;
+  account_name: string;
+  bank_name?: string | null;
+};
+type CategoryDefault = { name: string; type: "income" | "expense" };
+type CategoryCustom = { id: string; name: string; type: "income" | "expense" };
+type CategoryResponse = {
+  defaults: CategoryDefault[];
+  custom: CategoryCustom[];
+};
 
 const props = defineProps<{
-  open: boolean
-  entry: Entry | null
-  bankAccountOptions: BankAccountItem[]
-}>()
+  open: boolean;
+  entry: Entry | null;
+  bankAccountOptions: BankAccountItem[];
+}>();
 
 const emit = defineEmits<{
-  'update:open': [value: boolean]
-  'saved': []
-}>()
+  "update:open": [value: boolean];
+  saved: [];
+}>();
 
-const toast = useToast()
-const isSaving = ref(false)
-const showCategoryModal = ref(false)
-const showRecurringDialog = ref(false)
-const pendingPayload = ref<Record<string, unknown> | null>(null)
+const toast = useToast();
+const isSaving = ref(false);
+const showCategoryModal = ref(false);
+const showRecurringDialog = ref(false);
+const pendingPayload = ref<Record<string, unknown> | null>(null);
 
-const NO_BANK_ACCOUNT = '__none__'
-const NO_RECURRENCE = '__none__'
+const NO_BANK_ACCOUNT = "__none__";
+const NO_RECURRENCE = "__none__";
 
 // ── Normalize helpers ──────────────────────────────────────────────────────────
 
 function normalizeStatus(value: unknown) {
-  const v = String(value || '').trim().toLowerCase()
-  if (v === 'pago') return 'paid'
-  if (v === 'pendente') return 'pending'
-  return ['paid', 'pending'].includes(v) ? v : 'pending'
+  const v = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (v === "pago") return "paid";
+  if (v === "pendente") return "pending";
+  return ["paid", "pending"].includes(v) ? v : "pending";
 }
 
 function normalizeRecurrence(value: unknown) {
-  const v = String(value || '').trim().toLowerCase()
-  if (!v || ['null', 'none', 'nao_recorrente', NO_RECURRENCE].includes(v)) return NO_RECURRENCE
-  if (v === 'mensal') return 'monthly'
-  if (v === 'anual') return 'yearly'
-  if (v === 'semanal') return 'weekly'
-  return ['monthly', 'yearly', 'weekly'].includes(v) ? v : NO_RECURRENCE
+  const v = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (!v || ["null", "none", "nao_recorrente", NO_RECURRENCE].includes(v))
+    return NO_RECURRENCE;
+  if (v === "mensal") return "monthly";
+  if (v === "anual") return "yearly";
+  if (v === "semanal") return "weekly";
+  return ["monthly", "yearly", "weekly"].includes(v) ? v : NO_RECURRENCE;
 }
 
 function recurrenceForApi(value: string) {
-  if (value === NO_RECURRENCE) return null
-  if (value === 'monthly') return 'mensal'
-  if (value === 'yearly') return 'anual'
-  if (value === 'weekly') return 'semanal'
-  return value
+  if (value === NO_RECURRENCE) return null;
+  if (value === "monthly") return "mensal";
+  if (value === "yearly") return "anual";
+  if (value === "weekly") return "semanal";
+  return value;
 }
 
 // ── Categories ─────────────────────────────────────────────────────────────────
 
-const categoriesLoading = ref(false)
-const defaultCategories = ref<CategoryDefault[]>([])
-const customCategories = ref<CategoryCustom[]>([])
+const categoriesLoading = ref(false);
+const defaultCategories = ref<CategoryDefault[]>([]);
+const customCategories = ref<CategoryCustom[]>([]);
 
 async function fetchCategories() {
-  categoriesLoading.value = true
+  categoriesLoading.value = true;
   try {
-    const res = await $fetch<CategoryResponse>('/api/financial/categories')
-    defaultCategories.value = res.defaults
-    customCategories.value = res.custom
+    const res = await $fetch<CategoryResponse>("/api/financial/categories");
+    defaultCategories.value = res.defaults;
+    customCategories.value = res.custom;
   } catch {
     // keep empty on error
   } finally {
-    categoriesLoading.value = false
+    categoriesLoading.value = false;
   }
 }
 
 const categoryOptions = computed(() => {
-  const currentType = form.type
+  const currentType = form.type;
   const fromDefaults = defaultCategories.value
-    .filter(d => d.type === currentType)
-    .map(d => ({ label: d.name, value: d.name.toLowerCase() }))
+    .filter((d) => d.type === currentType)
+    .map((d) => ({ label: d.name, value: d.name.toLowerCase() }));
   const fromCustom = customCategories.value
-    .filter(c => c.type === currentType)
-    .map(c => ({ label: c.name, value: c.name.toLowerCase() }))
-  return [...fromDefaults, ...fromCustom]
-})
+    .filter((c) => c.type === currentType)
+    .map((c) => ({ label: c.name, value: c.name.toLowerCase() }));
+  return [...fromDefaults, ...fromCustom];
+});
 
 // ── Installments ───────────────────────────────────────────────────────────────
 
 interface Installment {
-  number: number
-  amount: number
-  due_date: string
-  status: string
+  number: number;
+  amount: number;
+  due_date: string;
+  status: string;
 }
 
 const installmentCountOptions = Array.from({ length: 23 }, (_, i) => ({
   label: `${i + 2}x`,
-  value: i + 2
-}))
+  value: i + 2,
+}));
 
 const installmentStatusOptions = [
-  { label: 'Pendente', value: 'pending' },
-  { label: 'Pago', value: 'paid' }
-]
+  { label: "Pendente", value: "pending" },
+  { label: "Pago", value: "paid" },
+];
 
 // Editable installments list (reactive, user can change each row)
-const editableInstallments = ref<Installment[]>([])
+const editableInstallments = ref<Installment[]>([]);
 
-function generateInstallments(totalAmount: number, count: number, firstDate: string, firstStatus: string): Installment[] {
-  if (!totalAmount || !count || !firstDate) return []
-  const base = Math.floor((totalAmount * 100) / count) / 100
-  const remainder = Math.round((totalAmount - base * count) * 100) / 100
+function generateInstallments(
+  totalAmount: number,
+  count: number,
+  firstDate: string,
+  firstStatus: string,
+): Installment[] {
+  if (!totalAmount || !count || !firstDate) return [];
+  const base = Math.floor((totalAmount * 100) / count) / 100;
+  const remainder = Math.round((totalAmount - base * count) * 100) / 100;
   return Array.from({ length: count }, (_, i) => ({
     number: i + 1,
     amount: i === 0 ? base + remainder : base,
-    due_date: format(addMonths(parseISO(firstDate), i), 'yyyy-MM-dd'),
-    status: i === 0 ? firstStatus : 'pending'
-  }))
+    due_date: format(addMonths(parseISO(firstDate), i), "yyyy-MM-dd"),
+    status: i === 0 ? firstStatus : "pending",
+  }));
 }
 
 function regenerateInstallments() {
-  const amount = Number(form.amount) || 0
-  const count = form.installment_count || 2
+  const amount = Number(form.amount) || 0;
+  const count = form.installment_count || 2;
   if (!amount || !form.due_date) {
-    editableInstallments.value = []
-    return
+    editableInstallments.value = [];
+    return;
   }
-  editableInstallments.value = generateInstallments(amount, count, form.due_date, form.status)
+  editableInstallments.value = generateInstallments(
+    amount,
+    count,
+    form.due_date,
+    form.status,
+  );
 }
 
 // Regenrate when checkbox is toggled on, or when count/amount/date/status changes
 watch(
-  () => [form.is_installment, form.installment_count, form.amount, form.due_date, form.status] as const,
+  () =>
+    [
+      form.is_installment,
+      form.installment_count,
+      form.amount,
+      form.due_date,
+      form.status,
+    ] as const,
   ([checked]) => {
     if (checked && !isEditing.value) {
-      regenerateInstallments()
+      regenerateInstallments();
     } else {
-      editableInstallments.value = []
+      editableInstallments.value = [];
     }
-  }
-)
+  },
+);
 
 function addInstallment() {
-  const last = editableInstallments.value[editableInstallments.value.length - 1]
+  const last =
+    editableInstallments.value[editableInstallments.value.length - 1];
   const nextDate = last
-    ? format(addMonths(parseISO(last.due_date), 1), 'yyyy-MM-dd')
-    : form.due_date || format(new Date(), 'yyyy-MM-dd')
+    ? format(addMonths(parseISO(last.due_date), 1), "yyyy-MM-dd")
+    : form.due_date || format(new Date(), "yyyy-MM-dd");
   editableInstallments.value.push({
     number: editableInstallments.value.length + 1,
     amount: 0,
     due_date: nextDate,
-    status: 'pending'
-  })
-  form.installment_count = editableInstallments.value.length
+    status: "pending",
+  });
+  form.installment_count = editableInstallments.value.length;
 }
 
 function removeInstallment(index: number) {
-  if (editableInstallments.value.length <= 1) return
-  editableInstallments.value.splice(index, 1)
+  if (editableInstallments.value.length <= 1) return;
+  editableInstallments.value.splice(index, 1);
   editableInstallments.value.forEach((inst, i) => {
-    inst.number = i + 1
-  })
-  form.installment_count = editableInstallments.value.length
+    inst.number = i + 1;
+  });
+  form.installment_count = editableInstallments.value.length;
 }
 
 const installmentTotal = computed(() =>
-  editableInstallments.value.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0)
-)
-const installmentOriginalAmount = computed(() => Number(form.amount) || 0)
-const installmentTotalsMatch = computed(() =>
-  Math.abs(installmentOriginalAmount.value - installmentTotal.value) < 0.015
-)
+  editableInstallments.value.reduce(
+    (sum, inst) => sum + (Number(inst.amount) || 0),
+    0,
+  ),
+);
+const installmentOriginalAmount = computed(() => Number(form.amount) || 0);
+const installmentTotalsMatch = computed(
+  () =>
+    Math.abs(installmentOriginalAmount.value - installmentTotal.value) < 0.015,
+);
 
 // ── Form state ─────────────────────────────────────────────────────────────────
 
 const form = reactive({
-  description: '',
-  amount: '' as string | number,
-  due_date: '',
-  type: 'expense' as 'income' | 'expense',
-  status: 'pending',
-  category: '',
+  description: "",
+  amount: "" as string | number,
+  due_date: "",
+  type: "expense" as "income" | "expense",
+  status: "pending",
+  category: "",
   bank_account_id: NO_BANK_ACCOUNT,
-  notes: '',
+  notes: "",
   recurrence: NO_RECURRENCE,
-  recurrence_end_date: '',
+  recurrence_end_date: "",
   is_installment: false,
   installment_count: 2,
-  is_editing_installment: false
-})
+  is_editing_installment: false,
+});
 
-const isEditing = computed(() => Boolean(props.entry?.id))
+const isEditing = computed(() => Boolean(props.entry?.id));
 
 // Only monthly/yearly are treated as recurring series (weekly is not managed as a series)
 const isEditingRecurring = computed(() => {
-  if (!props.entry) return false
-  const rec = String(props.entry.recurrence || '').toLowerCase()
-  const hasParent = Boolean(props.entry.recurring_parent_id) || Boolean(props.entry.parent_recurrence_id)
-  const isRecurring = ['mensal', 'anual', 'monthly', 'yearly'].includes(rec)
-  return hasParent || isRecurring
-})
+  if (!props.entry) return false;
+  const rec = String(props.entry.recurrence || "").toLowerCase();
+  const hasParent =
+    Boolean(props.entry.recurring_parent_id) ||
+    Boolean(props.entry.parent_recurrence_id);
+  const isRecurring = ["mensal", "anual", "monthly", "yearly"].includes(rec);
+  return hasParent || isRecurring;
+});
 
 watch(
   () => props.open,
   (open) => {
     if (!open) {
-      editableInstallments.value = []
-      return
+      editableInstallments.value = [];
+      return;
     }
-    fetchCategories()
+    fetchCategories();
 
     if (props.entry) {
-      const e = props.entry
+      const e = props.entry;
       Object.assign(form, {
-        description: String(e.description ?? ''),
-        amount: e.amount == null ? '' : Number(e.amount),
-        due_date: String(e.due_date ?? ''),
-        type: String(e.type ?? 'expense') as 'income' | 'expense',
+        description: String(e.description ?? ""),
+        amount: e.amount == null ? "" : Number(e.amount),
+        due_date: String(e.due_date ?? ""),
+        type: String(e.type ?? "expense") as "income" | "expense",
         status: normalizeStatus(e.status),
-        category: String(e.category ?? '').toLowerCase(),
-        bank_account_id: e.bank_account_id ? String(e.bank_account_id) : NO_BANK_ACCOUNT,
-        notes: String(e.notes ?? ''),
+        category: String(e.category ?? "").toLowerCase(),
+        bank_account_id: e.bank_account_id
+          ? String(e.bank_account_id)
+          : NO_BANK_ACCOUNT,
+        notes: String(e.notes ?? ""),
         recurrence: normalizeRecurrence(e.recurrence),
-        recurrence_end_date: e.recurrence_end_date ? String(e.recurrence_end_date) : '',
+        recurrence_end_date: e.recurrence_end_date
+          ? String(e.recurrence_end_date)
+          : "",
         is_installment: false,
         installment_count: 2,
-        is_editing_installment: Boolean(e.is_installment)
-      })
-      return
+        is_editing_installment: Boolean(e.is_installment),
+      });
+      return;
     }
 
     Object.assign(form, {
-      description: '',
-      amount: '',
-      due_date: '',
-      type: 'expense',
-      status: 'pending',
-      category: '',
+      description: "",
+      amount: "",
+      due_date: "",
+      type: "expense",
+      status: "pending",
+      category: "",
       bank_account_id: NO_BANK_ACCOUNT,
-      notes: '',
+      notes: "",
       recurrence: NO_RECURRENCE,
-      recurrence_end_date: '',
+      recurrence_end_date: "",
       is_installment: false,
       installment_count: 2,
-      is_editing_installment: false
-    })
+      is_editing_installment: false,
+    });
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 // Reset category when type toggles
-watch(() => form.type, () => {
-  form.category = ''
-})
+watch(
+  () => form.type,
+  () => {
+    form.category = "";
+  },
+);
 
 // ── Bank account items ─────────────────────────────────────────────────────────
 
 const bankItems = computed(() => [
-  { label: 'Não vincular a uma conta', value: NO_BANK_ACCOUNT },
-  ...props.bankAccountOptions.map(a => ({
-    label: `${a.account_name}${a.bank_name ? ` — ${a.bank_name}` : ''}`,
-    value: a.id
-  }))
-])
+  { label: "Não vincular a uma conta", value: NO_BANK_ACCOUNT },
+  ...props.bankAccountOptions.map((a) => ({
+    label: `${a.account_name}${a.bank_name ? ` — ${a.bank_name}` : ""}`,
+    value: a.id,
+  })),
+]);
 
 // ── Static options ─────────────────────────────────────────────────────────────
 
 const recurrenceOptions = [
-  { label: 'Sem recorrência', value: NO_RECURRENCE },
-  { label: 'Mensal', value: 'monthly' },
-  { label: 'Anual', value: 'yearly' }
-]
+  { label: "Sem recorrência", value: NO_RECURRENCE },
+  { label: "Mensal", value: "monthly" },
+  { label: "Anual", value: "yearly" },
+];
 
 const statusOptions = [
-  { label: 'Pendente', value: 'pending' },
-  { label: 'Pago', value: 'paid' }
-]
+  { label: "Pendente", value: "pending" },
+  { label: "Pago", value: "paid" },
+];
 
 // ── Save logic ─────────────────────────────────────────────────────────────────
 
@@ -287,112 +326,132 @@ function buildBody() {
     amount: Number(form.amount),
     due_date: form.due_date,
     type: form.type,
-    status: form.status === 'paid' ? 'pago' : 'pendente',
+    status: form.status === "paid" ? "pago" : "pendente",
     category: form.category.trim(),
-    bank_account_id: form.bank_account_id === NO_BANK_ACCOUNT ? null : form.bank_account_id,
+    bank_account_id:
+      form.bank_account_id === NO_BANK_ACCOUNT ? null : form.bank_account_id,
     notes: form.notes.trim() || null,
     recurrence: recurrenceForApi(form.recurrence),
-    recurrence_end_date: (form.recurrence !== NO_RECURRENCE && form.recurrence_end_date) ? form.recurrence_end_date : null
-  }
+    recurrence_end_date:
+      form.recurrence !== NO_RECURRENCE && form.recurrence_end_date
+        ? form.recurrence_end_date
+        : null,
+  };
 }
 
 async function save() {
-  if (isSaving.value) return
+  if (isSaving.value) return;
   if (!form.description.trim()) {
-    toast.add({ title: 'Descrição obrigatória', color: 'warning' })
-    return
+    toast.add({ title: "Descrição obrigatória", color: "warning" });
+    return;
   }
   if (!form.amount || Number(form.amount) <= 0) {
-    toast.add({ title: 'Valor inválido', color: 'warning' })
-    return
+    toast.add({ title: "Valor inválido", color: "warning" });
+    return;
   }
   if (!form.due_date) {
-    toast.add({ title: 'Data de vencimento obrigatória', color: 'warning' })
-    return
+    toast.add({ title: "Data de vencimento obrigatória", color: "warning" });
+    return;
   }
   if (!form.category.trim()) {
-    toast.add({ title: 'Categoria obrigatória', color: 'warning' })
-    return
+    toast.add({ title: "Categoria obrigatória", color: "warning" });
+    return;
   }
 
-  if (!isEditing.value && form.is_installment && editableInstallments.value.length > 1) {
+  if (
+    !isEditing.value &&
+    form.is_installment &&
+    editableInstallments.value.length > 1
+  ) {
     if (!installmentTotalsMatch.value) {
-      toast.add({ title: 'Total das parcelas não confere com o valor original', color: 'warning' })
-      return
+      toast.add({
+        title: "Total das parcelas não confere com o valor original",
+        color: "warning",
+      });
+      return;
     }
   }
 
   if (isEditing.value && isEditingRecurring.value) {
-    pendingPayload.value = buildBody()
-    showRecurringDialog.value = true
-    return
+    pendingPayload.value = buildBody();
+    showRecurringDialog.value = true;
+    return;
   }
 
-  await doSave(buildBody())
+  await doSave(buildBody());
 }
 
-async function doSave(body: Record<string, unknown>, recurringScope?: 'single' | 'future') {
-  isSaving.value = true
+async function doSave(
+  body: Record<string, unknown>,
+  recurringScope?: "single" | "future",
+) {
+  isSaving.value = true;
   try {
     if (isEditing.value && props.entry?.id) {
-      const entryId = String(props.entry.id)
-      if (recurringScope === 'future') {
-        await $fetch('/api/financial/update-recurring', {
-          method: 'POST',
-          body: { originalEntryId: entryId, updateData: body }
-        })
+      const entryId = String(props.entry.id);
+      if (recurringScope === "future") {
+        await $fetch("/api/financial/update-recurring", {
+          method: "POST",
+          body: { originalEntryId: entryId, updateData: body },
+        });
       } else {
-        await $fetch(`/api/financial/${entryId}`, { method: 'PUT', body })
+        await $fetch(`/api/financial/${entryId}`, { method: "PUT", body });
       }
-      toast.add({ title: 'Lançamento atualizado', color: 'success' })
+      toast.add({ title: "Lançamento atualizado", color: "success" });
     } else {
       if (form.is_installment && editableInstallments.value.length > 1) {
-        await $fetch('/api/financial', {
-          method: 'POST',
+        await $fetch("/api/financial", {
+          method: "POST",
           body: {
             ...body,
             is_installment: true,
             installment_count: editableInstallments.value.length,
-            installments: editableInstallments.value
-          }
-        })
+            installments: editableInstallments.value,
+          },
+        });
       } else {
-        await $fetch('/api/financial', { method: 'POST', body })
+        await $fetch("/api/financial", { method: "POST", body });
       }
-      toast.add({ title: 'Lançamento criado', color: 'success' })
+      toast.add({ title: "Lançamento criado", color: "success" });
     }
-    emit('update:open', false)
-    emit('saved')
+    emit("update:open", false);
+    emit("saved");
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as {
+      data?: { statusMessage?: string };
+      statusMessage?: string;
+    };
     toast.add({
-      title: 'Erro',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível salvar',
-      color: 'error'
-    })
+      title: "Erro",
+      description:
+        err?.data?.statusMessage ||
+        err?.statusMessage ||
+        "Não foi possível salvar",
+      color: "error",
+    });
   } finally {
-    isSaving.value = false
+    isSaving.value = false;
   }
 }
 
 async function confirmRecurringSingle() {
-  showRecurringDialog.value = false
-  if (!pendingPayload.value) return
-  const payload = pendingPayload.value
-  pendingPayload.value = null
-  await doSave(payload, 'single')
+  showRecurringDialog.value = false;
+  if (!pendingPayload.value) return;
+  const payload = pendingPayload.value;
+  pendingPayload.value = null;
+  await doSave(payload, "single");
 }
 
 async function confirmRecurringFuture() {
-  showRecurringDialog.value = false
-  if (!pendingPayload.value) return
-  const payload = pendingPayload.value
-  pendingPayload.value = null
-  await doSave(payload, 'future')
+  showRecurringDialog.value = false;
+  if (!pendingPayload.value) return;
+  const payload = pendingPayload.value;
+  pendingPayload.value = null;
+  await doSave(payload, "future");
 }
 
 function formatCurrency(value: number) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 </script>
 
@@ -400,7 +459,11 @@ function formatCurrency(value: number) {
   <UModal
     :open="open"
     :title="isEditing ? 'Editar lançamento' : 'Novo lançamento'"
-    :description="isEditing ? 'Atualize os dados do lançamento financeiro.' : 'Cadastre uma nova receita ou despesa da oficina.'"
+    :description="
+      isEditing
+        ? 'Atualize os dados do lançamento financeiro.'
+        : 'Cadastre uma nova receita ou despesa da oficina.'
+    "
     :ui="{ body: 'overflow-y-auto max-h-[72vh]' }"
     @update:open="emit('update:open', $event)"
   >
@@ -417,13 +480,17 @@ function formatCurrency(value: number) {
 
         <!-- Tipo toggle -->
         <UFormField label="Tipo" required>
-          <div class="flex w-full overflow-hidden rounded-lg border border-default">
+          <div
+            class="flex w-full overflow-hidden rounded-lg border border-default"
+          >
             <button
               type="button"
               class="flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium transition-colors focus:outline-none"
-              :class="form.type === 'income'
-                ? 'bg-success/10 text-success'
-                : 'text-muted hover:bg-elevated'"
+              :class="
+                form.type === 'income'
+                  ? 'bg-success/10 text-success'
+                  : 'text-muted hover:bg-elevated'
+              "
               @click="form.type = 'income'"
             >
               <UIcon name="i-lucide-trending-up" class="size-4" />
@@ -433,9 +500,11 @@ function formatCurrency(value: number) {
             <button
               type="button"
               class="flex flex-1 items-center justify-center gap-2 py-2 text-sm font-medium transition-colors focus:outline-none"
-              :class="form.type === 'expense'
-                ? 'bg-error/10 text-error'
-                : 'text-muted hover:bg-elevated'"
+              :class="
+                form.type === 'expense'
+                  ? 'bg-error/10 text-error'
+                  : 'text-muted hover:bg-elevated'
+              "
               @click="form.type = 'expense'"
             >
               <UIcon name="i-lucide-trending-down" class="size-4" />
@@ -530,59 +599,58 @@ function formatCurrency(value: number) {
 
           <!-- Checkbox de parcelamento (só na criação) -->
           <template v-if="!isEditing">
-            <UCheckbox
-              v-model="form.is_installment"
-              label="Criar lançamento parcelado?"
-            />
+            <div class="flex items-end gap-3">
+              <UCheckbox
+                v-model="form.is_installment"
+                label="Criar lançamento parcelado?"
+              />
+              <UButton
+                v-if="form.is_installment"
+                icon="i-lucide-plus"
+                label="Adicionar parcela"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                @click="addInstallment"
+              />
+            </div>
 
             <template v-if="form.is_installment">
-              <!-- Controles de geração -->
-              <div class="flex items-end gap-3">
-                <UFormField label="Número de parcelas" class="w-40">
-                  <USelectMenu
-                    v-model="form.installment_count"
-                    :items="installmentCountOptions"
-                    value-key="value"
-                    class="w-full"
-                    @update:model-value="regenerateInstallments"
-                  />
-                </UFormField>
-                <UButton
-                  icon="i-lucide-refresh-cw"
-                  label="Regenerar"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                  @click="regenerateInstallments"
-                />
-                <UButton
-                  icon="i-lucide-plus"
-                  label="Adicionar parcela"
-                  color="neutral"
-                  variant="outline"
-                  size="sm"
-                  @click="addInstallment"
-                />
-              </div>
-
               <!-- Resumo de totais -->
               <div
                 v-if="editableInstallments.length > 0"
                 class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
-                :class="installmentTotalsMatch ? 'border-success/40 bg-success/5' : 'border-error/40 bg-error/5'"
+                :class="
+                  installmentTotalsMatch
+                    ? 'border-success/40 bg-success/5'
+                    : 'border-error/40 bg-error/5'
+                "
               >
                 <div class="flex items-center gap-4">
                   <span class="text-muted">Valor original:</span>
-                  <span class="font-semibold text-highlighted">{{ formatCurrency(installmentOriginalAmount) }}</span>
+                  <span class="font-semibold text-highlighted">{{
+                    formatCurrency(installmentOriginalAmount)
+                  }}</span>
                   <span class="text-muted">Total das parcelas:</span>
-                  <span class="font-semibold" :class="installmentTotalsMatch ? 'text-success' : 'text-error'">
+                  <span
+                    class="font-semibold"
+                    :class="
+                      installmentTotalsMatch ? 'text-success' : 'text-error'
+                    "
+                  >
                     {{ formatCurrency(installmentTotal) }}
                   </span>
                 </div>
                 <UIcon
-                  :name="installmentTotalsMatch ? 'i-lucide-circle-check' : 'i-lucide-circle-alert'"
+                  :name="
+                    installmentTotalsMatch
+                      ? 'i-lucide-circle-check'
+                      : 'i-lucide-circle-alert'
+                  "
                   class="size-4 shrink-0"
-                  :class="installmentTotalsMatch ? 'text-success' : 'text-error'"
+                  :class="
+                    installmentTotalsMatch ? 'text-success' : 'text-error'
+                  "
                 />
               </div>
 
@@ -591,26 +659,30 @@ function formatCurrency(value: number) {
                 <p class="text-xs font-medium text-muted">
                   Detalhes das parcelas
                 </p>
-                <div class="divide-y divide-default rounded-md border border-default">
+                <div
+                  class="divide-y divide-default rounded-md border border-default"
+                >
                   <div
                     v-for="(inst, index) in editableInstallments"
                     :key="inst.number"
                     class="grid grid-cols-[2rem_1fr_1fr_1fr_2rem] items-center gap-2 px-3 py-2"
                   >
                     <!-- Número -->
-                    <span class="text-xs font-semibold text-muted text-center">{{ inst.number }}ª</span>
+                    <span class="text-xs font-semibold text-muted text-center"
+                      >{{ inst.number }}ª</span
+                    >
 
                     <!-- Valor -->
                     <UiCurrencyInput
                       v-model="inst.amount"
-                      size="xs"
+                      size="sm"
                       class="w-full"
                     />
 
                     <!-- Data -->
                     <UiDatePicker
                       v-model="inst.due_date"
-                      size="xs"
+                      size="sm"
                       class="w-full"
                     />
 
@@ -619,7 +691,7 @@ function formatCurrency(value: number) {
                       v-model="inst.status"
                       :items="installmentStatusOptions"
                       value-key="value"
-                      size="xs"
+                      size="sm"
                       class="w-full"
                     />
 
@@ -641,11 +713,7 @@ function formatCurrency(value: number) {
 
         <!-- Observações -->
         <UFormField label="Observações">
-          <UTextarea
-            v-model="form.notes"
-            class="w-full"
-            :rows="3"
-          />
+          <UTextarea v-model="form.notes" class="w-full" :rows="3" />
         </UFormField>
       </div>
     </template>
