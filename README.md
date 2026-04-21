@@ -1,206 +1,190 @@
 # AutoPro
 
-AutoPro is a SaaS platform for automotive workshop management. It covers the full operational cycle of a repair shop: service orders, client and vehicle records, employee commission management, parts inventory, supplier purchasing, financial control, and fiscal document emission (NFS-e / NF-e), all within a multi-tenant architecture where each organization manages its own isolated data.
+Sistema de gestão para oficinas mecânicas. Cobre o ciclo completo da operação: ordens de serviço, clientes, veículos, controle de estoque, compras, financeiro, comissões de funcionários e emissão de notas fiscais (NFS-e / NF-e) — em uma arquitetura multi-tenant onde cada organização opera com dados isolados.
 
-## Overview
+## Módulos do produto
 
-- Frontend built with Nuxt 4, Vue 3, and TypeScript using `script setup`.
-- UI based on `@nuxt/ui` and Tailwind CSS v4.
-- Internal API under `server/api/**` with Nitro.
-- Persistence and authentication handled through Supabase, always accessed server-side.
-- Fiscal document emission (NFS-e and NF-e) via the Nuvem Fiscal API.
-- Billing and subscription management powered by Stripe.
-- PWA support configured with `@vite-pwa/nuxt`.
-- Mobile packaging through Capacitor.
+- **Ordens de serviço** — abertura, acompanhamento, fechamento e cancelamento. Cada OS registra produtos, serviços, impostos aplicados, parcelas de pagamento e comissão por funcionário.
+- **Clientes e veículos** — cadastro completo de pessoas físicas e jurídicas, com histórico de OS por veículo e por cliente.
+- **Funcionários** — registro com salário, chave PIX e regras de comissão configuráveis (percentual ou valor fixo, sobre faturamento ou lucro, por categoria de serviço).
+- **Financeiro** — lançamentos de receitas e despesas, parcelamentos, extratos por conta bancária, entradas recorrentes e pagamento em lote de comissões.
+- **Estoque** — controle de peças e consumíveis com alertas de quantidade mínima, preço de custo e venda, e vínculo com fornecedor.
+- **Fornecedores e compras** — cadastro de fornecedores, pedidos de compra com reposição automática de estoque e devoluções com geração de crédito financeiro.
+- **Solicitações de compra** — fluxo interno de autorização: da solicitação à compra efetiva.
+- **Notas fiscais** — emissão de NFS-e e NF-e, cancelamento, carta de correção e download de PDF via integração com a Nuvem Fiscal.
+- **Agendamentos** — marcação vinculada a cliente e veículo, com conversão direta para OS.
+- **Relatórios** — faturamento, comissões, custos vs. lucro, devedores, clientes, fornecedores e compras.
+- **Configurações da organização** — perfil da oficina, CNPJ/CPF, endereço, logo, código de município IBGE, conta bancária padrão e número inicial de OS.
+- **Usuários e permissões** — gestão multi-tenant com controle de acesso por função e por ação dentro de cada organização.
+- **Assinaturas** — gestão de planos e histórico de cobrança via Stripe.
 
-## Product Modules
+## Stack técnica
 
-- **Service Orders (OS)** — open, edit, close, cancel, and track all workshop service orders. Supports itemized products and services, applied taxes, installment payments, and commission breakdown per employee.
-- **Clients and Vehicles** — full CRUD for clients (PF and PJ) and their vehicles, with history of service orders per vehicle.
-- **Employees** — employee registration with configurable salary, PIX key, commission rules (percentage or fixed amount, based on revenue or profit), and per-category commission filters.
-- **Financial Management** — income and expense transactions, installment tracking, bank account balances with statement history, recurring entries, bulk payment of commissions and financial entries.
-- **Inventory (Parts)** — stock control for parts and consumables with minimum quantity alerts, cost/sale price, and supplier linkage.
-- **Suppliers and Purchasing** — supplier registration, purchase orders with stock replenishment, purchase returns with financial credit generation.
-- **Purchase Requests** — internal request flow from open request to authorization and purchasing.
-- **Fiscal Documents** — NFS-e and NF-e emission, cancellation, carta de correção, and PDF download via Nuvem Fiscal integration. Sync status per organization.
-- **Scheduling** — appointment booking linked to clients and vehicles, with status tracking and conversion to service order.
-- **Reports** — sales, commissions, costs vs. profit, debtors, customers, suppliers, and purchases.
-- **Organization Settings** — workshop profile, business registration (CNPJ/CPF), address, logo, IBGE municipality code, default bank account, and initial OS number.
-- **User and Roles** — multi-tenant user management with per-organization role and action-based permission system. User profiles with display name, avatar, and employee linkage.
-- **Subscriptions** — plan management and billing history backed by Stripe.
+- **Frontend**: Nuxt 4, Vue 3, TypeScript, @nuxt/ui, Tailwind CSS v4
+- **Backend**: Nitro (rotas server-side), Supabase (Postgres, Auth, Storage, Edge Functions)
+- **Billing**: Stripe
+- **Fiscal**: Nuvem Fiscal (NFS-e / NF-e)
+- **Mobile**: Capacitor (Android e iOS)
+- **Validação**: Zod
+- **Deploy**: Vercel
 
-## Technical Stack
-
-- Nuxt 4
-- Vue 3
-- TypeScript
-- @nuxt/ui
-- Tailwind CSS v4
-- Supabase (Postgres, Auth, Storage, Edge Functions for webhooks)
-- Stripe
-- Nuvem Fiscal (NFS-e / NF-e)
-- Capacitor
-- Zod
-
-## Project Structure
+## Estrutura do projeto
 
 ```text
 .
 |- app/
-|  |- components/       # domain UI and shared components
-|  |- composables/      # client-side state and integrations
-|  |- layouts/          # public, auth, and app layouts
-|  |- pages/            # marketing and authenticated app routes
-|  `- types/            # frontend TypeScript contracts
-|- public/              # icons, favicon, and public assets
+|  |- components/       # componentes de domínio e compartilhados
+|  |- composables/      # estado client-side e integrações
+|  |- layouts/          # layouts público, auth e app
+|  |- pages/            # rotas de marketing e app autenticado
+|  `- types/            # contratos TypeScript do frontend
+|- public/              # ícones, favicon e assets públicos
 |- server/
-|  |- api/              # internal Nitro endpoints (migrated from Supabase Edge Functions)
-|  `- utils/            # Supabase, auth, Stripe, and Nuvem Fiscal clients and helpers
+|  |- api/              # endpoints Nitro (migrados das Supabase Edge Functions)
+|  `- utils/            # clientes e helpers: Supabase, Stripe, Nuvem Fiscal
 |- supabase/
-|  |- functions/        # edge functions kept only for external webhooks (Stripe, Nuvem Fiscal)
-|  `- migrations/       # SQL migrations and migration documentation
-`- capacitor.config.ts  # mobile configuration
+|  |- functions/        # edge functions mantidas só para webhooks externos
+|  `- migrations/       # migrações SQL e documentação do schema
+`- capacitor.config.ts  # configuração mobile
 ```
 
-## Requirements
+## Requisitos
 
 - Node.js 20+
 - pnpm 10+
-- A configured Supabase project
-- Stripe keys for subscription flows
-- Nuvem Fiscal credentials for fiscal document emission
+- Projeto configurado no Supabase
+- Credenciais do Stripe (billing)
+- Credenciais da Nuvem Fiscal (fiscal)
 
-## Local Setup
+## Setup local
 
-1. Install dependencies:
+1. Instalar dependências:
 
 ```bash
 pnpm install
 ```
 
-2. Copy the environment file:
+2. Copiar o arquivo de ambiente:
 
 ```bash
 cp .env.example .env
 ```
 
-3. Fill in the required variables in `.env`.
+3. Preencher as variáveis no `.env`.
 
-4. Start the project:
+4. Iniciar o projeto:
 
 ```bash
 pnpm dev
 ```
 
-Local application: `http://localhost:3000`
+Acesso local: `http://localhost:3000`
 
-## Environment Variables
+## Variáveis de ambiente
 
-| Variable | Required | Purpose |
+| Variável | Obrigatória | Finalidade |
 |---|---|---|
-| `NUXT_PUBLIC_SITE_URL` | recommended | Public URL used for generation and metadata |
-| `SUPABASE_URL` | yes | Supabase project URL |
-| `SUPABASE_ANON_KEY` | yes | Server-side anonymous auth and requests |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-side administrative operations |
-| `STRIPE_SECRET_KEY` | yes for billing | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | yes for billing | Stripe webhook signature verification |
-| `STRIPE_ALLOWED_PRICE_IDS` | yes for billing | Comma-separated allowlist of accepted price IDs |
-| `STRIPE_BILLING_PORTAL_CONFIGURATION_ID` | optional | Custom Stripe billing portal configuration |
-| `NUVEM_FISCAL_CLIENT_ID` | yes for fiscal | Nuvem Fiscal OAuth client ID |
-| `NUVEM_FISCAL_CLIENT_SECRET` | yes for fiscal | Nuvem Fiscal OAuth client secret |
-| `NUVEM_FISCAL_ENVIRONMENT` | yes for fiscal | `production` or `sandbox` |
+| `NUXT_PUBLIC_SITE_URL` | recomendada | URL pública usada em geração e metadados |
+| `SUPABASE_URL` | sim | URL do projeto Supabase |
+| `SUPABASE_ANON_KEY` | sim | Autenticação e requests anônimos server-side |
+| `SUPABASE_SERVICE_ROLE_KEY` | sim | Operações administrativas server-side |
+| `STRIPE_SECRET_KEY` | sim (billing) | Chave secreta do Stripe |
+| `STRIPE_WEBHOOK_SECRET` | sim (billing) | Verificação de assinatura de webhook |
+| `STRIPE_ALLOWED_PRICE_IDS` | sim (billing) | IDs de preços aceitos, separados por vírgula |
+| `STRIPE_BILLING_PORTAL_CONFIGURATION_ID` | opcional | Configuração customizada do portal de billing |
+| `NUVEM_FISCAL_CLIENT_ID` | sim (fiscal) | Client ID OAuth da Nuvem Fiscal |
+| `NUVEM_FISCAL_CLIENT_SECRET` | sim (fiscal) | Client Secret OAuth da Nuvem Fiscal |
+| `NUVEM_FISCAL_ENVIRONMENT` | sim (fiscal) | `production` ou `sandbox` |
 
-## Scripts
+## Scripts disponíveis
 
-| Command | Description |
+| Comando | Descrição |
 |---|---|
-| `pnpm dev` | Starts the development environment |
-| `pnpm build` | Generates the production build |
-| `pnpm preview` | Opens a local preview of the build |
-| `pnpm lint` | Runs ESLint |
-| `pnpm typecheck` | Validates types with Nuxt TypeCheck |
-| `pnpm generate:icons` | Regenerates PWA icons and favicon from the brand SVG |
-| `pnpm cap:sync` | Generates static output and syncs it with Capacitor |
-| `pnpm cap:open:android` | Opens the native Android project |
-| `pnpm cap:open:ios` | Opens the native iOS project |
+| `pnpm dev` | Inicia o ambiente de desenvolvimento |
+| `pnpm build` | Gera o build de produção |
+| `pnpm preview` | Abre preview local do build |
+| `pnpm lint` | Executa o ESLint |
+| `pnpm typecheck` | Valida tipos com Nuxt TypeCheck |
+| `pnpm generate:icons` | Regenera ícones PWA e favicon a partir do SVG de marca |
+| `pnpm cap:sync` | Gera output estático e sincroniza com o Capacitor |
+| `pnpm cap:open:android` | Abre o projeto Android nativo |
+| `pnpm cap:open:ios` | Abre o projeto iOS nativo |
 
-## Data Flow and Architecture
+## Arquitetura e fluxo de dados
 
-- The client consumes only internal Nitro endpoints through `$fetch`, `useFetch`, or `useAsyncData`.
-- Supabase, Stripe, and Nuvem Fiscal integrations stay exclusively on the server (`server/api/**`, `server/utils/**`).
-- All database queries use the service role key server-side; the anon key is used only for authentication flows.
-- Multi-tenancy is enforced at the query level: every table carries `organization_id` and all server handlers validate it from the authenticated session.
-- Forms use `UForm` + Zod for validation.
-- Visual feedback for actions uses `useToast()`.
-- Large lists use server-side filtering and pagination.
+- O cliente consome exclusivamente endpoints Nitro internos via `$fetch`, `useFetch` ou `useAsyncData`.
+- Supabase, Stripe e Nuvem Fiscal são acessados somente no servidor (`server/api/**`, `server/utils/**`).
+- Todas as queries usam a service role key server-side; a anon key é usada apenas em fluxos de autenticação.
+- Multi-tenancy é garantido no nível de query: todas as tabelas carregam `organization_id` e todos os handlers validam o contexto da sessão autenticada.
+- Formulários usam `UForm` + Zod para validação.
+- Feedback visual de ações usa `useToast()`.
+- Listas grandes usam filtragem e paginação server-side.
 
-## Important Conventions
+## Convenções importantes
 
-- Never call Supabase directly from the client.
-- Prefer Nuxt UI components before building custom UI.
-- Avoid local CSS when utility classes are sufficient.
-- Keep types explicit; avoid `any`.
-- Financial values are stored as `numeric(15,2)` — never use JavaScript floats for monetary arithmetic.
-- All enum values in the database are in English (snake_case). See `supabase/migrations/migrate_database_base44.md` for the PT → EN mapping used in the ETL.
+- Nunca acessar o Supabase diretamente do cliente.
+- Preferir componentes do Nuxt UI antes de construir UI customizada.
+- Evitar CSS local quando classes utilitárias são suficientes.
+- Manter tipos explícitos; evitar `any`.
+- Valores financeiros são armazenados como `numeric(15,2)` — nunca usar floats JavaScript para aritmética monetária.
+- Todos os valores de enum no banco estão em inglês (snake_case). Ver `supabase/migrations/migrate_database_base44.md` para o mapeamento PT → EN usado no ETL.
 
-## Database
+## Banco de dados
 
-Migrations live in `supabase/migrations/`. The file `migrate_database_base44.md` contains the full schema documentation including:
+Migrações ficam em `supabase/migrations/`. O arquivo `migrate_database_base44.md` contém a documentação completa do schema, incluindo:
 
-- Table name mapping (Base44 legacy → new schema)
-- Column-level old/new name mapping with types and FK references
-- JSONB column shapes for all complex fields
-- Enum value tables (EN ↔ legacy PT) for every enum column
-- Audit columns (`created_at/by`, `updated_at/by`, `deleted_at/by`) applied to all tables
-- FK dependency order for safe migration
+- Mapeamento de nomes de tabelas (legado → novo schema)
+- Mapeamento de colunas com tipos e referências FK
+- Formatos de colunas JSONB para campos complexos
+- Tabelas de enum (EN ↔ PT legado) para cada coluna enum
+- Colunas de auditoria (`created_at/by`, `updated_at/by`, `deleted_at/by`) aplicadas em todas as tabelas
+- Ordem de dependência FK para migração segura
 
-For new environments:
+Para novos ambientes:
 
-1. Create the project in Supabase.
-2. Configure the variables in `.env`.
-3. Apply migrations using the Supabase CLI.
+1. Criar o projeto no Supabase.
+2. Configurar as variáveis no `.env`.
+3. Aplicar as migrações via Supabase CLI.
 
 ## Supabase Edge Functions
 
-Only webhook receivers are kept as Supabase Edge Functions. All other business logic runs as Nitro server routes under `server/api/`:
+Apenas webhooks externos são mantidos como Edge Functions. Toda a lógica de negócio roda como rotas Nitro em `server/api/`:
 
-| Function | Reason kept |
+| Função | Motivo de manter |
 |---|---|
-| `stripeWebhook` | Must be a publicly reachable webhook endpoint for Stripe events |
-| `stripe-webhook` | Legacy alias — same as above |
+| `stripeWebhook` | Endpoint público obrigatório para eventos do Stripe |
+| `stripe-webhook` | Alias legado — mesmo endpoint |
 
-All other functions (service orders, financial, reports, fiscal, etc.) have been migrated to `server/api/**`.
+## Notas fiscais
 
-## Fiscal Documents
+A emissão de NFS-e e NF-e requer conta válida na Nuvem Fiscal. Antes de emitir documentos para uma organização:
 
-NFS-e and NF-e emission requires a valid Nuvem Fiscal account. Before emitting documents for an organization:
+1. Cadastrar a empresa (CNPJ) no painel da Nuvem Fiscal.
+2. Fazer upload do certificado digital pela tela de configurações.
+3. Verificar o status de sincronização em **Configurações → Integração Fiscal**.
 
-1. Register the company (`CNPJ`) in the Nuvem Fiscal panel.
-2. Upload the digital certificate via the settings screen.
-3. Verify the sync status in **Settings → Fiscal Integration**.
-
-The `sandbox` environment can be used for testing without emitting real documents.
+O ambiente `sandbox` pode ser usado para testes sem emitir documentos reais.
 
 ## Billing
 
-Subscription flows depend on:
+Fluxos de assinatura dependem de:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_ALLOWED_PRICE_IDS`
-- `STRIPE_BILLING_PORTAL_CONFIGURATION_ID` when a custom portal is configured
+- `STRIPE_BILLING_PORTAL_CONFIGURATION_ID` quando um portal customizado está configurado
 
-Without these variables the billing routes will not be operational.
+Sem essas variáveis as rotas de billing não vão funcionar.
 
-## Mobile and PWA
+## Mobile e PWA
 
-- PWA manifest configured for standalone installation.
-- Capacitor configured in `capacitor.config.ts` for Android and iOS packaging.
-- Icons generated from the brand SVG in `public/icons/`.
+- Manifesto PWA configurado para instalação standalone.
+- Capacitor configurado em `capacitor.config.ts` para empacotamento Android e iOS.
+- Ícones gerados a partir do SVG de marca em `public/icons/`.
 
-## Quality
+## Qualidade
 
-Before opening a PR or shipping changes:
+Antes de abrir PR ou entregar mudanças:
 
 ```bash
 pnpm lint

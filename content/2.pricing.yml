@@ -1,12 +1,12 @@
-title: Planos para oficinas em diferentes estágios
-description: Comece com a base operacional e evolua conforme a oficina cresce em equipe, volume e necessidade administrativa.
+title: Planos para cada fase da sua oficina
+description: Comece com o essencial e expanda conforme a operação cresce. Sem contrato longo, sem surpresa no boleto.
 seo:
-  title: Planos AutoPro
-  description: Conheça os planos do AutoPro para oficinas mecânicas com foco em operação, gestão e crescimento organizado.
+  title: Planos e Preços | AutoPro
+  description: Conheça os planos do AutoPro para oficinas mecânicas. Do atendimento básico ao controle financeiro completo com emissão de nota fiscal.
 navigation.icon: i-lucide-credit-card
 plans:
   - title: Oficina Inicial
-    description: Para oficinas começando a centralizar atendimento, clientes, veículos e ordens de serviço.
+    description: Para a oficina que quer parar de perder informação e centralizar clientes, veículos e ordens de serviço em um lugar só.
     price:
       month: R$ 49
       year: R$ 490
@@ -14,17 +14,17 @@ plans:
       month: ''
       year: ''
     button:
-      label: Começar
+      label: Começar agora
       color: neutral
       variant: subtle
     features:
-      - Ordens de serviço
-      - Clientes e veículos
-      - Agendamentos
-      - Histórico operacional
-      - Acesso via /app
+      - Ordens de serviço completas
+      - Cadastro de clientes e veículos
+      - Agenda de atendimentos
+      - Histórico por veículo e cliente
+      - Dashboard operacional
   - title: Oficina Pro
-    description: Para oficinas que precisam controlar operação e gestão financeira com mais profundidade.
+    description: Para quem precisa fechar o mês sabendo quanto faturou, quanto gastou, quanto sobrou — e pagar comissões sem divergência.
     price:
       month: R$ 99
       year: R$ 990
@@ -37,12 +37,14 @@ plans:
       label: Assinar Pro
     features:
       - Tudo do Oficina Inicial
+      - Controle de estoque e peças
       - Compras e fornecedores
-      - Financeiro e contas
+      - Financeiro e contas bancárias
+      - Comissões automáticas por funcionário
       - Relatórios gerenciais
       - Permissões por função
-  - title: Oficina Multiunidade
-    description: Para operação mais madura com necessidade de visão administrativa e estrutura para expansão.
+  - title: Oficina Completa
+    description: Para operações maiores que precisam de nota fiscal integrada, múltiplas unidades ou suporte prioritário para o time.
     price:
       month: R$ 199
       year: R$ 1990
@@ -53,12 +55,13 @@ plans:
       label: Falar com o time
     features:
       - Tudo do Oficina Pro
-      - Fluxo administrativo separado
-      - Base para módulos fiscais
+      - Emissão de NFS-e e NF-e
+      - Suporte a múltiplas unidades
+      - Painel administrativo separado
       - Suporte prioritário
-      - Evolução por fases
+      - Acompanhamento de implantação
 logos:
-  title: Base moderna para uma operação confiável
+  title: Tecnologia confiável por baixo do capô
   icons:
     - i-simple-icons-supabase
     - i-simple-icons-stripe
@@ -67,17 +70,21 @@ logos:
     - i-simple-icons-github
 faq:
   title: Perguntas frequentes
-  description: Respostas rápidas sobre como o AutoPro está organizado hoje.
+  description: Dúvidas comuns antes de começar a usar o AutoPro.
   items:
-    - label: O AutoPro já separa fluxo operacional e admin?
-      content: Sim. O fluxo operacional da oficina fica em /app e o fluxo administrativo global fica em /admin.
-    - label: O sistema já cobre ordens de serviço?
-      content: Sim. A base da migração já contempla banco e APIs principais para usuários, organizações, ordens de serviço e cobrança.
-    - label: O módulo fiscal já está concluído?
-      content: Ainda não. A base fiscal permanece em fase posterior de migração e por isso aparece como etapa avançada na documentação.
+    - label: Preciso instalar algum programa?
+      content: Não. O AutoPro é 100% via navegador — funciona no computador, tablet e celular sem precisar instalar nada. Você acessa com seu login em qualquer dispositivo.
+    - label: Meu time consegue usar sem treinamento técnico?
+      content: Sim. O sistema foi pensado para o dia a dia da oficina, não para quem entende de tecnologia. A navegação é simples e o fluxo segue a lógica do trabalho real — atendimento, OS, fechamento, pagamento.
+    - label: Posso testar antes de assinar?
+      content: Sim. Você pode criar uma conta e explorar o sistema antes de escolher um plano. Sem precisar cadastrar cartão para começar.
     - label: Posso cancelar quando quiser?
-      content: Sim. A gestão de assinatura continua disponível no fluxo autenticado.
-    - label: O AutoPro já está totalmente migrado?
-      content: Ainda não. A migração está sendo feita por fases para reduzir risco e preservar o comportamento crítico do sistema.
-    - label: Onde acompanho a evolução?
-      content: Você pode acompanhar pelas páginas de documentação e changelog públicas do projeto.
+      content: Sim. Não há fidelidade ou multa de cancelamento. Você gerencia a assinatura diretamente pelo painel do AutoPro e cancela quando quiser.
+    - label: O sistema emite nota fiscal?
+      content: Sim, no plano Oficina Completa. O AutoPro emite NFS-e e NF-e diretamente pela plataforma, com cancelamento, carta de correção e download de PDF — sem precisar de outro sistema.
+    - label: Como funcionam as comissões dos funcionários?
+      content: Você configura regras de comissão por funcionário — percentual sobre faturamento ou lucro, com filtros por categoria de serviço. O sistema calcula automaticamente com base nas OS fechadas e permite o pagamento em lote.
+    - label: Posso usar em mais de uma unidade?
+      content: Sim. O plano Oficina Completa suporta múltiplas unidades com dados e permissões isoladas por organização. Cada unidade opera de forma independente, mas sob o mesmo acesso administrativo.
+    - label: Como funciona o suporte?
+      content: Todos os planos têm acesso à documentação e ao canal de suporte. O plano Oficina Completa inclui suporte prioritário com tempo de resposta reduzido e acompanhamento de implantação.
