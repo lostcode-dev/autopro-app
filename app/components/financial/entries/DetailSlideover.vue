@@ -134,6 +134,22 @@ const recurrenceLabelMap: Record<string, string> = {
 
 // ── Computed helpers ──────────────────────────────────────────────────────────
 
+const CATEGORY_LABEL_MAP: Record<string, string> = {
+  sales: 'Vendas',
+  services: 'Serviços',
+  rent: 'Aluguel',
+  salaries: 'Salários',
+  suppliers: 'Fornecedores',
+  taxes: 'Impostos',
+  marketing: 'Marketing',
+  other: 'Outros',
+}
+
+function formatCategory(value: string | null | undefined): string {
+  if (!value) return '—'
+  return CATEGORY_LABEL_MAP[value] ?? value
+}
+
 const entry = computed(() => detail.value?.entry ?? null)
 const installmentSiblings = computed(() => detail.value?.installmentSiblings ?? [])
 const recurringSiblings = computed(() => detail.value?.recurringSiblings ?? [])
@@ -269,7 +285,7 @@ function linkedEntryStatus(status: string) {
               </dt>
               <dd class="mt-0.5 flex items-center gap-1.5 text-sm text-highlighted">
                 <UIcon name="i-lucide-tag" class="size-3.5 text-muted" />
-                {{ String(entry.category ?? '—') }}
+                {{ formatCategory(entry.category) }}
               </dd>
             </div>
             <div v-if="bankAccountLabel" class="col-span-2">

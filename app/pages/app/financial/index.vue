@@ -708,6 +708,22 @@ const typeBadgeIcon: Record<string, string> = { income: 'i-lucide-trending-up', 
 const statusBadgeColor: Record<string, BadgeColor> = { paid: 'success', pending: 'warning' }
 const statusBadgeIcon: Record<string, string> = { paid: 'i-lucide-circle-check', pending: 'i-lucide-clock' }
 
+const categoryLabelMap: Record<string, string> = {
+  sales: 'Vendas',
+  services: 'Serviços',
+  rent: 'Aluguel',
+  salaries: 'Salários',
+  suppliers: 'Fornecedores',
+  taxes: 'Impostos',
+  marketing: 'Marketing',
+  other: 'Outros',
+}
+
+function formatCategory(value: string | null | undefined): string {
+  if (!value) return 'Sem categoria'
+  return categoryLabelMap[value] ?? value
+}
+
 const columns = [
   { accessorKey: 'description', header: 'Lançamento', enableSorting: false },
   { accessorKey: 'category', header: 'Categoria', enableSorting: false },
@@ -887,7 +903,7 @@ const columns = [
           <template #category-cell="{ row }">
             <div class="space-y-1">
               <p class="text-sm text-highlighted">
-                {{ row.original.category || 'Sem categoria' }}
+                {{ formatCategory((row.original as Entry).category) }}
               </p>
               <p class="text-xs text-muted">
                 {{ formatRecurrence((row.original as Entry).recurrence) }}
