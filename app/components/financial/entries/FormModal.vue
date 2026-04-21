@@ -149,6 +149,24 @@ function regenerateInstallments() {
   );
 }
 
+// ── Form state ─────────────────────────────────────────────────────────────────
+
+const form = reactive({
+  description: "",
+  amount: "" as string | number,
+  due_date: "",
+  type: "expense" as "income" | "expense",
+  status: "pending",
+  category: "",
+  bank_account_id: NO_BANK_ACCOUNT,
+  notes: "",
+  recurrence: NO_RECURRENCE,
+  recurrence_end_date: "",
+  is_installment: false,
+  installment_count: 2,
+  is_editing_installment: false,
+});
+
 // Regenrate when checkbox is toggled on, or when count/amount/date/status changes
 watch(
   () =>
@@ -203,24 +221,6 @@ const installmentTotalsMatch = computed(
   () =>
     Math.abs(installmentOriginalAmount.value - installmentTotal.value) < 0.015,
 );
-
-// ── Form state ─────────────────────────────────────────────────────────────────
-
-const form = reactive({
-  description: "",
-  amount: "" as string | number,
-  due_date: "",
-  type: "expense" as "income" | "expense",
-  status: "pending",
-  category: "",
-  bank_account_id: NO_BANK_ACCOUNT,
-  notes: "",
-  recurrence: NO_RECURRENCE,
-  recurrence_end_date: "",
-  is_installment: false,
-  installment_count: 2,
-  is_editing_installment: false,
-});
 
 const isEditing = computed(() => Boolean(props.entry?.id));
 
