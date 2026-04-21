@@ -627,11 +627,11 @@ function formatCurrency(value: number) {
                 "
               >
                 <div class="flex items-center gap-4">
-                  <span class="text-muted">Valor original:</span>
+                  <span class="text-muted text-xs">Valor original:</span>
                   <span class="font-semibold text-highlighted">{{
                     formatCurrency(installmentOriginalAmount)
                   }}</span>
-                  <span class="text-muted">Total das parcelas:</span>
+                  <span class="text-muted text-xs">Total das parcelas:</span>
                   <span
                     class="font-semibold"
                     :class="
