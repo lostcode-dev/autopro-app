@@ -133,10 +133,13 @@ const form = reactive({
 
 const isEditing = computed(() => Boolean(props.entry?.id))
 
+// Only monthly/yearly are treated as recurring series (weekly is not managed as a series)
 const isEditingRecurring = computed(() => {
   if (!props.entry) return false
   const rec = String(props.entry.recurrence || '').toLowerCase()
-  return Boolean(props.entry.parent_recurrence_id) || ['mensal', 'anual', 'monthly', 'yearly'].includes(rec)
+  const hasParent = Boolean(props.entry.recurring_parent_id) || Boolean(props.entry.parent_recurrence_id)
+  const isRecurring = ['mensal', 'anual', 'monthly', 'yearly'].includes(rec)
+  return hasParent || isRecurring
 })
 
 const previewInstallments = computed<Installment[]>(() => {
@@ -518,8 +521,8 @@ function formatCurrency(value: number) {
   <!-- Dialog: edição de recorrência -->
   <UModal
     v-model:open="showRecurringDialog"
-    title="Lançamento recorrente"
-    description="Este lançamento faz parte de uma série recorrente. O que deseja alterar?"
+    title="Editar recorrência"
+    description="Deseja alterar somente este lançamento ou aplicar as alterações também para os próximos meses desta recorrência?"
   >
     <template #footer>
       <div class="flex flex-col gap-2 w-full sm:flex-row sm:justify-end">

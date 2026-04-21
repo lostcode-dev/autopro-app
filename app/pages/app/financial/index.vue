@@ -19,6 +19,11 @@ interface Entry {
   bank_account_id?: string | null
   notes?: string | null
   recurrence?: string | null
+  recurring_parent_id?: string | null
+  is_installment?: boolean | null
+  installment_count?: number | null
+  current_installment?: number | null
+  parent_transaction_id?: string | null
   [key: string]: unknown
 }
 
