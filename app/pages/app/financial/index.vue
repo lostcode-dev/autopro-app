@@ -22,9 +22,10 @@ interface Entry {
   [key: string]: unknown
 }
 
-type BankAccountOption = {
-  label: string
-  value: string
+type BankAccountItem = {
+  id: string
+  account_name: string
+  bank_name?: string | null
 }
 
 type FinancialResponse = {
@@ -167,21 +168,23 @@ const { data: summaryData, refresh: refreshSummary } = await useAsyncData(
 
 const { data: bankAccountsData } = await useAsyncData(
   'financial-bank-accounts-options',
-  () => requestFetch<BankAccountOption[] | { items?: BankAccountOption[] }>('/api/bank-accounts', {
+  () => requestFetch<{ items?: BankAccountItem[] }>('/api/bank-accounts', {
     headers: requestHeaders,
-    query: { page_size: 100 }
+    query: { page_size: 100, is_active: 'true' }
   }),
   { default: () => ({ items: [] }) }
 )
 
-const bankAccountOptions = computed<BankAccountOption[]>(() => {
+const bankAccountOptions = computed<BankAccountItem[]>(() => {
   const raw = bankAccountsData.value
   if (!raw) return []
-  const list = Array.isArray(raw) ? raw : ((raw as { items?: BankAccountOption[] }).items ?? [])
-  return list.filter(item => item.value)
+  const list = Array.isArray(raw) ? raw : ((raw as { items?: BankAccountItem[] }).items ?? [])
+  return list.filter(item => item.id && item.account_name)
 })
 
-const bankAccountById = computed(() => new Map(bankAccountOptions.value.map(opt => [opt.value, opt.label])))
+const bankAccountById = computed(() =>
+  new Map(bankAccountOptions.value.map(a => [a.id, `${a.account_name}${a.bank_name ? ` — ${a.bank_name}` : ''}`]))
+)
 
 const accumulatedItems = ref<Entry[]>([])
 const totalFromServer = ref(0)
