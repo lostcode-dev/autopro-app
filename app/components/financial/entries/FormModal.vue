@@ -101,6 +101,14 @@ const installmentCountOptions = Array.from({ length: 23 }, (_, i) => ({
   value: i + 2
 }))
 
+const installmentStatusOptions = [
+  { label: 'Pendente', value: 'pending' },
+  { label: 'Pago', value: 'paid' }
+]
+
+// Editable installments list (reactive, user can change each row)
+const editableInstallments = ref<Installment[]>([])
+
 function generateInstallments(totalAmount: number, count: number, firstDate: string, firstStatus: string): Installment[] {
   if (!totalAmount || !count || !firstDate) return []
   const base = Math.floor((totalAmount * 100) / count) / 100
@@ -112,6 +120,59 @@ function generateInstallments(totalAmount: number, count: number, firstDate: str
     status: i === 0 ? firstStatus : 'pending'
   }))
 }
+
+function regenerateInstallments() {
+  const amount = Number(form.amount) || 0
+  const count = form.installment_count || 2
+  if (!amount || !form.due_date) {
+    editableInstallments.value = []
+    return
+  }
+  editableInstallments.value = generateInstallments(amount, count, form.due_date, form.status)
+}
+
+// Regenrate when checkbox is toggled on, or when count/amount/date/status changes
+watch(
+  () => [form.is_installment, form.installment_count, form.amount, form.due_date, form.status] as const,
+  ([checked]) => {
+    if (checked && !isEditing.value) {
+      regenerateInstallments()
+    } else {
+      editableInstallments.value = []
+    }
+  }
+)
+
+function addInstallment() {
+  const last = editableInstallments.value[editableInstallments.value.length - 1]
+  const nextDate = last
+    ? format(addMonths(parseISO(last.due_date), 1), 'yyyy-MM-dd')
+    : form.due_date || format(new Date(), 'yyyy-MM-dd')
+  editableInstallments.value.push({
+    number: editableInstallments.value.length + 1,
+    amount: 0,
+    due_date: nextDate,
+    status: 'pending'
+  })
+  form.installment_count = editableInstallments.value.length
+}
+
+function removeInstallment(index: number) {
+  if (editableInstallments.value.length <= 1) return
+  editableInstallments.value.splice(index, 1)
+  editableInstallments.value.forEach((inst, i) => {
+    inst.number = i + 1
+  })
+  form.installment_count = editableInstallments.value.length
+}
+
+const installmentTotal = computed(() =>
+  editableInstallments.value.reduce((sum, inst) => sum + (Number(inst.amount) || 0), 0)
+)
+const installmentOriginalAmount = computed(() => Number(form.amount) || 0)
+const installmentTotalsMatch = computed(() =>
+  Math.abs(installmentOriginalAmount.value - installmentTotal.value) < 0.015
+)
 
 // ── Form state ─────────────────────────────────────────────────────────────────
 
@@ -142,18 +203,13 @@ const isEditingRecurring = computed(() => {
   return hasParent || isRecurring
 })
 
-const previewInstallments = computed<Installment[]>(() => {
-  if (!form.is_installment || form.is_editing_installment || isEditing.value) return []
-  const amount = Number(form.amount) || 0
-  const count = form.installment_count || 2
-  if (!amount || !form.due_date) return []
-  return generateInstallments(amount, count, form.due_date, form.status)
-})
-
 watch(
   () => props.open,
   (open) => {
-    if (!open) return
+    if (!open) {
+      editableInstallments.value = []
+      return
+    }
     fetchCategories()
 
     if (props.entry) {
@@ -196,7 +252,9 @@ watch(
 )
 
 // Reset category when type toggles
-watch(() => form.type, () => { form.category = '' })
+watch(() => form.type, () => {
+  form.category = ''
+})
 
 // ── Bank account items ─────────────────────────────────────────────────────────
 
@@ -212,7 +270,6 @@ const bankItems = computed(() => [
 
 const recurrenceOptions = [
   { label: 'Sem recorrência', value: NO_RECURRENCE },
-  { label: 'Semanal', value: 'weekly' },
   { label: 'Mensal', value: 'monthly' },
   { label: 'Anual', value: 'yearly' }
 ]
@@ -241,10 +298,29 @@ function buildBody() {
 
 async function save() {
   if (isSaving.value) return
-  if (!form.description.trim()) return toast.add({ title: 'Descrição obrigatória', color: 'warning' })
-  if (!form.amount || Number(form.amount) <= 0) return toast.add({ title: 'Valor inválido', color: 'warning' })
-  if (!form.due_date) return toast.add({ title: 'Data de vencimento obrigatória', color: 'warning' })
-  if (!form.category.trim()) return toast.add({ title: 'Categoria obrigatória', color: 'warning' })
+  if (!form.description.trim()) {
+    toast.add({ title: 'Descrição obrigatória', color: 'warning' })
+    return
+  }
+  if (!form.amount || Number(form.amount) <= 0) {
+    toast.add({ title: 'Valor inválido', color: 'warning' })
+    return
+  }
+  if (!form.due_date) {
+    toast.add({ title: 'Data de vencimento obrigatória', color: 'warning' })
+    return
+  }
+  if (!form.category.trim()) {
+    toast.add({ title: 'Categoria obrigatória', color: 'warning' })
+    return
+  }
+
+  if (!isEditing.value && form.is_installment && editableInstallments.value.length > 1) {
+    if (!installmentTotalsMatch.value) {
+      toast.add({ title: 'Total das parcelas não confere com o valor original', color: 'warning' })
+      return
+    }
+  }
 
   if (isEditing.value && isEditingRecurring.value) {
     pendingPayload.value = buildBody()
@@ -270,14 +346,14 @@ async function doSave(body: Record<string, unknown>, recurringScope?: 'single' |
       }
       toast.add({ title: 'Lançamento atualizado', color: 'success' })
     } else {
-      if (form.is_installment && previewInstallments.value.length > 1) {
+      if (form.is_installment && editableInstallments.value.length > 1) {
         await $fetch('/api/financial', {
           method: 'POST',
           body: {
             ...body,
             is_installment: true,
-            installment_count: previewInstallments.value.length,
-            installments: previewInstallments.value
+            installment_count: editableInstallments.value.length,
+            installments: editableInstallments.value
           }
         })
       } else {
@@ -440,52 +516,128 @@ function formatCurrency(value: number) {
           </UFormField>
         </div>
 
-        <!-- Parcelamento (apenas criação) -->
-        <template v-if="!isEditing">
-          <div class="rounded-lg border border-default bg-elevated p-4 space-y-3">
+        <!-- Parcelamento -->
+        <div class="rounded-lg border border-default p-4 space-y-3">
+          <!-- Aviso: já é parcelado (edição) -->
+          <UAlert
+            v-if="isEditing && form.is_editing_installment"
+            icon="i-lucide-info"
+            color="info"
+            variant="soft"
+            title="Este lançamento faz parte de um parcelamento"
+            description="Você está editando apenas esta parcela. Para alterar as demais, edite-as individualmente."
+          />
+
+          <!-- Checkbox de parcelamento (só na criação) -->
+          <template v-if="!isEditing">
             <UCheckbox
               v-model="form.is_installment"
-              label="Lançamento parcelado?"
+              label="Criar lançamento parcelado?"
             />
 
             <template v-if="form.is_installment">
-              <UFormField label="Número de parcelas">
-                <USelectMenu
-                  v-model="form.installment_count"
-                  :items="installmentCountOptions"
-                  value-key="value"
-                  class="w-40"
+              <!-- Controles de geração -->
+              <div class="flex items-end gap-3">
+                <UFormField label="Número de parcelas" class="w-40">
+                  <USelectMenu
+                    v-model="form.installment_count"
+                    :items="installmentCountOptions"
+                    value-key="value"
+                    class="w-full"
+                    @update:model-value="regenerateInstallments"
+                  />
+                </UFormField>
+                <UButton
+                  icon="i-lucide-refresh-cw"
+                  label="Regenerar"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="regenerateInstallments"
                 />
-              </UFormField>
+                <UButton
+                  icon="i-lucide-plus"
+                  label="Adicionar parcela"
+                  color="neutral"
+                  variant="outline"
+                  size="sm"
+                  @click="addInstallment"
+                />
+              </div>
 
-              <template v-if="previewInstallments.length > 0">
-                <p class="text-xs font-medium text-muted">Prévia das parcelas</p>
-                <div class="max-h-44 overflow-y-auto rounded-md border border-default divide-y divide-default">
+              <!-- Resumo de totais -->
+              <div
+                v-if="editableInstallments.length > 0"
+                class="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
+                :class="installmentTotalsMatch ? 'border-success/40 bg-success/5' : 'border-error/40 bg-error/5'"
+              >
+                <div class="flex items-center gap-4">
+                  <span class="text-muted">Valor original:</span>
+                  <span class="font-semibold text-highlighted">{{ formatCurrency(installmentOriginalAmount) }}</span>
+                  <span class="text-muted">Total das parcelas:</span>
+                  <span class="font-semibold" :class="installmentTotalsMatch ? 'text-success' : 'text-error'">
+                    {{ formatCurrency(installmentTotal) }}
+                  </span>
+                </div>
+                <UIcon
+                  :name="installmentTotalsMatch ? 'i-lucide-circle-check' : 'i-lucide-circle-alert'"
+                  class="size-4 shrink-0"
+                  :class="installmentTotalsMatch ? 'text-success' : 'text-error'"
+                />
+              </div>
+
+              <!-- Lista editável de parcelas -->
+              <div v-if="editableInstallments.length > 0" class="space-y-2">
+                <p class="text-xs font-medium text-muted">
+                  Detalhes das parcelas
+                </p>
+                <div class="divide-y divide-default rounded-md border border-default">
                   <div
-                    v-for="inst in previewInstallments"
+                    v-for="(inst, index) in editableInstallments"
                     :key="inst.number"
-                    class="flex items-center justify-between px-3 py-1.5 text-sm"
+                    class="grid grid-cols-[2rem_1fr_1fr_1fr_2rem] items-center gap-2 px-3 py-2"
                   >
-                    <span class="text-muted">
-                      {{ inst.number }}ª parcela — {{ inst.due_date.split('-').reverse().join('/') }}
-                    </span>
-                    <span class="font-medium tabular-nums">{{ formatCurrency(inst.amount) }}</span>
+                    <!-- Número -->
+                    <span class="text-xs font-semibold text-muted text-center">{{ inst.number }}ª</span>
+
+                    <!-- Valor -->
+                    <UiCurrencyInput
+                      v-model="inst.amount"
+                      size="xs"
+                      class="w-full"
+                    />
+
+                    <!-- Data -->
+                    <UiDatePicker
+                      v-model="inst.due_date"
+                      size="xs"
+                      class="w-full"
+                    />
+
+                    <!-- Status -->
+                    <USelectMenu
+                      v-model="inst.status"
+                      :items="installmentStatusOptions"
+                      value-key="value"
+                      size="xs"
+                      class="w-full"
+                    />
+
+                    <!-- Remover -->
+                    <UButton
+                      icon="i-lucide-trash-2"
+                      color="error"
+                      variant="ghost"
+                      size="xs"
+                      :disabled="editableInstallments.length <= 1"
+                      @click="removeInstallment(index)"
+                    />
                   </div>
                 </div>
-              </template>
+              </div>
             </template>
-          </div>
-        </template>
-
-        <!-- Aviso: editando parcela existente -->
-        <UAlert
-          v-if="isEditing && form.is_editing_installment"
-          icon="i-lucide-info"
-          color="info"
-          variant="soft"
-          title="Este lançamento faz parte de um parcelamento"
-          description="Você está editando apenas esta parcela. Para alterar as demais, edite-as individualmente."
-        />
+          </template>
+        </div>
 
         <!-- Observações -->
         <UFormField label="Observações">
@@ -508,7 +660,7 @@ function formatCurrency(value: number) {
           @click="emit('update:open', false)"
         />
         <UButton
-          :label="isEditing ? 'Salvar alterações' : (form.is_installment ? `Criar ${form.installment_count} parcelas` : 'Criar lançamento')"
+          :label="isEditing ? 'Salvar alterações' : (form.is_installment ? `Criar ${editableInstallments.length || form.installment_count} parcelas` : 'Criar lançamento')"
           color="neutral"
           :loading="isSaving"
           :disabled="isSaving"
