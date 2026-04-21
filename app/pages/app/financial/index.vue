@@ -543,6 +543,57 @@ async function confirmBulkDelete() {
   }
 }
 
+// ── Duplicate ─────────────────────────────────────────────────────────────────
+
+const isDuplicating = ref(false)
+const duplicatingEntryId = ref<string | null>(null)
+
+async function duplicate(entry: Entry) {
+  if (isDuplicating.value) return
+  isDuplicating.value = true
+  duplicatingEntryId.value = String(entry.id)
+  try {
+    const originalDate = String(entry.due_date || '')
+    let newDueDate = originalDate
+    if (originalDate) {
+      const [year, month, day] = originalDate.split('-').map(Number)
+      const d = new Date(year!, month! - 1, day!)
+      const recurrence = normalizeRecurrenceValue(entry.recurrence)
+      if (recurrence === 'monthly') {
+        d.setMonth(d.getMonth() + 1)
+      } else if (recurrence === 'yearly') {
+        d.setFullYear(d.getFullYear() + 1)
+      }
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const dy = String(d.getDate()).padStart(2, '0')
+      newDueDate = `${y}-${m}-${dy}`
+    }
+    await $fetch('/api/financial', {
+      method: 'POST',
+      body: {
+        description: entry.description,
+        amount: entry.amount,
+        due_date: newDueDate,
+        type: entry.type,
+        status: 'pending',
+        category: entry.category,
+        bank_account_id: entry.bank_account_id ?? null,
+        notes: entry.notes ?? null,
+        recurrence: entry.recurrence ?? null
+      }
+    })
+    toast.add({ title: 'Lançamento duplicado com sucesso', color: 'success' })
+    await resetAndRefresh()
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({ title: 'Erro ao duplicar', description: err?.data?.statusMessage || err?.statusMessage || 'Falha ao duplicar lançamento', color: 'error' })
+  } finally {
+    isDuplicating.value = false
+    duplicatingEntryId.value = null
+  }
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 type ExportFormat = 'csv' | 'pdf'
@@ -799,9 +850,18 @@ const columns = [
                 />
               </div>
               <div class="min-w-0 space-y-1">
-                <p class="truncate font-semibold text-highlighted">
-                  {{ row.original.description }}
-                </p>
+                <div class="flex items-center gap-1.5">
+                  <p class="truncate font-semibold text-highlighted">
+                    {{ row.original.description }}
+                  </p>
+                  <UBadge
+                    v-if="(row.original as Entry).is_installment && (row.original as Entry).current_installment && (row.original as Entry).installment_count"
+                    variant="outline"
+                    color="info"
+                    size="xs"
+                    :label="`${(row.original as Entry).current_installment}/${(row.original as Entry).installment_count}x`"
+                  />
+                </div>
                 <p class="truncate text-xs text-muted">
                   {{ getBankAccountLabel(row.original as Entry) }}
                 </p>
@@ -868,6 +928,17 @@ const columns = [
                   size="xs"
                   :loading="isPaying && payingEntryId === String((row.original as Entry).id)"
                   @click="pay(row.original as Entry)"
+                />
+              </UTooltip>
+
+              <UTooltip v-if="canCreate" text="Duplicar lançamento">
+                <UButton
+                  icon="i-lucide-copy"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  :loading="isDuplicating && duplicatingEntryId === String((row.original as Entry).id)"
+                  @click="duplicate(row.original as Entry)"
                 />
               </UTooltip>
 
