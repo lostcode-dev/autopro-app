@@ -645,7 +645,6 @@ function formatCurrency(value: number) {
             v-model="form.notes"
             class="w-full"
             :rows="3"
-            placeholder="Use este campo para contexto adicional do lançamento."
           />
         </UFormField>
       </div>
@@ -660,7 +659,7 @@ function formatCurrency(value: number) {
           @click="emit('update:open', false)"
         />
         <UButton
-          :label="isEditing ? 'Salvar alterações' : (form.is_installment ? `Criar ${editableInstallments.length || form.installment_count} parcelas` : 'Criar lançamento')"
+          label="Salvar alterações"
           color="neutral"
           :loading="isSaving"
           :disabled="isSaving"

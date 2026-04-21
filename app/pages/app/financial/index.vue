@@ -473,6 +473,21 @@ async function confirmBulkPay() {
   }
 }
 
+// ── Detail slideover ─────────────────────────────────────────────────────────
+
+const showDetailSlideover = ref(false)
+const detailEntryId = ref<string | null>(null)
+
+function openDetail(entry: Entry) {
+  detailEntryId.value = String(entry.id)
+  showDetailSlideover.value = true
+}
+
+function onDetailEdit(entry: Entry) {
+  showDetailSlideover.value = false
+  openEdit(entry)
+}
+
 // ── Create / Edit ─────────────────────────────────────────────────────────────
 
 const showFormModal = ref(false)
@@ -917,6 +932,16 @@ const columns = [
 
           <template #actions-cell="{ row }">
             <div class="flex items-center justify-end gap-2">
+              <UTooltip text="Ver detalhes">
+                <UButton
+                  icon="i-lucide-eye"
+                  color="neutral"
+                  variant="ghost"
+                  size="xs"
+                  @click="openDetail(row.original as Entry)"
+                />
+              </UTooltip>
+
               <UTooltip
                 v-if="canUpdate && !isPaidStatus((row.original as Entry).status)"
                 text="Marcar como pago"
@@ -978,6 +1003,13 @@ const columns = [
     :entry="selectedEntry"
     :bank-account-options="bankAccountOptions"
     @saved="onEntrySaved"
+  />
+
+  <FinancialEntriesDetailSlideover
+    v-model:open="showDetailSlideover"
+    :entry-id="detailEntryId"
+    :bank-account-by-id="bankAccountById"
+    @edit="onDetailEdit"
   />
 
   <AppConfirmModal
