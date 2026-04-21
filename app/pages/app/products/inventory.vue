@@ -411,7 +411,7 @@ const selectedProductCategoryName = computed(() =>
 )
 
 const selectedProductTypeLabel = computed(() =>
-  selectedProductOption.value?.type === 'group' ? 'Grupo' : 'UnitÃ¡rio'
+  selectedProductOption.value?.type === 'group' ? 'Grupo' : 'Unitário'
 )
 
 function handleProductSelect(productId: string | null) {
@@ -431,10 +431,16 @@ function handleProductSelect(productId: string | null) {
 
 const selectedProductTypeBadgeLabel = computed(() => {
   if (!selectedProductOption.value)
-    return 'Tipo indisponÃ­vel'
+    return 'Tipo indisponível'
 
-  return selectedProductOption.value.type === 'group' ? 'Grupo' : 'UnitÃ¡rio'
+  return selectedProductOption.value.type === 'group' ? 'Grupo' : 'Unitário'
 })
+
+const formCategoryOptions = computed(() =>
+  [...categoriesList.value]
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+    .map(c => ({ label: c.name, value: c.name }))
+)
 
 async function handleCategoriesUpdated() {
   await Promise.all([
@@ -453,7 +459,7 @@ function resetForm() {
     sale_price: '',
     cost_price: '',
     brand: '',
-    category: 'other',
+    category: '',
     supplier_name: null,
     location: '',
     notes: ''
@@ -477,7 +483,7 @@ function openEdit(part: PartItem) {
     sale_price: part.sale_price ?? '',
     cost_price: part.cost_price ?? '',
     brand: part.brand ?? '',
-    category: part.category ?? 'other',
+    category: part.category ?? '',
     supplier_name: part.supplier_name ?? null,
     location: part.location ?? '',
     notes: part.notes ?? ''
@@ -996,7 +1002,7 @@ const lineColumns = [
           <UInput
             v-model="form.description"
             class="w-full"
-            placeholder="Ex: Pastilha dianteira cerÃ¢mica"
+            placeholder="Ex: Pastilha dianteira cerâmica"
           />
         </UFormField>
 
@@ -1015,19 +1021,6 @@ const lineColumns = [
           />
         </UFormField>
 
-        <UFormField label="Categoria do produto" class="sm:col-span-2">
-          <div class="flex items-center gap-2">
-            <UInput :model-value="selectedProductCategoryName" class="w-full" readonly />
-            <UButton
-              label="Gerenciar"
-              icon="i-lucide-tag"
-              color="neutral"
-              variant="outline"
-              @click="showCategoriesModal = true"
-            />
-          </div>
-        </UFormField>
-
         <div class="sm:col-span-2 flex flex-wrap items-center gap-2 rounded-lg border border-default bg-elevated/40 px-3 py-2">
           <UBadge
             :label="selectedProductOption?.code || 'Sem produto vinculado'"
@@ -1042,17 +1035,29 @@ const lineColumns = [
             size="sm"
           />
           <span class="text-xs text-muted">
-            Ao vincular um produto, a descriÃ§Ã£o e os preÃ§os podem ser sugeridos automaticamente.
+            Ao vincular um produto, a descrição e os preços podem ser sugeridos automaticamente.
           </span>
         </div>
 
-        <UFormField label="Categoria técnica">
-          <USelectMenu
-            v-model="form.category"
-            :items="PART_TECHNICAL_CATEGORY_OPTIONS.filter(option => option.value !== 'all')"
-            value-key="value"
-            class="w-full"
-          />
+        <UFormField label="Categoria" class="sm:col-span-2">
+          <div class="flex gap-2">
+            <USelectMenu
+              v-model="form.category"
+              :items="formCategoryOptions"
+              value-key="value"
+              placeholder="Selecionar categoria..."
+              class="flex-1"
+              searchable
+            />
+            <UTooltip text="Gerenciar categorias">
+              <UButton
+                icon="i-lucide-tag"
+                color="neutral"
+                variant="outline"
+                @click="showCategoriesModal = true"
+              />
+            </UTooltip>
+          </div>
         </UFormField>
 
         <UFormField label="Marca">
@@ -1097,12 +1102,12 @@ const lineColumns = [
           />
         </UFormField>
 
-        <UFormField label="Preço de venda">
-          <UiCurrencyInput v-model="form.sale_price" />
-        </UFormField>
-
         <UFormField label="Preço de custo">
           <UiCurrencyInput v-model="form.cost_price" />
+        </UFormField>
+
+        <UFormField label="Preço de venda">
+          <UiCurrencyInput v-model="form.sale_price" />
         </UFormField>
 
         <UFormField label="Observações" class="sm:col-span-2">
