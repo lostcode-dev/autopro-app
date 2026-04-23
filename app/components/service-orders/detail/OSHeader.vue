@@ -8,6 +8,7 @@ import {
   PAYMENT_STATUS_LABEL,
   PAYMENT_STATUS_ICON,
   ADVANCE_STATUS_MAP,
+  canEditServiceOrder,
   getNextStatus
 } from '~/utils/service-orders'
 
@@ -32,6 +33,7 @@ const emit = defineEmits<{
   'cancel': []
   'delete': []
   'duplicate': []
+  'edit': []
 }>()
 
 const nextStatus = computed(() => getNextStatus(props.order.status))
@@ -55,6 +57,10 @@ const canCancelPayment = computed(() =>
 
 const canAdvance = computed(() =>
   props.canUpdate && !!advanceInfo.value && !isCancelled.value
+)
+
+const canEdit = computed(() =>
+  props.canUpdate && canEditServiceOrder(props.order.status, props.order.payment_status)
 )
 
 // ─── Avatar helpers ────────────────────────────────────────────────────────────
@@ -208,10 +214,20 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
       />
 
       <UDivider
-        v-if="canCreate || (canCancel && !isCancelled) || canDelete"
+        v-if="canEdit || canCreate || (canCancel && !isCancelled) || canDelete"
         orientation="vertical"
         class="h-5"
       />
+
+      <UTooltip v-if="canEdit" text="Editar OS">
+        <UButton
+          icon="i-lucide-pencil"
+          color="info"
+          variant="ghost"
+          size="sm"
+          @click="emit('edit')"
+        />
+      </UTooltip>
 
       <!-- Duplicar -->
       <UTooltip v-if="canCreate" text="Duplicar OS">

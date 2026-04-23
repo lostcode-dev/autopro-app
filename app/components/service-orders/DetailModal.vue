@@ -12,8 +12,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [v: boolean]
-  updated: []
-  deleted: []
+  'updated': []
+  'deleted': []
+  'edit': [order: ServiceOrderRaw]
 }>()
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
@@ -47,6 +48,11 @@ watch(
 
 function close() {
   emit('update:open', false)
+}
+
+function requestEdit() {
+  if (!detail.value) return
+  emit('edit', detail.value.order)
 }
 
 // ─── Advance status ────────────────────────────────────────────────────────────
@@ -289,6 +295,7 @@ const orderProxy = computed<ServiceOrder | null>(() => {
         @cancel="showCancelModal = true"
         @delete="showDeleteModal = true"
         @duplicate="duplicate"
+        @edit="requestEdit"
       />
     </template>
 

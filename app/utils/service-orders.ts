@@ -50,12 +50,19 @@ export const PAYMENT_STATUS_ICON: Record<string, string> = {
 
 // ─── Advance status map ───────────────────────────────────────────────────────
 
-export type AdvanceInfo = { label: string; icon: string; color: 'info' | 'warning' | 'success' }
+export type AdvanceInfo = { label: string, icon: string, color: 'info' | 'warning' | 'success' }
 
 export const ADVANCE_STATUS_MAP: Record<string, AdvanceInfo> = {
   estimate: { label: 'Abrir OS', icon: 'i-lucide-circle-dot', color: 'info' },
   open: { label: 'Iniciar', icon: 'i-lucide-wrench', color: 'warning' },
   in_progress: { label: 'Concluir', icon: 'i-lucide-circle-check', color: 'success' }
+}
+
+export const EDITABLE_ORDER_STATUSES = ['estimate', 'open', 'in_progress', 'waiting_for_part'] as const
+
+export function canEditServiceOrder(status: string | null | undefined, paymentStatus: string | null | undefined) {
+  return EDITABLE_ORDER_STATUSES.includes((status ?? '') as (typeof EDITABLE_ORDER_STATUSES)[number])
+    && paymentStatus === 'pending'
 }
 
 export function getNextStatus(status: string): string | null {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
 import { ActionCode } from '~/constants/action-codes'
-import type { ServiceOrder } from '~/types/service-orders'
+import type { ServiceOrder, ServiceOrderRaw } from '~/types/service-orders'
 
 type ServiceOrdersApiResponse = {
   data: {
@@ -392,6 +392,17 @@ function forceReload() {
 // ─── Create ───────────────────────────────────────────────────────────────────
 
 const showCreateModal = ref(false)
+const editingOrder = ref<ServiceOrderRaw | null>(null)
+
+watch(showCreateModal, (opened) => {
+  if (!opened) editingOrder.value = null
+})
+
+function openEdit(order: ServiceOrderRaw) {
+  closeDetail()
+  editingOrder.value = order
+  showCreateModal.value = true
+}
 </script>
 
 <template>
@@ -474,7 +485,9 @@ const showCreateModal = ref(false)
   <!-- ── Create Modal ────────────────────────────────────────────────────────── -->
   <ServiceOrdersCreateModal
     v-model:open="showCreateModal"
+    :order-to-edit="editingOrder"
     @created="forceReload"
+    @updated="forceReload"
   />
 
   <!-- ── Confirm cancel ───────────────────────────────────────────────────────── -->
@@ -537,6 +550,7 @@ const showCreateModal = ref(false)
     :can-cancel="canCancel"
     :can-delete="canDelete"
     :can-create="canCreate"
+    @edit="openEdit"
     @updated="forceReload"
     @deleted="() => { closeDetail(); forceReload() }"
   />

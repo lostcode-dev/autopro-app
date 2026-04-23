@@ -1,18 +1,28 @@
 <script setup lang="ts">
 import {
   formatCurrency,
+  PAYMENT_STATUS_COLOR,
+  PAYMENT_STATUS_ICON,
+  PAYMENT_STATUS_LABEL,
   STATUS_COLOR,
   STATUS_ICON,
   STATUS_LABEL,
 } from "../../utils/service-orders";
+import type {
+  ServiceOrderItem,
+  ServiceOrderRaw,
+  ServiceOrderSelectedTax,
+} from "../../types/service-orders";
 
 const props = defineProps<{
   open: boolean;
+  orderToEdit?: ServiceOrderRaw | null;
 }>();
 
 const emit = defineEmits<{
   "update:open": [v: boolean];
   created: [];
+  updated: [];
 }>();
 
 interface SelectOption {
@@ -181,6 +191,32 @@ const masterProductEditor = reactive<MasterProductEditor>({
   notes: "",
 });
 
+const isEditMode = computed(() => !!props.orderToEdit?.id);
+
+const modalEyebrow = computed(() =>
+  isEditMode.value ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço",
+);
+
+const submitButtonLabel = computed(() =>
+  isEditMode.value ? "Salvar alterações" : "Criar OS",
+);
+
+const paymentBadgeStatus = computed(() =>
+  isEditMode.value ? props.orderToEdit?.payment_status ?? "pending" : "pending",
+);
+
+const paymentBadgeLabel = computed(
+  () => PAYMENT_STATUS_LABEL[paymentBadgeStatus.value] ?? "Pagamento pendente",
+);
+
+const paymentBadgeColor = computed(
+  () => PAYMENT_STATUS_COLOR[paymentBadgeStatus.value] ?? "neutral",
+);
+
+const paymentBadgeIcon = computed(
+  () => PAYMENT_STATUS_ICON[paymentBadgeStatus.value] ?? "i-lucide-credit-card",
+);
+
 const form = reactive<FormData>({
   number: "",
   status: "estimate",
@@ -229,6 +265,48 @@ function createDraftItem(
     category_id: null,
     ...overrides,
   };
+}
+
+function mapOrderItemToDraftItem(item: ServiceOrderItem) {
+  return createDraftItem({
+    name: item.name ?? item.description ?? "",
+    description: item.description ?? item.name ?? "",
+    quantity: toNumber(item.quantity) || 1,
+    unit_price: toNumber(item.unit_price),
+    cost_price: toNumber(item.cost_price),
+    source: item.product_id ? "catalog" : "manual",
+    product_id: item.product_id ?? null,
+    category_id: item.category_id ?? null,
+  });
+}
+
+function populateFormFromOrder(order: ServiceOrderRaw) {
+  const selectedTaxes = (order.selected_taxes ?? []) as ServiceOrderSelectedTax[];
+
+  form.number = order.number ?? "";
+  form.status = order.status || "estimate";
+  form.client_id = order.client_id ?? "";
+  form.vehicle_id = order.vehicle_id ?? "";
+  form.master_product_id = order.master_product_id ?? "";
+  form.responsible_employees = (order.responsible_employees ?? [])
+    .map((responsible: { employee_id: string }) => responsible.employee_id)
+    .filter(Boolean);
+  form.entry_date = order.entry_date ?? new Date().toISOString().substring(0, 10);
+  form.expected_date = order.expected_date ?? "";
+  form.reported_defect = order.reported_defect ?? "";
+  form.diagnosis = order.diagnosis ?? "";
+  form.notes = order.notes ?? "";
+  form.items = (order.items ?? []).map(mapOrderItemToDraftItem);
+  form.discount = order.discount ?? "";
+  form.apply_taxes = Boolean(order.apply_taxes);
+  form.selected_tax_ids = selectedTaxes
+    .map((tax) => tax.tax_id ?? "")
+    .filter(Boolean);
+  form.create_appointment = false;
+  form.appointment_date = "";
+  form.appointment_time = "08:00";
+  form.appointment_priority = APPOINTMENT_NO_PRIORITY;
+  form.appointment_notes = "";
 }
 
 function getProductUnitSale(product: ProductCatalogItem) {
@@ -607,7 +685,8 @@ function removeItem(itemId: string) {
 function addResponsible() {
   if (
     employeeCatalog.value.length > 0 &&
-    form.responsible_employees.filter(Boolean).length >= employeeCatalog.value.length
+    form.responsible_employees.filter(Boolean).length >=
+      employeeCatalog.value.length
   ) {
     toast.add({
       title: "Todos os responsáveis já foram adicionados",
@@ -639,7 +718,9 @@ function updateResponsible(index: number, employeeId: string) {
 }
 
 function getResponsibleCommissionLabel(employeeId: string) {
-  return formatCurrency(computeResponsibleCommission(getEmployeeById(employeeId)).value);
+  return formatCurrency(
+    computeResponsibleCommission(getEmployeeById(employeeId)).value,
+  );
 }
 
 function getResponsibleRateLabel(employeeId: string) {
@@ -837,7 +918,11 @@ watch(
     if (opened) {
       resetForm();
       loadOptions();
-      loadNextNumber();
+      if (isEditMode.value && props.orderToEdit) {
+        populateFormFromOrder(props.orderToEdit);
+      } else {
+        loadNextNumber();
+      }
     } else {
       nextNumberRequestId += 1;
       isLoadingNextNumber.value = false;
@@ -875,7 +960,7 @@ const isSaving = ref(false);
 async function submit() {
   if (isSaving.value) return;
 
-  if (form.create_appointment) {
+  if (!isEditMode.value && form.create_appointment) {
     if (!form.client_id) {
       toast.add({
         title: "Selecione um cliente para agendar",
@@ -917,13 +1002,19 @@ async function submit() {
     const res = await $fetch<CreateResponse>("/api/service-orders", {
       method: "POST",
       body: {
+        orderId: isEditMode.value ? props.orderToEdit?.id : undefined,
         orderData: {
           number: form.number || undefined,
           status: form.status,
-          payment_status: "pending",
+          payment_status: isEditMode.value
+            ? props.orderToEdit?.payment_status ?? "pending"
+            : "pending",
           client_id: form.client_id || null,
           vehicle_id: form.vehicle_id || null,
           master_product_id: form.master_product_id || null,
+          appointment_id: isEditMode.value
+            ? props.orderToEdit?.appointment_id ?? null
+            : null,
           responsible_employees: form.responsible_employees
             .filter(Boolean)
             .map((id) => ({ employee_id: id })),
@@ -942,7 +1033,7 @@ async function submit() {
           discount: discountValue.value,
           commission_amount: totalCommissionAmount.value,
         },
-        appointmentData: form.create_appointment
+        appointmentData: !isEditMode.value && form.create_appointment
           ? {
               appointment_date: form.appointment_date,
               time: form.appointment_time,
@@ -967,16 +1058,23 @@ async function submit() {
       return;
     }
 
-    toast.add({ title: "OS criada com sucesso", color: "success" });
+    toast.add({
+      title: isEditMode.value ? "OS atualizada com sucesso" : "OS criada com sucesso",
+      color: "success",
+    });
     emit("update:open", false);
-    emit("created");
+    if (isEditMode.value) {
+      emit("updated");
+    } else {
+      emit("created");
+    }
   } catch (error: unknown) {
     const err = error as {
       data?: { statusMessage?: string };
       statusMessage?: string;
     };
     toast.add({
-      title: "Erro ao criar OS",
+      title: isEditMode.value ? "Erro ao atualizar OS" : "Erro ao criar OS",
       description:
         err?.data?.statusMessage || err?.statusMessage || "Tente novamente.",
       color: "error",
@@ -1011,7 +1109,7 @@ async function submit() {
               <p
                 class="text-xs font-semibold uppercase tracking-[0.22em] text-primary/80"
               >
-                Nova Ordem de Serviço
+                {{ modalEyebrow }}
               </p>
             </div>
 
@@ -1026,10 +1124,10 @@ async function submit() {
                 class="px-3 py-1"
               />
               <UBadge
-                color="neutral"
+                :color="paymentBadgeColor"
                 variant="outline"
-                leading-icon="i-lucide-credit-card"
-                label="Pagamento pendente"
+                :leading-icon="paymentBadgeIcon"
+                :label="paymentBadgeLabel"
                 class="px-3 py-1"
               />
               <UBadge
@@ -1041,7 +1139,7 @@ async function submit() {
                 class="px-3 py-1"
               />
               <UBadge
-                v-if="form.create_appointment"
+                v-if="!isEditMode && form.create_appointment"
                 :color="appointmentPriorityBadge.color"
                 variant="outline"
                 :leading-icon="appointmentPriorityBadge.icon"
@@ -1051,7 +1149,7 @@ async function submit() {
             </div>
           </div>
         </div>
-         <UButton
+        <UButton
           icon="i-lucide-x"
           color="neutral"
           variant="ghost"
@@ -1178,31 +1276,27 @@ async function submit() {
                         />
 
                         <div class="flex shrink-0 items-center gap-2">
-                          <UButton
-                            label="Novo produto master"
-                            icon="i-lucide-plus"
-                            color="neutral"
-                            variant="outline"
-                            size="sm"
-                            @click="openCreateMasterProduct"
-                          />
-                          <UButton
-                            label="Gerenciar"
-                            icon="i-lucide-settings-2"
-                            color="neutral"
-                            variant="outline"
-                            size="sm"
-                            @click="showMasterProductManager = true"
-                          />
-                          <UButton
-                            v-if="selectedMasterProduct"
-                            label="Editar selecionado"
-                            icon="i-lucide-pencil"
-                            color="neutral"
-                            variant="ghost"
-                            size="sm"
-                            @click="openEditMasterProduct(selectedMasterProduct)"
-                          />
+                          <UTooltip text="Novo produto master">
+                            <UButton
+                              icon="i-lucide-plus"
+                              color="neutral"
+                              variant="outline"
+                              size="sm"
+                              @click="openCreateMasterProduct"
+                            />
+                          </UTooltip>
+
+                          <UTooltip text="Gerenciar produtos master">
+                            <UButton
+                              icon="i-lucide-settings-2"
+                              color="neutral"
+                              variant="outline"
+                              size="sm"
+                              @click="showMasterProductManager = true"
+                            />
+                          </UTooltip>
+
+                    
                         </div>
                       </div>
 
@@ -1326,12 +1420,19 @@ async function submit() {
                         />
                         <UTooltip
                           v-if="getResponsibleCommissionNote(employeeId)"
-                          :text="getResponsibleCommissionNote(employeeId)?.label"
+                          :text="
+                            getResponsibleCommissionNote(employeeId)?.label
+                          "
                         >
                           <UButton
-                            :color="getResponsibleCommissionNote(employeeId)?.color ?? 'neutral'"
+                            :color="
+                              getResponsibleCommissionNote(employeeId)?.color ??
+                              'neutral'
+                            "
                             variant="ghost"
-                            :icon="getResponsibleCommissionNote(employeeId)?.icon"
+                            :icon="
+                              getResponsibleCommissionNote(employeeId)?.icon
+                            "
                             size="xs"
                             square
                           />
@@ -1420,7 +1521,10 @@ async function submit() {
               </template>
 
               <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                <div class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4">
+                <div
+                  v-if="!isEditMode"
+                  class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4"
+                >
                   <div class="flex items-start justify-between gap-3">
                     <div>
                       <p class="text-sm font-medium text-highlighted">
@@ -1479,7 +1583,7 @@ async function submit() {
                       <div class="text-right">
                         <p class="font-semibold text-highlighted">
                           {{
-                            toNumber(tax.rate).toLocaleString('pt-BR', {
+                            toNumber(tax.rate).toLocaleString("pt-BR", {
                               maximumFractionDigits: 2,
                             })
                           }}%
@@ -1490,8 +1594,9 @@ async function submit() {
                         >
                           {{
                             formatCurrency(
-                              selectedTaxes.find((item) => item.tax_id === tax.id)
-                                ?.calculated_amount,
+                              selectedTaxes.find(
+                                (item) => item.tax_id === tax.id,
+                              )?.calculated_amount,
                             )
                           }}
                         </p>
@@ -1501,7 +1606,9 @@ async function submit() {
                     <div
                       class="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3"
                     >
-                      <p class="text-xs uppercase tracking-wide text-warning/80">
+                      <p
+                        class="text-xs uppercase tracking-wide text-warning/80"
+                      >
                         Total de impostos
                       </p>
                       <p class="mt-1 text-base font-semibold text-warning">
@@ -1511,7 +1618,9 @@ async function submit() {
                   </div>
                 </div>
 
-                <div class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4">
+                <div
+                  class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4"
+                >
                   <div class="flex items-start justify-between gap-3">
                     <div>
                       <p class="text-sm font-medium text-highlighted">
@@ -1546,7 +1655,9 @@ async function submit() {
                       </UFormField>
                     </div>
 
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                    <div
+                      class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]"
+                    >
                       <UFormField label="Prioridade">
                         <USelectMenu
                           v-model="form.appointment_priority"
@@ -1934,8 +2045,8 @@ async function submit() {
             @click="emit('update:open', false)"
           />
           <UButton
-            label="Criar OS"
-            icon="i-lucide-plus"
+            :label="submitButtonLabel"
+            :icon="isEditMode ? 'i-lucide-save' : 'i-lucide-plus'"
             :loading="isSaving"
             @click="submit"
           />

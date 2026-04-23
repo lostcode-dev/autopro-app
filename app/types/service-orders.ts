@@ -45,7 +45,17 @@ export type ServiceOrderItem = {
   unit_price: number
   total_price?: number | null
   cost_price?: number | null
+  product_id?: string | null
+  category_id?: string | null
   commission_total?: number | null
+}
+
+export type ServiceOrderSelectedTax = {
+  tax_id?: string | null
+  name?: string | null
+  type?: string | null
+  rate?: number | null
+  calculated_amount?: number | null
 }
 
 export type ServiceOrderInstallment = {
@@ -89,11 +99,15 @@ export type ServiceOrderRaw = {
   total_amount: number | null
   discount: number | null
   commission_amount: number | null
+  total_taxes_amount?: number | null
+  total_cost_amount?: number | null
   payment_method: string | null
   items: ServiceOrderItem[] | null
   apply_taxes: boolean
+  selected_taxes?: ServiceOrderSelectedTax[] | null
   is_installment: boolean
   installment_count: number | null
+  appointment_id?: string | null
   responsible_employees: { employee_id: string }[] | null
   employee_responsible_id: string | null
   client_id: string | null
@@ -132,5 +146,5 @@ export type ServiceOrderDetailFull = {
     changed_by?: string | null
     changes?: Record<string, unknown> | null
   }[]
-  responsibleNames: { employee_id: string; name: string | null }[]
+  responsibleNames: { employee_id: string, name: string | null }[]
 }

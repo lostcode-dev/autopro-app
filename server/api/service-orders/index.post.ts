@@ -25,9 +25,39 @@ export default defineEventHandler(async (event) => {
 
   const warnings: string[] = []
   const isUpdate = !!orderId
+  let existingOrder: Record<string, unknown> | null = null
+  type SavedOrderRecord = {
+    id: string
+    client_id: string | null
+    vehicle_id: string | null
+    entry_date: string | null
+    reported_defect: string | null
+    appointment_id?: string | null
+  }
+
+  if (isUpdate) {
+    const { data, error } = await supabase
+      .from('service_orders')
+      .select('*')
+      .eq('id', orderId)
+      .eq('organization_id', organizationId)
+      .is('deleted_at', null)
+      .maybeSingle()
+
+    if (error || !data) {
+      throw createError({ statusCode: 404, statusMessage: 'Service order not found' })
+    }
+
+    existingOrder = data
+  }
+
+  const hasOwn = (key: string) => Object.prototype.hasOwnProperty.call(orderData, key)
+  const pickValue = <T>(key: string, fallback: T) => (hasOwn(key) ? orderData[key] : fallback) as T
+  const keepExisting = <T>(key: string, fallback: T) => pickValue(key, (existingOrder?.[key] as T | undefined) ?? fallback)
 
   // Normalize OS number
-  let osNumber = normalizeOsNumber(orderData.number)
+  const hasNumberInput = hasOwn('number')
+  let osNumber = normalizeOsNumber(hasNumberInput ? orderData.number : existingOrder?.number)
 
   if (!isUpdate && !osNumber) {
     // Auto-generate number for new orders
@@ -41,7 +71,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Check for duplicate number
-  if (osNumber) {
+  if (osNumber && (!isUpdate || hasNumberInput)) {
     const duplicateQuery = supabase
       .from('service_orders')
       .select('id, number')
@@ -74,38 +104,38 @@ export default defineEventHandler(async (event) => {
   // Prepare order payload
   const orderPayload: Record<string, unknown> = {
     organization_id: organizationId,
-    number: osNumber || orderData.number,
-    client_id: orderData.client_id || null,
-    vehicle_id: orderData.vehicle_id || null,
-    master_product_id: orderData.master_product_id || null,
-    employee_responsible_id: orderData.employee_responsible_id || null,
-    responsible_employees: orderData.responsible_employees || [],
-    appointment_id: orderData.appointment_id || null,
-    status: orderData.status || 'open',
-    payment_status: orderData.payment_status || 'pending',
-    entry_date: orderData.entry_date || new Date().toISOString().split('T')[0],
-    expected_date: orderData.expected_date || null,
-    expected_payment_date: orderData.expected_payment_date || null,
-    completion_date: orderData.completion_date || null,
-    reported_defect: orderData.reported_defect || null,
-    diagnosis: orderData.diagnosis || null,
-    items: orderData.items || [],
-    apply_taxes: orderData.apply_taxes || false,
-    selected_taxes: orderData.selected_taxes || [],
-    total_taxes_amount: orderData.total_taxes_amount || 0,
-    total_amount: orderData.total_amount || 0,
-    total_cost_amount: orderData.total_cost_amount || 0,
-    discount: orderData.discount || 0,
-    commission_amount: orderData.commission_amount || 0,
-    terminal_fee_amount: orderData.terminal_fee_amount || 0,
-    payment_method: orderData.payment_method || null,
-    is_installment: orderData.is_installment || false,
-    installment_count: orderData.installment_count || 0,
-    notes: orderData.notes || null,
+    number: osNumber || keepExisting('number', null),
+    client_id: keepExisting('client_id', null),
+    vehicle_id: keepExisting('vehicle_id', null),
+    master_product_id: keepExisting('master_product_id', null),
+    employee_responsible_id: keepExisting('employee_responsible_id', null),
+    responsible_employees: keepExisting('responsible_employees', []),
+    appointment_id: keepExisting('appointment_id', null),
+    status: keepExisting('status', 'open'),
+    payment_status: keepExisting('payment_status', 'pending'),
+    entry_date: keepExisting('entry_date', new Date().toISOString().split('T')[0]),
+    expected_date: keepExisting('expected_date', null),
+    expected_payment_date: keepExisting('expected_payment_date', null),
+    completion_date: keepExisting('completion_date', null),
+    reported_defect: keepExisting('reported_defect', null),
+    diagnosis: keepExisting('diagnosis', null),
+    items: keepExisting('items', []),
+    apply_taxes: keepExisting('apply_taxes', false),
+    selected_taxes: keepExisting('selected_taxes', []),
+    total_taxes_amount: keepExisting('total_taxes_amount', 0),
+    total_amount: keepExisting('total_amount', 0),
+    total_cost_amount: keepExisting('total_cost_amount', 0),
+    discount: keepExisting('discount', 0),
+    commission_amount: keepExisting('commission_amount', 0),
+    terminal_fee_amount: keepExisting('terminal_fee_amount', 0),
+    payment_method: keepExisting('payment_method', null),
+    is_installment: keepExisting('is_installment', false),
+    installment_count: keepExisting('installment_count', 0),
+    notes: keepExisting('notes', null),
     updated_by: authUser.email
   }
 
-  let savedOrder: any
+  let savedOrder: SavedOrderRecord
 
   if (isUpdate) {
     // Update existing order
@@ -120,7 +150,7 @@ export default defineEventHandler(async (event) => {
     if (error) {
       throw createError({ statusCode: 500, statusMessage: `Failed to update service order: ${error.message}` })
     }
-    savedOrder = data
+    savedOrder = data as SavedOrderRecord
   } else {
     // Create new order
     orderPayload.created_by = authUser.email
@@ -134,7 +164,7 @@ export default defineEventHandler(async (event) => {
     if (error) {
       throw createError({ statusCode: 500, statusMessage: `Failed to create service order: ${error.message}` })
     }
-    savedOrder = data
+    savedOrder = data as SavedOrderRecord
   }
 
   // Handle appointment creation if provided
@@ -169,8 +199,9 @@ export default defineEventHandler(async (event) => {
 
         savedOrder.appointment_id = appointment.id
       }
-    } catch (err: any) {
-      warnings.push(`Failed to create appointment: ${err.message}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown appointment creation error'
+      warnings.push(`Failed to create appointment: ${message}`)
     }
   }
 
