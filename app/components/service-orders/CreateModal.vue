@@ -149,8 +149,10 @@ const taxesCatalog = ref<TaxItem[]>([])
 
 const selectedProductId = ref('')
 const isLoadingOptions = ref(false)
+const isLoadingNextNumber = ref(false)
 const optionsLoaded = ref(false)
 const itemCounter = ref(0)
+let nextNumberRequestId = 0
 
 const showMasterProductEditor = ref(false)
 const showMasterProductManager = ref(false)
@@ -251,6 +253,31 @@ async function loadMasterProducts(force = false) {
   masterProducts.value = res.items ?? []
 }
 
+async function loadNextNumber() {
+  const requestId = ++nextNumberRequestId
+  isLoadingNextNumber.value = true
+
+  try {
+    const res = await $fetch<{ number: string }>('/api/service-orders/next-number')
+
+    if (requestId !== nextNumberRequestId || !props.open) return
+    if (!form.number.trim()) {
+      form.number = res.number ?? ''
+    }
+  } catch {
+    if (requestId === nextNumberRequestId && props.open) {
+      toast.add({
+        title: 'Não foi possível sugerir o número da OS',
+        color: 'warning'
+      })
+    }
+  } finally {
+    if (requestId === nextNumberRequestId) {
+      isLoadingNextNumber.value = false
+    }
+  }
+}
+
 async function loadOptions() {
   if (optionsLoaded.value || isLoadingOptions.value) return
   isLoadingOptions.value = true
@@ -312,28 +339,9 @@ const masterProductSelectOptions = computed<SelectOption[]>(() =>
   masterProducts.value.map(product => ({ label: product.name, value: product.id }))
 )
 
-const selectedClientLabel = computed(
-  () => clientOptions.value.find(option => option.value === form.client_id)?.label ?? 'Nenhum cliente selecionado'
-)
-
-const selectedVehicleLabel = computed(
-  () => vehicleOptions.value.find(option => option.value === form.vehicle_id)?.label ?? 'Nenhum veículo vinculado'
-)
-
 const selectedMasterProduct = computed(
   () => masterProducts.value.find(product => product.id === form.master_product_id) ?? null
 )
-
-const selectedMasterProductLabel = computed(
-  () => selectedMasterProduct.value?.name ?? 'Nenhum produto master vinculado'
-)
-
-const selectedResponsibleLabel = computed(() => {
-  const selectedIds = form.responsible_employees.filter(Boolean)
-  if (!selectedIds.length) return 'Nenhum responsável definido'
-  if (selectedIds.length === 1) return getEmployeeById(selectedIds[0])?.name ?? '1 responsável selecionado'
-  return `${selectedIds.length} responsáveis selecionados`
-})
 
 const normalizedItems = computed(() =>
   form.items
@@ -449,8 +457,6 @@ const totalCommissionAmount = computed(() =>
 const estimatedProfit = computed(() =>
   totalAmount.value - totalCost.value - totalTaxesAmount.value - totalCommissionAmount.value
 )
-
-const estimatedTotalLabel = computed(() => formatCurrency(totalAmount.value))
 
 const appointmentPriorityBadge = computed(() =>
   appointmentPriorityMeta[form.appointment_priority] ?? appointmentPriorityMeta[APPOINTMENT_NO_PRIORITY]
@@ -651,6 +657,10 @@ watch(
     if (opened) {
       resetForm()
       loadOptions()
+      loadNextNumber()
+    } else {
+      nextNumberRequestId += 1
+      isLoadingNextNumber.value = false
     }
   }
 )
@@ -803,14 +813,6 @@ async function submit() {
               <p class="text-xs font-semibold uppercase tracking-[0.22em] text-primary/80">
                 Nova Ordem de Serviço
               </p>
-              <div class="space-y-1">
-                <h2 class="text-xl font-semibold text-highlighted lg:text-2xl">
-                  Criar OS com o fluxo completo
-                </h2>
-                <p class="max-w-3xl text-sm text-muted">
-                  A criação agora cobre os blocos centrais do sistema antigo: produto master, responsáveis com comissão, itens, impostos, agendamento e resumo financeiro.
-                </p>
-              </div>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
@@ -846,49 +848,6 @@ async function submit() {
               />
             </div>
           </div>
-
-          <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-5">
-            <div class="rounded-xl border border-default bg-elevated/60 p-3">
-              <p class="text-xs uppercase tracking-wide text-muted">
-                Cliente
-              </p>
-              <p class="mt-1 truncate text-sm font-medium text-highlighted">
-                {{ selectedClientLabel }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-default bg-elevated/60 p-3">
-              <p class="text-xs uppercase tracking-wide text-muted">
-                Veículo
-              </p>
-              <p class="mt-1 truncate text-sm font-medium text-highlighted">
-                {{ selectedVehicleLabel }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-default bg-elevated/60 p-3">
-              <p class="text-xs uppercase tracking-wide text-muted">
-                Produto master
-              </p>
-              <p class="mt-1 truncate text-sm font-medium text-highlighted">
-                {{ selectedMasterProductLabel }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-default bg-elevated/60 p-3">
-              <p class="text-xs uppercase tracking-wide text-muted">
-                Responsáveis
-              </p>
-              <p class="mt-1 truncate text-sm font-medium text-highlighted">
-                {{ selectedResponsibleLabel }}
-              </p>
-            </div>
-            <div class="rounded-xl border border-primary/20 bg-primary/8 p-3">
-              <p class="text-xs uppercase tracking-wide text-muted">
-                Total estimado
-              </p>
-              <p class="mt-1 truncate text-sm font-semibold text-highlighted">
-                {{ estimatedTotalLabel }}
-              </p>
-            </div>
-          </div>
         </div>
       </div>
     </template>
@@ -922,9 +881,12 @@ async function submit() {
                   <UFormField label="Número da OS">
                     <UInput
                       v-model="form.number"
-                      placeholder="Auto (ex: OS4001)"
+                      :placeholder="isLoadingNextNumber ? 'Gerando número...' : 'Auto (ex: OS4001)'"
                       class="w-full"
                     />
+                    <p v-if="isLoadingNextNumber" class="mt-2 text-xs text-muted">
+                      Buscando o próximo número disponível...
+                    </p>
                   </UFormField>
 
                   <UFormField label="Status inicial">
@@ -1637,11 +1599,7 @@ async function submit() {
     </template>
 
     <template #footer>
-      <div class="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-        <p class="text-sm text-muted">
-          A OS será criada com {{ normalizedItems.length }} {{ normalizedItems.length === 1 ? 'item' : 'itens' }}, {{ form.responsible_employees.filter(Boolean).length }} {{ form.responsible_employees.filter(Boolean).length === 1 ? 'responsável' : 'responsáveis' }} e valor previsto de {{ formatCurrency(totalAmount) }}.
-        </p>
-
+      <div class="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-end lg:px-6">
         <div class="flex items-center justify-end gap-3">
           <UButton
             label="Cancelar"
