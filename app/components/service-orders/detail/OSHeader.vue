@@ -137,39 +137,37 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
         />
 
         <!-- Separator -->
-        <template v-if="hasContextInfo">
-          <UDivider orientation="vertical" class="h-4 mx-1" />
+        <UDivider v-if="hasContextInfo" orientation="vertical" class="h-4 mx-1" />
 
-          <!-- Client avatar -->
-          <UTooltip v-if="client" :text="client.name">
-            <div class="flex items-center gap-1.5 cursor-default">
-              <UAvatar
-                :text="initials(client.name)"
-                size="xs"
-                :ui="{ root: 'ring-2 ring-primary/30' }"
-              />
-              <span class="text-xs text-muted hidden lg:block max-w-32 truncate">{{ client.name }}</span>
-            </div>
-          </UTooltip>
-
-          <!-- Responsibles avatar stack -->
-          <div v-if="resolvedResponsibles.length" class="flex items-center gap-1.5">
-            <div class="flex -space-x-1.5">
-              <UTooltip
-                v-for="r in resolvedResponsibles"
-                :key="r.employee_id"
-                :text="r.name ?? 'Funcionário'"
-              >
-                <UAvatar
-                  :src="r.photo_url ?? undefined"
-                  :text="initials(r.name)"
-                  size="xs"
-                  :ui="{ root: 'ring-2 ring-default' }"
-                />
-              </UTooltip>
-            </div>
+        <!-- Client avatar -->
+        <UTooltip v-if="hasContextInfo && client" :text="client.name">
+          <div class="flex items-center gap-1.5 cursor-default">
+            <UAvatar
+              :text="initials(client.name)"
+              size="xs"
+              :ui="{ root: 'ring-2 ring-primary/30' }"
+            />
+            <span class="text-xs text-muted hidden lg:block max-w-32 truncate">{{ client.name }}</span>
           </div>
-        </template>
+        </UTooltip>
+
+        <!-- Responsibles avatar stack -->
+        <div v-if="hasContextInfo && resolvedResponsibles.length" class="flex items-center gap-1.5">
+          <div class="flex -space-x-1.5">
+            <UTooltip
+              v-for="r in resolvedResponsibles"
+              :key="r.employee_id"
+              :text="r.name ?? 'Funcionário'"
+            >
+              <UAvatar
+                :src="r.photo_url ?? undefined"
+                :text="initials(r.name)"
+                size="xs"
+                :ui="{ root: 'ring-2 ring-default' }"
+              />
+            </UTooltip>
+          </div>
+        </div>
       </div>
     </div>
 
