@@ -202,7 +202,9 @@ const submitButtonLabel = computed(() =>
 );
 
 const paymentBadgeStatus = computed(() =>
-  isEditMode.value ? props.orderToEdit?.payment_status ?? "pending" : "pending",
+  isEditMode.value
+    ? (props.orderToEdit?.payment_status ?? "pending")
+    : "pending",
 );
 
 const paymentBadgeLabel = computed(
@@ -285,7 +287,8 @@ function mapOrderItemToDraftItem(item: ServiceOrderItem) {
 }
 
 function populateFormFromOrder(order: ServiceOrderRaw) {
-  const selectedTaxes = (order.selected_taxes ?? []) as ServiceOrderSelectedTax[];
+  const selectedTaxes = (order.selected_taxes ??
+    []) as ServiceOrderSelectedTax[];
 
   form.number = order.number ?? "";
   form.status = order.status || "estimate";
@@ -295,7 +298,8 @@ function populateFormFromOrder(order: ServiceOrderRaw) {
   form.responsible_employees = (order.responsible_employees ?? [])
     .map((responsible: { employee_id: string }) => responsible.employee_id)
     .filter(Boolean);
-  form.entry_date = order.entry_date ?? new Date().toISOString().substring(0, 10);
+  form.entry_date =
+    order.entry_date ?? new Date().toISOString().substring(0, 10);
   form.expected_date = order.expected_date ?? "";
   form.reported_defect = order.reported_defect ?? "";
   form.diagnosis = order.diagnosis ?? "";
@@ -584,7 +588,8 @@ const itemCommissionMap = computed(() => {
 
       if (employee.commission_type === "percentage") {
         eligibleItems.forEach((item) => {
-          const fraction = eligibleSale > 0 ? item.total_price / eligibleSale : 0;
+          const fraction =
+            eligibleSale > 0 ? item.total_price / eligibleSale : 0;
           const itemDiscount = eligibleDiscount * fraction;
           const itemTaxes = eligibleTaxes * fraction;
           let itemBase = item.total_price - itemDiscount;
@@ -596,9 +601,7 @@ const itemCommissionMap = computed(() => {
             );
           }
 
-          const nextValue = roundCurrency(
-            (itemBase * commissionAmount) / 100,
-          );
+          const nextValue = roundCurrency((itemBase * commissionAmount) / 100);
 
           commissionByItemId.set(
             item.id,
@@ -608,12 +611,17 @@ const itemCommissionMap = computed(() => {
         return;
       }
 
-      const perItemValue = roundCurrency(commissionAmount / eligibleItems.length);
-      const distributedTotal = roundCurrency(perItemValue * eligibleItems.length);
+      const perItemValue = roundCurrency(
+        commissionAmount / eligibleItems.length,
+      );
+      const distributedTotal = roundCurrency(
+        perItemValue * eligibleItems.length,
+      );
       const remainder = roundCurrency(commissionAmount - distributedTotal);
 
       eligibleItems.forEach((item, index) => {
-        const nextValue = index === 0 ? roundCurrency(perItemValue + remainder) : perItemValue;
+        const nextValue =
+          index === 0 ? roundCurrency(perItemValue + remainder) : perItemValue;
         commissionByItemId.set(
           item.id,
           roundCurrency((commissionByItemId.get(item.id) ?? 0) + nextValue),
@@ -1093,13 +1101,13 @@ async function submit() {
           number: form.number || undefined,
           status: form.status,
           payment_status: isEditMode.value
-            ? props.orderToEdit?.payment_status ?? "pending"
+            ? (props.orderToEdit?.payment_status ?? "pending")
             : "pending",
           client_id: form.client_id || null,
           vehicle_id: form.vehicle_id || null,
           master_product_id: form.master_product_id || null,
           appointment_id: isEditMode.value
-            ? props.orderToEdit?.appointment_id ?? null
+            ? (props.orderToEdit?.appointment_id ?? null)
             : null,
           responsible_employees: form.responsible_employees
             .filter(Boolean)
@@ -1119,18 +1127,19 @@ async function submit() {
           discount: discountValue.value,
           commission_amount: totalCommissionAmount.value,
         },
-        appointmentData: !isEditMode.value && form.create_appointment
-          ? {
-              appointment_date: form.appointment_date,
-              time: form.appointment_time,
-              service_type: form.reported_defect || "Serviço da OS",
-              priority:
-                form.appointment_priority !== APPOINTMENT_NO_PRIORITY
-                  ? form.appointment_priority
-                  : null,
-              notes: form.appointment_notes || null,
-            }
-          : null,
+        appointmentData:
+          !isEditMode.value && form.create_appointment
+            ? {
+                appointment_date: form.appointment_date,
+                time: form.appointment_time,
+                service_type: form.reported_defect || "Serviço da OS",
+                priority:
+                  form.appointment_priority !== APPOINTMENT_NO_PRIORITY
+                    ? form.appointment_priority
+                    : null,
+                notes: form.appointment_notes || null,
+              }
+            : null,
       },
     });
 
@@ -1145,7 +1154,9 @@ async function submit() {
     }
 
     toast.add({
-      title: isEditMode.value ? "OS atualizada com sucesso" : "OS criada com sucesso",
+      title: isEditMode.value
+        ? "OS atualizada com sucesso"
+        : "OS criada com sucesso",
       color: "success",
     });
     emit("update:open", false);
@@ -1193,7 +1204,7 @@ async function submit() {
           >
             <div class="space-y-1.5">
               <p
-                class=" font-semibold uppercase tracking-[0.22em] text-primary/80"
+                class="font-semibold uppercase tracking-[0.22em] text-primary/80"
               >
                 {{ modalEyebrow }}
               </p>
@@ -1381,8 +1392,6 @@ async function submit() {
                               @click="showMasterProductManager = true"
                             />
                           </UTooltip>
-
-                    
                         </div>
                       </div>
 
@@ -1595,14 +1604,11 @@ async function submit() {
             <UCard variant="subtle">
               <template #header>
                 <div class="flex items-center gap-2">
-                  <UIcon name="i-lucide-percent" class="size-4 text-primary" />
                   <UIcon
-                    name="i-lucide-calendar-clock"
+                    name="i-lucide-settings-2"
                     class="size-4 text-primary/70"
                   />
-                  <h3 class="font-semibold text-highlighted">
-                    Impostos e agendamento
-                  </h3>
+                  <h3 class="font-semibold text-highlighted">Configurações</h3>
                 </div>
               </template>
 
@@ -1613,7 +1619,13 @@ async function submit() {
                 >
                   <div class="flex items-start justify-between gap-3">
                     <div>
-                      <p class="text-sm font-medium text-highlighted">
+                      <p
+                        class="text-sm font-medium text-highlighted grid gap-2"
+                      >
+                        <UIcon
+                          name="i-lucide-percent"
+                          class="size-4 text-primary"
+                        />
                         Impostos
                       </p>
                       <p class="text-xs text-muted">
@@ -1709,7 +1721,13 @@ async function submit() {
                 >
                   <div class="flex items-start justify-between gap-3">
                     <div>
-                      <p class="text-sm font-medium text-highlighted">
+                      <p
+                        class="text-sm font-medium text-highlighted grid gap-2"
+                      >
+                        <UIcon
+                          name="i-lucide-calendar-clock"
+                          class="size-4 text-primary/70"
+                        />
                         Agendamento
                       </p>
                       <p class="text-xs text-muted">
@@ -1911,7 +1929,10 @@ async function submit() {
                                   />
                                 </div>
                               </UTooltip>
-                              <span v-if="item.name" class="truncate text-xs text-muted">
+                              <span
+                                v-if="item.name"
+                                class="truncate text-xs text-muted"
+                              >
                                 {{ item.name }}
                               </span>
                             </div>
@@ -1946,7 +1967,8 @@ async function submit() {
                         >
                           <p>{{ formatCurrency(getItemTotal(item)) }}</p>
                           <p class="mt-1 text-xs font-medium text-info">
-                            Com.: {{ formatCurrency(getItemCommission(item.id)) }}
+                            Com.:
+                            {{ formatCurrency(getItemCommission(item.id)) }}
                           </p>
                         </td>
                         <td class="px-4 py-4 text-right">
@@ -1996,7 +2018,10 @@ async function submit() {
                             />
                           </div>
                         </UTooltip>
-                        <span v-if="item.name" class="truncate text-xs text-muted">
+                        <span
+                          v-if="item.name"
+                          class="truncate text-xs text-muted"
+                        >
                           {{ item.name }}
                         </span>
                       </div>
@@ -2045,7 +2070,8 @@ async function submit() {
                         <div class="flex items-center justify-between gap-3">
                           <span class="text-muted">Total do item</span>
                           <span class="text-xs font-medium text-info">
-                            Com.: {{ formatCurrency(getItemCommission(item.id)) }}
+                            Com.:
+                            {{ formatCurrency(getItemCommission(item.id)) }}
                           </span>
                         </div>
                         <p class="mt-1 font-semibold text-highlighted">
@@ -2099,7 +2125,10 @@ async function submit() {
                     <p
                       class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
                     >
-                      <UIcon name="i-lucide-badge-dollar-sign" class="size-3.5" />
+                      <UIcon
+                        name="i-lucide-badge-dollar-sign"
+                        class="size-3.5"
+                      />
                       Custo
                     </p>
                     <p class="mt-1 font-semibold text-error">
