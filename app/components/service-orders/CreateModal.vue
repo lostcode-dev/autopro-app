@@ -245,6 +245,10 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function roundCurrency(value: number) {
+  return Number(value.toFixed(2));
+}
+
 function nextItemId() {
   itemCounter.value += 1;
   return `draft-item-${itemCounter.value}`;
@@ -494,6 +498,7 @@ const normalizedItems = computed(() =>
       const name = item.name.trim() || description;
 
       return {
+        id: item.id,
         name,
         description,
         quantity,
@@ -541,6 +546,87 @@ const selectedTaxes = computed(() => {
 const totalTaxesAmount = computed(() =>
   selectedTaxes.value.reduce((total, tax) => total + tax.calculated_amount, 0),
 );
+
+const itemCommissionMap = computed(() => {
+  const commissionByItemId = new Map<string, number>();
+  const items = normalizedItems.value;
+  const allItemsSale = subtotal.value;
+
+  items.forEach((item) => {
+    commissionByItemId.set(item.id, 0);
+  });
+
+  form.responsible_employees
+    .map((employeeId) => getEmployeeById(employeeId))
+    .filter((employee): employee is EmployeeItem => !!employee?.id)
+    .forEach((employee) => {
+      if (!employee.has_commission) return;
+
+      const commissionCategories = employee.commission_categories ?? [];
+      const eligibleItems = commissionCategories.length
+        ? items.filter(
+            (item) =>
+              !!item.category_id &&
+              commissionCategories.includes(item.category_id),
+          )
+        : items;
+
+      if (!eligibleItems.length) return;
+
+      const commissionAmount = toNumber(employee.commission_amount);
+      const eligibleSale = eligibleItems.reduce(
+        (total, item) => total + item.total_price,
+        0,
+      );
+      const eligibleRatio = allItemsSale > 0 ? eligibleSale / allItemsSale : 0;
+      const eligibleDiscount = discountValue.value * eligibleRatio;
+      const eligibleTaxes = totalTaxesAmount.value * eligibleRatio;
+
+      if (employee.commission_type === "percentage") {
+        eligibleItems.forEach((item) => {
+          const fraction = eligibleSale > 0 ? item.total_price / eligibleSale : 0;
+          const itemDiscount = eligibleDiscount * fraction;
+          const itemTaxes = eligibleTaxes * fraction;
+          let itemBase = item.total_price - itemDiscount;
+
+          if (employee.commission_base === "profit") {
+            itemBase = Math.max(
+              0,
+              itemBase - item.cost_price * item.quantity - itemTaxes,
+            );
+          }
+
+          const nextValue = roundCurrency(
+            (itemBase * commissionAmount) / 100,
+          );
+
+          commissionByItemId.set(
+            item.id,
+            roundCurrency((commissionByItemId.get(item.id) ?? 0) + nextValue),
+          );
+        });
+        return;
+      }
+
+      const perItemValue = roundCurrency(commissionAmount / eligibleItems.length);
+      const distributedTotal = roundCurrency(perItemValue * eligibleItems.length);
+      const remainder = roundCurrency(commissionAmount - distributedTotal);
+
+      eligibleItems.forEach((item, index) => {
+        const nextValue = index === 0 ? roundCurrency(perItemValue + remainder) : perItemValue;
+        commissionByItemId.set(
+          item.id,
+          roundCurrency((commissionByItemId.get(item.id) ?? 0) + nextValue),
+        );
+      });
+    });
+
+  return commissionByItemId;
+});
+
+function getItemCommission(itemId: string) {
+  return itemCommissionMap.value.get(itemId) ?? 0;
+}
 
 function computeResponsibleCommission(
   employee: EmployeeItem | null,
@@ -1858,7 +1944,10 @@ async function submit() {
                         <td
                           class="px-4 py-4 text-right font-semibold text-highlighted"
                         >
-                          {{ formatCurrency(getItemTotal(item)) }}
+                          <p>{{ formatCurrency(getItemTotal(item)) }}</p>
+                          <p class="mt-1 text-xs font-medium text-info">
+                            Com.: {{ formatCurrency(getItemCommission(item.id)) }}
+                          </p>
                         </td>
                         <td class="px-4 py-4 text-right">
                           <UButton
@@ -1953,7 +2042,12 @@ async function submit() {
                       </div>
 
                       <div class="rounded-xl bg-elevated/60 px-4 py-3 text-sm">
-                        <span class="text-muted">Total do item</span>
+                        <div class="flex items-center justify-between gap-3">
+                          <span class="text-muted">Total do item</span>
+                          <span class="text-xs font-medium text-info">
+                            Com.: {{ formatCurrency(getItemCommission(item.id)) }}
+                          </span>
+                        </div>
                         <p class="mt-1 font-semibold text-highlighted">
                           {{ formatCurrency(getItemTotal(item)) }}
                         </p>
