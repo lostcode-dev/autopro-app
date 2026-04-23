@@ -20,6 +20,16 @@ export const STATUS_LABEL: Record<string, string> = {
   cancelled: 'Cancelada'
 }
 
+export const STATUS_ICON: Record<string, string> = {
+  estimate: 'i-lucide-file-text',
+  open: 'i-lucide-circle-dot',
+  in_progress: 'i-lucide-wrench',
+  waiting_for_part: 'i-lucide-clock',
+  completed: 'i-lucide-circle-check',
+  delivered: 'i-lucide-truck',
+  cancelled: 'i-lucide-x-circle'
+}
+
 export const PAYMENT_STATUS_COLOR: Record<string, string> = {
   pending: 'warning',
   paid: 'success',
@@ -30,6 +40,12 @@ export const PAYMENT_STATUS_LABEL: Record<string, string> = {
   pending: 'Pendente',
   paid: 'Pago',
   partial: 'Parcial'
+}
+
+export const PAYMENT_STATUS_ICON: Record<string, string> = {
+  pending: 'i-lucide-clock',
+  paid: 'i-lucide-circle-check',
+  partial: 'i-lucide-circle-half'
 }
 
 // ─── Advance status map ───────────────────────────────────────────────────────

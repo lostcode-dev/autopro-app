@@ -273,6 +273,9 @@ const orderProxy = computed<ServiceOrder | null>(() => {
       <ServiceOrdersDetailOSHeader
         v-else-if="detail"
         :order="detail.order"
+        :client="detail.client"
+        :responsible-names="detail.responsibleNames"
+        :employees="detail.employees"
         :can-update="canUpdate"
         :can-cancel="canCancel"
         :can-delete="canDelete"

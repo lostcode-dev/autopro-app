@@ -69,6 +69,7 @@ export type ServiceOrderCommission = {
 export type ServiceOrderEmployee = {
   id: string
   name: string
+  photo_url?: string | null
   commission_type?: string | null
   commission_value?: number | null
   commission_base?: string | null
