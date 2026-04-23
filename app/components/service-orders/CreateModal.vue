@@ -918,15 +918,7 @@ async function submit() {
     @update:open="emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex items-start gap-4 p-4 lg:px-6 lg:py-5">
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          square
-          @click="emit('update:open', false)"
-        />
-
+      <div class="flex justify-between gap-4 p-4 lg:px-6 lg:py-5">
         <div class="min-w-0 flex-1 space-y-4">
           <div
             class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"
@@ -975,6 +967,13 @@ async function submit() {
             </div>
           </div>
         </div>
+         <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          square
+          @click="emit('update:open', false)"
+        />
       </div>
     </template>
 
