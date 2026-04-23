@@ -385,6 +385,10 @@ async function confirmDelete() {
 }
 
 // ─── Status options (kept for reference) are now in ServiceOrdersOrdersFilters ─
+
+// ─── Create ───────────────────────────────────────────────────────────────────
+
+const showCreateModal = ref(false)
 </script>
 
 <template>
@@ -433,8 +437,8 @@ async function confirmDelete() {
               v-if="canCreate"
               label="Nova OS"
               icon="i-lucide-plus"
-              color="neutral"
-              disabled
+              size="sm"
+              @click="showCreateModal = true"
             />
           </template>
 
@@ -463,6 +467,12 @@ async function confirmDelete() {
       </div>
     </template>
   </UDashboardPanel>
+
+  <!-- ── Create Modal ────────────────────────────────────────────────────────── -->
+  <ServiceOrdersCreateModal
+    v-model:open="showCreateModal"
+    @created="() => { accumulatedOrders = []; totalFiltered = 0; page = 1 }"
+  />
 
   <!-- ── Confirm cancel ───────────────────────────────────────────────────────── -->
   <AppConfirmModal
