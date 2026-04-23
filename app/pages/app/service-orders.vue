@@ -488,13 +488,16 @@ const statusFilterOptions = [
     </template>
   </AppConfirmModal>
 
-  <!-- ── Detail Slideover ─────────────────────────────────────────────────────── -->
-  <ServiceOrdersDetailSlideover
+  <!-- ── Detail Modal ────────────────────────────────────────────────────────── -->
+  <ServiceOrdersDetailModal
     v-model:open="showDetail"
     :order="selectedOrder"
+    :can-update="canUpdate"
     :can-cancel="canCancel"
-    :is-cancelling="isCancelling"
-    @cancel="requestCancel"
+    :can-delete="canDelete"
+    :can-create="canCreate"
+    @updated="() => { accumulatedOrders = []; totalFiltered = 0; page = 1 }"
+    @deleted="() => { closeDetail(); accumulatedOrders = []; totalFiltered = 0; page = 1 }"
   />
 
   <!-- ── Payment Modal ────────────────────────────────────────────────────────── -->
