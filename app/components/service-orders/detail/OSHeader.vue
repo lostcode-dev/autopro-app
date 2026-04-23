@@ -54,50 +54,117 @@ const canAdvance = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-wrap items-start justify-between gap-4 p-4 border-b border-default">
-    <!-- Left: close + identity -->
-    <div class="flex items-center gap-3 min-w-0">
-      <UButton
-        icon="i-lucide-x"
-        color="neutral"
-        variant="ghost"
-        size="sm"
-        aria-label="Fechar"
-        @click="emit('close')"
-      />
-      <div class="min-w-0">
-        <h1 class="text-xl font-bold text-highlighted truncate">
-          OS #{{ order.number ?? '—' }}
-        </h1>
-        <div class="mt-1 flex flex-wrap items-center gap-2">
-          <UBadge
-            :color="STATUS_COLOR[order.status] ?? 'neutral'"
-            :label="STATUS_LABEL[order.status] ?? order.status"
-            variant="subtle"
-          />
-          <UBadge
-            v-if="order.payment_status"
-            :color="PAYMENT_STATUS_COLOR[order.payment_status] ?? 'neutral'"
-            :label="PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status"
-            variant="soft"
-          />
-          <UBadge
-            v-if="order.is_installment && order.installment_count"
-            color="info"
-            :label="`${order.installment_count}x`"
-            variant="outline"
-          />
-        </div>
+  <div class="flex items-center gap-3 px-4 py-3 border-b border-default min-w-0">
+    <!-- Close -->
+    <UButton
+      icon="i-lucide-x"
+      color="neutral"
+      variant="ghost"
+      size="sm"
+      aria-label="Fechar"
+      class="shrink-0"
+      @click="emit('close')"
+    />
+
+    <!-- Identity (flex-1 to push actions right) -->
+    <div class="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+      <h1 class="text-lg font-bold text-highlighted whitespace-nowrap">
+        OS #{{ order.number ?? '—' }}
+      </h1>
+      <div class="flex flex-wrap items-center gap-1.5">
+        <UBadge
+          :color="STATUS_COLOR[order.status] ?? 'neutral'"
+          :label="STATUS_LABEL[order.status] ?? order.status"
+          variant="subtle"
+        />
+        <UBadge
+          v-if="order.payment_status"
+          :color="PAYMENT_STATUS_COLOR[order.payment_status] ?? 'neutral'"
+          :label="PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status"
+          variant="soft"
+        />
+        <UBadge
+          v-if="order.is_installment && order.installment_count"
+          color="info"
+          :label="`${order.installment_count}x`"
+          variant="outline"
+        />
       </div>
     </div>
 
-    <!-- Right: actions -->
-    <div class="flex shrink-0 flex-wrap items-center gap-2">
+    <!-- Actions -->
+    <div class="flex shrink-0 items-center gap-2">
       <!-- Receber pagamento -->
       <UButton
         v-if="canPay"
         label="Receber"
         icon="i-lucide-credit-card"
+        color="success"
+        size="sm"
+        @click="emit('pay')"
+      />
+
+      <!-- Cancelar pagamento -->
+      <UButton
+        v-if="canCancelPayment"
+        label="Cancelar pagamento"
+        icon="i-lucide-credit-card"
+        color="error"
+        variant="outline"
+        size="sm"
+        :loading="isCancellingPayment"
+        @click="emit('cancel-payment')"
+      />
+
+      <!-- Avançar status -->
+      <UButton
+        v-if="canAdvance && advanceInfo"
+        :label="advanceInfo.label"
+        :icon="advanceInfo.icon"
+        :color="advanceInfo.color"
+        variant="outline"
+        size="sm"
+        :loading="isAdvancing"
+        @click="emit('advance-status')"
+      />
+
+      <UDivider v-if="canCreate || (canCancel && !isCancelled) || canDelete" orientation="vertical" class="h-5" />
+
+      <!-- Duplicar -->
+      <UTooltip v-if="canCreate" text="Duplicar OS">
+        <UButton
+          icon="i-lucide-copy"
+          color="neutral"
+          variant="ghost"
+          size="sm"
+          @click="emit('duplicate')"
+        />
+      </UTooltip>
+
+      <!-- Cancelar OS -->
+      <UTooltip v-if="canCancel && !isCancelled" text="Cancelar OS">
+        <UButton
+          icon="i-lucide-ban"
+          color="warning"
+          variant="ghost"
+          size="sm"
+          @click="emit('cancel')"
+        />
+      </UTooltip>
+
+      <!-- Excluir OS -->
+      <UTooltip v-if="canDelete" text="Excluir OS">
+        <UButton
+          icon="i-lucide-trash-2"
+          color="error"
+          variant="ghost"
+          size="sm"
+          @click="emit('delete')"
+        />
+      </UTooltip>
+    </div>
+  </div>
+</template>
         color="success"
         size="sm"
         @click="emit('pay')"

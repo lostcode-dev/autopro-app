@@ -252,9 +252,10 @@ const orderProxy = computed<ServiceOrder | null>(() => {
   <UModal
     :open="open"
     :ui="{
-      content: 'sm:max-w-none w-full sm:w-screen sm:h-screen sm:rounded-none flex flex-col overflow-hidden',
+      overlay: 'bg-default',
+      content: 'max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
       body: 'flex-1 overflow-y-auto p-0 min-h-0',
-      header: 'p-0 border-b-0'
+      header: 'p-0 border-b-0 shrink-0'
     }"
     @update:open="emit('update:open', $event)"
   >

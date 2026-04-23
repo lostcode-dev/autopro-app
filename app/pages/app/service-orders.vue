@@ -422,7 +422,7 @@ const showCreateModal = ref(false)
           @load-more="loadMore"
         >
           <template #filters>
-            <ServiceOrdersOrdersFilters
+            <ServiceOrdersFilters
               v-model:status-filter="statusFilter"
               v-model:client-id-filter="clientIdFilter"
               v-model:vehicle-id-filter="vehicleIdFilter"
