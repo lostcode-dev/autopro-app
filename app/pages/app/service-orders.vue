@@ -358,17 +358,7 @@ const statusFilterOptions = [
 <template>
   <UDashboardPanel>
     <template #header>
-      <AppPageHeader title="Ordens de Serviço">
-        <template #right>
-          <UButton
-            v-if="canCreate"
-            label="Nova OS"
-            icon="i-lucide-plus"
-            color="neutral"
-            disabled
-          />
-        </template>
-      </AppPageHeader>
+      <AppPageHeader title="Ordens de Serviço" />
     </template>
 
     <template #body>
@@ -405,9 +395,13 @@ const statusFilterOptions = [
           </template>
 
           <template #toolbar-right>
-            <span class="text-sm text-muted">
-              {{ totalFiltered }} resultado{{ totalFiltered !== 1 ? 's' : '' }}
-            </span>
+            <UButton
+              v-if="canCreate"
+              label="Nova OS"
+              icon="i-lucide-plus"
+              color="neutral"
+              disabled
+            />
           </template>
 
           <template #card-list>
