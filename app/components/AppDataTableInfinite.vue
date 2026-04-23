@@ -395,6 +395,39 @@ function getTdClass(cell: ReturnType<typeof rows.value[0]['getVisibleCells']>[0]
       </slot>
     </div>
 
+    <!-- Card list mode -->
+    <div
+      v-else-if="$slots['card-list']"
+      class="overflow-auto"
+      :style="{ maxHeight }"
+    >
+      <slot name="card-list" />
+
+      <!-- Infinite scroll sentinel + load-more feedback -->
+      <div ref="sentinelRef" class="px-4 py-3">
+        <div
+          v-if="loadingMore"
+          class="space-y-3"
+        >
+          <slot name="loading-more">
+            <USkeleton
+              v-for="i in 3"
+              :key="i"
+              :class="rowSkeletonClass"
+            />
+          </slot>
+        </div>
+        <div
+          v-else-if="!hasMore && hasItems"
+          class="py-2 text-center text-xs text-muted"
+        >
+          <slot name="end-of-list">
+            Todos os {{ totalItems }} registro(s) foram carregados
+          </slot>
+        </div>
+      </div>
+    </div>
+
     <!-- Virtualized table -->
     <div
       v-else

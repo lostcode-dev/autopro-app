@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { watchDebounced, useIntersectionObserver } from '@vueuse/core'
+import { watchDebounced } from '@vueuse/core'
 import { ActionCode } from '~/constants/action-codes'
-
 import type { ServiceOrder } from '~/types/service-orders'
 
 type ServiceOrdersApiResponse = {
@@ -38,7 +37,7 @@ const MANAGED_QUERY_KEYS = ['search', 'status'] as const
 const search = ref(
   typeof route.query.search === 'string' ? route.query.search : ''
 )
-const debouncedSearch = ref(search.value)
+const apiSearch = ref(search.value)
 const statusFilter = ref(
   typeof route.query.status === 'string' ? route.query.status : 'all'
 )
@@ -54,79 +53,87 @@ async function syncQuery() {
     search: search.value || undefined,
     status: statusFilter.value !== 'all' ? statusFilter.value : undefined
   }
-  const cur = JSON.stringify(route.query)
-  if (cur !== JSON.stringify(next)) await router.replace({ query: next })
+  if (JSON.stringify(route.query) !== JSON.stringify(next))
+    await router.replace({ query: next })
 }
 
-// ─── Infinite scroll state ─────────────────────────────────────────────────────
-
-const allOrders = ref<ServiceOrder[]>([])
-const nextCursor = ref<number | null>(0)
-const isLoadingMore = ref(false)
-const totalFiltered = ref(0)
-const hasMore = computed(() => nextCursor.value !== null)
+// ─── Data loading (useAsyncData + page accumulation) ─────────────────────────
 
 const LIMIT = 20
+const page = ref(1)
+const accumulatedOrders = ref<ServiceOrder[]>([])
+const totalFiltered = ref(0)
 
-async function loadMore() {
-  if (isLoadingMore.value || !hasMore.value) return
-  isLoadingMore.value = true
-  try {
-    const res = await $fetch<ServiceOrdersApiResponse>('/api/service-orders', {
+const queryKey = computed(
+  () => `service-orders-${page.value}-${apiSearch.value}-${statusFilter.value}`
+)
+
+const { data, status: fetchStatus } = await useAsyncData(
+  () => queryKey.value,
+  async () => {
+    if (!canRead.value) {
+      return {
+        data: { items: [] as ServiceOrder[], nextCursor: null, totalFiltered: 0, totalAll: 0 }
+      } satisfies ServiceOrdersApiResponse
+    }
+    return $fetch<ServiceOrdersApiResponse>('/api/service-orders', {
       query: {
-        searchTerm: debouncedSearch.value || undefined,
+        searchTerm: apiSearch.value || undefined,
         status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
-        cursor: nextCursor.value,
+        cursor: (page.value - 1) * LIMIT,
         limit: LIMIT
       }
     })
-    allOrders.value.push(...res.data.items)
-    nextCursor.value = res.data.nextCursor
-    totalFiltered.value = res.data.totalFiltered
-  } catch {
-    toast.add({ title: 'Erro ao carregar ordens', color: 'error' })
-  } finally {
-    isLoadingMore.value = false
-  }
-}
-
-function resetAndLoad() {
-  allOrders.value = []
-  nextCursor.value = 0
-  totalFiltered.value = 0
-  loadMore()
-}
-
-// ─── Sentinel (infinite scroll trigger) ───────────────────────────────────────
-
-const listContainerRef = ref<HTMLElement | null>(null)
-const sentinelRef = ref<HTMLElement | null>(null)
-
-useIntersectionObserver(
-  sentinelRef,
-  (entries) => {
-    if (entries[0]?.isIntersecting && hasMore.value && !isLoadingMore.value)
-      loadMore()
   },
-  { root: listContainerRef, rootMargin: '300px' }
+  { watch: [queryKey] }
 )
+
+watch(
+  data,
+  (newData) => {
+    const items = newData?.data.items ?? []
+    totalFiltered.value = newData?.data.totalFiltered ?? 0
+    if (page.value === 1) {
+      accumulatedOrders.value = items
+    } else {
+      accumulatedOrders.value = [...accumulatedOrders.value, ...items]
+    }
+  },
+  { immediate: true }
+)
+
+const hasMore = computed(
+  () => accumulatedOrders.value.length < totalFiltered.value
+)
+const isLoading = computed(
+  () => fetchStatus.value === 'pending' && page.value === 1
+)
+const isLoadingMore = computed(
+  () => fetchStatus.value === 'pending' && page.value > 1
+)
+
+function loadMore() {
+  if (hasMore.value && fetchStatus.value !== 'pending') page.value++
+}
 
 // ─── Watchers ──────────────────────────────────────────────────────────────────
 
 watchDebounced(
   search,
   async (val) => {
-    debouncedSearch.value = val
+    apiSearch.value = val
     await syncQuery()
-    resetAndLoad()
   },
   { debounce: 300, maxWait: 800 }
 )
 
-watch(statusFilter, async () => {
-  await syncQuery()
-  resetAndLoad()
+watch([apiSearch, statusFilter], () => {
+  accumulatedOrders.value = []
+  totalFiltered.value = 0
+  page.value = 1
 })
+
+watch(statusFilter, syncQuery)
 
 watch(
   () => route.query,
@@ -135,14 +142,11 @@ watch(
     const st = typeof q.status === 'string' ? q.status : 'all'
     if (search.value !== s) {
       search.value = s
-      debouncedSearch.value = s
+      apiSearch.value = s
     }
     if (statusFilter.value !== st) statusFilter.value = st
   }
 )
-
-// Initial load
-if (canRead.value) await loadMore()
 
 // ─── Detail Slideover ──────────────────────────────────────────────────────────
 
@@ -181,7 +185,9 @@ async function advanceStatus(order: ServiceOrder) {
       body: { orderId: order.id, orderData: { status: nextStatus } }
     })
     toast.add({ title: 'Status atualizado', color: 'success' })
-    resetAndLoad()
+    accumulatedOrders.value = []
+    totalFiltered.value = 0
+    page.value = 1
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -230,7 +236,9 @@ async function duplicate(order: ServiceOrder) {
       }
     })
     toast.add({ title: 'OS duplicada com sucesso', color: 'success' })
-    resetAndLoad()
+    accumulatedOrders.value = []
+    totalFiltered.value = 0
+    page.value = 1
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -256,7 +264,9 @@ function requestPay(order: ServiceOrder) {
 function onPaymentDone() {
   showPaymentModal.value = false
   paymentOrder.value = null
-  resetAndLoad()
+  accumulatedOrders.value = []
+  totalFiltered.value = 0
+  page.value = 1
 }
 
 // ─── Cancel ────────────────────────────────────────────────────────────────────
@@ -281,7 +291,9 @@ async function confirmCancel() {
     showCancelModal.value = false
     orderPendingCancel.value = null
     if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail()
-    resetAndLoad()
+    accumulatedOrders.value = []
+    totalFiltered.value = 0
+    page.value = 1
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -316,7 +328,9 @@ async function confirmDelete() {
     showDeleteModal.value = false
     orderPendingDeletion.value = null
     if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail()
-    resetAndLoad()
+    accumulatedOrders.value = []
+    totalFiltered.value = 0
+    page.value = 1
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -364,87 +378,60 @@ const statusFilterOptions = [
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <!-- Filtros -->
-        <div class="flex shrink-0 flex-wrap items-center gap-3 border-b border-default p-4">
-          <UInput
-            v-model="search"
-            placeholder="Buscar por número ou cliente..."
-            icon="i-lucide-search"
-            class="w-72"
-          />
-          <USelectMenu
-            v-model="statusFilter"
-            :items="statusFilterOptions"
-            value-key="value"
-            class="w-44"
-          />
-          <span class="ml-auto text-sm text-muted">
-            {{ totalFiltered }} resultado{{ totalFiltered !== 1 ? 's' : '' }}
-          </span>
-        </div>
-
-        <!-- Estado vazio -->
-        <div
-          v-if="allOrders.length === 0 && !isLoadingMore"
-          class="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center"
+      <div v-else class="flex min-h-0 flex-1 flex-col p-4">
+        <AppDataTableInfinite
+          v-model:search-term="search"
+          :columns="[]"
+          :data="accumulatedOrders as Record<string, unknown>[]"
+          :loading="isLoading"
+          :loading-more="isLoadingMore"
+          :has-more="hasMore"
+          :total="totalFiltered"
+          show-search
+          search-placeholder="Buscar por número ou cliente..."
+          empty-icon="i-lucide-clipboard-list"
+          empty-title="Nenhuma ordem de serviço encontrada"
+          empty-description="Crie uma OS ou ajuste os filtros para continuar."
+          row-skeleton-class="h-24 w-full rounded-xl"
+          @load-more="loadMore"
         >
-          <UIcon name="i-lucide-clipboard-list" class="size-12 text-muted" />
-          <p class="font-medium text-highlighted">
-            Nenhuma ordem de serviço encontrada
-          </p>
-          <p class="text-sm text-muted">
-            Crie uma OS ou ajuste os filtros para continuar.
-          </p>
-        </div>
-
-        <!-- Skeleton inicial -->
-        <div
-          v-else-if="allOrders.length === 0 && isLoadingMore"
-          class="space-y-3 p-4"
-        >
-          <USkeleton v-for="i in 6" :key="i" class="h-24 w-full rounded-xl" />
-        </div>
-
-        <!-- Lista com scroll -->
-        <div v-else ref="listContainerRef" class="min-h-0 flex-1 overflow-y-auto">
-          <div class="space-y-3 p-4">
-            <ServiceOrdersOrderCard
-              v-for="order in allOrders"
-              :key="order.id"
-              :order="order"
-              :can-cancel="canCancel"
-              :can-delete="canDelete"
-              :can-create="canCreate"
-              :can-update="canUpdate"
-              :is-advancing="advancingIds.has(order.id)"
-              :is-duplicating="duplicatingIds.has(order.id)"
-              @view="openDetail"
-              @advance-status="advanceStatus"
-              @duplicate="duplicate"
-              @pay="requestPay"
-              @cancel="requestCancel"
-              @delete="requestDelete"
+          <template #filters>
+            <USelectMenu
+              v-model="statusFilter"
+              :items="statusFilterOptions"
+              value-key="value"
+              class="w-44"
             />
-          </div>
+          </template>
 
-          <!-- Sentinel -->
-          <div ref="sentinelRef" class="h-px" />
+          <template #toolbar-right>
+            <span class="text-sm text-muted">
+              {{ totalFiltered }} resultado{{ totalFiltered !== 1 ? 's' : '' }}
+            </span>
+          </template>
 
-          <!-- Skeleton de carregamento incremental -->
-          <div v-if="isLoadingMore" class="space-y-3 px-4 pb-4">
-            <USkeleton v-for="i in 3" :key="i" class="h-24 w-full rounded-xl" />
-          </div>
-
-          <!-- Fim da lista -->
-          <div
-            v-else-if="!hasMore && allOrders.length > 0"
-            class="py-8 text-center text-sm text-muted"
-          >
-            <UIcon name="i-lucide-check-circle" class="mx-auto mb-2 size-5" />
-            Todas as {{ totalFiltered }} ordens foram carregadas.
-          </div>
-        </div>
+          <template #card-list>
+            <div class="space-y-3 p-4">
+              <ServiceOrdersOrderCard
+                v-for="order in accumulatedOrders"
+                :key="order.id"
+                :order="order"
+                :can-cancel="canCancel"
+                :can-delete="canDelete"
+                :can-create="canCreate"
+                :can-update="canUpdate"
+                :is-advancing="advancingIds.has(order.id)"
+                :is-duplicating="duplicatingIds.has(order.id)"
+                @view="openDetail"
+                @advance-status="advanceStatus"
+                @duplicate="duplicate"
+                @pay="requestPay"
+                @cancel="requestCancel"
+                @delete="requestDelete"
+              />
+            </div>
+          </template>
+        </AppDataTableInfinite>
       </div>
     </template>
   </UDashboardPanel>
