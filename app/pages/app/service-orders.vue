@@ -83,11 +83,12 @@ async function syncQuery() {
 
 const LIMIT = 20
 const page = ref(1)
+const refreshKey = ref(0)
 const accumulatedOrders = ref<ServiceOrder[]>([])
 const totalFiltered = ref(0)
 
 const queryKey = computed(
-  () => `service-orders-${page.value}-${apiSearch.value}-${statusFilter.value}-${clientIdFilter.value}-${vehicleIdFilter.value}-${responsibleIdFilter.value}-${dateFrom.value}-${dateTo.value}`
+  () => `service-orders-${refreshKey.value}-${page.value}-${apiSearch.value}-${statusFilter.value}-${clientIdFilter.value}-${vehicleIdFilter.value}-${responsibleIdFilter.value}-${dateFrom.value}-${dateTo.value}`
 )
 
 const { data, status: fetchStatus } = await useAsyncData(
@@ -226,9 +227,7 @@ async function advanceStatus(order: ServiceOrder) {
       body: { orderId: order.id, orderData: { status: nextStatus } }
     })
     toast.add({ title: 'Status atualizado', color: 'success' })
-    accumulatedOrders.value = []
-    totalFiltered.value = 0
-    page.value = 1
+    forceReload()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -277,9 +276,7 @@ async function duplicate(order: ServiceOrder) {
       }
     })
     toast.add({ title: 'OS duplicada com sucesso', color: 'success' })
-    accumulatedOrders.value = []
-    totalFiltered.value = 0
-    page.value = 1
+    forceReload()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -305,9 +302,7 @@ function requestPay(order: ServiceOrder) {
 function onPaymentDone() {
   showPaymentModal.value = false
   paymentOrder.value = null
-  accumulatedOrders.value = []
-  totalFiltered.value = 0
-  page.value = 1
+  forceReload()
 }
 
 // ─── Cancel ────────────────────────────────────────────────────────────────────
@@ -332,9 +327,7 @@ async function confirmCancel() {
     showCancelModal.value = false
     orderPendingCancel.value = null
     if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail()
-    accumulatedOrders.value = []
-    totalFiltered.value = 0
-    page.value = 1
+    forceReload()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -369,9 +362,7 @@ async function confirmDelete() {
     showDeleteModal.value = false
     orderPendingDeletion.value = null
     if (showDetail.value && selectedOrder.value?.id === order.id) closeDetail()
-    accumulatedOrders.value = []
-    totalFiltered.value = 0
-    page.value = 1
+    forceReload()
   } catch (error: unknown) {
     const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
@@ -385,6 +376,18 @@ async function confirmDelete() {
 }
 
 // ─── Status options (kept for reference) are now in ServiceOrdersOrdersFilters ─
+
+// ─── Force reload helper ──────────────────────────────────────────────────────
+
+function forceReload() {
+  accumulatedOrders.value = []
+  totalFiltered.value = 0
+  if (page.value === 1) {
+    refreshKey.value++
+  } else {
+    page.value = 1
+  }
+}
 
 // ─── Create ───────────────────────────────────────────────────────────────────
 
@@ -471,7 +474,7 @@ const showCreateModal = ref(false)
   <!-- ── Create Modal ────────────────────────────────────────────────────────── -->
   <ServiceOrdersCreateModal
     v-model:open="showCreateModal"
-    @created="() => { accumulatedOrders = []; totalFiltered = 0; page = 1 }"
+    @created="forceReload"
   />
 
   <!-- ── Confirm cancel ───────────────────────────────────────────────────────── -->
@@ -534,8 +537,8 @@ const showCreateModal = ref(false)
     :can-cancel="canCancel"
     :can-delete="canDelete"
     :can-create="canCreate"
-    @updated="() => { accumulatedOrders = []; totalFiltered = 0; page = 1 }"
-    @deleted="() => { closeDetail(); accumulatedOrders = []; totalFiltered = 0; page = 1 }"
+    @updated="forceReload"
+    @deleted="() => { closeDetail(); forceReload() }"
   />
 
   <!-- ── Payment Modal ────────────────────────────────────────────────────────── -->

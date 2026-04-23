@@ -116,7 +116,6 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
           :label="STATUS_LABEL[order.status] ?? order.status"
           :leading-icon="STATUS_ICON[order.status]"
           variant="subtle"
-          size="sm"
         />
 
         <!-- Payment status badge with icon -->
@@ -126,7 +125,6 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
           :label="PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status"
           :leading-icon="PAYMENT_STATUS_ICON[order.payment_status]"
           variant="soft"
-          size="sm"
         />
 
         <!-- Installments badge -->
@@ -136,7 +134,6 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
           :label="`${order.installment_count}x`"
           leading-icon="i-lucide-layers"
           variant="outline"
-          size="sm"
         />
 
         <!-- Separator -->
