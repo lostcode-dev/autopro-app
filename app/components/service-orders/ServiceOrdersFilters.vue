@@ -208,23 +208,14 @@ function clearAll() {
 
         <!-- Data de entrada -->
         <UFormField label="Data de entrada">
-          <div class="flex items-center gap-2">
-            <UInput
-              v-model="localDateFrom"
-              type="date"
-              size="sm"
-              class="flex-1"
-              placeholder="De"
-            />
-            <span class="text-muted shrink-0 text-xs">até</span>
-            <UInput
-              v-model="localDateTo"
-              type="date"
-              size="sm"
-              class="flex-1"
-              placeholder="Até"
-            />
-          </div>
+          <UiDateRangePicker
+            :from="localDateFrom"
+            :to="localDateTo"
+            placeholder="Selecione um período"
+            class="w-full"
+            @update:from="v => emit('update:dateFrom', v ?? '')"
+            @update:to="v => emit('update:dateTo', v ?? '')"
+          />
         </UFormField>
       </div>
     </template>
