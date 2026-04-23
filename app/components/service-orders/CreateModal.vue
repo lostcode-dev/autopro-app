@@ -1100,14 +1100,14 @@ async function submit() {
     @update:open="emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex justify-between gap-4 p-4 lg:px-6 lg:py-5">
+      <div class="flex justify-between gap-4 p-4 lg:px-6 lg:py-5 w-full">
         <div class="min-w-0 flex-1 space-y-4">
           <div
             class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"
           >
             <div class="space-y-1.5">
               <p
-                class="text-xs font-semibold uppercase tracking-[0.22em] text-primary/80"
+                class=" font-semibold uppercase tracking-[0.22em] text-primary/80"
               >
                 {{ modalEyebrow }}
               </p>
@@ -1344,7 +1344,7 @@ async function submit() {
                   </div>
 
                   <UButton
-                    label="Adicionar responsável"
+                    label="Adicionar"
                     icon="i-lucide-user-plus"
                     color="neutral"
                     variant="outline"
@@ -1377,9 +1377,9 @@ async function submit() {
                   :key="`${index}-${employeeId}`"
                   class="rounded-xl border border-default bg-default p-4 shadow-xs"
                 >
-                  <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+                  <div class="flex flex-col gap-3 lg:flex-row lg:items-star">
                     <div class="min-w-0 flex-1">
-                      <UFormField label="Responsável">
+                      <UFormField>
                         <USelectMenu
                           :model-value="employeeId"
                           :items="getResponsibleSelectOptions(index)"
@@ -1520,7 +1520,7 @@ async function submit() {
                 </div>
               </template>
 
-              <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div
                   v-if="!isEditMode"
                   class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4"
@@ -1728,7 +1728,7 @@ async function submit() {
               >
                 <div class="flex items-end gap-3">
                   <UFormField
-                    label="Adicionar produto ou serviço do catálogo"
+                    label="Adicionar produto ou serviço"
                     class="min-w-0 flex-1"
                   >
                     <USelectMenu
@@ -1800,26 +1800,32 @@ async function submit() {
                         <td class="px-4 py-4">
                           <div class="space-y-3">
                             <div class="flex items-center gap-2">
-                              <UBadge
-                                :label="
+                              <UTooltip
+                                :text="
                                   item.source === 'catalog'
-                                    ? 'Catálogo'
-                                    : 'Manual'
+                                    ? 'Item do catálogo'
+                                    : 'Item manual'
                                 "
-                                :color="
-                                  item.source === 'catalog'
-                                    ? 'primary'
-                                    : 'neutral'
-                                "
-                                :leading-icon="
-                                  item.source === 'catalog'
-                                    ? 'i-lucide-package-check'
-                                    : 'i-lucide-pencil-ruler'
-                                "
-                                variant="subtle"
-                                size="sm"
-                              />
-                              <span v-if="item.name" class="text-xs text-muted">
+                              >
+                                <div
+                                  class="flex size-6 shrink-0 items-center justify-center rounded-lg"
+                                  :class="
+                                    item.source === 'catalog'
+                                      ? 'bg-primary/10 text-primary'
+                                      : 'bg-elevated text-muted'
+                                  "
+                                >
+                                  <UIcon
+                                    :name="
+                                      item.source === 'catalog'
+                                        ? 'i-lucide-package-check'
+                                        : 'i-lucide-pencil-ruler'
+                                    "
+                                    class="size-3.5"
+                                  />
+                                </div>
+                              </UTooltip>
+                              <span v-if="item.name" class="truncate text-xs text-muted">
                                 {{ item.name }}
                               </span>
                             </div>
@@ -1875,21 +1881,36 @@ async function submit() {
                     class="rounded-2xl border border-default bg-default p-4 shadow-xs"
                   >
                     <div class="flex items-start justify-between gap-3">
-                      <UBadge
-                        :label="
-                          item.source === 'catalog' ? 'Catálogo' : 'Manual'
-                        "
-                        :color="
-                          item.source === 'catalog' ? 'primary' : 'neutral'
-                        "
-                        :leading-icon="
-                          item.source === 'catalog'
-                            ? 'i-lucide-package-check'
-                            : 'i-lucide-pencil-ruler'
-                        "
-                        variant="subtle"
-                        size="sm"
-                      />
+                      <div class="flex min-w-0 items-center gap-2">
+                        <UTooltip
+                          :text="
+                            item.source === 'catalog'
+                              ? 'Item do catálogo'
+                              : 'Item manual'
+                          "
+                        >
+                          <div
+                            class="flex size-6 shrink-0 items-center justify-center rounded-lg"
+                            :class="
+                              item.source === 'catalog'
+                                ? 'bg-primary/10 text-primary'
+                                : 'bg-elevated text-muted'
+                            "
+                          >
+                            <UIcon
+                              :name="
+                                item.source === 'catalog'
+                                  ? 'i-lucide-package-check'
+                                  : 'i-lucide-pencil-ruler'
+                              "
+                              class="size-3.5"
+                            />
+                          </div>
+                        </UTooltip>
+                        <span v-if="item.name" class="truncate text-xs text-muted">
+                          {{ item.name }}
+                        </span>
+                      </div>
                       <UButton
                         icon="i-lucide-trash-2"
                         color="error"
@@ -1966,14 +1987,14 @@ async function submit() {
                   <p class="mt-1 text-3xl font-bold text-highlighted">
                     {{ formatCurrency(totalAmount) }}
                   </p>
-                  <p class="mt-1 text-xs text-muted">
-                    Baseado nos itens adicionados durante a criação
-                  </p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3 text-center">
                   <div class="rounded-xl bg-elevated/70 p-3">
-                    <p class="text-xs uppercase tracking-wide text-muted">
+                    <p
+                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+                    >
+                      <UIcon name="i-lucide-receipt" class="size-3.5" />
                       Subtotal
                     </p>
                     <p class="mt-1 font-semibold text-highlighted">
@@ -1981,7 +2002,10 @@ async function submit() {
                     </p>
                   </div>
                   <div class="rounded-xl bg-elevated/70 p-3">
-                    <p class="text-xs uppercase tracking-wide text-muted">
+                    <p
+                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+                    >
+                      <UIcon name="i-lucide-badge-dollar-sign" class="size-3.5" />
                       Custo
                     </p>
                     <p class="mt-1 font-semibold text-error">
@@ -1989,7 +2013,10 @@ async function submit() {
                     </p>
                   </div>
                   <div class="rounded-xl bg-elevated/70 p-3">
-                    <p class="text-xs uppercase tracking-wide text-muted">
+                    <p
+                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+                    >
+                      <UIcon name="i-lucide-percent" class="size-3.5" />
                       Impostos
                     </p>
                     <p class="mt-1 font-semibold text-warning">
@@ -1997,7 +2024,10 @@ async function submit() {
                     </p>
                   </div>
                   <div class="rounded-xl bg-elevated/70 p-3">
-                    <p class="text-xs uppercase tracking-wide text-muted">
+                    <p
+                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+                    >
+                      <UIcon name="i-lucide-wallet-cards" class="size-3.5" />
                       Comissão
                     </p>
                     <p class="mt-1 font-semibold text-info">
@@ -2006,24 +2036,20 @@ async function submit() {
                   </div>
                 </div>
 
-                <UFormField label="Desconto aplicado na OS">
-                  <UiCurrencyInput v-model="form.discount" />
-                </UFormField>
+                <div class="grid grid-cols-2 gap-4">
+                  <UFormField label="Desconto">
+                    <UiCurrencyInput v-model="form.discount" />
+                  </UFormField>
 
-                <div
-                  class="rounded-xl border border-default bg-elevated/40 p-4"
-                >
-                  <p class="text-xs uppercase tracking-wide text-muted">
-                    Margem estimada
-                  </p>
-                  <p
-                    class="mt-1 text-lg font-semibold"
-                    :class="
-                      estimatedProfit >= 0 ? 'text-success' : 'text-error'
-                    "
-                  >
-                    {{ formatCurrency(estimatedProfit) }}
-                  </p>
+                  <UFormField label="Margem estimada">
+                    <UInput
+                      :model-value="formatCurrency(estimatedProfit)"
+                      icon="i-lucide-chart-column-big"
+                      :color="estimatedProfit >= 0 ? 'success' : 'error'"
+                      class="w-full"
+                      disabled
+                    />
+                  </UFormField>
                 </div>
               </div>
             </UCard>
