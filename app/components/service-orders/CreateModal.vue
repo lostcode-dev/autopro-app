@@ -372,6 +372,19 @@ const employeeSelectOptions = computed<SelectOption[]>(() =>
   })),
 );
 
+function getResponsibleSelectOptions(index: number) {
+  const selectedIds = new Set(
+    form.responsible_employees.filter(
+      (selectedId: string, selectedIndex: number) =>
+        selectedIndex !== index && !!selectedId,
+    ),
+  );
+
+  return employeeSelectOptions.value.filter(
+    (option: SelectOption) => !selectedIds.has(option.value),
+  );
+}
+
 const productSelectOptions = computed<SelectOption[]>(() =>
   productCatalog.value.map((product) => ({
     label: `${product.name}${product.code ? ` • ${product.code}` : ""} • ${formatCurrency(getProductUnitSale(product))}`,
@@ -592,11 +605,82 @@ function removeItem(itemId: string) {
 }
 
 function addResponsible() {
+  if (
+    employeeCatalog.value.length > 0 &&
+    form.responsible_employees.filter(Boolean).length >= employeeCatalog.value.length
+  ) {
+    toast.add({
+      title: "Todos os responsáveis já foram adicionados",
+      color: "warning",
+    });
+    return;
+  }
+
   form.responsible_employees.push("");
 }
 
 function updateResponsible(index: number, employeeId: string) {
+  if (
+    employeeId &&
+    form.responsible_employees.some(
+      (selectedId: string, selectedIndex: number) =>
+        selectedIndex !== index && selectedId === employeeId,
+    )
+  ) {
+    toast.add({
+      title: "Responsável já selecionado",
+      description: "Escolha outro funcionário para esta OS.",
+      color: "warning",
+    });
+    return;
+  }
+
   form.responsible_employees[index] = employeeId;
+}
+
+function getResponsibleCommissionLabel(employeeId: string) {
+  return formatCurrency(computeResponsibleCommission(getEmployeeById(employeeId)).value);
+}
+
+function getResponsibleRateLabel(employeeId: string) {
+  const employee = getEmployeeById(employeeId);
+  if (!employee?.has_commission) return null;
+
+  return employee.commission_type === "percentage"
+    ? `${toNumber(employee.commission_amount)}%`
+    : formatCurrency(employee.commission_amount);
+}
+
+function getResponsibleBaseLabel(employeeId: string) {
+  const employee = getEmployeeById(employeeId);
+  if (!employee) return null;
+
+  return employee.commission_base === "profit"
+    ? "Base: lucro"
+    : "Base: faturamento";
+}
+
+function getResponsibleCommissionNote(employeeId: string) {
+  const employee = getEmployeeById(employeeId);
+  if (!employee) return null;
+  if (!employee.has_commission) {
+    return {
+      label: "Sem comissão",
+      color: "neutral" as const,
+      icon: "i-lucide-circle-off",
+    };
+  }
+
+  const commission = computeResponsibleCommission(employee);
+  if (employee.commission_categories?.length && !commission.hasMatchingItems) {
+    return {
+      label: "Sem itens nas categorias",
+      color: "warning" as const,
+      icon: "i-lucide-triangle-alert",
+    };
+  }
+
+  return null;
 }
 
 function removeResponsible(index: number) {
@@ -1199,12 +1283,12 @@ async function submit() {
                   :key="`${index}-${employeeId}`"
                   class="rounded-xl border border-default bg-default p-4 shadow-xs"
                 >
-                  <div class="flex flex-col gap-4 lg:flex-row lg:items-start">
-                    <div class="min-w-0 flex-1 space-y-3">
-                      <UFormField :label="`Responsável ${index + 1}`">
+                  <div class="flex flex-col gap-3 lg:flex-row lg:items-end">
+                    <div class="min-w-0 flex-1">
+                      <UFormField label="Responsável">
                         <USelectMenu
                           :model-value="employeeId"
-                          :items="employeeSelectOptions"
+                          :items="getResponsibleSelectOptions(index)"
                           value-key="value"
                           class="w-full"
                           searchable
@@ -1218,74 +1302,40 @@ async function submit() {
 
                       <div
                         v-if="getEmployeeById(employeeId)"
-                        class="rounded-xl bg-elevated/60 p-3 text-sm"
+                        class="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-elevated/60 px-3 py-2 text-sm lg:flex-nowrap"
                       >
-                        <div class="flex flex-wrap items-center gap-2">
-                          <UBadge
-                            v-if="getEmployeeById(employeeId)?.has_commission"
-                            color="success"
-                            variant="subtle"
-                            leading-icon="i-lucide-badge-percent"
-                            :label="
-                              getEmployeeById(employeeId)?.commission_type ===
-                              'percentage'
-                                ? `${toNumber(getEmployeeById(employeeId)?.commission_amount)}%`
-                                : formatCurrency(
-                                    getEmployeeById(employeeId)
-                                      ?.commission_amount,
-                                  )
-                            "
+                        <UBadge
+                          color="primary"
+                          variant="soft"
+                          leading-icon="i-lucide-wallet-cards"
+                          :label="`Comissão: ${getResponsibleCommissionLabel(employeeId)}`"
+                        />
+                        <UBadge
+                          v-if="getResponsibleRateLabel(employeeId)"
+                          color="success"
+                          variant="subtle"
+                          leading-icon="i-lucide-badge-percent"
+                          :label="getResponsibleRateLabel(employeeId)"
+                        />
+                        <UBadge
+                          v-if="getResponsibleBaseLabel(employeeId)"
+                          color="neutral"
+                          variant="outline"
+                          leading-icon="i-lucide-scale"
+                          :label="getResponsibleBaseLabel(employeeId)"
+                        />
+                        <UTooltip
+                          v-if="getResponsibleCommissionNote(employeeId)"
+                          :text="getResponsibleCommissionNote(employeeId)?.label"
+                        >
+                          <UButton
+                            :color="getResponsibleCommissionNote(employeeId)?.color ?? 'neutral'"
+                            variant="ghost"
+                            :icon="getResponsibleCommissionNote(employeeId)?.icon"
+                            size="xs"
+                            square
                           />
-                          <UBadge
-                            color="neutral"
-                            variant="outline"
-                            leading-icon="i-lucide-scale"
-                            :label="
-                              getEmployeeById(employeeId)?.commission_base ===
-                              'profit'
-                                ? 'Base: lucro'
-                                : 'Base: faturamento'
-                            "
-                          />
-                        </div>
-
-                        <p
-                          class="mt-3 text-xs uppercase tracking-wide text-muted"
-                        >
-                          Comissão estimada
-                        </p>
-                        <p
-                          class="mt-1 text-base font-semibold text-highlighted"
-                        >
-                          {{
-                            formatCurrency(
-                              computeResponsibleCommission(
-                                getEmployeeById(employeeId),
-                              ).value,
-                            )
-                          }}
-                        </p>
-                        <p
-                          v-if="
-                            getEmployeeById(employeeId)?.commission_categories
-                              ?.length &&
-                            !computeResponsibleCommission(
-                              getEmployeeById(employeeId),
-                            ).hasMatchingItems
-                          "
-                          class="mt-2 text-xs text-warning"
-                        >
-                          Nenhum item desta OS corresponde às categorias de
-                          comissão desse responsável.
-                        </p>
-                        <p
-                          v-else-if="
-                            !getEmployeeById(employeeId)?.has_commission
-                          "
-                          class="mt-2 text-xs text-muted"
-                        >
-                          Funcionário sem comissão configurada.
-                        </p>
+                        </UTooltip>
                       </div>
                     </div>
 
@@ -1359,190 +1409,174 @@ async function submit() {
               <template #header>
                 <div class="flex items-center gap-2">
                   <UIcon name="i-lucide-percent" class="size-4 text-primary" />
-                  <h3 class="font-semibold text-highlighted">Impostos</h3>
+                  <UIcon
+                    name="i-lucide-calendar-clock"
+                    class="size-4 text-primary/70"
+                  />
+                  <h3 class="font-semibold text-highlighted">
+                    Impostos e agendamento
+                  </h3>
                 </div>
               </template>
 
-              <div class="space-y-4">
-                <div
-                  class="flex items-center justify-between gap-4 rounded-xl border border-default bg-elevated/50 p-4"
-                >
-                  <div>
-                    <p class="text-sm font-medium text-highlighted">
-                      Aplicar impostos nesta OS
-                    </p>
-                    <p class="text-xs text-muted">
-                      Os impostos entram como custo interno, sem aumentar o
-                      valor cobrado do cliente.
-                    </p>
+              <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <div class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-medium text-highlighted">
+                        Impostos
+                      </p>
+                      <p class="text-xs text-muted">
+                        Entram como custo interno da OS.
+                      </p>
+                    </div>
+                    <USwitch v-model="form.apply_taxes" />
                   </div>
-                  <USwitch v-model="form.apply_taxes" />
+
+                  <div v-if="form.apply_taxes" class="space-y-3">
+                    <div
+                      v-if="!taxesCatalog.length"
+                      class="rounded-xl border border-dashed border-default bg-default/70 px-4 py-5 text-center"
+                    >
+                      <UIcon
+                        name="i-lucide-percent-diamond"
+                        class="mx-auto size-6 text-dimmed"
+                      />
+                      <p class="mt-2 text-sm font-medium text-highlighted">
+                        Nenhum imposto cadastrado
+                      </p>
+                    </div>
+
+                    <button
+                      v-for="tax in taxesCatalog"
+                      :key="tax.id"
+                      type="button"
+                      class="flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition"
+                      :class="
+                        form.selected_tax_ids.includes(tax.id)
+                          ? 'border-primary/40 bg-primary/8'
+                          : 'border-default bg-default hover:bg-elevated/50'
+                      "
+                      @click="toggleTax(tax.id)"
+                    >
+                      <div class="flex items-start gap-3">
+                        <input
+                          type="checkbox"
+                          class="mt-0.5 size-4"
+                          :checked="form.selected_tax_ids.includes(tax.id)"
+                          @click.stop="toggleTax(tax.id)"
+                        />
+                        <div>
+                          <p class="font-medium text-highlighted">
+                            {{ tax.name }}
+                          </p>
+                          <p class="text-xs uppercase tracking-wide text-muted">
+                            {{ tax.type }}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div class="text-right">
+                        <p class="font-semibold text-highlighted">
+                          {{
+                            toNumber(tax.rate).toLocaleString('pt-BR', {
+                              maximumFractionDigits: 2,
+                            })
+                          }}%
+                        </p>
+                        <p
+                          v-if="form.selected_tax_ids.includes(tax.id)"
+                          class="text-xs text-warning"
+                        >
+                          {{
+                            formatCurrency(
+                              selectedTaxes.find((item) => item.tax_id === tax.id)
+                                ?.calculated_amount,
+                            )
+                          }}
+                        </p>
+                      </div>
+                    </button>
+
+                    <div
+                      class="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3"
+                    >
+                      <p class="text-xs uppercase tracking-wide text-warning/80">
+                        Total de impostos
+                      </p>
+                      <p class="mt-1 text-base font-semibold text-warning">
+                        {{ formatCurrency(totalTaxesAmount) }}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                <div v-if="form.apply_taxes" class="space-y-3">
-                  <div
-                    v-if="!taxesCatalog.length"
-                    class="rounded-xl border border-dashed border-default bg-elevated/40 px-4 py-8 text-center"
-                  >
-                    <UIcon
-                      name="i-lucide-percent-diamond"
-                      class="mx-auto size-8 text-dimmed"
-                    />
-                    <p class="mt-3 text-sm font-medium text-highlighted">
-                      Nenhum imposto cadastrado
-                    </p>
-                    <p class="mt-1 text-sm text-muted">
-                      Cadastre impostos no módulo financeiro para utilizá-los
-                      aqui.
-                    </p>
+                <div class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <p class="text-sm font-medium text-highlighted">
+                        Agendamento
+                      </p>
+                      <p class="text-xs text-muted">
+                        Cria agenda automaticamente ao salvar.
+                      </p>
+                    </div>
+                    <USwitch v-model="form.create_appointment" />
                   </div>
 
-                  <button
-                    v-for="tax in taxesCatalog"
-                    :key="tax.id"
-                    type="button"
-                    class="flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition"
-                    :class="
-                      form.selected_tax_ids.includes(tax.id)
-                        ? 'border-primary/40 bg-primary/8'
-                        : 'border-default bg-default hover:bg-elevated/50'
-                    "
-                    @click="toggleTax(tax.id)"
+                  <div
+                    v-if="form.create_appointment"
+                    class="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4"
                   >
-                    <div class="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        class="mt-1 size-4"
-                        :checked="form.selected_tax_ids.includes(tax.id)"
-                        @click.stop="toggleTax(tax.id)"
-                      />
-                      <div>
-                        <p class="font-medium text-highlighted">
-                          {{ tax.name }}
-                        </p>
-                        <p class="text-xs uppercase tracking-wide text-muted">
-                          {{ tax.type }}
-                        </p>
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                      <UFormField label="Data" required>
+                        <UiDatePicker
+                          v-model="form.appointment_date"
+                          placeholder="Selecione a data"
+                          class="w-full"
+                        />
+                      </UFormField>
+
+                      <UFormField label="Horário" required>
+                        <UInput
+                          v-model="form.appointment_time"
+                          type="time"
+                          class="w-full"
+                        />
+                      </UFormField>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+                      <UFormField label="Prioridade">
+                        <USelectMenu
+                          v-model="form.appointment_priority"
+                          :items="appointmentPriorityOptions"
+                          value-key="value"
+                          class="w-full"
+                          :search-input="false"
+                        />
+                      </UFormField>
+
+                      <div class="flex items-end">
+                        <UBadge
+                          :color="appointmentPriorityBadge.color"
+                          variant="subtle"
+                          :leading-icon="appointmentPriorityBadge.icon"
+                          :label="appointmentPriorityBadge.label"
+                          class="mb-0.5"
+                        />
                       </div>
                     </div>
 
-                    <div class="text-right">
-                      <p class="font-semibold text-highlighted">
-                        {{
-                          toNumber(tax.rate).toLocaleString("pt-BR", {
-                            maximumFractionDigits: 2,
-                          })
-                        }}%
-                      </p>
-                      <p
-                        v-if="form.selected_tax_ids.includes(tax.id)"
-                        class="text-xs text-warning"
-                      >
-                        {{
-                          formatCurrency(
-                            selectedTaxes.find((item) => item.tax_id === tax.id)
-                              ?.calculated_amount,
-                          )
-                        }}
-                      </p>
-                    </div>
-                  </button>
-
-                  <div
-                    class="rounded-xl border border-warning/20 bg-warning/10 p-4"
-                  >
-                    <p class="text-xs uppercase tracking-wide text-warning/80">
-                      Total de impostos
-                    </p>
-                    <p class="mt-1 text-lg font-semibold text-warning">
-                      {{ formatCurrency(totalTaxesAmount) }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </UCard>
-
-            <UCard variant="subtle">
-              <template #header>
-                <div class="flex items-center gap-2">
-                  <UIcon
-                    name="i-lucide-calendar-clock"
-                    class="size-4 text-primary"
-                  />
-                  <h3 class="font-semibold text-highlighted">Agendamento</h3>
-                </div>
-              </template>
-
-              <div class="space-y-4">
-                <div
-                  class="flex items-center justify-between gap-4 rounded-xl border border-default bg-elevated/50 p-4"
-                >
-                  <div>
-                    <p class="text-sm font-medium text-highlighted">
-                      Criar agendamento automaticamente
-                    </p>
-                    <p class="text-xs text-muted">
-                      Ao salvar a OS, um agendamento será criado com cliente,
-                      veículo e prioridade definidos abaixo.
-                    </p>
-                  </div>
-                  <USwitch v-model="form.create_appointment" />
-                </div>
-
-                <div
-                  v-if="form.create_appointment"
-                  class="space-y-4 rounded-xl border border-primary/20 bg-primary/5 p-4"
-                >
-                  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <UFormField label="Data do agendamento" required>
-                      <UiDatePicker
-                        v-model="form.appointment_date"
-                        placeholder="Selecione a data"
-                        class="w-full"
-                      />
-                    </UFormField>
-
-                    <UFormField label="Horário" required>
-                      <UInput
-                        v-model="form.appointment_time"
-                        type="time"
+                    <UFormField label="Observações">
+                      <UTextarea
+                        v-model="form.appointment_notes"
+                        :rows="2"
+                        placeholder="Detalhes adicionais para a agenda..."
                         class="w-full"
                       />
                     </UFormField>
                   </div>
-
-                  <UFormField label="Prioridade">
-                    <USelectMenu
-                      v-model="form.appointment_priority"
-                      :items="appointmentPriorityOptions"
-                      value-key="value"
-                      class="w-full"
-                      :search-input="false"
-                    />
-                  </UFormField>
-
-                  <div class="rounded-xl border border-default bg-default p-3">
-                    <div class="flex items-center gap-2">
-                      <UBadge
-                        :color="appointmentPriorityBadge.color"
-                        variant="subtle"
-                        :leading-icon="appointmentPriorityBadge.icon"
-                        :label="appointmentPriorityBadge.label"
-                      />
-                      <span class="text-xs text-muted">
-                        Serviço será preenchido com o defeito relatado da OS.
-                      </span>
-                    </div>
-                  </div>
-
-                  <UFormField label="Observações do agendamento">
-                    <UTextarea
-                      v-model="form.appointment_notes"
-                      :rows="3"
-                      placeholder="Detalhes adicionais para a agenda..."
-                      class="w-full"
-                    />
-                  </UFormField>
                 </div>
               </div>
             </UCard>
@@ -1581,10 +1615,10 @@ async function submit() {
               <div
                 class="rounded-2xl border border-dashed border-primary/30 bg-gradient-to-br from-primary/10 via-elevated to-info/5 p-4"
               >
-                <div class="flex flex-col gap-4 xl:flex-row xl:items-end">
+                <div class="flex items-end gap-3">
                   <UFormField
                     label="Adicionar produto ou serviço do catálogo"
-                    class="flex-1"
+                    class="min-w-0 flex-1"
                   >
                     <USelectMenu
                       v-model="selectedProductId"
@@ -1596,13 +1630,15 @@ async function submit() {
                     />
                   </UFormField>
 
-                  <UButton
-                    label="Trazer para a OS"
-                    icon="i-lucide-plus"
-                    size="sm"
-                    :disabled="!selectedProductId"
-                    @click="addProductItem"
-                  />
+                  <UTooltip text="Trazer para a OS">
+                    <UButton
+                      icon="i-lucide-plus"
+                      size="sm"
+                      square
+                      :disabled="!selectedProductId"
+                      @click="addProductItem"
+                    />
+                  </UTooltip>
                 </div>
               </div>
 
