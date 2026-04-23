@@ -21,6 +21,8 @@ useSeoMeta({ title: 'Ordens de Serviço' })
 
 const toast = useToast()
 const workshop = useWorkshopPermissions()
+const requestFetch = useRequestFetch()
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const route = useRoute()
 const router = useRouter()
 
@@ -32,7 +34,7 @@ const canCancel = computed(() => workshop.can(ActionCode.ORDERS_CANCEL))
 
 // ─── Filters (URL-synced) ──────────────────────────────────────────────────────
 
-const MANAGED_QUERY_KEYS = ['search', 'status'] as const
+const MANAGED_QUERY_KEYS = ['search', 'status', 'clientId', 'vehicleId', 'responsibleId', 'dateFrom', 'dateTo'] as const
 
 const search = ref(
   typeof route.query.search === 'string' ? route.query.search : ''
@@ -40,6 +42,21 @@ const search = ref(
 const apiSearch = ref(search.value)
 const statusFilter = ref(
   typeof route.query.status === 'string' ? route.query.status : 'all'
+)
+const clientIdFilter = ref(
+  typeof route.query.clientId === 'string' ? route.query.clientId : 'all'
+)
+const vehicleIdFilter = ref(
+  typeof route.query.vehicleId === 'string' ? route.query.vehicleId : 'all'
+)
+const responsibleIdFilter = ref(
+  typeof route.query.responsibleId === 'string' ? route.query.responsibleId : 'all'
+)
+const dateFrom = ref(
+  typeof route.query.dateFrom === 'string' ? route.query.dateFrom : ''
+)
+const dateTo = ref(
+  typeof route.query.dateTo === 'string' ? route.query.dateTo : ''
 )
 
 async function syncQuery() {
@@ -51,7 +68,12 @@ async function syncQuery() {
       )
     ),
     search: search.value || undefined,
-    status: statusFilter.value !== 'all' ? statusFilter.value : undefined
+    status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
+    clientId: clientIdFilter.value !== 'all' ? clientIdFilter.value : undefined,
+    vehicleId: vehicleIdFilter.value !== 'all' ? vehicleIdFilter.value : undefined,
+    responsibleId: responsibleIdFilter.value !== 'all' ? responsibleIdFilter.value : undefined,
+    dateFrom: dateFrom.value || undefined,
+    dateTo: dateTo.value || undefined
   }
   if (JSON.stringify(route.query) !== JSON.stringify(next))
     await router.replace({ query: next })
@@ -65,7 +87,7 @@ const accumulatedOrders = ref<ServiceOrder[]>([])
 const totalFiltered = ref(0)
 
 const queryKey = computed(
-  () => `service-orders-${page.value}-${apiSearch.value}-${statusFilter.value}`
+  () => `service-orders-${page.value}-${apiSearch.value}-${statusFilter.value}-${clientIdFilter.value}-${vehicleIdFilter.value}-${responsibleIdFilter.value}-${dateFrom.value}-${dateTo.value}`
 )
 
 const { data, status: fetchStatus } = await useAsyncData(
@@ -76,10 +98,17 @@ const { data, status: fetchStatus } = await useAsyncData(
         data: { items: [] as ServiceOrder[], nextCursor: null, totalFiltered: 0, totalAll: 0 }
       } satisfies ServiceOrdersApiResponse
     }
-    return $fetch<ServiceOrdersApiResponse>('/api/service-orders', {
+    return requestFetch<ServiceOrdersApiResponse>('/api/service-orders', {
+      headers: requestHeaders,
       query: {
         searchTerm: apiSearch.value || undefined,
         status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
+        clientId: clientIdFilter.value !== 'all' ? clientIdFilter.value : undefined,
+        vehicleId: vehicleIdFilter.value !== 'all' ? vehicleIdFilter.value : undefined,
+        responsibleId: responsibleIdFilter.value !== 'all' ? responsibleIdFilter.value : undefined,
+        useDateFilter: (dateFrom.value && dateTo.value) ? 'true' : undefined,
+        dateFrom: dateFrom.value || undefined,
+        dateTo: dateTo.value || undefined,
         cursor: (page.value - 1) * LIMIT,
         limit: LIMIT
       }
@@ -127,7 +156,7 @@ watchDebounced(
   { debounce: 300, maxWait: 800 }
 )
 
-watch([apiSearch, statusFilter], () => {
+watch([apiSearch, statusFilter, clientIdFilter, vehicleIdFilter, responsibleIdFilter, dateFrom, dateTo], () => {
   accumulatedOrders.value = []
   totalFiltered.value = 0
   page.value = 1
@@ -135,16 +164,28 @@ watch([apiSearch, statusFilter], () => {
 
 watch(statusFilter, syncQuery)
 
+watch([clientIdFilter, vehicleIdFilter, responsibleIdFilter, dateFrom, dateTo], syncQuery)
+
 watch(
   () => route.query,
   (q) => {
     const s = typeof q.search === 'string' ? q.search : ''
     const st = typeof q.status === 'string' ? q.status : 'all'
+    const ci = typeof q.clientId === 'string' ? q.clientId : 'all'
+    const vi = typeof q.vehicleId === 'string' ? q.vehicleId : 'all'
+    const ri = typeof q.responsibleId === 'string' ? q.responsibleId : 'all'
+    const df = typeof q.dateFrom === 'string' ? q.dateFrom : ''
+    const dt = typeof q.dateTo === 'string' ? q.dateTo : ''
     if (search.value !== s) {
       search.value = s
       apiSearch.value = s
     }
     if (statusFilter.value !== st) statusFilter.value = st
+    if (clientIdFilter.value !== ci) clientIdFilter.value = ci
+    if (vehicleIdFilter.value !== vi) vehicleIdFilter.value = vi
+    if (responsibleIdFilter.value !== ri) responsibleIdFilter.value = ri
+    if (dateFrom.value !== df) dateFrom.value = df
+    if (dateTo.value !== dt) dateTo.value = dt
   }
 )
 
@@ -343,16 +384,7 @@ async function confirmDelete() {
   }
 }
 
-const statusFilterOptions = [
-  { label: 'Todas', value: 'all' },
-  { label: 'Orçamento', value: 'estimate' },
-  { label: 'Aberta', value: 'open' },
-  { label: 'Em andamento', value: 'in_progress' },
-  { label: 'Aguard. peça', value: 'waiting_for_part' },
-  { label: 'Concluída', value: 'completed' },
-  { label: 'Entregue', value: 'delivered' },
-  { label: 'Cancelada', value: 'cancelled' }
-]
+// ─── Status options (kept for reference) are now in ServiceOrdersOrdersFilters ─
 </script>
 
 <template>
@@ -386,11 +418,13 @@ const statusFilterOptions = [
           @load-more="loadMore"
         >
           <template #filters>
-            <USelectMenu
-              v-model="statusFilter"
-              :items="statusFilterOptions"
-              value-key="value"
-              class="w-44"
+            <ServiceOrdersOrdersFilters
+              v-model:status-filter="statusFilter"
+              v-model:client-id-filter="clientIdFilter"
+              v-model:vehicle-id-filter="vehicleIdFilter"
+              v-model:responsible-id-filter="responsibleIdFilter"
+              v-model:date-from="dateFrom"
+              v-model:date-to="dateTo"
             />
           </template>
 
