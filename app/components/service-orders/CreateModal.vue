@@ -1892,6 +1892,9 @@ async function submit() {
                         <th class="px-4 py-3 font-medium w-40">Venda</th>
                         <th class="px-4 py-3 font-medium w-40">Custo</th>
                         <th class="px-4 py-3 font-medium w-36 text-right">
+                          Comissão
+                        </th>
+                        <th class="px-4 py-3 font-medium w-36 text-right">
                           Total
                         </th>
                         <th class="px-4 py-3 font-medium w-24 text-right">
@@ -1958,14 +1961,13 @@ async function submit() {
                         <td class="px-4 py-4">
                           <UiCurrencyInput v-model="item.cost_price" />
                         </td>
+                        <td class="px-4 py-4 text-right font-semibold text-info">
+                          {{ formatCurrency(getItemCommission(item.id)) }}
+                        </td>
                         <td
                           class="px-4 py-4 text-right font-semibold text-highlighted"
                         >
-                          <p>{{ formatCurrency(getItemTotal(item)) }}</p>
-                          <p class="mt-1 text-xs font-medium text-info">
-                            Com.:
-                            {{ formatCurrency(getItemCommission(item.id)) }}
-                          </p>
+                          {{ formatCurrency(getItemTotal(item)) }}
                         </td>
                         <td class="px-4 py-4 text-right">
                           <UButton
@@ -2345,17 +2347,6 @@ async function submit() {
       </div>
     </template>
 
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          label="Fechar"
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          @click="showMasterProductManager = false"
-        />
-      </div>
-    </template>
   </UModal>
 
   <AppConfirmModal
