@@ -1906,45 +1906,37 @@ async function submit() {
                         class="align-top"
                       >
                         <td class="px-4 py-4">
-                          <div class="space-y-3">
-                            <div class="flex items-center gap-2">
-                              <UTooltip
-                                :text="
+                          <div class="flex items-center gap-2">
+                            <UTooltip
+                              :text="
+                                item.source === 'catalog'
+                                  ? 'Item do catálogo'
+                                  : 'Item manual'
+                              "
+                            >
+                              <div
+                                class="flex size-6 shrink-0 items-center justify-center rounded-lg"
+                                :class="
                                   item.source === 'catalog'
-                                    ? 'Item do catálogo'
-                                    : 'Item manual'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'bg-elevated text-muted'
                                 "
                               >
-                                <div
-                                  class="flex size-6 shrink-0 items-center justify-center rounded-lg"
-                                  :class="
+                                <UIcon
+                                  :name="
                                     item.source === 'catalog'
-                                      ? 'bg-primary/10 text-primary'
-                                      : 'bg-elevated text-muted'
+                                      ? 'i-lucide-package-check'
+                                      : 'i-lucide-pencil-ruler'
                                   "
-                                >
-                                  <UIcon
-                                    :name="
-                                      item.source === 'catalog'
-                                        ? 'i-lucide-package-check'
-                                        : 'i-lucide-pencil-ruler'
-                                    "
-                                    class="size-3.5"
-                                  />
-                                </div>
-                              </UTooltip>
-                              <span
-                                v-if="item.name"
-                                class="truncate text-xs text-muted"
-                              >
-                                {{ item.name }}
-                              </span>
-                            </div>
+                                  class="size-3.5"
+                                />
+                              </div>
+                            </UTooltip>
 
                             <UInput
                               v-model="item.description"
                               placeholder="Descrição do item"
-                              class="w-full"
+                              class="min-w-0 flex-1"
                             />
                           </div>
                         </td>
@@ -2022,12 +2014,6 @@ async function submit() {
                             />
                           </div>
                         </UTooltip>
-                        <span
-                          v-if="item.name"
-                          class="truncate text-xs text-muted"
-                        >
-                          {{ item.name }}
-                        </span>
                       </div>
                       <UButton
                         icon="i-lucide-trash-2"
