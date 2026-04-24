@@ -2105,7 +2105,11 @@ async function submit() {
 
               <div class="space-y-4">
                 <div class="rounded-2xl bg-primary/8 p-4 text-center">
-                  <p class="text-sm text-muted">
+                  <p class="flex items-center justify-center gap-1.5 text-sm text-muted">
+                    <UIcon
+                      name="i-lucide-circle-dollar-sign"
+                      class="size-4 text-primary"
+                    />
                     Valor previsto para o cliente
                   </p>
                   <p class="mt-1 text-3xl font-bold text-highlighted">
@@ -2164,7 +2168,16 @@ async function submit() {
                 </div>
 
                 <div class="grid grid-cols-2 gap-4">
-                  <UFormField label="Desconto">
+                  <UFormField>
+                    <template #label>
+                      <span class="flex items-center gap-1.5">
+                        <UIcon
+                          name="i-lucide-badge-percent"
+                          class="size-4 text-warning"
+                        />
+                        <span>Desconto</span>
+                      </span>
+                    </template>
                     <UiCurrencyInput v-model="form.discount" />
                   </UFormField>
 
