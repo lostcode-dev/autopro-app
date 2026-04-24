@@ -201,33 +201,87 @@ async function downloadPdf() {
     @update:open="emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex items-center justify-between gap-4 p-4 lg:px-6 lg:py-5">
-        <div class="space-y-1.5">
-          <p class="font-semibold uppercase tracking-[0.22em] text-primary/80">
-            Visualização do Orçamento
-          </p>
-          <h1 class="text-xl font-bold text-highlighted lg:text-2xl">
-            {{ detail?.order.number ? `OS #${detail.order.number}` : 'Orçamento de serviços' }}
-          </h1>
+      <div class="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:px-6 lg:py-5">
+        <div class="min-w-0 space-y-3">
+          <div class="space-y-1.5">
+            <p class="font-semibold uppercase tracking-[0.22em] text-primary/80">
+              Visualização do Orçamento
+            </p>
+            <div class="flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between">
+              <div class="min-w-0">
+                <h1 class="truncate text-xl font-bold text-highlighted lg:text-2xl">
+                  {{ detail?.order.number ? `OS #${detail.order.number}` : 'Orçamento de serviços' }}
+                </h1>
+                <p class="mt-1 text-sm text-muted">
+                  Documento pronto para conferência e download no padrão do orçamento.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <UBadge
+                  color="neutral"
+                  variant="subtle"
+                  leading-icon="i-lucide-file-text"
+                  label="Pré-visualização"
+                  class="px-3 py-1"
+                />
+                <UBadge
+                  v-if="detail?.order.expected_date"
+                  color="info"
+                  variant="soft"
+                  leading-icon="i-lucide-calendar-range"
+                  :label="`Previsão ${formatDate(detail.order.expected_date)}`"
+                  class="px-3 py-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2.5 text-sm text-muted">
+            <div class="inline-flex items-center gap-2 rounded-full bg-elevated px-3 py-1.5">
+              <UIcon name="i-lucide-user-round" class="size-4 text-primary" />
+              <span class="truncate max-w-[220px]">
+                {{ detail?.client?.name ?? 'Cliente não informado' }}
+              </span>
+            </div>
+            <div class="inline-flex items-center gap-2 rounded-full bg-elevated px-3 py-1.5">
+              <UIcon name="i-lucide-calendar-days" class="size-4 text-primary" />
+              <span>
+                {{ detail?.order.entry_date ? formatDate(detail.order.entry_date) : 'Sem data de entrada' }}
+              </span>
+            </div>
+            <div
+              v-if="detail?.vehicle"
+              class="inline-flex items-center gap-2 rounded-full bg-elevated px-3 py-1.5"
+            >
+              <UIcon name="i-lucide-car-front" class="size-4 text-primary" />
+              <span class="truncate max-w-[260px]">
+                {{ detail.vehicle.brand }} {{ detail.vehicle.model }}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div class="flex items-center gap-2">
-          <UButton
-            label="Baixar PDF"
-            icon="i-lucide-download"
-            color="primary"
-            size="sm"
-            :loading="isDownloading"
-            :disabled="isLoading || !detail"
-            @click="downloadPdf"
-          />
-          <UButton
-            icon="i-lucide-x"
-            color="neutral"
-            variant="ghost"
-            square
-            @click="close"
-          />
+        <div class="flex items-start justify-end">
+          <div class="flex w-full max-w-[280px] items-center justify-end gap-2 rounded-2xl border border-default bg-default/80 p-2 shadow-sm lg:w-auto">
+            <UButton
+              label="Baixar PDF"
+              icon="i-lucide-download"
+              color="primary"
+              size="sm"
+              class="flex-1 lg:flex-none"
+              :loading="isDownloading"
+              :disabled="isLoading || !detail"
+              @click="downloadPdf"
+            />
+            <UButton
+              icon="i-lucide-x"
+              color="neutral"
+              variant="ghost"
+              square
+              @click="close"
+            />
+          </div>
         </div>
       </div>
     </template>
@@ -239,14 +293,6 @@ async function downloadPdf() {
 
       <div v-else-if="detail" class="px-4 py-6 lg:px-8 lg:py-8">
         <div class="mx-auto max-w-[900px]">
-          <div class="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-default bg-default/80 px-4 py-3 text-sm text-muted shadow-sm backdrop-blur">
-            <div class="flex items-center gap-2">
-              <UIcon name="i-lucide-file-text" class="size-4 text-primary" />
-              <span>Pré-visualização do documento que será baixado</span>
-            </div>
-            <span class="hidden sm:inline">Modelo baseado no orçamento do sistema legado</span>
-          </div>
-
           <article
             ref="paperRef"
             class="mx-auto overflow-hidden rounded-[32px] border border-slate-200 bg-white text-slate-900 shadow-[0_24px_80px_rgba(15,23,42,0.14)]"
@@ -264,9 +310,6 @@ async function downloadPdf() {
                 </div>
 
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-semibold uppercase tracking-[0.28em] text-slate-500">
-                    Documento de orçamento
-                  </p>
                   <h2 class="mt-1 text-3xl font-black tracking-tight text-slate-950">
                     {{ workshopName }}
                   </h2>
@@ -274,7 +317,7 @@ async function downloadPdf() {
               </div>
             </div>
 
-            <div class="space-y-8 px-8 py-8 lg:px-10 lg:py-10">
+            <div class="space-y-4 px-8 py-8 lg:px-10 lg:py-10">
               <div class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
                 <section class="grid gap-6 sm:grid-cols-2">
                   <div>
@@ -342,7 +385,7 @@ async function downloadPdf() {
               </div>
 
               <div class="rounded-[24px] border border-slate-200 bg-slate-50 px-6 py-4 text-center">
-                <p class="text-xl font-black tracking-[0.18em] text-slate-950">
+                <p class="text-lg font-black tracking-[0.18em] text-slate-950">
                   ORÇAMENTO DE SERVIÇOS
                 </p>
               </div>
