@@ -194,7 +194,7 @@ async function downloadPdf() {
     :open="open"
     :ui="{
       overlay: 'bg-default/92 backdrop-blur-sm',
-      content: 'fixed inset-0 m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
+      content: 'sm:max-h-[100dvh] max-h-[100dvh] m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
       header: 'p-0 border-b border-default shrink-0',
       body: 'flex-1 min-h-0 overflow-y-auto p-0 bg-[linear-gradient(180deg,rgba(var(--ui-bg),1),rgba(var(--ui-bg-elevated),0.92))]'
     }"
