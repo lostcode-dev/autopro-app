@@ -97,170 +97,184 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
 </script>
 
 <template>
-  <div class="flex items-center gap-3 border-b border-default px-5 py-4 min-w-0">
-    <!-- Close -->
-    <UButton
-      icon="i-lucide-x"
-      color="neutral"
-      variant="ghost"
-      size="sm"
-      aria-label="Fechar"
-      class="shrink-0"
-      @click="emit('close')"
-    />
-
-    <!-- Identity: title + badges + context avatars -->
-    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-      <h1 class="text-xl font-bold text-highlighted leading-tight">
-        OS #{{ order.number ?? '—' }}
-      </h1>
-
-      <div class="flex flex-wrap items-center gap-2">
-        <!-- OS status badge with icon -->
-        <UBadge
-          :color="STATUS_COLOR[order.status] ?? 'neutral'"
-          :label="STATUS_LABEL[order.status] ?? order.status"
-          :leading-icon="STATUS_ICON[order.status]"
-          variant="subtle"
-        />
-
-        <!-- Payment status badge with icon -->
-        <UBadge
-          v-if="order.payment_status"
-          :color="PAYMENT_STATUS_COLOR[order.payment_status] ?? 'neutral'"
-          :label="PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status"
-          :leading-icon="PAYMENT_STATUS_ICON[order.payment_status]"
-          variant="soft"
-        />
-
-        <!-- Installments badge -->
-        <UBadge
-          v-if="order.is_installment && order.installment_count"
-          color="info"
-          :label="`${order.installment_count}x`"
-          leading-icon="i-lucide-layers"
-          variant="outline"
-        />
-
-        <!-- Separator -->
-        <UDivider v-if="hasContextInfo" orientation="vertical" class="h-4 mx-1" />
-
-        <!-- Client avatar -->
-        <UTooltip v-if="hasContextInfo && client" :text="client.name">
-          <div class="flex items-center gap-1.5 cursor-default">
-            <UAvatar
-              :text="initials(client.name)"
-              size="xs"
-              :ui="{ root: 'ring-2 ring-primary/30' }"
-            />
-            <span class="text-xs text-muted hidden lg:block max-w-32 truncate">{{ client.name }}</span>
+  <div class="w-full border-b border-default px-4 py-4 lg:px-6 lg:py-5">
+    <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+      <div class="min-w-0 flex-1 space-y-3">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <h1 class="text-xl font-bold leading-tight text-highlighted lg:text-2xl">
+              OS #{{ order.number ?? '—' }}
+            </h1>
+            <p class="mt-1 text-sm text-muted">
+              Detalhes completos da ordem de serviço
+            </p>
           </div>
-        </UTooltip>
 
-        <!-- Responsibles avatar stack -->
-        <div v-if="hasContextInfo && resolvedResponsibles.length" class="flex items-center gap-1.5">
-          <div class="flex -space-x-1.5">
-            <UTooltip
-              v-for="r in resolvedResponsibles"
-              :key="r.employee_id"
-              :text="r.name ?? 'Funcionário'"
-            >
+          <UButton
+            icon="i-lucide-x"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            aria-label="Fechar"
+            class="shrink-0 xl:hidden"
+            @click="emit('close')"
+          />
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <UBadge
+            :color="STATUS_COLOR[order.status] ?? 'neutral'"
+            :label="STATUS_LABEL[order.status] ?? order.status"
+            :leading-icon="STATUS_ICON[order.status]"
+            variant="subtle"
+            class="px-3 py-1"
+          />
+
+          <UBadge
+            v-if="order.payment_status"
+            :color="PAYMENT_STATUS_COLOR[order.payment_status] ?? 'neutral'"
+            :label="PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status"
+            :leading-icon="PAYMENT_STATUS_ICON[order.payment_status]"
+            variant="soft"
+            class="px-3 py-1"
+          />
+
+          <UBadge
+            v-if="order.is_installment && order.installment_count"
+            color="info"
+            :label="`${order.installment_count}x`"
+            leading-icon="i-lucide-layers"
+            variant="outline"
+            class="px-3 py-1"
+          />
+        </div>
+
+        <div v-if="hasContextInfo" class="flex flex-wrap items-center gap-3">
+          <UTooltip v-if="client" :text="client.name">
+            <div class="flex cursor-default items-center gap-2 rounded-full bg-elevated px-2.5 py-1.5">
               <UAvatar
-                :src="r.photo_url ?? undefined"
-                :text="initials(r.name)"
+                :text="initials(client.name)"
                 size="xs"
-                :ui="{ root: 'ring-2 ring-default' }"
+                :ui="{ root: 'ring-2 ring-primary/30' }"
               />
-            </UTooltip>
+              <span class="text-xs font-medium text-muted">Cliente</span>
+            </div>
+          </UTooltip>
+
+          <div v-if="resolvedResponsibles.length" class="flex items-center gap-2 rounded-full bg-elevated px-2.5 py-1.5">
+            <span class="text-xs font-medium text-muted">Responsáveis</span>
+            <div class="flex -space-x-1.5">
+              <UTooltip
+                v-for="r in resolvedResponsibles"
+                :key="r.employee_id"
+                :text="r.name ?? 'Funcionário'"
+              >
+                <UAvatar
+                  :src="r.photo_url ?? undefined"
+                  :text="initials(r.name)"
+                  size="xs"
+                  :ui="{ root: 'ring-2 ring-default' }"
+                />
+              </UTooltip>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Actions -->
-    <div class="flex shrink-0 items-center gap-2">
-      <!-- Receber pagamento -->
-      <UButton
-        v-if="canPay"
-        label="Receber"
-        icon="i-lucide-credit-card"
-        color="success"
-        size="sm"
-        @click="emit('pay')"
-      />
-
-      <!-- Cancelar pagamento -->
-      <UButton
-        v-if="canCancelPayment"
-        label="Cancelar pagamento"
-        icon="i-lucide-credit-card"
-        color="error"
-        variant="outline"
-        size="sm"
-        :loading="isCancellingPayment"
-        @click="emit('cancel-payment')"
-      />
-
-      <!-- Avançar status -->
-      <UButton
-        v-if="canAdvance && advanceInfo"
-        :label="advanceInfo.label"
-        :icon="advanceInfo.icon"
-        :color="advanceInfo.color"
-        variant="outline"
-        size="sm"
-        :loading="isAdvancing"
-        @click="emit('advance-status')"
-      />
-
-      <UDivider
-        v-if="canEdit || canCreate || (canCancel && !isCancelled) || canDelete"
-        orientation="vertical"
-        class="h-5"
-      />
-
-      <UButton
-        v-if="canEdit"
-        label="Editar"
-        icon="i-lucide-pencil"
-        color="info"
-        variant="outline"
-        size="sm"
-        @click="emit('edit')"
-      />
-
-      <!-- Duplicar -->
-      <UTooltip v-if="canCreate" text="Duplicar OS">
+      <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 xl:max-w-[48%]">
+        <!-- Receber pagamento -->
         <UButton
-          icon="i-lucide-copy"
+          v-if="canPay"
+          label="Receber"
+          icon="i-lucide-credit-card"
+          color="success"
+          size="sm"
+          @click="emit('pay')"
+        />
+
+        <!-- Cancelar pagamento -->
+        <UButton
+          v-if="canCancelPayment"
+          label="Cancelar pagamento"
+          icon="i-lucide-credit-card"
+          color="error"
+          variant="outline"
+          size="sm"
+          :loading="isCancellingPayment"
+          @click="emit('cancel-payment')"
+        />
+
+        <!-- Avançar status -->
+        <UButton
+          v-if="canAdvance && advanceInfo"
+          :label="advanceInfo.label"
+          :icon="advanceInfo.icon"
+          :color="advanceInfo.color"
+          variant="outline"
+          size="sm"
+          :loading="isAdvancing"
+          @click="emit('advance-status')"
+        />
+
+        <UDivider
+          v-if="canEdit || canCreate || (canCancel && !isCancelled) || canDelete"
+          orientation="vertical"
+          class="hidden h-5 xl:block"
+        />
+
+        <UButton
+          v-if="canEdit"
+          label="Editar"
+          icon="i-lucide-pencil"
+          color="info"
+          variant="outline"
+          size="sm"
+          @click="emit('edit')"
+        />
+
+        <!-- Duplicar -->
+        <UTooltip v-if="canCreate" text="Duplicar OS">
+          <UButton
+            icon="i-lucide-copy"
+            color="neutral"
+            variant="ghost"
+            size="sm"
+            @click="emit('duplicate')"
+          />
+        </UTooltip>
+
+        <!-- Cancelar OS -->
+        <UTooltip v-if="canCancel && !isCancelled" text="Cancelar OS">
+          <UButton
+            icon="i-lucide-ban"
+            color="warning"
+            variant="ghost"
+            size="sm"
+            @click="emit('cancel')"
+          />
+        </UTooltip>
+
+        <!-- Excluir OS -->
+        <UTooltip v-if="canDelete" text="Excluir OS">
+          <UButton
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            size="sm"
+            @click="emit('delete')"
+          />
+        </UTooltip>
+
+        <UButton
+          icon="i-lucide-x"
           color="neutral"
           variant="ghost"
           size="sm"
-          @click="emit('duplicate')"
+          aria-label="Fechar"
+          class="hidden xl:inline-flex"
+          @click="emit('close')"
         />
-      </UTooltip>
-
-      <!-- Cancelar OS -->
-      <UTooltip v-if="canCancel && !isCancelled" text="Cancelar OS">
-        <UButton
-          icon="i-lucide-ban"
-          color="warning"
-          variant="ghost"
-          size="sm"
-          @click="emit('cancel')"
-        />
-      </UTooltip>
-
-      <!-- Excluir OS -->
-      <UTooltip v-if="canDelete" text="Excluir OS">
-        <UButton
-          icon="i-lucide-trash-2"
-          color="error"
-          variant="ghost"
-          size="sm"
-          @click="emit('delete')"
-        />
-      </UTooltip>
+      </div>
     </div>
   </div>
 </template>

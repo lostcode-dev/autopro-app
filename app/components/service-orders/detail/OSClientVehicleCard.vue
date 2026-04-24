@@ -20,26 +20,37 @@ defineProps<{
           </h3>
         </div>
       </template>
-      <dl class="space-y-2 text-sm">
-        <div>
-          <dt class="text-muted">
-            Nome
-          </dt>
-          <dd class="font-medium text-highlighted">
-            {{ client?.name ?? '—' }}
-          </dd>
+      <dl class="space-y-3 text-sm">
+        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-id-card" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div class="min-w-0">
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              Nome
+            </dt>
+            <dd class="font-medium text-highlighted break-words">
+              {{ client?.name ?? '—' }}
+            </dd>
+          </div>
         </div>
-        <div v-if="client?.phone || client?.mobile_phone">
-          <dt class="text-muted">
-            Telefone
-          </dt>
-          <dd>{{ formatPhone(client.phone ?? client.mobile_phone) }}</dd>
+        <div v-if="client?.phone || client?.mobile_phone" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-phone" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              Telefone
+            </dt>
+            <dd>{{ formatPhone(client.phone ?? client.mobile_phone) }}</dd>
+          </div>
         </div>
-        <div v-if="client?.email">
-          <dt class="text-muted">
-            E-mail
-          </dt>
-          <dd>{{ client.email }}</dd>
+        <div v-if="client?.email" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-mail" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div class="min-w-0">
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              E-mail
+            </dt>
+            <dd class="break-all">
+              {{ client.email }}
+            </dd>
+          </div>
         </div>
       </dl>
     </UCard>
@@ -54,42 +65,57 @@ defineProps<{
           </h3>
         </div>
       </template>
-      <dl class="space-y-2 text-sm">
-        <div>
-          <dt class="text-muted">
-            Modelo
-          </dt>
-          <dd class="font-medium text-highlighted">
-            {{ [vehicle.brand, vehicle.model].filter(Boolean).join(' ') || '—' }}
-          </dd>
+      <dl class="space-y-3 text-sm">
+        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-car-front" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div class="min-w-0">
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              Modelo
+            </dt>
+            <dd class="font-medium text-highlighted break-words">
+              {{ [vehicle.brand, vehicle.model].filter(Boolean).join(' ') || '—' }}
+            </dd>
+          </div>
         </div>
-        <div>
-          <dt class="text-muted">
-            Placa
-          </dt>
-          <dd>{{ vehicle.license_plate ?? '—' }}</dd>
+        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-id-card" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              Placa
+            </dt>
+            <dd>{{ vehicle.license_plate ?? '—' }}</dd>
+          </div>
         </div>
-        <div v-if="vehicle.year">
-          <dt class="text-muted">
-            Ano
-          </dt>
-          <dd>{{ vehicle.year }}</dd>
+        <div v-if="vehicle.year" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-calendar-days" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              Ano
+            </dt>
+            <dd>{{ vehicle.year }}</dd>
+          </div>
         </div>
-        <div v-if="vehicle.color">
-          <dt class="text-muted">
-            Cor
-          </dt>
-          <dd class="capitalize">
-            {{ vehicle.color }}
-          </dd>
+        <div v-if="vehicle.color" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-palette" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              Cor
+            </dt>
+            <dd class="capitalize">
+              {{ vehicle.color }}
+            </dd>
+          </div>
         </div>
-        <div v-if="vehicle.fuel_type">
-          <dt class="text-muted">
-            Combustível
-          </dt>
-          <dd class="capitalize">
-            {{ vehicle.fuel_type }}
-          </dd>
+        <div v-if="vehicle.fuel_type" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+          <UIcon name="i-lucide-fuel" class="mt-0.5 size-4 shrink-0 text-primary" />
+          <div>
+            <dt class="text-xs uppercase tracking-wide text-muted">
+              Combustível
+            </dt>
+            <dd class="capitalize">
+              {{ vehicle.fuel_type }}
+            </dd>
+          </div>
         </div>
       </dl>
     </UCard>

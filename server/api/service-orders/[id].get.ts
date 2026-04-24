@@ -32,12 +32,15 @@ export default defineEventHandler(async (event) => {
   }
 
   // Fetch related data in parallel
-  const [clientResult, vehicleResult, employeesResult, installmentsResult, commissionsResult, editLogsResult] = await Promise.all([
+  const [clientResult, vehicleResult, masterProductResult, employeesResult, installmentsResult, commissionsResult, editLogsResult] = await Promise.all([
     order.client_id
       ? supabase.from('clients').select('*').eq('id', order.client_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     order.vehicle_id
       ? supabase.from('vehicles').select('*').eq('id', order.vehicle_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    order.master_product_id
+      ? supabase.from('master_products').select('*').eq('id', order.master_product_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
     supabase.from('service_order_installments').select('*').eq('service_order_id', orderId).eq('organization_id', organizationId),
@@ -45,13 +48,18 @@ export default defineEventHandler(async (event) => {
     supabase.from('service_order_edit_logs').select('*').eq('service_order_id', orderId).order('created_at', { ascending: false })
   ])
 
+  type EmployeeListItem = { id: string, name: string | null }
+  type ResponsibleEmployeeRef = { employee_id: string }
+
   // Build employee name map
-  const employeeNameById = new Map((employeesResult.data || []).map((e: any) => [e.id, e.name]))
+  const employeeNameById = new Map(
+    ((employeesResult.data || []) as EmployeeListItem[]).map(employee => [employee.id, employee.name])
+  )
 
   // Resolve responsible employee names
-  const responsibleNames = (order.responsible_employees || []).map((r: any) => ({
-    employee_id: r.employee_id,
-    name: employeeNameById.get(r.employee_id) || null
+  const responsibleNames = ((order.responsible_employees || []) as ResponsibleEmployeeRef[]).map(responsible => ({
+    employee_id: responsible.employee_id,
+    name: employeeNameById.get(responsible.employee_id) || null
   }))
 
   return {
@@ -59,6 +67,7 @@ export default defineEventHandler(async (event) => {
       order,
       client: clientResult.data,
       vehicle: vehicleResult.data,
+      masterProduct: masterProductResult.data,
       employees: employeesResult.data || [],
       installments: installmentsResult.data || [],
       commissions: commissionsResult.data || [],

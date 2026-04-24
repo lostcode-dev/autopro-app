@@ -155,7 +155,7 @@ function initials(value: string | null | undefined) {
                 icon="i-lucide-credit-card"
                 color="success"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 @click="emit('pay', order)"
               />
             </UTooltip>
@@ -166,7 +166,7 @@ function initials(value: string | null | undefined) {
                 :icon="nextAdvanceInfo!.icon"
                 :color="nextAdvanceInfo!.color"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 :loading="isAdvancing"
                 @click="emit('advance-status', order)"
               />
@@ -177,7 +177,7 @@ function initials(value: string | null | undefined) {
                 icon="i-lucide-pencil"
                 color="info"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 :loading="isEditing"
                 @click="emit('edit', order)"
               />
@@ -189,7 +189,7 @@ function initials(value: string | null | undefined) {
                 icon="i-lucide-eye"
                 color="neutral"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 @click="emit('view', order)"
               />
             </UTooltip>
@@ -200,7 +200,7 @@ function initials(value: string | null | undefined) {
                 icon="i-lucide-copy"
                 color="neutral"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 :loading="isDuplicating"
                 @click="emit('duplicate', order)"
               />
@@ -215,7 +215,7 @@ function initials(value: string | null | undefined) {
                 icon="i-lucide-ban"
                 color="warning"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 @click="emit('cancel', order)"
               />
             </UTooltip>
@@ -226,7 +226,7 @@ function initials(value: string | null | undefined) {
                 icon="i-lucide-trash-2"
                 color="error"
                 variant="ghost"
-                size="xs"
+                size="sm"
                 @click="emit('delete', order)"
               />
             </UTooltip>

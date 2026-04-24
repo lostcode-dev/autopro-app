@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ServiceOrder, ServiceOrderDetailFull } from '~/types/service-orders'
+import type { ServiceOrder, ServiceOrderDetailFull, ServiceOrderRaw } from '~/types/service-orders'
 
 const props = defineProps<{
   open: boolean
@@ -259,7 +259,7 @@ const orderProxy = computed<ServiceOrder | null>(() => {
     :open="open"
     :ui="{
       overlay: 'bg-default',
-      content: 'max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
+      content: 'sm:max-h-[100dvh] max-h-[100dvh] m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
       body: 'flex-1 overflow-y-auto p-0 min-h-0',
       header: 'p-0 border-b-0 shrink-0'
     }"
@@ -312,15 +312,18 @@ const orderProxy = computed<ServiceOrder | null>(() => {
       </div>
 
       <!-- Content -->
-      <div v-else-if="detail" class="space-y-4 p-4 lg:p-6">
+      <div v-else-if="detail" class="space-y-5 p-4 lg:p-6">
         <!-- Row 1: client/vehicle + info -->
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
           <ServiceOrdersDetailOSClientVehicleCard
             :client="detail.client"
             :vehicle="detail.vehicle"
           />
-          <div class="lg:col-span-2">
-            <ServiceOrdersDetailOSInfoCard :order="detail.order" />
+          <div class="min-w-0">
+            <ServiceOrdersDetailOSInfoCard
+              :order="detail.order"
+              :master-product="detail.masterProduct"
+            />
           </div>
         </div>
 

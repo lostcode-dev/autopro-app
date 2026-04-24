@@ -136,6 +136,12 @@ export type ServiceOrderDetailFull = {
     color?: string | null
     fuel_type?: string | null
   } | null
+  masterProduct: {
+    id: string
+    name: string
+    description?: string | null
+    notes?: string | null
+  } | null
   employees: ServiceOrderEmployee[]
   installments: ServiceOrderInstallment[]
   commissions: ServiceOrderCommission[]
