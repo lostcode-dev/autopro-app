@@ -1622,9 +1622,9 @@ async function submit() {
                   class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4"
                 >
                   <div class="flex items-start justify-between gap-3">
-                    <div>
+                    <div class="min-w-0 flex-1 pr-2">
                       <p
-                        class="text-sm font-medium text-highlighted grid gap-2"
+                        class="flex items-center gap-2 text-sm font-medium text-highlighted"
                       >
                         <UIcon
                           name="i-lucide-percent"
@@ -1724,9 +1724,9 @@ async function submit() {
                   class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4"
                 >
                   <div class="flex items-start justify-between gap-3">
-                    <div>
+                    <div class="min-w-0 flex-1 pr-2">
                       <p
-                        class="text-sm font-medium text-highlighted grid gap-2"
+                        class="flex items-center gap-2 text-sm font-medium text-highlighted"
                       >
                         <UIcon
                           name="i-lucide-calendar-clock"
