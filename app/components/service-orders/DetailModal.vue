@@ -258,16 +258,16 @@ const orderProxy = computed<ServiceOrder | null>(() => {
   <UModal
     :open="open"
     :ui="{
-      overlay: 'bg-default',
-      content: 'sm:max-h-[100dvh] max-h-[100dvh] m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
-      body: 'flex-1 overflow-y-auto p-0 min-h-0',
-      header: 'p-0 border-b-0 shrink-0'
+      overlay: 'bg-default/90 backdrop-blur-sm',
+      content: 'sm:max-h-[100dvh] max-h-[100dvh] max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
+      body: 'flex-1 min-h-0 overflow-y-auto p-0',
+      header: 'p-0 shrink-0 border-b border-default'
     }"
     @update:open="emit('update:open', $event)"
   >
     <template #header>
       <!-- Loading header skeleton -->
-      <div v-if="isLoading" class="flex items-center gap-4 p-4 border-b border-default">
+      <div v-if="isLoading" class="flex items-center gap-4 p-4 lg:px-6 lg:py-5">
         <USkeleton class="size-8 rounded-lg" />
         <div class="space-y-1.5">
           <USkeleton class="h-5 w-32" />
@@ -312,7 +312,7 @@ const orderProxy = computed<ServiceOrder | null>(() => {
       </div>
 
       <!-- Content -->
-      <div v-else-if="detail" class="space-y-5 p-4 lg:p-6">
+      <div v-else-if="detail" class="space-y-6 p-4 lg:p-6">
         <!-- Row 1: client/vehicle + info -->
         <div class="grid grid-cols-1 gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
           <ServiceOrdersDetailOSClientVehicleCard

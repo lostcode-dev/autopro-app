@@ -97,28 +97,16 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
 </script>
 
 <template>
-  <div class="w-full border-b border-default px-4 py-4 lg:px-6 lg:py-5">
-    <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-      <div class="min-w-0 flex-1 space-y-3">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0">
-            <h1 class="text-xl font-bold leading-tight text-highlighted lg:text-2xl">
-              OS #{{ order.number ?? '—' }}
-            </h1>
-            <p class="mt-1 text-sm text-muted">
-              Detalhes completos da ordem de serviço
-            </p>
-          </div>
-
-          <UButton
-            icon="i-lucide-x"
-            color="neutral"
-            variant="ghost"
-            size="sm"
-            aria-label="Fechar"
-            class="shrink-0 xl:hidden"
-            @click="emit('close')"
-          />
+  <div class="flex w-full justify-between gap-4 p-4 lg:px-6 lg:py-5">
+    <div class="min-w-0 flex-1 space-y-4">
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div class="space-y-1.5">
+          <p class="font-semibold uppercase tracking-[0.22em] text-primary/80">
+            Detalhes da Ordem de Serviço
+          </p>
+          <h1 class="text-xl font-bold leading-tight text-highlighted lg:text-2xl">
+            OS #{{ order.number ?? '—' }}
+          </h1>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
@@ -148,7 +136,9 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
             class="px-3 py-1"
           />
         </div>
+      </div>
 
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div v-if="hasContextInfo" class="flex flex-wrap items-center gap-3">
           <UTooltip v-if="client" :text="client.name">
             <div class="flex cursor-default items-center gap-2 rounded-full bg-elevated px-2.5 py-1.5">
@@ -179,102 +169,111 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
             </div>
           </div>
         </div>
-      </div>
 
-      <div class="flex shrink-0 flex-wrap items-center justify-end gap-2 xl:max-w-[48%]">
-        <!-- Receber pagamento -->
-        <UButton
-          v-if="canPay"
-          label="Receber"
-          icon="i-lucide-credit-card"
-          color="success"
-          size="sm"
-          @click="emit('pay')"
-        />
-
-        <!-- Cancelar pagamento -->
-        <UButton
-          v-if="canCancelPayment"
-          label="Cancelar pagamento"
-          icon="i-lucide-credit-card"
-          color="error"
-          variant="outline"
-          size="sm"
-          :loading="isCancellingPayment"
-          @click="emit('cancel-payment')"
-        />
-
-        <!-- Avançar status -->
-        <UButton
-          v-if="canAdvance && advanceInfo"
-          :label="advanceInfo.label"
-          :icon="advanceInfo.icon"
-          :color="advanceInfo.color"
-          variant="outline"
-          size="sm"
-          :loading="isAdvancing"
-          @click="emit('advance-status')"
-        />
-
-        <UDivider
-          v-if="canEdit || canCreate || (canCancel && !isCancelled) || canDelete"
-          orientation="vertical"
-          class="hidden h-5 xl:block"
-        />
-
-        <UButton
-          v-if="canEdit"
-          label="Editar"
-          icon="i-lucide-pencil"
-          color="info"
-          variant="outline"
-          size="sm"
-          @click="emit('edit')"
-        />
-
-        <!-- Duplicar -->
-        <UTooltip v-if="canCreate" text="Duplicar OS">
+        <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <!-- Receber pagamento -->
           <UButton
-            icon="i-lucide-copy"
+            v-if="canPay"
+            label="Receber"
+            icon="i-lucide-credit-card"
+            color="success"
+            size="sm"
+            @click="emit('pay')"
+          />
+
+          <!-- Cancelar pagamento -->
+          <UButton
+            v-if="canCancelPayment"
+            label="Cancelar pagamento"
+            icon="i-lucide-credit-card"
+            color="error"
+            variant="outline"
+            size="sm"
+            :loading="isCancellingPayment"
+            @click="emit('cancel-payment')"
+          />
+
+          <!-- Avançar status -->
+          <UButton
+            v-if="canAdvance && advanceInfo"
+            :label="advanceInfo.label"
+            :icon="advanceInfo.icon"
+            :color="advanceInfo.color"
+            variant="outline"
+            size="sm"
+            :loading="isAdvancing"
+            @click="emit('advance-status')"
+          />
+
+          <UDivider
+            v-if="canEdit || canCreate || (canCancel && !isCancelled) || canDelete"
+            orientation="vertical"
+            class="hidden h-5 xl:block"
+          />
+
+          <UButton
+            v-if="canEdit"
+            label="Editar"
+            icon="i-lucide-pencil"
+            color="info"
+            variant="outline"
+            size="sm"
+            @click="emit('edit')"
+          />
+
+          <!-- Duplicar -->
+          <UTooltip v-if="canCreate" text="Duplicar OS">
+            <UButton
+              icon="i-lucide-copy"
+              color="neutral"
+              variant="ghost"
+              size="sm"
+              @click="emit('duplicate')"
+            />
+          </UTooltip>
+
+          <!-- Cancelar OS -->
+          <UTooltip v-if="canCancel && !isCancelled" text="Cancelar OS">
+            <UButton
+              icon="i-lucide-ban"
+              color="warning"
+              variant="ghost"
+              size="sm"
+              @click="emit('cancel')"
+            />
+          </UTooltip>
+
+          <!-- Excluir OS -->
+          <UTooltip v-if="canDelete" text="Excluir OS">
+            <UButton
+              icon="i-lucide-trash-2"
+              color="error"
+              variant="ghost"
+              size="sm"
+              @click="emit('delete')"
+            />
+          </UTooltip>
+
+          <UButton
+            icon="i-lucide-x"
             color="neutral"
             variant="ghost"
             size="sm"
-            @click="emit('duplicate')"
+            aria-label="Fechar"
+            class="hidden xl:inline-flex"
+            @click="emit('close')"
           />
-        </UTooltip>
-
-        <!-- Cancelar OS -->
-        <UTooltip v-if="canCancel && !isCancelled" text="Cancelar OS">
-          <UButton
-            icon="i-lucide-ban"
-            color="warning"
-            variant="ghost"
-            size="sm"
-            @click="emit('cancel')"
-          />
-        </UTooltip>
-
-        <!-- Excluir OS -->
-        <UTooltip v-if="canDelete" text="Excluir OS">
-          <UButton
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="ghost"
-            size="sm"
-            @click="emit('delete')"
-          />
-        </UTooltip>
-
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          size="sm"
-          aria-label="Fechar"
-          class="hidden xl:inline-flex"
-          @click="emit('close')"
-        />
+        </div>
       </div>
     </div>
+
+    <UButton
+      icon="i-lucide-x"
+      color="neutral"
+      variant="ghost"
+      square
+      class="shrink-0 xl:hidden"
+      @click="emit('close')"
+    />
   </div>
 </template>
