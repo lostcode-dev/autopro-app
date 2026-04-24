@@ -261,7 +261,7 @@ function initials(value: string | null | undefined) {
             />
 
             <div class="flex items-center gap-1.5">
-              <UTooltip v-if="order.responsible_name" :text="`Responsável: ${order.responsible_name}`">
+              <UTooltip v-if="order.responsible_name" :text="`${order.responsible_name}`">
                 <UAvatar
                   :text="initials(order.responsible_name)"
                   size="xs"
