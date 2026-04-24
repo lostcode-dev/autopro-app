@@ -154,7 +154,7 @@ function clear() {
     :content="{ align: 'start', side: 'bottom', sideOffset: 8 }"
     :ui="{
       content:
-        'z-[260] w-auto max-w-[min(95vw,46rem)] rounded-xl border border-default bg-default p-0 shadow-xl overflow-hidden'
+        'z-[500] w-auto max-w-[min(95vw,46rem)] rounded-xl border border-default bg-default p-0 shadow-xl overflow-hidden'
     }"
     :modal="true"
   >
