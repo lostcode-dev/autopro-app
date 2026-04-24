@@ -632,6 +632,13 @@ const itemCommissionMap = computed(() => {
   return commissionByItemId;
 });
 
+const normalizedItemsWithCommission = computed(() =>
+  normalizedItems.value.map((item) => ({
+    ...item,
+    commission_total: itemCommissionMap.value.get(item.id) ?? 0,
+  })),
+);
+
 function getItemCommission(itemId: string) {
   return itemCommissionMap.value.get(itemId) ?? 0;
 }
@@ -1122,7 +1129,7 @@ async function submit() {
           reported_defect: form.reported_defect || null,
           diagnosis: form.diagnosis || null,
           notes: form.notes || null,
-          items: normalizedItems.value,
+          items: normalizedItemsWithCommission.value,
           apply_taxes: form.apply_taxes,
           selected_taxes: selectedTaxes.value,
           total_taxes_amount: totalTaxesAmount.value,
