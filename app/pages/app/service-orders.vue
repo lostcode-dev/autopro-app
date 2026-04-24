@@ -394,9 +394,15 @@ function forceReload() {
 const showCreateModal = ref(false)
 const editingOrder = ref<ServiceOrderRaw | null>(null)
 const editingIds = ref(new Set<string>())
+const showQuoteModal = ref(false)
+const quoteOrderId = ref<string | null>(null)
 
 watch(showCreateModal, (opened) => {
   if (!opened) editingOrder.value = null
+})
+
+watch(showQuoteModal, (opened) => {
+  if (!opened) quoteOrderId.value = null
 })
 
 function openEdit(order: ServiceOrderRaw) {
@@ -423,6 +429,20 @@ async function openEditFromList(order: ServiceOrder) {
   } finally {
     editingIds.value.delete(order.id)
   }
+}
+
+function openQuote(orderId: string) {
+  quoteOrderId.value = orderId
+  showQuoteModal.value = true
+}
+
+function openQuoteFromList(order: ServiceOrder) {
+  openQuote(order.id)
+}
+
+function openQuoteFromDetail(orderId: string) {
+  closeDetail()
+  openQuote(orderId)
 }
 </script>
 
@@ -493,6 +513,7 @@ async function openEditFromList(order: ServiceOrder) {
                 @view="openDetail"
                 @advance-status="advanceStatus"
                 @edit="openEditFromList"
+                @quote="openQuoteFromList"
                 @duplicate="duplicate"
                 @pay="requestPay"
                 @cancel="requestCancel"
@@ -573,9 +594,15 @@ async function openEditFromList(order: ServiceOrder) {
     :can-cancel="canCancel"
     :can-delete="canDelete"
     :can-create="canCreate"
+    @quote="openQuoteFromDetail"
     @edit="openEdit"
     @updated="forceReload"
     @deleted="() => { closeDetail(); forceReload() }"
+  />
+
+  <ServiceOrdersQuoteModal
+    v-model:open="showQuoteModal"
+    :order-id="quoteOrderId"
   />
 
   <!-- ── Payment Modal ────────────────────────────────────────────────────────── -->

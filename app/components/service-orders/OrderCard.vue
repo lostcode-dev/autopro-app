@@ -19,6 +19,7 @@ const emit = defineEmits<{
   'delete': [order: ServiceOrder]
   'advance-status': [order: ServiceOrder]
   'edit': [order: ServiceOrder]
+  'quote': [order: ServiceOrder]
   'duplicate': [order: ServiceOrder]
   'pay': [order: ServiceOrder]
 }>()
@@ -173,9 +174,19 @@ function initials(value: string | null | undefined) {
               />
             </UTooltip>
 
-            <UTooltip v-if="canEdit" :text="isEstimate ? 'Orçamento' : 'Editar OS'">
+            <UTooltip v-if="isEstimate" text="Orçamento">
               <UButton
-                :icon="isEstimate ? 'i-lucide-file-text' : 'i-lucide-pencil'"
+                icon="i-lucide-file-text"
+                color="info"
+                variant="ghost"
+                size="sm"
+                @click="emit('quote', order)"
+              />
+            </UTooltip>
+
+            <UTooltip v-if="canEdit" text="Editar OS">
+              <UButton
+                icon="i-lucide-pencil"
                 color="info"
                 variant="ghost"
                 size="sm"

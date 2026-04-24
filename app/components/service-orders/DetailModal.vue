@@ -15,6 +15,7 @@ const emit = defineEmits<{
   'update:open': [v: boolean]
   'updated': []
   'deleted': []
+  'quote': [orderId: string]
   'edit': [order: ServiceOrderRaw]
 }>()
 
@@ -54,6 +55,11 @@ function close() {
 function requestEdit() {
   if (!detail.value) return
   emit('edit', detail.value.order)
+}
+
+function requestQuote() {
+  if (!detail.value) return
+  emit('quote', detail.value.order.id)
 }
 
 // ─── Advance status ────────────────────────────────────────────────────────────
@@ -305,6 +311,7 @@ const estimatedCommissionAmount = computed(() => {
         @cancel="showCancelModal = true"
         @delete="showDeleteModal = true"
         @duplicate="duplicate"
+        @quote="requestQuote"
         @edit="requestEdit"
       />
     </template>

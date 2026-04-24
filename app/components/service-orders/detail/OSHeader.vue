@@ -33,6 +33,7 @@ const emit = defineEmits<{
   'cancel': []
   'delete': []
   'duplicate': []
+  'quote': []
   'edit': []
 }>()
 
@@ -149,9 +150,19 @@ const canEdit = computed(() =>
           />
 
           <UButton
+            v-if="isEstimate"
+            label="Orçamento"
+            icon="i-lucide-file-text"
+            color="info"
+            variant="outline"
+            size="sm"
+            @click="emit('quote')"
+          />
+
+          <UButton
             v-if="canEdit"
-            :label="isEstimate ? 'Orçamento' : 'Editar'"
-            :icon="isEstimate ? 'i-lucide-file-text' : 'i-lucide-pencil'"
+            label="Editar"
+            icon="i-lucide-pencil"
             color="info"
             variant="outline"
             size="sm"
