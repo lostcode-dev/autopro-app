@@ -1192,7 +1192,7 @@ async function submit() {
     :ui="{
       overlay: 'bg-default/90 backdrop-blur-sm',
       content:
-        'inset-0 m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden sm:max-h-[100dvh] max-h-[100dvh] ',
+        'max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden sm:max-h-[100dvh] max-h-[100dvh] ',
       header: 'p-0 shrink-0 border-b border-default',
       body: 'flex-1 min-h-0 overflow-y-auto p-0',
       footer:
