@@ -33,47 +33,130 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
     }
   })
 })
+
+const totalCommissionAmount = computed(() =>
+  responsiblesInfo.value.reduce(
+    (total, responsible) => total + Number(responsible.commission_amount ?? 0),
+    0
+  )
+)
+
+function getResponsibleRateLabel(assignee: ResponsibleInfo) {
+  if (!assignee.has_commission || assignee.commission_value == null) return null
+
+  return assignee.commission_type === 'percentage'
+    ? `${assignee.commission_value}%`
+    : formatCurrency(assignee.commission_value)
+}
+
+function getResponsibleBaseLabel(assignee: ResponsibleInfo) {
+  if (!assignee.has_commission) return null
+
+  return assignee.commission_base === 'profit'
+    ? 'Base: lucro'
+    : 'Base: faturamento'
+}
+
+function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
+  if (assignee.has_commission) return null
+
+  return {
+    label: 'Sem comissão',
+    color: 'neutral' as const,
+    icon: 'i-lucide-circle-off'
+  }
+}
 </script>
 
 <template>
-  <UCard v-if="responsiblesInfo.length" variant="subtle">
+  <UCard variant="subtle">
     <template #header>
       <div class="flex items-center gap-2">
-        <UIcon name="i-lucide-users" class="size-4 text-primary" />
+        <UIcon name="i-lucide-user-round-cog" class="size-4 text-primary" />
         <h3 class="font-semibold text-highlighted">
-          Responsáveis ({{ responsiblesInfo.length }})
+          Responsáveis e comissão
         </h3>
       </div>
     </template>
 
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <div class="space-y-4">
+      <div
+        v-if="!responsiblesInfo.length"
+        class="rounded-xl border border-dashed border-default bg-elevated/40 px-4 py-8 text-center"
+      >
+        <UIcon
+          name="i-lucide-users-round"
+          class="mx-auto size-8 text-dimmed"
+        />
+        <p class="mt-3 text-sm font-medium text-highlighted">
+          Nenhum responsável adicionado
+        </p>
+        <p class="mt-1 text-sm text-muted">
+          Esta OS não possui responsáveis vinculados.
+        </p>
+      </div>
+
       <div
         v-for="assignee in responsiblesInfo"
         :key="assignee.employee_id"
-        class="flex items-start justify-between gap-3 rounded-lg border border-default bg-elevated p-3"
+        class="rounded-xl border border-default bg-default p-4 shadow-xs"
       >
-        <div class="min-w-0">
-          <p class="font-medium text-highlighted truncate">
-            {{ assignee.name ?? 'Funcionário não encontrado' }}
-          </p>
-          <p v-if="assignee.has_commission && assignee.commission_base" class="mt-0.5 text-xs text-muted">
-            {{ assignee.commission_base === 'gross' ? 'Do valor total' : 'Do lucro' }}
-          </p>
-          <p v-else class="mt-0.5 text-xs text-muted italic">
-            Sem comissão configurada
-          </p>
-        </div>
+        <div class="flex flex-col gap-3 lg:flex-row lg:items-start">
+          <div class="min-w-0 flex-1">
+            <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-highlighted">
+              {{ assignee.name ?? 'Funcionário não encontrado' }}
+            </div>
 
-        <div v-if="assignee.has_commission" class="shrink-0 text-right">
-          <p v-if="assignee.commission_value" class="text-sm font-medium text-warning">
-            {{ assignee.commission_type === 'percentage'
-              ? `${assignee.commission_value}%`
-              : formatCurrency(assignee.commission_value) }}
-          </p>
-          <p v-if="assignee.commission_amount !== null" class="text-xs font-semibold text-success">
-            = {{ formatCurrency(assignee.commission_amount) }}
-          </p>
+            <div
+              class="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-elevated/60 px-3 py-2 text-sm lg:flex-nowrap"
+            >
+              <UBadge
+                color="primary"
+                variant="soft"
+                leading-icon="i-lucide-wallet-cards"
+                :label="`Comissão: ${formatCurrency(assignee.commission_amount)}`"
+              />
+              <UBadge
+                v-if="getResponsibleRateLabel(assignee)"
+                color="success"
+                variant="subtle"
+                leading-icon="i-lucide-badge-percent"
+                :label="getResponsibleRateLabel(assignee)"
+              />
+              <UBadge
+                v-if="getResponsibleBaseLabel(assignee)"
+                color="neutral"
+                variant="outline"
+                leading-icon="i-lucide-scale"
+                :label="getResponsibleBaseLabel(assignee)"
+              />
+              <UTooltip
+                v-if="getResponsibleCommissionNote(assignee)"
+                :text="getResponsibleCommissionNote(assignee)?.label"
+              >
+                <UButton
+                  :color="getResponsibleCommissionNote(assignee)?.color ?? 'neutral'"
+                  variant="ghost"
+                  :icon="getResponsibleCommissionNote(assignee)?.icon"
+                  size="xs"
+                  square
+                />
+              </UTooltip>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div
+        v-if="responsiblesInfo.length"
+        class="rounded-xl border border-success/20 bg-success/10 p-4"
+      >
+        <p class="text-xs uppercase tracking-wide text-success/80">
+          Total de comissão estimada
+        </p>
+        <p class="mt-1 text-lg font-semibold text-success">
+          {{ formatCurrency(totalCommissionAmount) }}
+        </p>
       </div>
     </div>
   </UCard>

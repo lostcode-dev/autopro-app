@@ -2,7 +2,15 @@
 import type { ServiceOrderItem } from '~/types/service-orders'
 import { formatCurrency } from '~/utils/service-orders'
 
-defineProps<{ items: ServiceOrderItem[] | null }>()
+const props = defineProps<{ items: ServiceOrderItem[] | null }>()
+
+function getItemSource(item: ServiceOrderItem) {
+  return item.product_id ? 'catalog' : 'manual'
+}
+
+function getItemTotal(item: ServiceOrderItem) {
+  return item.total_price ?? item.unit_price * item.quantity
+}
 </script>
 
 <template>
@@ -16,45 +24,177 @@ defineProps<{ items: ServiceOrderItem[] | null }>()
       </div>
     </template>
 
-    <div v-if="!items?.length" class="py-4 text-center text-sm text-muted">
-      Nenhum item registrado.
+    <div
+      v-if="!props.items?.length"
+      class="rounded-2xl border border-default bg-elevated/40 px-6 py-10 text-center"
+    >
+      <UIcon
+        name="i-lucide-package-search"
+        class="mx-auto size-10 text-dimmed"
+      />
+      <p class="mt-4 text-sm font-medium text-highlighted">
+        Nenhum item registrado
+      </p>
+      <p class="mt-1 text-sm text-muted">
+        Esta OS ainda não possui itens vinculados.
+      </p>
     </div>
 
-    <div v-else class="overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-default">
-            <th class="py-2 pr-4 text-left font-semibold text-highlighted">
-              Descrição
-            </th>
-            <th class="py-2 pr-4 text-center font-semibold text-highlighted">
-              Qtd
-            </th>
-            <th class="py-2 pr-4 text-right font-semibold text-highlighted">
-              Unit.
-            </th>
-            <th class="py-2 text-right font-semibold text-highlighted">
-              Total
-            </th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-default">
-          <tr v-for="(item, i) in items" :key="i">
-            <td class="py-2.5 pr-4 text-default">
-              {{ item.name || item.description || '—' }}
-            </td>
-            <td class="py-2.5 pr-4 text-center text-muted">
-              {{ item.quantity }}
-            </td>
-            <td class="py-2.5 pr-4 text-right text-muted">
-              {{ formatCurrency(item.unit_price) }}
-            </td>
-            <td class="py-2.5 text-right font-medium text-highlighted">
-              {{ formatCurrency(item.total_price ?? item.unit_price * item.quantity) }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div v-else class="space-y-4">
+      <div class="hidden overflow-x-auto lg:block">
+        <table
+          class="min-w-full divide-y divide-default overflow-hidden rounded-2xl border border-default bg-default text-sm"
+        >
+          <thead
+            class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted"
+          >
+            <tr>
+              <th class="px-4 py-3 font-medium">Descrição</th>
+              <th class="px-4 py-3 font-medium w-24">Qtd</th>
+              <th class="px-4 py-3 font-medium w-32">Venda</th>
+              <th class="px-4 py-3 font-medium w-32">Custo</th>
+              <th class="px-4 py-3 font-medium w-28 text-right">Comissão</th>
+              <th class="px-4 py-3 font-medium w-32 text-right">Total</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-default">
+            <tr
+              v-for="(item, index) in props.items"
+              :key="`${index}-${item.name ?? item.description ?? 'item'}`"
+              class="align-top"
+            >
+              <td class="px-4 py-4">
+                <div class="flex items-center gap-2">
+                  <UTooltip
+                    :text="
+                      getItemSource(item) === 'catalog'
+                        ? 'Item do catálogo'
+                        : 'Item manual'
+                    "
+                  >
+                    <div
+                      class="flex size-6 shrink-0 items-center justify-center rounded-lg"
+                      :class="
+                        getItemSource(item) === 'catalog'
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-elevated text-muted'
+                      "
+                    >
+                      <UIcon
+                        :name="
+                          getItemSource(item) === 'catalog'
+                            ? 'i-lucide-package-check'
+                            : 'i-lucide-pencil-ruler'
+                        "
+                        class="size-3.5"
+                      />
+                    </div>
+                  </UTooltip>
+
+                  <div class="min-w-0 flex-1 rounded-xl border border-default bg-default px-3 py-2 text-default">
+                    <span class="block truncate">
+                      {{ item.description || item.name || '—' }}
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-4 text-center text-muted">
+                {{ item.quantity }}
+              </td>
+              <td class="px-4 py-4 text-right text-muted">
+                {{ formatCurrency(item.unit_price) }}
+              </td>
+              <td class="px-4 py-4 text-right text-muted">
+                {{ formatCurrency(item.cost_price) }}
+              </td>
+              <td class="px-4 py-4 text-right font-semibold text-info">
+                {{ formatCurrency(item.commission_total) }}
+              </td>
+              <td class="px-4 py-4 text-right font-semibold text-highlighted">
+                {{ formatCurrency(getItemTotal(item)) }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="space-y-3 lg:hidden">
+        <div
+          v-for="(item, index) in props.items"
+          :key="`${index}-${item.name ?? item.description ?? 'item-mobile'}`"
+          class="rounded-2xl border border-default bg-default p-4 shadow-xs"
+        >
+          <div class="flex items-start gap-3">
+            <UTooltip
+              :text="
+                getItemSource(item) === 'catalog'
+                  ? 'Item do catálogo'
+                  : 'Item manual'
+              "
+            >
+              <div
+                class="flex size-6 shrink-0 items-center justify-center rounded-lg"
+                :class="
+                  getItemSource(item) === 'catalog'
+                    ? 'bg-primary/10 text-primary'
+                    : 'bg-elevated text-muted'
+                "
+              >
+                <UIcon
+                  :name="
+                    getItemSource(item) === 'catalog'
+                      ? 'i-lucide-package-check'
+                      : 'i-lucide-pencil-ruler'
+                  "
+                  class="size-3.5"
+                />
+              </div>
+            </UTooltip>
+
+            <div class="min-w-0 flex-1">
+              <div class="rounded-xl border border-default bg-default px-3 py-2 text-default">
+                <span class="block truncate">
+                  {{ item.description || item.name || '—' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 space-y-4">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <UFormField label="Quantidade">
+                <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default">
+                  {{ item.quantity }}
+                </div>
+              </UFormField>
+
+              <UFormField label="Venda">
+                <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default">
+                  {{ formatCurrency(item.unit_price) }}
+                </div>
+              </UFormField>
+
+              <UFormField label="Custo">
+                <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default">
+                  {{ formatCurrency(item.cost_price) }}
+                </div>
+              </UFormField>
+            </div>
+
+            <div class="rounded-xl bg-elevated/60 px-4 py-3 text-sm">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-muted">Total do item</span>
+                <span class="text-xs font-medium text-info">
+                  Com.: {{ formatCurrency(item.commission_total) }}
+                </span>
+              </div>
+              <p class="mt-1 font-semibold text-highlighted">
+                {{ formatCurrency(getItemTotal(item)) }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </UCard>
 </template>

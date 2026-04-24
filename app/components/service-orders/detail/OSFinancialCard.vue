@@ -1,8 +1,27 @@
 <script setup lang="ts">
 import type { ServiceOrderRaw } from '~/types/service-orders'
-import { formatCurrency, PAYMENT_STATUS_LABEL } from '~/utils/service-orders'
+import { formatCurrency } from '~/utils/service-orders'
 
-defineProps<{ order: ServiceOrderRaw }>()
+const props = defineProps<{ order: ServiceOrderRaw }>()
+
+const subtotal = computed(() =>
+  (props.order.items ?? []).reduce(
+    (total, item) => total + (item.total_price ?? item.unit_price * item.quantity),
+    0
+  )
+)
+
+const totalCost = computed(() => Number(props.order.total_cost_amount ?? 0))
+const totalTaxesAmount = computed(() => Number(props.order.total_taxes_amount ?? 0))
+const totalCommissionAmount = computed(() => Number(props.order.commission_amount ?? 0))
+const discountAmount = computed(() => Number(props.order.discount ?? 0))
+
+const estimatedProfit = computed(() =>
+  Number(props.order.total_amount ?? 0)
+  - totalCost.value
+  - totalTaxesAmount.value
+  - totalCommissionAmount.value
+)
 </script>
 
 <template>
@@ -17,48 +36,96 @@ defineProps<{ order: ServiceOrderRaw }>()
     </template>
 
     <div class="space-y-4">
-      <!-- Main total -->
-      <div class="rounded-xl bg-primary/8 p-4 text-center">
-        <p class="text-sm text-muted">
-          Valor cobrado pelo cliente
+      <div class="rounded-2xl bg-primary/8 p-4 text-center">
+        <p class="flex items-center justify-center gap-1.5 text-sm text-muted">
+          <UIcon
+            name="i-lucide-circle-dollar-sign"
+            class="size-4 text-primary"
+          />
+          Valor previsto para o cliente
         </p>
         <p class="mt-1 text-3xl font-bold text-highlighted">
-          {{ formatCurrency(order.total_amount) }}
-        </p>
-        <p v-if="order.payment_status" class="mt-1 text-xs text-muted">
-          {{ PAYMENT_STATUS_LABEL[order.payment_status] ?? order.payment_status }}
-          <span v-if="order.payment_method"> · {{ order.payment_method }}</span>
+          {{ formatCurrency(props.order.total_amount) }}
         </p>
       </div>
 
-      <!-- Grid of financial metrics -->
-      <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div v-if="order.discount" class="rounded-lg bg-elevated p-3 text-center">
-          <p class="text-xs text-muted">
-            Desconto
+      <div class="grid grid-cols-2 gap-3 text-center">
+        <div class="rounded-xl bg-elevated/70 p-3">
+          <p
+            class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+          >
+            <UIcon name="i-lucide-receipt" class="size-3.5" />
+            Subtotal
           </p>
-          <p class="font-semibold text-error">
-            {{ formatCurrency(order.discount) }}
+          <p class="mt-1 font-semibold text-highlighted">
+            {{ formatCurrency(subtotal) }}
           </p>
         </div>
-
-        <div v-if="order.commission_amount" class="rounded-lg bg-elevated p-3 text-center">
-          <p class="text-xs text-muted">
+        <div class="rounded-xl bg-elevated/70 p-3">
+          <p
+            class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+          >
+            <UIcon
+              name="i-lucide-badge-dollar-sign"
+              class="size-3.5"
+            />
+            Custo
+          </p>
+          <p class="mt-1 font-semibold text-error">
+            {{ formatCurrency(totalCost) }}
+          </p>
+        </div>
+        <div class="rounded-xl bg-elevated/70 p-3">
+          <p
+            class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+          >
+            <UIcon name="i-lucide-percent" class="size-3.5" />
+            Impostos
+          </p>
+          <p class="mt-1 font-semibold text-warning">
+            {{ formatCurrency(totalTaxesAmount) }}
+          </p>
+        </div>
+        <div class="rounded-xl bg-elevated/70 p-3">
+          <p
+            class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
+          >
+            <UIcon name="i-lucide-wallet-cards" class="size-3.5" />
             Comissão
           </p>
-          <p class="font-semibold text-warning">
-            {{ formatCurrency(order.commission_amount) }}
+          <p class="mt-1 font-semibold text-info">
+            {{ formatCurrency(totalCommissionAmount) }}
           </p>
         </div>
+      </div>
 
-        <div v-if="order.is_installment && order.installment_count" class="rounded-lg bg-elevated p-3 text-center">
-          <p class="text-xs text-muted">
-            Parcelas
-          </p>
-          <p class="font-semibold text-info">
-            {{ order.installment_count }}x
-          </p>
-        </div>
+      <div class="grid grid-cols-2 gap-4">
+        <UFormField>
+          <template #label>
+            <span class="flex items-center gap-1.5">
+              <UIcon
+                name="i-lucide-badge-percent"
+                class="size-4 text-warning"
+              />
+              <span>Desconto</span>
+            </span>
+          </template>
+          <UInput
+            :model-value="formatCurrency(discountAmount)"
+            class="w-full"
+            disabled
+          />
+        </UFormField>
+
+        <UFormField label="Margem estimada">
+          <UInput
+            :model-value="formatCurrency(estimatedProfit)"
+            icon="i-lucide-chart-column-big"
+            :color="estimatedProfit >= 0 ? 'success' : 'error'"
+            class="w-full"
+            disabled
+          />
+        </UFormField>
       </div>
     </div>
   </UCard>
