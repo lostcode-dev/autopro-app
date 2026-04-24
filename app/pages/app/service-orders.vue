@@ -393,6 +393,7 @@ function forceReload() {
 
 const showCreateModal = ref(false)
 const editingOrder = ref<ServiceOrderRaw | null>(null)
+const editingIds = ref(new Set<string>())
 
 watch(showCreateModal, (opened) => {
   if (!opened) editingOrder.value = null
@@ -402,6 +403,26 @@ function openEdit(order: ServiceOrderRaw) {
   closeDetail()
   editingOrder.value = order
   showCreateModal.value = true
+}
+
+async function openEditFromList(order: ServiceOrder) {
+  if (editingIds.value.has(order.id)) return
+
+  editingIds.value.add(order.id)
+  try {
+    const res = await $fetch<{ data: { order: ServiceOrderRaw } }>(`/api/service-orders/${order.id}`)
+    editingOrder.value = res.data.order
+    showCreateModal.value = true
+  } catch (error: unknown) {
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
+    toast.add({
+      title: 'Erro ao carregar OS para edição',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+  } finally {
+    editingIds.value.delete(order.id)
+  }
 }
 </script>
 
@@ -467,9 +488,11 @@ function openEdit(order: ServiceOrderRaw) {
                 :can-create="canCreate"
                 :can-update="canUpdate"
                 :is-advancing="advancingIds.has(order.id)"
+                :is-editing="editingIds.has(order.id)"
                 :is-duplicating="duplicatingIds.has(order.id)"
                 @view="openDetail"
                 @advance-status="advanceStatus"
+                @edit="openEditFromList"
                 @duplicate="duplicate"
                 @pay="requestPay"
                 @cancel="requestCancel"

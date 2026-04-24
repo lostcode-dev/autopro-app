@@ -219,15 +219,15 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
         class="h-5"
       />
 
-      <UTooltip v-if="canEdit" text="Editar OS">
-        <UButton
-          icon="i-lucide-pencil"
-          color="info"
-          variant="ghost"
-          size="sm"
-          @click="emit('edit')"
-        />
-      </UTooltip>
+      <UButton
+        v-if="canEdit"
+        label="Editar"
+        icon="i-lucide-pencil"
+        color="info"
+        variant="outline"
+        size="sm"
+        @click="emit('edit')"
+      />
 
       <!-- Duplicar -->
       <UTooltip v-if="canCreate" text="Duplicar OS">

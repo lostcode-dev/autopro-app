@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ServiceOrder } from '~/types/service-orders'
+import { canEditServiceOrder } from '~/utils/service-orders'
 
 const props = defineProps<{
   order: ServiceOrder
@@ -8,16 +9,18 @@ const props = defineProps<{
   canCreate?: boolean
   canUpdate?: boolean
   isAdvancing?: boolean
+  isEditing?: boolean
   isDuplicating?: boolean
 }>()
 
 const emit = defineEmits<{
-  view: [order: ServiceOrder]
-  cancel: [order: ServiceOrder]
-  delete: [order: ServiceOrder]
+  'view': [order: ServiceOrder]
+  'cancel': [order: ServiceOrder]
+  'delete': [order: ServiceOrder]
   'advance-status': [order: ServiceOrder]
-  duplicate: [order: ServiceOrder]
-  pay: [order: ServiceOrder]
+  'edit': [order: ServiceOrder]
+  'duplicate': [order: ServiceOrder]
+  'pay': [order: ServiceOrder]
 }>()
 
 const statusColorMap: Record<string, string> = {
@@ -38,6 +41,15 @@ const statusLabelMap: Record<string, string> = {
   delivered: 'Entregue',
   cancelled: 'Cancelada'
 }
+const statusIconMap: Record<string, string> = {
+  estimate: 'i-lucide-file-text',
+  open: 'i-lucide-circle-dot',
+  in_progress: 'i-lucide-wrench',
+  waiting_for_part: 'i-lucide-clock-3',
+  completed: 'i-lucide-circle-check',
+  delivered: 'i-lucide-truck',
+  cancelled: 'i-lucide-x-circle'
+}
 const paymentStatusColorMap: Record<string, string> = {
   pending: 'warning',
   paid: 'success',
@@ -48,8 +60,13 @@ const paymentStatusLabelMap: Record<string, string> = {
   paid: 'Pago',
   partial: 'Parcial'
 }
+const paymentStatusIconMap: Record<string, string> = {
+  pending: 'i-lucide-clock-3',
+  paid: 'i-lucide-badge-check',
+  partial: 'i-lucide-circle-dollar-sign'
+}
 
-type AdvanceInfo = { label: string; icon: string; color: 'info' | 'warning' | 'success' }
+type AdvanceInfo = { label: string, icon: string, color: 'info' | 'warning' | 'success' }
 
 const nextStatusAdvanceMap: Record<string, AdvanceInfo> = {
   estimate: { label: 'Abrir OS', icon: 'i-lucide-circle-dot', color: 'info' },
@@ -59,6 +76,9 @@ const nextStatusAdvanceMap: Record<string, AdvanceInfo> = {
 
 const nextAdvanceInfo = computed(() => nextStatusAdvanceMap[props.order.status] ?? null)
 const canAdvance = computed(() => props.canUpdate && nextAdvanceInfo.value !== null)
+const canEdit = computed(() =>
+  props.canUpdate && canEditServiceOrder(props.order.status, props.order.payment_status)
+)
 const canPay = computed(() =>
   props.canUpdate
   && props.order.payment_status === 'pending'
@@ -76,6 +96,18 @@ function formatDate(value: string | null | undefined) {
   if (!value) return '—'
   const [y, m, d] = value.split('-')
   return `${d}/${m}/${y}`
+}
+
+function initials(value: string | null | undefined) {
+  if (!value) return '—'
+
+  return value
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0])
+    .join('')
+    .toUpperCase()
 }
 </script>
 
@@ -96,12 +128,21 @@ function formatDate(value: string | null | undefined) {
       <div class="min-w-0 flex-1 space-y-2">
         <!-- Row 1: number + client + actions -->
         <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <p class="truncate font-semibold text-highlighted">
-              OS #{{ order.number }}
-              <span class="font-normal text-muted">—</span>
-              {{ order.client_name ?? '—' }}
-            </p>
+          <div class="min-w-0 space-y-1.5">
+            <div class="flex min-w-0 items-center gap-2">
+              <p class="truncate font-semibold text-highlighted">
+                OS #{{ order.number }}
+              </p>
+
+              <UTooltip v-if="order.client_name" :text="order.client_name">
+                <UAvatar
+                  :text="initials(order.client_name)"
+                  size="xs"
+                  class="shrink-0"
+                  :ui="{ root: 'ring-2 ring-primary/20 bg-primary/10 text-primary' }"
+                />
+              </UTooltip>
+            </div>
             <p class="truncate text-xs text-muted">
               {{ order.vehicle_label ?? 'Veículo não informado' }}
             </p>
@@ -128,6 +169,17 @@ function formatDate(value: string | null | undefined) {
                 size="xs"
                 :loading="isAdvancing"
                 @click="emit('advance-status', order)"
+              />
+            </UTooltip>
+
+            <UTooltip v-if="canEdit" text="Editar OS">
+              <UButton
+                icon="i-lucide-pencil"
+                color="info"
+                variant="ghost"
+                size="xs"
+                :loading="isEditing"
+                @click="emit('edit', order)"
               />
             </UTooltip>
 
@@ -188,23 +240,34 @@ function formatDate(value: string | null | undefined) {
 
         <!-- Row 3: badges + responsible + value + date -->
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex flex-wrap items-center gap-1.5">
+          <div class="flex flex-wrap items-center gap-2">
             <UBadge
               :color="statusColorMap[order.status] ?? 'neutral'"
               :label="statusLabelMap[order.status] ?? order.status"
+              :leading-icon="statusIconMap[order.status] ?? 'i-lucide-circle-dot'"
               variant="subtle"
-              size="xs"
+              size="sm"
+              class="px-2.5 py-1"
             />
             <UBadge
               v-if="order.payment_status"
               :color="paymentStatusColorMap[order.payment_status] ?? 'neutral'"
               :label="paymentStatusLabelMap[order.payment_status] ?? order.payment_status"
+              :leading-icon="paymentStatusIconMap[order.payment_status] ?? 'i-lucide-credit-card'"
               variant="soft"
-              size="xs"
+              size="sm"
+              class="px-2.5 py-1"
             />
-            <span v-if="order.responsible_name" class="text-xs text-muted">
-              · {{ order.responsible_name }}
-            </span>
+
+            <div class="flex items-center gap-1.5">
+              <UTooltip v-if="order.responsible_name" :text="`Responsável: ${order.responsible_name}`">
+                <UAvatar
+                  :text="initials(order.responsible_name)"
+                  size="xs"
+                  :ui="{ root: 'ring-2 ring-info/20 bg-info/10 text-info' }"
+                />
+              </UTooltip>
+            </div>
           </div>
           <div class="shrink-0 text-right">
             <p class="text-sm font-semibold text-highlighted">
