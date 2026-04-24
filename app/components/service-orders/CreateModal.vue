@@ -1888,16 +1888,16 @@ async function submit() {
                     >
                       <tr>
                         <th class="px-4 py-3 font-medium">Descrição</th>
-                        <th class="px-4 py-3 font-medium w-28">Qtd</th>
-                        <th class="px-4 py-3 font-medium w-40">Venda</th>
-                        <th class="px-4 py-3 font-medium w-40">Custo</th>
-                        <th class="px-4 py-3 font-medium w-36 text-right">
+                        <th class="px-4 py-3 font-medium w-24">Qtd</th>
+                        <th class="px-4 py-3 font-medium w-32">Venda</th>
+                        <th class="px-4 py-3 font-medium w-32">Custo</th>
+                        <th class="px-4 py-3 font-medium w-28 text-right">
                           Comissão
                         </th>
-                        <th class="px-4 py-3 font-medium w-36 text-right">
+                        <th class="px-4 py-3 font-medium w-32 text-right">
                           Total
                         </th>
-                        <th class="px-4 py-3 font-medium w-24 text-right">
+                        <th class="px-4 py-3 font-medium w-20 text-right">
                           Ações
                         </th>
                       </tr>
