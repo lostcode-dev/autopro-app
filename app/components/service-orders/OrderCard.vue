@@ -76,6 +76,7 @@ const nextStatusAdvanceMap: Record<string, AdvanceInfo> = {
 
 const nextAdvanceInfo = computed(() => nextStatusAdvanceMap[props.order.status] ?? null)
 const canAdvance = computed(() => props.canUpdate && nextAdvanceInfo.value !== null)
+const isEstimate = computed(() => props.order.status === 'estimate')
 const canEdit = computed(() =>
   props.canUpdate && canEditServiceOrder(props.order.status, props.order.payment_status)
 )
@@ -172,9 +173,9 @@ function initials(value: string | null | undefined) {
               />
             </UTooltip>
 
-            <UTooltip v-if="canEdit" text="Editar OS">
+            <UTooltip v-if="canEdit" :text="isEstimate ? 'Orçamento' : 'Editar OS'">
               <UButton
-                icon="i-lucide-pencil"
+                :icon="isEstimate ? 'i-lucide-file-text' : 'i-lucide-pencil'"
                 color="info"
                 variant="ghost"
                 size="sm"

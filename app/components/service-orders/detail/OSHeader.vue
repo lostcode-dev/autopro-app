@@ -62,38 +62,6 @@ const canAdvance = computed(() =>
 const canEdit = computed(() =>
   props.canUpdate && canEditServiceOrder(props.order.status, props.order.payment_status)
 )
-
-// ─── Avatar helpers ────────────────────────────────────────────────────────────
-
-function initials(name: string | null | undefined): string {
-  if (!name) return '?'
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(w => w[0])
-    .join('')
-    .toUpperCase()
-}
-
-interface ResponsibleWithPhoto {
-  employee_id: string
-  name: string | null
-  photo_url: string | null
-}
-
-const resolvedResponsibles = computed<ResponsibleWithPhoto[]>(() => {
-  return (props.responsibleNames ?? []).map((r) => {
-    const emp = (props.employees ?? []).find(e => e.id === r.employee_id)
-    return {
-      employee_id: r.employee_id,
-      name: r.name,
-      photo_url: emp?.photo_url ?? null
-    }
-  })
-})
-
-const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.value.length > 0)
 </script>
 
 <template>
@@ -182,8 +150,8 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
 
           <UButton
             v-if="canEdit"
-            label="Editar"
-            icon="i-lucide-pencil"
+            :label="isEstimate ? 'Orçamento' : 'Editar'"
+            :icon="isEstimate ? 'i-lucide-file-text' : 'i-lucide-pencil'"
             color="info"
             variant="outline"
             size="sm"

@@ -49,12 +49,24 @@ function getItemTotal(item: ServiceOrderItem) {
             class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted"
           >
             <tr>
-              <th class="px-4 py-3 font-medium">Descrição</th>
-              <th class="px-4 py-3 font-medium w-24">Qtd</th>
-              <th class="px-4 py-3 font-medium w-32">Venda</th>
-              <th class="px-4 py-3 font-medium w-32">Custo</th>
-              <th class="px-4 py-3 font-medium w-28 text-right">Comissão</th>
-              <th class="px-4 py-3 font-medium w-32 text-right">Total</th>
+              <th class="px-4 py-3 font-medium">
+                Descrição
+              </th>
+              <th class="w-24 px-4 py-3 font-medium">
+                Qtd
+              </th>
+              <th class="w-32 px-4 py-3 font-medium">
+                Venda
+              </th>
+              <th class="w-32 px-4 py-3 font-medium">
+                Custo
+              </th>
+              <th class="w-28 px-4 py-3 text-right font-medium">
+                Comissão
+              </th>
+              <th class="w-32 px-4 py-3 text-right font-medium">
+                Total
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-default">
