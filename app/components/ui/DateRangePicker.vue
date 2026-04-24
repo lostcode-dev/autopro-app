@@ -7,7 +7,6 @@ import {
   today
 } from '@internationalized/date'
 import type { DateRange, DateValue } from '@internationalized/date'
-import { breakpointsTailwind, useBreakpoints } from '@vueuse/core'
 
 const props = withDefaults(
   defineProps<{
@@ -34,9 +33,6 @@ const emit = defineEmits<{
 const popoverOpen = ref(false)
 const dfShort = new DateFormatter('pt-BR', { dateStyle: 'short' })
 const tz = getLocalTimeZone()
-
-const breakpoints = useBreakpoints(breakpointsTailwind)
-const isDesktop = breakpoints.greaterOrEqual('sm')
 
 function isoToCalendarDate(
   iso: string | null | undefined
