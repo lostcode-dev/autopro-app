@@ -345,7 +345,10 @@ const estimatedCommissionAmount = computed(() => {
         </div>
 
         <!-- Items -->
-        <ServiceOrdersDetailOSItemsCard :items="detail.order.items" />
+        <ServiceOrdersDetailOSItemsCard
+          :order="detail.order"
+          :employees="detail.employees"
+        />
 
         <!-- Financial -->
         <ServiceOrdersDetailOSFinancialCard

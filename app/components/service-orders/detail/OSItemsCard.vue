@@ -1,15 +1,31 @@
 <script setup lang="ts">
-import type { ServiceOrderItem } from '~/types/service-orders'
-import { formatCurrency } from '~/utils/service-orders'
+import type { ServiceOrderDetailFull } from '~/types/service-orders'
+import {
+  computeServiceOrderItemCommissionMap,
+  formatCurrency
+} from '~/utils/service-orders'
 
-const props = defineProps<{ items: ServiceOrderItem[] | null }>()
+const props = defineProps<{
+  order: ServiceOrderDetailFull['order']
+  employees: ServiceOrderDetailFull['employees']
+}>()
 
-function getItemSource(item: ServiceOrderItem) {
+const items = computed(() => props.order.items ?? [])
+
+const itemCommissionMap = computed(() =>
+  computeServiceOrderItemCommissionMap(props.order, props.employees)
+)
+
+function getItemSource(item: ServiceOrderDetailFull['order']['items'][number]) {
   return item.product_id ? 'catalog' : 'manual'
 }
 
-function getItemTotal(item: ServiceOrderItem) {
+function getItemTotal(item: ServiceOrderDetailFull['order']['items'][number]) {
   return item.total_price ?? item.unit_price * item.quantity
+}
+
+function getItemCommission(index: number) {
+  return itemCommissionMap.value.get(index) ?? 0
 }
 </script>
 
@@ -25,7 +41,7 @@ function getItemTotal(item: ServiceOrderItem) {
     </template>
 
     <div
-      v-if="!props.items?.length"
+      v-if="!items.length"
       class="rounded-2xl border border-default bg-elevated/40 px-6 py-10 text-center"
     >
       <UIcon
@@ -71,7 +87,7 @@ function getItemTotal(item: ServiceOrderItem) {
           </thead>
           <tbody class="divide-y divide-default">
             <tr
-              v-for="(item, index) in props.items"
+              v-for="(item, index) in items"
               :key="`${index}-${item.name ?? item.description ?? 'item'}`"
               class="align-top"
             >
@@ -120,7 +136,7 @@ function getItemTotal(item: ServiceOrderItem) {
                 {{ formatCurrency(item.cost_price) }}
               </td>
               <td class="px-4 py-4 text-right font-semibold text-info">
-                {{ formatCurrency(item.commission_total) }}
+                {{ formatCurrency(getItemCommission(index)) }}
               </td>
               <td class="px-4 py-4 text-right font-semibold text-highlighted">
                 {{ formatCurrency(getItemTotal(item)) }}
@@ -132,7 +148,7 @@ function getItemTotal(item: ServiceOrderItem) {
 
       <div class="space-y-3 lg:hidden">
         <div
-          v-for="(item, index) in props.items"
+          v-for="(item, index) in items"
           :key="`${index}-${item.name ?? item.description ?? 'item-mobile'}`"
           class="rounded-2xl border border-default bg-default p-4 shadow-xs"
         >
@@ -197,7 +213,7 @@ function getItemTotal(item: ServiceOrderItem) {
               <div class="flex items-center justify-between gap-3">
                 <span class="text-muted">Total do item</span>
                 <span class="text-xs font-medium text-info">
-                  Com.: {{ formatCurrency(item.commission_total) }}
+                  Com.: {{ formatCurrency(getItemCommission(index)) }}
                 </span>
               </div>
               <p class="mt-1 font-semibold text-highlighted">

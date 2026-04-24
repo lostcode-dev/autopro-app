@@ -104,6 +104,10 @@ function toNumber(value: number | string | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+function roundCurrency(value: number) {
+  return Number(value.toFixed(2))
+}
+
 function getOrderSubtotal(order: ServiceOrderRaw) {
   return (order.items ?? []).reduce(
     (total, item) => total + toNumber(item.total_price ?? item.unit_price * item.quantity),
@@ -185,4 +189,85 @@ export function computeServiceOrderResponsibleCommission(
     value: Number(value.toFixed(2)),
     hasMatchingItems
   }
+}
+
+export function computeServiceOrderItemCommissionMap(
+  order: ServiceOrderRaw,
+  employees: ServiceOrderEmployee[]
+) {
+  const commissionByItemIndex = new Map<number, number>()
+  const items = order.items ?? []
+  const subtotal = getOrderSubtotal(order)
+  const totalTaxesAmount = toNumber(order.total_taxes_amount)
+  const discountAmount = toNumber(order.discount)
+  const responsibleEmployees = order.responsible_employees ?? []
+
+  items.forEach((_, index) => {
+    commissionByItemIndex.set(index, 0)
+  })
+
+  responsibleEmployees
+    .map(responsible => employees.find(employee => employee.id === responsible.employee_id))
+    .filter((employee): employee is ServiceOrderEmployee => Boolean(employee?.id && employee.has_commission))
+    .forEach((employee) => {
+      const commissionCategories = employee.commission_categories ?? []
+      const eligibleItems = commissionCategories.length
+        ? items
+            .map((item, index) => ({ item, index }))
+            .filter(({ item }) => !!item.category_id && commissionCategories.includes(item.category_id))
+        : items.map((item, index) => ({ item, index }))
+
+      if (!eligibleItems.length) return
+
+      const commissionAmount = toNumber(employee.commission_amount)
+      const eligibleSale = eligibleItems.reduce(
+        (total, { item }) => total + toNumber(item.total_price ?? item.unit_price * item.quantity),
+        0
+      )
+      const eligibleRatio = subtotal > 0 ? eligibleSale / subtotal : 0
+      const eligibleDiscount = discountAmount * eligibleRatio
+      const eligibleTaxes = totalTaxesAmount * eligibleRatio
+
+      if (employee.commission_type === 'percentage') {
+        eligibleItems.forEach(({ item, index }) => {
+          const itemTotal = toNumber(item.total_price ?? item.unit_price * item.quantity)
+          const fraction = eligibleSale > 0 ? itemTotal / eligibleSale : 0
+          const itemDiscount = eligibleDiscount * fraction
+          const itemTaxes = eligibleTaxes * fraction
+          let itemBase = itemTotal - itemDiscount
+
+          if (employee.commission_base === 'profit') {
+            itemBase = Math.max(
+              0,
+              itemBase - toNumber(item.cost_price) * toNumber(item.quantity) - itemTaxes
+            )
+          }
+
+          const nextValue = roundCurrency((itemBase * commissionAmount) / 100)
+
+          commissionByItemIndex.set(
+            index,
+            roundCurrency((commissionByItemIndex.get(index) ?? 0) + nextValue)
+          )
+        })
+        return
+      }
+
+      const perItemValue = roundCurrency(commissionAmount / eligibleItems.length)
+      const distributedTotal = roundCurrency(perItemValue * eligibleItems.length)
+      const remainder = roundCurrency(commissionAmount - distributedTotal)
+
+      eligibleItems.forEach(({ index }, eligibleIndex) => {
+        const nextValue = eligibleIndex === 0
+          ? roundCurrency(perItemValue + remainder)
+          : perItemValue
+
+        commissionByItemIndex.set(
+          index,
+          roundCurrency((commissionByItemIndex.get(index) ?? 0) + nextValue)
+        )
+      })
+    })
+
+  return commissionByItemIndex
 }
