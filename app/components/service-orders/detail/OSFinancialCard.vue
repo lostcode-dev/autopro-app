@@ -2,7 +2,10 @@
 import type { ServiceOrderRaw } from '~/types/service-orders'
 import { formatCurrency } from '~/utils/service-orders'
 
-const props = defineProps<{ order: ServiceOrderRaw }>()
+const props = defineProps<{
+  order: ServiceOrderRaw
+  calculatedCommissionAmount?: number | null
+}>()
 
 const subtotal = computed(() =>
   (props.order.items ?? []).reduce(
@@ -13,7 +16,7 @@ const subtotal = computed(() =>
 
 const totalCost = computed(() => Number(props.order.total_cost_amount ?? 0))
 const totalTaxesAmount = computed(() => Number(props.order.total_taxes_amount ?? 0))
-const totalCommissionAmount = computed(() => Number(props.order.commission_amount ?? 0))
+const totalCommissionAmount = computed(() => Number(props.calculatedCommissionAmount ?? props.order.commission_amount ?? 0))
 const discountAmount = computed(() => Number(props.order.discount ?? 0))
 
 const estimatedProfit = computed(() =>

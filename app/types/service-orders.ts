@@ -81,8 +81,9 @@ export type ServiceOrderEmployee = {
   name: string
   photo_url?: string | null
   commission_type?: string | null
-  commission_value?: number | null
+  commission_amount?: number | null
   commission_base?: string | null
+  commission_categories?: string[] | null
   has_commission?: boolean | null
 }
 

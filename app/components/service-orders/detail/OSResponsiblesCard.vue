@@ -1,35 +1,42 @@
 <script setup lang="ts">
 import type { ServiceOrderDetailFull } from '~/types/service-orders'
-import { formatCurrency } from '~/utils/service-orders'
+import {
+  computeServiceOrderResponsibleCommission,
+  formatCurrency
+} from '~/utils/service-orders'
 
 const props = defineProps<{
+  order: ServiceOrderDetailFull['order']
   responsibleNames: ServiceOrderDetailFull['responsibleNames']
   employees: ServiceOrderDetailFull['employees']
-  commissions: ServiceOrderDetailFull['commissions']
 }>()
 
 type ResponsibleInfo = {
   employee_id: string
   name: string | null
   commission_type: string | null | undefined
-  commission_value: number | null | undefined
+  configured_commission_amount: number | null | undefined
   commission_base: string | null | undefined
+  commission_categories: string[]
   has_commission: boolean
   commission_amount: number | null
+  has_matching_items: boolean
 }
 
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
   return props.responsibleNames.map((r) => {
     const emp = props.employees.find(e => e.id === r.employee_id)
-    const commission = props.commissions.find(c => c.employee_id === r.employee_id)
+    const commissionEstimate = computeServiceOrderResponsibleCommission(props.order, emp)
     return {
       employee_id: r.employee_id,
       name: r.name,
       commission_type: emp?.commission_type,
-      commission_value: emp?.commission_value,
+      configured_commission_amount: emp?.commission_amount,
       commission_base: emp?.commission_base,
+      commission_categories: emp?.commission_categories ?? [],
       has_commission: Boolean(emp?.has_commission),
-      commission_amount: commission ? Number(commission.amount) : null
+      commission_amount: commissionEstimate.value,
+      has_matching_items: commissionEstimate.hasMatchingItems
     }
   })
 })
@@ -42,11 +49,11 @@ const totalCommissionAmount = computed(() =>
 )
 
 function getResponsibleRateLabel(assignee: ResponsibleInfo) {
-  if (!assignee.has_commission || assignee.commission_value == null) return null
+  if (!assignee.has_commission || assignee.configured_commission_amount == null) return null
 
   return assignee.commission_type === 'percentage'
-    ? `${assignee.commission_value}%`
-    : formatCurrency(assignee.commission_value)
+    ? `${assignee.configured_commission_amount}%`
+    : formatCurrency(assignee.configured_commission_amount)
 }
 
 function getResponsibleBaseLabel(assignee: ResponsibleInfo) {
@@ -58,13 +65,23 @@ function getResponsibleBaseLabel(assignee: ResponsibleInfo) {
 }
 
 function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
-  if (assignee.has_commission) return null
-
-  return {
-    label: 'Sem comissão',
-    color: 'neutral' as const,
-    icon: 'i-lucide-circle-off'
+  if (!assignee.has_commission) {
+    return {
+      label: 'Sem comissão',
+      color: 'neutral' as const,
+      icon: 'i-lucide-circle-off'
+    }
   }
+
+  if (assignee.commission_categories.length > 0 && !assignee.has_matching_items) {
+    return {
+      label: 'Sem itens nas categorias',
+      color: 'warning' as const,
+      icon: 'i-lucide-triangle-alert'
+    }
+  }
+
+  return null
 }
 </script>
 

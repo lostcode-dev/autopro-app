@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ServiceOrder, ServiceOrderDetailFull, ServiceOrderRaw } from '~/types/service-orders'
+import { computeServiceOrderResponsibleCommission } from '~/utils/service-orders'
 
 const props = defineProps<{
   open: boolean
@@ -252,6 +253,15 @@ const orderProxy = computed<ServiceOrder | null>(() => {
     installments_progress: null
   }
 })
+
+const estimatedCommissionAmount = computed(() => {
+  if (!detail.value) return 0
+
+  return detail.value.responsibleNames.reduce((total, responsible) => {
+    const employee = detail.value?.employees.find(item => item.id === responsible.employee_id)
+    return total + computeServiceOrderResponsibleCommission(detail.value!.order, employee).value
+  }, 0)
+})
 </script>
 
 <template>
@@ -331,16 +341,19 @@ const orderProxy = computed<ServiceOrder | null>(() => {
         <ServiceOrdersDetailOSItemsCard :items="detail.order.items" />
 
         <!-- Financial -->
-        <ServiceOrdersDetailOSFinancialCard :order="detail.order" />
+        <ServiceOrdersDetailOSFinancialCard
+          :order="detail.order"
+          :calculated-commission-amount="estimatedCommissionAmount"
+        />
 
         <!-- Installments -->
         <ServiceOrdersDetailOSInstallmentsCard :installments="detail.installments" />
 
         <!-- Responsibles -->
         <ServiceOrdersDetailOSResponsiblesCard
+          :order="detail.order"
           :responsible-names="detail.responsibleNames"
           :employees="detail.employees"
-          :commissions="detail.commissions"
         />
       </div>
     </template>
