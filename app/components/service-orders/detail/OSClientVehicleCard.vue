@@ -20,8 +20,8 @@ defineProps<{
           </h3>
         </div>
       </template>
-      <dl class="space-y-3 text-sm">
-        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+      <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3 sm:col-span-2">
           <UIcon name="i-lucide-id-card" class="mt-0.5 size-4 shrink-0 text-primary" />
           <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
@@ -34,7 +34,7 @@ defineProps<{
         </div>
         <div v-if="client?.phone || client?.mobile_phone" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
           <UIcon name="i-lucide-phone" class="mt-0.5 size-4 shrink-0 text-primary" />
-          <div>
+          <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
               Telefone
             </dt>
@@ -65,8 +65,8 @@ defineProps<{
           </h3>
         </div>
       </template>
-      <dl class="space-y-3 text-sm">
-        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
+      <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3 sm:col-span-2">
           <UIcon name="i-lucide-car-front" class="mt-0.5 size-4 shrink-0 text-primary" />
           <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
@@ -79,7 +79,7 @@ defineProps<{
         </div>
         <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
           <UIcon name="i-lucide-id-card" class="mt-0.5 size-4 shrink-0 text-primary" />
-          <div>
+          <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
               Placa
             </dt>
@@ -88,7 +88,7 @@ defineProps<{
         </div>
         <div v-if="vehicle.year" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
           <UIcon name="i-lucide-calendar-days" class="mt-0.5 size-4 shrink-0 text-primary" />
-          <div>
+          <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
               Ano
             </dt>
@@ -97,7 +97,7 @@ defineProps<{
         </div>
         <div v-if="vehicle.color" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
           <UIcon name="i-lucide-palette" class="mt-0.5 size-4 shrink-0 text-primary" />
-          <div>
+          <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
               Cor
             </dt>
@@ -108,7 +108,7 @@ defineProps<{
         </div>
         <div v-if="vehicle.fuel_type" class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3">
           <UIcon name="i-lucide-fuel" class="mt-0.5 size-4 shrink-0 text-primary" />
-          <div>
+          <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
               Combustível
             </dt>

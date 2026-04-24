@@ -139,37 +139,6 @@ const hasContextInfo = computed(() => !!props.client || resolvedResponsibles.val
       </div>
 
       <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-        <div v-if="hasContextInfo" class="flex flex-wrap items-center gap-3">
-          <UTooltip v-if="client" :text="client.name">
-            <div class="flex cursor-default items-center gap-2 rounded-full bg-elevated px-2.5 py-1.5">
-              <UAvatar
-                :text="initials(client.name)"
-                size="xs"
-                :ui="{ root: 'ring-2 ring-primary/30' }"
-              />
-              <span class="text-xs font-medium text-muted">Cliente</span>
-            </div>
-          </UTooltip>
-
-          <div v-if="resolvedResponsibles.length" class="flex items-center gap-2 rounded-full bg-elevated px-2.5 py-1.5">
-            <span class="text-xs font-medium text-muted">Responsáveis</span>
-            <div class="flex -space-x-1.5">
-              <UTooltip
-                v-for="r in resolvedResponsibles"
-                :key="r.employee_id"
-                :text="r.name ?? 'Funcionário'"
-              >
-                <UAvatar
-                  :src="r.photo_url ?? undefined"
-                  :text="initials(r.name)"
-                  size="xs"
-                  :ui="{ root: 'ring-2 ring-default' }"
-                />
-              </UTooltip>
-            </div>
-          </div>
-        </div>
-
         <div class="flex shrink-0 flex-wrap items-center justify-end gap-2">
           <!-- Receber pagamento -->
           <UButton
