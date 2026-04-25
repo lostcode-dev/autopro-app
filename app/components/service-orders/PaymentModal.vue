@@ -327,7 +327,7 @@ async function save() {
             <div class="space-y-1">
               <div class="flex items-center gap-2 text-sm font-medium text-success">
                 <UIcon name="i-lucide-wallet-cards" class="size-4" />
-                Pagamento da ordem de serviço
+                Configuração do Pagamento
               </div>
               <p class="text-xl font-semibold text-highlighted">
                 {{ formatCurrency(order?.total_amount) }}
@@ -386,7 +386,7 @@ async function save() {
             value-key="value"
             label-key="label"
             class="w-full"
-            :ui="{ base: 'min-h-14 rounded-xl' }"
+            :ui="{ base: 'min-h-14 rounded-xl ps-14' }"
           >
             <template #leading>
               <div class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">

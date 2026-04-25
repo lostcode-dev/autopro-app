@@ -293,7 +293,6 @@ function initials(value: string | null | undefined) {
           </div>
           <div class="shrink-0 text-right">
             <p class="flex items-center justify-end gap-1.5 text-sm font-semibold text-highlighted">
-              <UIcon name="i-lucide-badge-dollar-sign" class="size-4 text-success" />
               {{ formatCurrency(order.total_amount) }}
             </p>
           </div>
