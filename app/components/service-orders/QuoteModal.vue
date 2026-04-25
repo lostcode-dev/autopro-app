@@ -256,7 +256,7 @@ async function downloadPdf() {
 
         <div class="flex items-start justify-end">
           <div
-            class="flex w-full max-w-[280px] items-center justify-end gap-2 rounded-2xl border border-default bg-default/80 p-2 shadow-sm lg:w-auto"
+            class="flex w-full max-w-[280px] items-center justify-end gap-2 rounded-2xl p-2 lg:w-auto"
           >
             <UButton
               label="Baixar PDF"
