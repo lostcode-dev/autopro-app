@@ -22,6 +22,20 @@ function asNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+function isMissingCommissionSnapshotColumn(error: { message?: string } | null | undefined) {
+  const message = String(error?.message || '')
+  if (!message) return false
+
+  return [
+    'commission_type',
+    'commission_percentage',
+    'commission_base',
+    'item_name',
+    'item_amount',
+    'item_cost'
+  ].some(column => message.includes(`'${column}'`) || message.includes(`"${column}"`))
+}
+
 export async function generateServiceOrderCommissions({
   supabase,
   organizationId,
@@ -147,29 +161,44 @@ export async function generateServiceOrderCommissions({
       if (commissionAmount <= 0) continue
 
       const roundedAmount = Number(commissionAmount.toFixed(2))
+      const basePayload = {
+        organization_id: organizationId,
+        employee_id: employeeId,
+        service_order_id: orderId,
+        record_type: 'commission',
+        amount: roundedAmount,
+        status: 'pending',
+        description: `Commission - OS #${order.number} - ${item.name || item.description || 'Item'}`,
+        reference_date: order.entry_date || new Date().toISOString().split('T')[0],
+        created_by: userEmail || null,
+        updated_by: userEmail || null
+      }
 
-      const { data: commissionRecord, error: commissionError } = await supabase
+      const snapshotPayload = {
+        commission_type: commissionType,
+        commission_percentage: commissionType === 'percentage' ? commissionValue : null,
+        commission_base: commissionBase,
+        item_name: item.name || item.description || null,
+        item_amount: itemTotal,
+        item_cost: itemCost
+      }
+
+      let { data: commissionRecord, error: commissionError } = await supabase
         .from('employee_financial_records')
         .insert({
-          organization_id: organizationId,
-          employee_id: employeeId,
-          service_order_id: orderId,
-          record_type: 'commission',
-          amount: roundedAmount,
-          status: 'pending',
-          description: `Commission - OS #${order.number} - ${item.name || item.description || 'Item'}`,
-          reference_date: order.entry_date || new Date().toISOString().split('T')[0],
-          commission_type: commissionType,
-          commission_percentage: commissionType === 'percentage' ? commissionValue : null,
-          commission_base: commissionBase,
-          item_name: item.name || item.description || null,
-          item_amount: itemTotal,
-          item_cost: itemCost,
-          created_by: userEmail || null,
-          updated_by: userEmail || null
+          ...basePayload,
+          ...snapshotPayload
         })
         .select()
         .single()
+
+      if (commissionError && isMissingCommissionSnapshotColumn(commissionError)) {
+        ({ data: commissionRecord, error: commissionError } = await supabase
+          .from('employee_financial_records')
+          .insert(basePayload)
+          .select()
+          .single())
+      }
 
       if (commissionError) {
         throw createError({ statusCode: 500, statusMessage: commissionError.message })
