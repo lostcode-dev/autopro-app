@@ -135,6 +135,9 @@ export async function generateServiceOrderCommissions({
     const commissionCategories = Array.isArray(employee.commission_categories)
       ? employee.commission_categories
       : []
+    let employeeCommissionAmount = 0
+    let eligibleItemAmount = 0
+    let eligibleItemCost = 0
 
     for (const item of items) {
       if (commissionCategories.length > 0) {
@@ -149,6 +152,9 @@ export async function generateServiceOrderCommissions({
       const itemCost = asNumber(item.cost_price) * quantity
       const itemProfit = itemTotal - itemCost
 
+      eligibleItemAmount += itemTotal
+      eligibleItemCost += itemCost
+
       let commissionAmount = 0
       if (commissionType === 'percentage') {
         const baseAmount = commissionBase === 'profit' ? itemProfit : itemTotal
@@ -158,56 +164,60 @@ export async function generateServiceOrderCommissions({
       }
 
       commissionAmount = commissionAmount / responsibleEmployees.length
-      if (commissionAmount <= 0) continue
+      employeeCommissionAmount += commissionAmount
+    }
 
-      const roundedAmount = Number(commissionAmount.toFixed(2))
-      const basePayload = {
-        organization_id: organizationId,
-        employee_id: employeeId,
-        service_order_id: orderId,
-        record_type: 'commission',
-        amount: roundedAmount,
-        status: 'pending',
-        description: `Commission - OS #${order.number} - ${item.name || item.description || 'Item'}`,
-        reference_date: order.entry_date || new Date().toISOString().split('T')[0],
-        created_by: userEmail || null,
-        updated_by: userEmail || null
-      }
+    if (employeeCommissionAmount <= 0) continue
 
-      const snapshotPayload = {
-        commission_type: commissionType,
-        commission_percentage: commissionType === 'percentage' ? commissionValue : null,
-        commission_base: commissionBase,
-        item_name: item.name || item.description || null,
-        item_amount: itemTotal,
-        item_cost: itemCost
-      }
+    const roundedAmount = Number(employeeCommissionAmount.toFixed(2))
+    const roundedEligibleItemAmount = Number(eligibleItemAmount.toFixed(2))
+    const roundedEligibleItemCost = Number(eligibleItemCost.toFixed(2))
+    const basePayload = {
+      organization_id: organizationId,
+      employee_id: employeeId,
+      service_order_id: orderId,
+      record_type: 'commission',
+      amount: roundedAmount,
+      status: 'pending',
+      description: `Commission - OS #${order.number}`,
+      reference_date: order.entry_date || new Date().toISOString().split('T')[0],
+      created_by: userEmail || null,
+      updated_by: userEmail || null
+    }
 
-      let { data: commissionRecord, error: commissionError } = await supabase
+    const snapshotPayload = {
+      commission_type: commissionType,
+      commission_percentage: commissionType === 'percentage' ? commissionValue : null,
+      commission_base: commissionBase,
+      item_name: `OS #${order.number}`,
+      item_amount: roundedEligibleItemAmount,
+      item_cost: roundedEligibleItemCost
+    }
+
+    let { data: commissionRecord, error: commissionError } = await supabase
+      .from('employee_financial_records')
+      .insert({
+        ...basePayload,
+        ...snapshotPayload
+      })
+      .select()
+      .single()
+
+    if (commissionError && isMissingCommissionSnapshotColumn(commissionError)) {
+      ({ data: commissionRecord, error: commissionError } = await supabase
         .from('employee_financial_records')
-        .insert({
-          ...basePayload,
-          ...snapshotPayload
-        })
+        .insert(basePayload)
         .select()
-        .single()
+        .single())
+    }
 
-      if (commissionError && isMissingCommissionSnapshotColumn(commissionError)) {
-        ({ data: commissionRecord, error: commissionError } = await supabase
-          .from('employee_financial_records')
-          .insert(basePayload)
-          .select()
-          .single())
-      }
+    if (commissionError) {
+      throw createError({ statusCode: 500, statusMessage: commissionError.message })
+    }
 
-      if (commissionError) {
-        throw createError({ statusCode: 500, statusMessage: commissionError.message })
-      }
-
-      if (commissionRecord) {
-        createdCommissions.push(commissionRecord)
-        totalCommission += roundedAmount
-      }
+    if (commissionRecord) {
+      createdCommissions.push(commissionRecord)
+      totalCommission += roundedAmount
     }
   }
 
