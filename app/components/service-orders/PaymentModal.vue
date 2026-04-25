@@ -317,7 +317,7 @@ async function save() {
     :open="open"
     title="Processar pagamento"
     :description="order ? `OS #${order.number}` : ''"
-    :ui="{ body: 'overflow-y-auto max-h-[78vh]' }"
+    :ui="{ content: 'sm:max-w-5xl lg:max-w-6xl', body: 'overflow-y-auto max-h-[82vh]' }"
     @update:open="emit('update:open', $event)"
   >
     <template #body>
@@ -379,39 +379,22 @@ async function save() {
           </UFormField>
         </div>
 
-        <div class="space-y-3">
-          <div class="flex items-center gap-2">
-            <UIcon name="i-lucide-credit-card" class="size-4 text-primary" />
-            <p class="text-sm font-medium text-highlighted">
-              Forma de pagamento
-            </p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <button
-              v-for="option in PAYMENT_METHOD_OPTIONS"
-              :key="option.value"
-              type="button"
-              class="flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors"
-              :class="form.paymentMethod === option.value
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-default bg-default text-muted hover:bg-elevated'"
-              @click="form.paymentMethod = option.value"
-            >
-              <div
-                class="flex size-9 items-center justify-center rounded-lg"
-                :class="form.paymentMethod === option.value ? 'bg-primary text-primary-foreground' : 'bg-elevated text-highlighted'"
-              >
-                <UIcon :name="option.icon" class="size-4" />
+        <UFormField label="Forma de pagamento" required>
+          <USelectMenu
+            v-model="form.paymentMethod"
+            :items="PAYMENT_METHOD_OPTIONS"
+            value-key="value"
+            label-key="label"
+            class="w-full"
+            :ui="{ base: 'min-h-14 rounded-xl' }"
+          >
+            <template #leading>
+              <div class="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <UIcon :name="selectedPaymentMethod.icon" class="size-4" />
               </div>
-              <div class="min-w-0">
-                <p class="text-sm font-medium leading-tight">
-                  {{ option.label }}
-                </p>
-              </div>
-            </button>
-          </div>
-        </div>
+            </template>
+          </USelectMenu>
+        </UFormField>
 
         <div class="rounded-xl border border-default p-4 space-y-4">
           <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
