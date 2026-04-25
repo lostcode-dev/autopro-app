@@ -574,6 +574,42 @@ BEGIN
     deleted_at = NULL,
     deleted_by = NULL;
 
+  WITH product_rows AS (
+    SELECT
+      uuid_generate_v5(v_namespace, 'product:' || src.legacy_product_id) AS id,
+      organizations.id AS organization_id,
+      src.name,
+      src.code,
+      src.type,
+      categories.id AS category_id,
+      COALESCE(src.track_inventory, false) AS track_inventory,
+      COALESCE(src.initial_stock_quantity, 0) AS initial_stock_quantity,
+      src.unit_sale_price,
+      src.unit_cost_price,
+      src.notes,
+      CASE
+        WHEN src.type = 'group' THEN COALESCE(src.group_items, '[]'::jsonb)
+        ELSE NULL
+      END AS group_items,
+      COALESCE(src.created_at, now()) AS created_at,
+      src.created_by,
+      COALESCE(src.updated_at, COALESCE(src.created_at, now())) AS updated_at,
+      row_number() OVER (
+        PARTITION BY organizations.id, src.code
+        ORDER BY
+          COALESCE(src.updated_at, src.created_at, '-infinity'::timestamptz) DESC,
+          src.legacy_product_id DESC
+      ) AS rn
+    FROM tmp_product_source AS src
+    JOIN public.organizations AS organizations
+      ON organizations.id = uuid_generate_v5(v_namespace, 'organization:' || src.legacy_org_id)
+    LEFT JOIN public.product_categories AS categories
+      ON src.legacy_category_id IS NOT NULL
+     AND categories.id = uuid_generate_v5(v_namespace, 'product_category:' || src.legacy_category_id || ':' || src.legacy_org_id)
+    WHERE src.legacy_org_id IS NOT NULL
+      AND src.name IS NOT NULL
+      AND src.code IS NOT NULL
+  )
   INSERT INTO public.products (
     id,
     organization_id,
@@ -595,41 +631,29 @@ BEGIN
     deleted_by
   )
   SELECT
-    uuid_generate_v5(v_namespace, 'product:' || src.legacy_product_id),
-    organizations.id,
-    src.name,
-    src.code,
-    src.type,
-    categories.id,
-    COALESCE(src.track_inventory, false),
-    COALESCE(src.initial_stock_quantity, 0),
-    src.unit_sale_price,
-    src.unit_cost_price,
-    src.notes,
-    CASE
-      WHEN src.type = 'group' THEN COALESCE(src.group_items, '[]'::jsonb)
-      ELSE NULL
-    END,
-    COALESCE(src.created_at, now()),
-    src.created_by,
-    COALESCE(src.updated_at, COALESCE(src.created_at, now())),
-    src.created_by,
+    id,
+    organization_id,
+    name,
+    code,
+    type,
+    category_id,
+    track_inventory,
+    initial_stock_quantity,
+    unit_sale_price,
+    unit_cost_price,
+    notes,
+    group_items,
+    created_at,
+    created_by,
+    updated_at,
+    created_by,
     NULL,
     NULL
-  FROM tmp_product_source AS src
-  JOIN public.organizations AS organizations
-    ON organizations.id = uuid_generate_v5(v_namespace, 'organization:' || src.legacy_org_id)
-  LEFT JOIN public.product_categories AS categories
-    ON src.legacy_category_id IS NOT NULL
-   AND categories.id = uuid_generate_v5(v_namespace, 'product_category:' || src.legacy_category_id || ':' || src.legacy_org_id)
-  WHERE src.legacy_org_id IS NOT NULL
-    AND src.name IS NOT NULL
-    AND src.code IS NOT NULL
-  ON CONFLICT (id) DO UPDATE
+  FROM product_rows
+  WHERE rn = 1
+  ON CONFLICT (organization_id, code) DO UPDATE
   SET
-    organization_id = EXCLUDED.organization_id,
     name = EXCLUDED.name,
-    code = EXCLUDED.code,
     type = EXCLUDED.type,
     category_id = EXCLUDED.category_id,
     track_inventory = EXCLUDED.track_inventory,
@@ -643,6 +667,37 @@ BEGIN
     deleted_at = NULL,
     deleted_by = NULL;
 
+  WITH part_rows AS (
+    SELECT
+      uuid_generate_v5(v_namespace, 'part:' || src.legacy_part_id) AS id,
+      organizations.id AS organization_id,
+      products.id AS product_id,
+      src.code,
+      src.description,
+      COALESCE(src.stock_quantity, 0) AS stock_quantity,
+      COALESCE(src.minimum_quantity, 0) AS minimum_quantity,
+      COALESCE(src.sale_price, 0) AS sale_price,
+      src.cost_price,
+      src.category,
+      src.brand,
+      src.supplier_name,
+      src.location,
+      src.notes,
+      COALESCE(src.created_at, now()) AS created_at,
+      src.created_by,
+      COALESCE(src.updated_at, COALESCE(src.created_at, now())) AS updated_at
+    FROM tmp_part_source AS src
+    JOIN public.organizations AS organizations
+      ON organizations.id = uuid_generate_v5(v_namespace, 'organization:' || src.legacy_org_id)
+    LEFT JOIN tmp_product_source AS product_src
+      ON product_src.legacy_product_id = src.legacy_product_id
+    LEFT JOIN public.products AS products
+      ON products.organization_id = organizations.id
+     AND products.code = product_src.code
+    WHERE src.legacy_org_id IS NOT NULL
+      AND src.description IS NOT NULL
+      AND src.code IS NOT NULL
+  )
   INSERT INTO public.parts (
     id,
     organization_id,
@@ -666,40 +721,30 @@ BEGIN
     deleted_by
   )
   SELECT
-    uuid_generate_v5(v_namespace, 'part:' || src.legacy_part_id),
-    organizations.id,
-    products.id,
-    src.code,
-    src.description,
-    COALESCE(src.stock_quantity, 0),
-    COALESCE(src.minimum_quantity, 0),
-    COALESCE(src.sale_price, 0),
-    src.cost_price,
-    src.category,
-    src.brand,
-    src.supplier_name,
-    src.location,
-    src.notes,
-    COALESCE(src.created_at, now()),
-    src.created_by,
-    COALESCE(src.updated_at, COALESCE(src.created_at, now())),
-    src.created_by,
+    id,
+    organization_id,
+    product_id,
+    code,
+    description,
+    stock_quantity,
+    minimum_quantity,
+    sale_price,
+    cost_price,
+    category,
+    brand,
+    supplier_name,
+    location,
+    notes,
+    created_at,
+    created_by,
+    updated_at,
+    created_by,
     NULL,
     NULL
-  FROM tmp_part_source AS src
-  JOIN public.organizations AS organizations
-    ON organizations.id = uuid_generate_v5(v_namespace, 'organization:' || src.legacy_org_id)
-  LEFT JOIN public.products AS products
-    ON src.legacy_product_id IS NOT NULL
-   AND products.id = uuid_generate_v5(v_namespace, 'product:' || src.legacy_product_id)
-  WHERE src.legacy_org_id IS NOT NULL
-    AND src.description IS NOT NULL
-    AND src.code IS NOT NULL
-  ON CONFLICT (id) DO UPDATE
+  FROM part_rows
+  ON CONFLICT (organization_id, code) DO UPDATE
   SET
-    organization_id = EXCLUDED.organization_id,
     product_id = EXCLUDED.product_id,
-    code = EXCLUDED.code,
     description = EXCLUDED.description,
     stock_quantity = EXCLUDED.stock_quantity,
     minimum_quantity = EXCLUDED.minimum_quantity,
