@@ -17,11 +17,12 @@ function closeSidebar() {
   open.value = false
 }
 
-function item(label: string, icon: string, to: string): NavigationMenuItem {
+function item(label: string, icon: string, to: string, exact = false): NavigationMenuItem {
   return {
     label,
     icon,
     to,
+    exact,
     onSelect: closeSidebar
   }
 }
@@ -165,7 +166,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     : []
 
   const settingsChildren: NavigationMenuItem[] = [
-    item('Conta', 'i-lucide-user', '/app/settings'),
+    item('Conta', 'i-lucide-user', '/app/settings', true),
     item('Assinatura', 'i-lucide-credit-card', '/app/settings/subscription'),
     item('Notificações', 'i-lucide-bell', '/app/settings/notifications')
   ]
