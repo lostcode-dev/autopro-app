@@ -75,7 +75,7 @@ export default defineEventHandler(async (event) => {
         due_date: dueDate,
         type: 'income',
         status,
-        category: 'service_order',
+        category: 'services',
         recurrence: null,
         is_installment: isInstallment,
         installment_count: installmentCount,
