@@ -255,15 +255,7 @@ function initials(value: string | null | undefined) {
           </div>
         </div>
 
-        <!-- Row 2: defect -->
-        <div v-if="order.reported_defect" class="flex items-start gap-2 text-sm text-muted">
-          <UIcon name="i-lucide-triangle-alert" class="mt-0.5 size-4 shrink-0 text-warning" />
-          <p class="truncate">
-            {{ order.reported_defect }}
-          </p>
-        </div>
-
-        <!-- Row 3: badges + responsible + value + date -->
+        <!-- Row 2: badges + responsible + value + date -->
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap items-center gap-2">
             <UBadge
