@@ -145,9 +145,19 @@ function initials(value: string | null | undefined) {
                 />
               </UTooltip>
             </div>
-            <p class="truncate text-xs text-muted">
-              {{ order.vehicle_label ?? 'Veículo não informado' }}
-            </p>
+            <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+              <div class="flex min-w-0 items-center gap-1.5">
+                <UIcon name="i-lucide-car-front" class="size-3.5 shrink-0 text-primary" />
+                <p class="truncate">
+                  {{ order.vehicle_label ?? '-' }}
+                </p>
+              </div>
+
+              <div class="flex shrink-0 items-center gap-1.5">
+                <UIcon name="i-lucide-calendar-days" class="size-3.5 text-muted" />
+                <span>{{ formatDate(order.entry_date) }}</span>
+              </div>
+            </div>
           </div>
 
           <div class="flex shrink-0 flex-wrap items-center justify-end gap-1" @click.stop>
@@ -246,9 +256,12 @@ function initials(value: string | null | undefined) {
         </div>
 
         <!-- Row 2: defect -->
-        <p v-if="order.reported_defect" class="truncate text-sm text-muted">
-          {{ order.reported_defect }}
-        </p>
+        <div v-if="order.reported_defect" class="flex items-start gap-2 text-sm text-muted">
+          <UIcon name="i-lucide-triangle-alert" class="mt-0.5 size-4 shrink-0 text-warning" />
+          <p class="truncate">
+            {{ order.reported_defect }}
+          </p>
+        </div>
 
         <!-- Row 3: badges + responsible + value + date -->
         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -271,7 +284,12 @@ function initials(value: string | null | undefined) {
               class="px-2.5 py-1"
             />
 
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5 rounded-full bg-info/5 px-1.5 py-1">
+              <UIcon
+                v-if="order.responsible_name"
+                name="i-lucide-user-round-cog"
+                class="size-3.5 shrink-0 text-info"
+              />
               <UTooltip v-if="order.responsible_name" :text="`${order.responsible_name}`">
                 <UAvatar
                   :text="initials(order.responsible_name)"
@@ -282,11 +300,9 @@ function initials(value: string | null | undefined) {
             </div>
           </div>
           <div class="shrink-0 text-right">
-            <p class="text-sm font-semibold text-highlighted">
+            <p class="flex items-center justify-end gap-1.5 text-sm font-semibold text-highlighted">
+              <UIcon name="i-lucide-badge-dollar-sign" class="size-4 text-success" />
               {{ formatCurrency(order.total_amount) }}
-            </p>
-            <p class="text-xs text-muted">
-              {{ formatDate(order.entry_date) }}
             </p>
           </div>
         </div>
