@@ -46,8 +46,7 @@ const isEstimate = computed(() => props.order.status === 'estimate')
 const canPay = computed(() =>
   props.canUpdate
   && props.order.payment_status === 'pending'
-  && !isEstimate.value
-  && !isCancelled.value
+  && props.order.status === 'completed'
 )
 
 const canCancelPayment = computed(() =>

@@ -84,7 +84,7 @@ const canEdit = computed(() =>
 const canPay = computed(() =>
   props.canUpdate
   && props.order.payment_status === 'pending'
-  && !['estimate', 'cancelled'].includes(props.order.status)
+  && props.order.status === 'completed'
 )
 
 function formatCurrency(value: number | string | null | undefined) {
