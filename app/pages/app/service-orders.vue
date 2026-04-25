@@ -459,7 +459,7 @@ function openQuoteFromDetail(orderId: string) {
         </p>
       </div>
 
-      <div v-else class="flex min-h-0 flex-1 flex-col p-4">
+      <div v-else class="flex min-h-0 flex-1 flex-col p-0">
         <AppDataTableInfinite
           v-model:search-term="search"
           :columns="[]"

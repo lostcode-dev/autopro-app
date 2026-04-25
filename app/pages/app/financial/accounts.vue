@@ -210,7 +210,7 @@ const lineColumns = [
       </div>
 
       <div v-else class="flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 flex-1 flex-col p-4">
+        <div class="flex min-h-0 flex-1 flex-col p-0">
           <AppDataTable
             v-model:display-mode="viewMode"
             v-model:search-term="search"
