@@ -462,12 +462,14 @@ function openQuoteFromDetail(orderId: string) {
       <div v-else class="flex min-h-0 flex-1 flex-col p-0">
         <AppDataTableInfinite
           v-model:search-term="search"
+          class="min-h-0 flex-1"
           :columns="[]"
           :data="accumulatedOrders as Record<string, unknown>[]"
           :loading="isLoading"
           :loading-more="isLoadingMore"
           :has-more="hasMore"
           :total="totalFiltered"
+          max-height="100%"
           show-search
           search-placeholder="Buscar por número ou cliente..."
           empty-icon="i-lucide-clipboard-list"
