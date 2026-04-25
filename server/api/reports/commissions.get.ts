@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
   const paymentMethods = qArr(query.paymentMethods as string | string[] | undefined)
   const recordType = query.recordType && query.recordType !== 'all' ? String(query.recordType) : null
   const searchTerm = String(query.searchTerm || '').trim().toLowerCase()
-  const sortBy = ['employee', 'date', 'amount', 'status'].includes(query.sortBy as string) ? String(query.sortBy) : 'date'
+  const sortBy = ['employee', 'order', 'date', 'amount', 'status'].includes(query.sortBy as string) ? String(query.sortBy) : 'date'
   const sortOrder: 'asc' | 'desc' = query.sortOrder === 'asc' ? 'asc' : 'desc'
   const page = Math.max(1, Math.floor(toNumber(query.page, 1)))
   const pageSize = Math.min(100, Math.max(1, Math.floor(toNumber(query.pageSize, 10))))
@@ -196,6 +196,12 @@ export default defineEventHandler(async (event) => {
   enrichedRecords.sort((recordA, recordB) => {
     if (sortBy === 'employee') {
       return String(recordA.employee_name || '').localeCompare(String(recordB.employee_name || ''), 'pt-BR', { sensitivity: 'base' }) * factor
+    }
+    if (sortBy === 'order') {
+      return String(recordA.order_number || '').localeCompare(String(recordB.order_number || ''), 'pt-BR', {
+        sensitivity: 'base',
+        numeric: true
+      }) * factor
     }
     if (sortBy === 'amount') {
       return (toNumber(recordA?.amount, 0) - toNumber(recordB?.amount, 0)) * factor

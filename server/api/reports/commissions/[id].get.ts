@@ -154,7 +154,11 @@ export default defineEventHandler(async (event) => {
         .is('deleted_at', null)
     : { data: [] }
 
-  const employeesMap = new Map((employees || []).map((employee: any) => [String(employee.id), employee]))
+  const employeesMap = new Map(
+    (employees || [])
+      .map((employee: any) => [normalizeId(employee.id), employee] as const)
+      .filter((entry): entry is [string, any] => Boolean(entry[0]))
+  )
   const currentEmployee = commissionEmployeeId ? employeesMap.get(commissionEmployeeId) ?? null : null
 
   const items = Array.isArray(order?.items) ? order.items : []
@@ -227,7 +231,7 @@ export default defineEventHandler(async (event) => {
   const relatedCommissions = (orderCommissionsResult.data || []).map((record: any) => ({
     id: String(record.id),
     employeeId: normalizeId(record.employee_id),
-    employeeName: String(employeesMap.get(String(record.employee_id || ''))?.name || 'Funcionário'),
+    employeeName: String(employeesMap.get(normalizeId(record.employee_id) || '')?.name || 'Funcionário'),
     itemName: String(record.item_name || 'Item'),
     amount: roundMoney(toNumber(record.amount, 0)),
     status: normalizeReportStatus(record.status),
@@ -238,8 +242,8 @@ export default defineEventHandler(async (event) => {
 
   const responsibleNames = (Array.isArray(order?.responsible_employees) ? order.responsible_employees : [])
     .map((responsible: any) => {
-      const employeeId = String(responsible?.employee_id || '')
-      return String(employeesMap.get(employeeId)?.name || '').trim()
+      const employeeId = normalizeId(responsible?.employee_id)
+      return String((employeeId ? employeesMap.get(employeeId)?.name : '') || '').trim()
     })
     .filter(Boolean)
 
