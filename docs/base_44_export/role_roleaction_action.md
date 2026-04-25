@@ -1,0 +1,217 @@
+📋 ROLE — 5 registros
+id	name	display_name	description	is_system_role	organization_id
+6986558ff6e6a571e2c57062	admin	Administrador	Acesso total ao sistema, incluindo configurações, usuários e permissões	✅	(global)
+6986558ff6e6a571e2c57061	employee	Funcionário	Acesso limitado apenas para visualizar e executar tarefas operacionais básicas	✅	(global)
+6986558ff6e6a571e2c57060	manager	Gerente	Acesso a operações principais, relatórios e aprovações, sem acesso a configurações críticas	✅	(global)
+6995ae645f92c673624791ed	anderson	Anderson	Acesso limitado apenas para visualizar e executar tarefas operacionais básicas	❌	69864e74fb6fe137d3577c07
+699866335d6ab7400a1544fd	marcineia	Marcineia	(vazio)	❌	69864e74fb6fe137d3577c07
+⚡ ACTION — 74 registros completos
+id	code	name	resource	action_type
+6986527930417ef399f6af55	orders.create	Criar Ordens de Serviço	orders	create
+6986527930417ef399f6af56	orders.read	Visualizar Ordens de Serviço	orders	read
+6986527930417ef399f6af57	orders.update	Atualizar Ordens de Serviço	orders	update
+6986527930417ef399f6af58	orders.delete	Excluir Ordens de Serviço	orders	delete
+6986527930417ef399f6af69	orders.cancel	Cancelar Ordens de Serviço	orders	update
+6986527930417ef399f6af68	orders.pay	Pagar Ordens de Serviço	orders	update
+69b9ca7662afe7973f7e5454	orders.correct	Corrigir Ordem de Serviço	orders	update
+6986527930417ef399f6af59	customers.create	Criar Clientes	customers	create
+6986527930417ef399f6af5a	customers.read	Visualizar Clientes	customers	read
+6986527930417ef399f6af5b	customers.update	Atualizar Clientes	customers	update
+6986527930417ef399f6af5c	customers.delete	Excluir Clientes	customers	delete
+6986527930417ef399f6af5d	vehicles.create	Criar Veículos	vehicles	create
+6986527930417ef399f6af5e	vehicles.read	Visualizar Veículos	vehicles	read
+6986527930417ef399f6af5f	vehicles.update	Atualizar Veículos	vehicles	update
+6986527930417ef399f6af60	vehicles.delete	Excluir Veículos	vehicles	delete
+6986527930417ef399f6af6a	products.create	Criar Produtos	products	create
+6986527930417ef399f6af6b	products.read	Visualizar Produtos	products	read
+6986527930417ef399f6af6c	products.update	Atualizar Produtos	products	update
+6986527930417ef399f6af6d	products.delete	Excluir Produtos	products	delete
+6986527930417ef399f6af61	inventory.create	Criar Itens de Estoque	inventory	create
+6986527930417ef399f6af62	inventory.read	Visualizar Estoque	inventory	read
+6986527930417ef399f6af63	inventory.update	Atualizar Estoque	inventory	update
+6986527930417ef399f6af64	inventory.delete	Excluir Itens de Estoque	inventory	delete
+6986527930417ef399f6af75	suppliers.create	Criar Fornecedores	suppliers	create
+6986527930417ef399f6af76	suppliers.read	Visualizar Fornecedores	suppliers	read
+6986527930417ef399f6af77	suppliers.update	Atualizar Fornecedores	suppliers	update
+6986527930417ef399f6af78	suppliers.delete	Excluir Fornecedores	suppliers	delete
+6986527930417ef399f6af7a	purchases.create	Criar Compras	purchases	create
+6986527930417ef399f6af7b	purchases.read	Visualizar Compras	purchases	read
+6986527930417ef399f6af7c	purchases.update	Atualizar Compras	purchases	update
+6986527930417ef399f6af7d	purchases.delete	Excluir Compras	purchases	delete
+6986527930417ef399f6af81	returns.read	Visualizar Devoluções	returns	read
+6986527930417ef399f6af82	returns.create	Criar Devoluções	returns	create
+6986527930417ef399f6af83	returns.update	Atualizar Devoluções	returns	update
+6986527930417ef399f6af84	returns.delete	Excluir Devoluções	returns	delete
+6986527930417ef399f6af85	financial.create	Criar Registros Financeiros	financial	create
+6986527930417ef399f6af86	financial.read	Visualizar Financeiro	financial	read
+6986527930417ef399f6af87	financial.update	Atualizar Registros Financeiros	financial	update
+6986527930417ef399f6af88	financial.delete	Excluir Registros Financeiros	financial	delete
+6986527930417ef399f6af8f	appointments.create	Criar Agendamentos	appointments	create
+6986527930417ef399f6af90	appointments.read	Visualizar Agendamentos	appointments	read
+6986527930417ef399f6af91	appointments.update	Atualizar Agendamentos	appointments	update
+6986527930417ef399f6af92	appointments.delete	Excluir Agendamentos	appointments	delete
+6986527930417ef399f6af93	employees.create	Criar Funcionários	employees	create
+6986527930417ef399f6af94	employees.read	Visualizar Funcionários	employees	read
+6986527930417ef399f6af97	employees.delete	Excluir Funcionários	employees	delete
+6986527930417ef399f6af98	employees.pay	Pagar Funcionários	employees	update
+6986527930417ef399f6af95	employees.update	Atualizar Funcionários	employees	update
+6986527930417ef399f6af99	reports.view	Visualizar Relatórios	reports	read
+6986527930417ef399f6af9a	reports.customers	Visualizar Relatórios de Clientes	reports	read
+6986527930417ef399f6af9b	reports.financial	Visualizar Relatórios Financeiros	reports	read
+6986527930417ef399f6af9c	reports.commissions	Visualizar Relatórios de Comissões	reports	read
+6986527930417ef399f6af9d	reports.sales	Visualizar Relatórios de Vendas	reports	read
+6986527930417ef399f6af9e	reports.purchases	Visualizar Relatórios de Compras	reports	read
+6986527930417ef399f6af9f	reports.costs	Visualizar Relatórios de Custos	reports	read
+6986527930417ef399f6afa0	reports.debtors	Visualizar Relatórios de Devedores	reports	read
+6986527930417ef399f6afa1	reports.suppliers	Visualizar Relatórios de Fornecedores	reports	read
+6986527930417ef399f6afa2	reports.profit	Visualizar Relatórios de Lucro	reports	read
+6986527930417ef399f6afa3	settings.view	Visualizar Configurações	settings	read
+6986527930417ef399f6afa4	settings.update	Atualizar Configurações	settings	update
+69bb306b03b70912c23fa457	fiscal.manage	Gerenciamento Fiscal	settings	manage
+6986527930417ef399f6afa6	organization.view	Visualizar Organização	organization	read
+6986527930417ef399f6afa7	organization.update	Update Organization	organization	update
+6986527930417ef399f6afa9	members.view	Visualizar Membros	members	read
+6986527930417ef399f6afaa	members.invite	Convidar Membros	members	create
+6986527930417ef399f6afab	members.update	Atualizar Membros	members	update
+6986527930417ef399f6afac	members.delete	Excluir Membros	members	delete
+6986527930417ef399f6afad	roles.create	Criar Funções	roles	create
+6986527930417ef399f6afae	roles.read	Visualizar Funções	roles	read
+6986527930417ef399f6afaf	roles.update	Atualizar Funções	roles	update
+6986527930417ef399f6afb0	roles.delete	Excluir Funções	roles	delete
+6986527930417ef399f6afb1	subscription.manage	Gerenciar Assinatura	subscription	manage
+6986527930417ef399f6afb3	subscription.view	Visualizar Assinatura	subscription	read
+6986527930417ef399f6afb8	payment_machines.view	Visualizar Maquininhas	payment_machines	read
+6986527930417ef399f6afb9	payment_machines.update	Atualizar Maquininhas	payment_machines	update
+6986527930417ef399f6afbb	authorizations.create	Criar Autorizações	authorizations	create
+6986527930417ef399f6afbc	authorizations.read	Visualizar Autorizações	authorizations	read
+6986527930417ef399f6afbd	authorizations.update	Atualizar Autorizações	authorizations	update
+6986527930417ef399f6afbe	authorizations.delete	Excluir Autorizações	authorizations	delete
+6986527930417ef399f6afc0	authorizations.approve	Aprovar Autorizações	authorizations	update
+6986527930417ef399f6afc1	consultation.use	Usar Consultoria IA	consultation	create
+6986527930417ef399f6afc2	consultation.view	Visualizar Consultorias	consultation	read
+6986527930417ef399f6af65	taxes.view	Visualizar Impostos	taxes	read
+6986527930417ef399f6af66	taxes.update	Atualizar Impostos	taxes	update
+6986527930417ef399f6af67	bank_accounts.view	Visualizar Contas Bancárias	bank_accounts	read
+6986527930417ef399f6af7e	bank_accounts.update	Atualizar Contas Bancárias	bank_accounts	update
+🔗 ROLE_ACTION — Permissões por Role
+Role: admin (6986558ff6e6a571e2c57062)
+✅ Tem acesso a TODAS as actions (todas as 74 actions com granted=true)
+
+Role: manager / Gerente (6986558ff6e6a571e2c57060)
+action_id	code
+6986527930417ef399f6af55	orders.create
+6986527930417ef399f6af56	orders.read
+6986527930417ef399f6af57	orders.update
+6986527930417ef399f6af58	orders.delete
+6986527930417ef399f6af68	orders.pay
+6986527930417ef399f6af69	orders.cancel
+6986527930417ef399f6af59	customers.create
+6986527930417ef399f6af5a	customers.read
+6986527930417ef399f6af5b	customers.update
+6986527930417ef399f6af5c	customers.delete
+6986527930417ef399f6af5d	vehicles.create
+6986527930417ef399f6af5e	vehicles.read
+6986527930417ef399f6af5f	vehicles.update
+6986527930417ef399f6af60	vehicles.delete
+6986527930417ef399f6af6a	products.create
+6986527930417ef399f6af6b	products.read
+6986527930417ef399f6af6c	products.update
+6986527930417ef399f6af6d	products.delete
+6986527930417ef399f6af61	inventory.create
+6986527930417ef399f6af62	inventory.read
+6986527930417ef399f6af63	inventory.update
+6986527930417ef399f6af64	inventory.delete
+6986527930417ef399f6af75	suppliers.create
+6986527930417ef399f6af76	suppliers.read
+6986527930417ef399f6af77	suppliers.update
+6986527930417ef399f6af78	suppliers.delete
+6986527930417ef399f6af7a	purchases.create
+6986527930417ef399f6af7b	purchases.read
+6986527930417ef399f6af7c	purchases.update
+6986527930417ef399f6af7d	purchases.delete
+6986527930417ef399f6af81	returns.read
+6986527930417ef399f6af82	returns.create
+6986527930417ef399f6af83	returns.update
+6986527930417ef399f6af84	returns.delete
+6986527930417ef399f6af85	financial.create
+6986527930417ef399f6af86	financial.read
+6986527930417ef399f6af87	financial.update
+6986527930417ef399f6af88	financial.delete
+6986527930417ef399f6af8f	appointments.create
+6986527930417ef399f6af90	appointments.read
+6986527930417ef399f6af91	appointments.update
+6986527930417ef399f6af92	appointments.delete
+6986527930417ef399f6af94	employees.read
+6986527930417ef399f6af98	employees.pay
+6986527930417ef399f6af99	reports.view
+6986527930417ef399f6af9a	reports.customers
+6986527930417ef399f6af9b	reports.financial
+6986527930417ef399f6af9c	reports.commissions
+6986527930417ef399f6af9d	reports.sales
+6986527930417ef399f6af9e	reports.purchases
+6986527930417ef399f6af9f	reports.costs
+6986527930417ef399f6afa0	reports.debtors
+6986527930417ef399f6afa1	reports.suppliers
+6986527930417ef399f6afa2	reports.profit
+6986527930417ef399f6afa3	settings.view
+6986527930417ef399f6afa9	members.view
+6986527930417ef399f6afaa	members.invite
+6986527930417ef399f6afbb	authorizations.create
+6986527930417ef399f6afbc	authorizations.read
+6986527930417ef399f6afbd	authorizations.update
+6986527930417ef399f6afbe	authorizations.delete
+6986527930417ef399f6afc0	authorizations.approve
+6986527930417ef399f6afc1	consultation.use
+6986527930417ef399f6afc2	consultation.view
+6986527930417ef399f6af65	taxes.view
+6986527930417ef399f6af66	taxes.update
+6986527930417ef399f6af67	bank_accounts.view
+6986527930417ef399f6af7e	bank_accounts.update
+Role: anderson (6995ae645f92c673624791ed)
+action_id	code
+6986527930417ef399f6af55	orders.create
+6986527930417ef399f6af56	orders.read
+6986527930417ef399f6af57	orders.update
+6986527930417ef399f6af68	orders.pay
+6986527930417ef399f6af69	orders.cancel
+6986527930417ef399f6af5a	customers.read
+6986527930417ef399f6af5e	vehicles.read
+6986527930417ef399f6af5f	vehicles.update
+6986527930417ef399f6af60	vehicles.delete
+6986527930417ef399f6af61	inventory.create
+6986527930417ef399f6af63	inventory.update
+6986527930417ef399f6af64	inventory.delete
+6986527930417ef399f6af65	taxes.view
+6986527930417ef399f6af66	taxes.update
+6986527930417ef399f6af6a	products.create
+6986527930417ef399f6af6b	products.read
+6986527930417ef399f6af6c	products.update
+6986527930417ef399f6af6d	products.delete
+6986527930417ef399f6af8f	appointments.create
+6986527930417ef399f6af90	appointments.read
+6986527930417ef399f6af91	appointments.update
+6986527930417ef399f6af92	appointments.delete
+6986527930417ef399f6af9c	reports.commissions
+6995ae645f92c673624791ed → 6986527930417ef399f6af9c	reports.commissions (adicionado depois)
+6986527930417ef399f6afbb	authorizations.create
+6986527930417ef399f6afbc	authorizations.read
+6986527930417ef399f6afbd	authorizations.update
+Role: marcineia (699866335d6ab7400a1544fd)
+action_id	code
+6986527930417ef399f6af59	customers.create
+6986527930417ef399f6af5a	customers.read
+6986527930417ef399f6af5b	customers.update
+6986527930417ef399f6af5c	customers.delete
+6986527930417ef399f6af9a	reports.customers
+6986527930417ef399f6af9b	reports.financial
+6986527930417ef399f6af9d	reports.sales
+6986527930417ef399f6af9e	reports.purchases
+6986527930417ef399f6af9f	reports.costs
+6986527930417ef399f6afa0	reports.debtors
+6986527930417ef399f6afa1	reports.suppliers
+6986527930417ef399f6afa2	reports.profit
+6986527930417ef399f6afa3	settings.view
+6986527930417ef399f6afa4	settings.update
+6986527930417ef399f6af99	reports.view
+6986527930417ef399f6af9c	reports.commissions
+69b9ca7662afe7973f7e5454	orders.correct

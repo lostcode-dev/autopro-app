@@ -1,0 +1,6 @@
+nome,tipo,id,aliquota,organization_id,created_date,updated_date,created_by_id,created_by,is_sample
+"SIMPLES","federal","68c0a862a4a3664141d94c00","8","69864ce67137a313e5c26d4d","2025-09-09T22:21:22.829000","2026-02-16T12:42:01.696000","68c06e22e3b7015582db9328","contato@loker.com.br","false"
+"ISSQN","municipal","68c0a6bdd81a26d9b5c21c02","5","69864ce67137a313e5c26d4d","2025-09-09T22:14:21.658000","2026-02-16T12:42:01.642000","68c06e22e3b7015582db9328","contato@loker.com.br","false"
+"SIMPLES","federal","68bc8cdcc9b039407a6cd3a6","6","","2025-09-06T19:34:52.083000","2025-09-06T19:34:52.083000","68bb8ae30bb9b6022db0caf3","quotabankoficial@gmail.com","false"
+"ISSQN","municipal","68bc8cc5fb9e2ee2e3dc97d5","5","","2025-09-06T19:34:29.745000","2025-09-06T19:34:29.745000","68bb8ae30bb9b6022db0caf3","quotabankoficial@gmail.com","false"
+"ISS","municipal","68bc87f48d579dc84c15192a","5","","2025-09-06T19:13:56.257000","2025-09-06T19:13:56.257000","68b21e394c1c0a8057cf2136","beenkoficial@gmail.com","false"

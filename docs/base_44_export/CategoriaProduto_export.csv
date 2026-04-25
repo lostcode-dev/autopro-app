@@ -1,0 +1,7 @@
+nome,id,organization_id,descricao,created_date,updated_date,created_by_id,created_by,is_sample
+"grupo","69654e0f95078889d0446920","69864e74fb6fe137d3577c07","Importada via CSV","2026-01-12T19:39:59.916000","2026-02-16T12:26:06.079000","68bf5a54d2be85c156a85dfd","marquesmd9@gmail.com","false"
+"Kits","6965159dbcbdbcb5e1d6b24d","","Importada via CSV","2026-01-12T15:39:09.075000","2026-01-12T15:39:09.075000","68b21e394c1c0a8057cf2136","beenkoficial@gmail.com","false"
+"Serviços","69651595de6245b9c6b033fa","","Importada via CSV","2026-01-12T15:39:01.375000","2026-01-12T15:39:01.375000","68b21e394c1c0a8057cf2136","beenkoficial@gmail.com","false"
+"Lubrificantes","6965159320b6d3cef22a34df","","Importada via CSV","2026-01-12T15:38:59.102000","2026-01-12T15:38:59.102000","68b21e394c1c0a8057cf2136","beenkoficial@gmail.com","false"
+"MOTOR","6940319672e01f6fc61cbbf2","69864e74fb6fe137d3577c07","","2025-12-15T16:04:38.812000","2026-02-16T12:26:06.035000","68bf5a54d2be85c156a85dfd","marquesmd9@gmail.com","false"
+"Cabeçote","693c8f05b2a7d107b2312ff9","69864e74fb6fe137d3577c07","","2025-12-12T21:54:13.114000","2026-02-16T12:26:06.016000","68bf5a54d2be85c156a85dfd","marquesmd9@gmail.com","false"
