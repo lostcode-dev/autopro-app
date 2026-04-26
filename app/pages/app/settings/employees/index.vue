@@ -249,6 +249,19 @@ function maskPhone(raw: string): string {
   )
 }
 
+function formatDisplayPhone(raw: unknown): string {
+  const digits = String(raw ?? '').replace(/\D/g, '').slice(0, 11)
+  if (!digits) return ''
+  if (digits.length <= 10) {
+    return digits.replace(/(\d{2})(\d{4})(\d{0,4})/, (_, a, b, c) =>
+      c ? `(${a}) ${b}-${c}` : b ? `(${a}) ${b}` : a ? `(${a}` : ''
+    )
+  }
+  return digits.replace(/(\d{2})(\d{5})(\d{0,4})/, (_, a, b, c) =>
+    c ? `(${a}) ${b}-${c}` : `(${a}) ${b}`
+  )
+}
+
 function maskCpfCnpj(raw: string, type: string): string {
   const d = raw.replace(/\D/g, '')
   if (type === 'pf') {
@@ -686,7 +699,7 @@ const columns = [
 
       <template #phone-cell="{ row }">
         <span v-if="row.original.phone" class="font-mono text-sm">{{
-          row.original.phone
+          formatDisplayPhone(row.original.phone)
         }}</span>
         <span v-else class="text-sm text-muted">—</span>
       </template>
@@ -1398,6 +1411,7 @@ const columns = [
           @click="showAccessModal = false"
         />
         <UButton
+          v-if="!isLoadingAccessStatus && !!accessEmployee?.email && !accessStatus?.hasAuthUser"
           label="Criar acesso e enviar email"
           icon="i-lucide-user-round-plus"
           color="neutral"
