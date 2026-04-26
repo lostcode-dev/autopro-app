@@ -96,7 +96,7 @@ export default defineEventHandler(async (event) => {
   const paymentMethodFilters = qArr(query.paymentMethodFilters as string | string[] | undefined)
   const clientIds = qArr(query.clientIds as string | string[] | undefined)
   const orderStatusFilters = qArr(query.orderStatusFilters as string | string[] | undefined)
-  const allowedOrderStatuses = orderStatusFilters.length > 0 ? orderStatusFilters : ['completed', 'delivered']
+  const allowedOrderStatuses = orderStatusFilters.length > 0 ? orderStatusFilters : null
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
 
@@ -153,7 +153,7 @@ export default defineEventHandler(async (event) => {
     if (order?.status === 'cancelled' || order?.status === 'estimate') continue
     if (normalizeReportStatus(order?.payment_status) !== 'pending') continue
     if (order?.is_installment) continue
-    if (!allowedOrderStatuses.includes(String(order?.status || ''))) continue
+    if (allowedOrderStatuses && !allowedOrderStatuses.includes(String(order?.status || ''))) continue
 
     const clientId = String(order?.client_id || '')
     if (!clientId) continue
@@ -178,7 +178,7 @@ export default defineEventHandler(async (event) => {
     const order = ordersMap.get(String(installment?.service_order_id || ''))
     if (!order) continue
     if (order?.status === 'cancelled' || order?.status === 'estimate') continue
-    if (!allowedOrderStatuses.includes(String(order?.status || ''))) continue
+    if (allowedOrderStatuses && !allowedOrderStatuses.includes(String(order?.status || ''))) continue
     const clientId = String(order?.client_id || '')
     if (!clientId) continue
 
