@@ -30,6 +30,11 @@ const barSeries = computed(() => [
 const donutLabels = computed(() => props.statusDistribution.map(s => s.name))
 const donutSeries = computed(() => props.statusDistribution.map(s => s.value))
 const donutColors = computed(() => props.statusDistribution.map(s => s.color))
+const barHeight = computed(() => Math.min(420, Math.max(280, props.byEmployee.length * 42 + 96)))
+
+function formatEmployeeLabel(value: string) {
+  return String(value || '').replace(/\s+/g, ' ').trim()
+}
 </script>
 
 <template>
@@ -45,9 +50,11 @@ const donutColors = computed(() => props.statusDistribution.map(s => s.color))
       <ChartsBar
         :categories="barCategories"
         :series="barSeries"
-        :height="260"
+        :height="barHeight"
         :colors="['#22c55e', '#f59e0b']"
         :format-value="fmt"
+        :category-formatter="formatEmployeeLabel"
+        horizontal
         stacked
       />
     </UCard>

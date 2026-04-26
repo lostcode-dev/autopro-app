@@ -83,16 +83,7 @@ BEGIN
       ELSE 'expense'
     END,
     CASE src.status WHEN 'pago' THEN 'paid' WHEN 'cancelado' THEN 'cancelled' ELSE 'pending' END,
-    CASE
-      WHEN lower(src.category) = 'vendas' THEN 'sales'
-      WHEN lower(src.category) LIKE 'servi%' THEN 'services'
-      WHEN lower(src.category) = 'aluguel' THEN 'rent'
-      WHEN lower(src.category) LIKE 'sal%' OR lower(src.category) IN ('custo com pessoal', 'prolabore') THEN 'salaries'
-      WHEN lower(src.category) IN ('fornecedores', 'terceirizado') OR lower(src.category) LIKE 'pe%' THEN 'suppliers'
-      WHEN lower(src.category) = 'impostos' THEN 'taxes'
-      WHEN lower(src.category) = 'marketing' THEN 'marketing'
-      ELSE 'other'
-    END,
+    LEFT(COALESCE(NULLIF(BTRIM(src.category), ''), 'outros'), 100),
     CASE src.recurrence WHEN 'nao_recorrente' THEN 'non_recurring' WHEN 'mensal' THEN 'monthly' WHEN 'anual' THEN 'annual' ELSE NULL END,
     NULLIF(src.recurrence_end_date, '')::date,
     NULL,

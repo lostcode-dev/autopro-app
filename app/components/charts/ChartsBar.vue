@@ -13,7 +13,9 @@ const props = defineProps<{
   colors?: string[]
   stacked?: boolean
   formatValue?: (v: number) => string
+  categoryFormatter?: (v: string) => string
   columnWidth?: string
+  horizontal?: boolean
 }>()
 
 const colorMode = useColorMode()
@@ -31,6 +33,11 @@ function fmtShort(v: number) {
   return String(Math.round(v))
 }
 
+function fmtCategory(value: string) {
+  const formatted = props.categoryFormatter ? props.categoryFormatter(value) : String(value || '')
+  return formatted.length > 22 ? `${formatted.slice(0, 21)}...` : formatted
+}
+
 const chartOptions = computed(() => ({
   chart: {
     type: 'bar',
@@ -45,7 +52,9 @@ const chartOptions = computed(() => ({
   colors: props.colors ?? defaultColors,
   plotOptions: {
     bar: {
+      horizontal: props.horizontal ?? false,
       columnWidth: props.columnWidth ?? (props.series.length > 1 ? '72%' : '45%'),
+      barHeight: props.horizontal ? '68%' : undefined,
       borderRadius: 3,
       borderRadiusApplication: 'end'
     }
@@ -55,14 +64,16 @@ const chartOptions = computed(() => ({
     categories: props.categories,
     labels: {
       style: { fontSize: '11px', fontFamily: 'inherit', colors: isDark.value ? '#9ca3af' : '#6b7280' },
-      rotate: props.categories.length > 16 ? -45 : 0
+      rotate: props.horizontal ? 0 : props.categories.length > 16 ? -45 : 0,
+      formatter: props.horizontal ? (value: string) => fmtShort(Number(value || 0)) : (value: string) => fmtCategory(value)
     },
     axisBorder: { show: false },
     axisTicks: { show: false }
   },
   yaxis: {
     labels: {
-      formatter: fmtShort,
+      formatter: props.horizontal ? (value: string) => fmtCategory(value) : fmtShort,
+      maxWidth: props.horizontal ? 140 : undefined,
       style: { fontSize: '11px', fontFamily: 'inherit', colors: isDark.value ? '#9ca3af' : '#6b7280' }
     }
   },
