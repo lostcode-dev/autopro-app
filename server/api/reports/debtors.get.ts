@@ -128,12 +128,12 @@ export default defineEventHandler(async (event) => {
   function getEligibleDueInfo(dueDate: string | null) {
     const dueDateObj = dueDate ? new Date(`${dueDate}T00:00:00`) : null
     if (!dueDateObj || Number.isNaN(dueDateObj.getTime())) return null
-    if (dueDateObj >= today) return null
     if (dateFrom && dueDateObj < dateFrom) return null
     if (dateTo && dueDateObj > dateTo) return null
 
-    const daysOverdue = Math.floor((today.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24))
-    return { daysOverdue, status: 'overdue' as const }
+    const daysOverdue = Math.max(0, Math.floor((today.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24)))
+    const status = dueDateObj < today ? 'overdue' as const : 'current' as const
+    return { daysOverdue, status }
   }
 
   function addPendingItem(clientId: string, item: PendingItem) {
