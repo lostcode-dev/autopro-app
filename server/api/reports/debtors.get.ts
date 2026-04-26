@@ -96,6 +96,7 @@ export default defineEventHandler(async (event) => {
   const paymentMethodFilters = qArr(query.paymentMethodFilters as string | string[] | undefined)
   const clientIds = qArr(query.clientIds as string | string[] | undefined)
   const orderStatusFilters = qArr(query.orderStatusFilters as string | string[] | undefined)
+  const allowedOrderStatuses = orderStatusFilters.length > 0 ? orderStatusFilters : ['completed', 'delivered']
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
 
@@ -124,32 +125,49 @@ export default defineEventHandler(async (event) => {
 
   const debtorsMap: Record<string, DebtorAggregate> = {}
 
+  function getEligibleDueInfo(dueDate: string | null) {
+    const dueDateObj = dueDate ? new Date(`${dueDate}T00:00:00`) : null
+    if (!dueDateObj || Number.isNaN(dueDateObj.getTime())) return null
+    if (dueDateObj >= today) return null
+    if (dateFrom && dueDateObj < dateFrom) return null
+    if (dateTo && dueDateObj > dateTo) return null
+
+    const daysOverdue = Math.floor((today.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24))
+    return { daysOverdue, status: 'overdue' as const }
+  }
+
+  function addPendingItem(clientId: string, item: PendingItem) {
+    if (statusFilters.length > 0 && !statusFilters.includes(item.status)) return
+    if (paymentMethodFilters.length > 0 && !paymentMethodFilters.includes(String(item.paymentMethod || 'no_payment'))) return
+
+    if (!debtorsMap[clientId]) debtorsMap[clientId] = { clientId, totalOwed: 0, pendingItems: [], daysOverdue: 0, earliestDue: null }
+    const debtor = debtorsMap[clientId]
+    debtor.totalOwed += item.amount
+    if (item.daysOverdue > debtor.daysOverdue) debtor.daysOverdue = item.daysOverdue
+    if (item.dueDate && (!debtor.earliestDue || item.dueDate < debtor.earliestDue)) debtor.earliestDue = item.dueDate
+    debtor.pendingItems.push(item)
+  }
+
   // From service orders (non-installment, unpaid)
   for (const order of orders) {
     if (order?.status === 'cancelled' || order?.status === 'estimate') continue
     if (normalizeReportStatus(order?.payment_status) !== 'pending') continue
     if (order?.is_installment) continue
-    if (orderStatusFilters.length > 0 && !orderStatusFilters.includes(String(order?.status || ''))) continue
+    if (!allowedOrderStatuses.includes(String(order?.status || ''))) continue
 
     const clientId = String(order?.client_id || '')
     if (!clientId) continue
 
     const dueDate = order?.expected_payment_date || order?.entry_date || null
-    const dueDateObj = dueDate ? new Date(`${dueDate}T00:00:00`) : null
-    const daysOverdue = dueDateObj && !Number.isNaN(dueDateObj.getTime()) ? Math.max(0, Math.floor((today.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24))) : 0
+    const dueInfo = getEligibleDueInfo(dueDate)
+    if (!dueInfo) continue
 
-    if (!debtorsMap[clientId]) debtorsMap[clientId] = { clientId, totalOwed: 0, pendingItems: [], daysOverdue: 0, earliestDue: null }
-    const debtor = debtorsMap[clientId]
     const amount = toNumber(order?.total_amount, 0)
-    debtor.totalOwed += amount
-    if (daysOverdue > debtor.daysOverdue) debtor.daysOverdue = daysOverdue
-    if (dueDate && (!debtor.earliestDue || dueDate < debtor.earliestDue)) debtor.earliestDue = dueDate
-
-    debtor.pendingItems.push({
+    addPendingItem(clientId, {
       type: 'order', id: order.id, orderId: order.id, number: String(order?.number || '-'), amount,
       dueDate, paymentMethod: order?.payment_method || null,
-      orderStatus: order?.status || null, daysOverdue,
-      status: daysOverdue > 0 ? 'overdue' : 'current'
+      orderStatus: order?.status || null, daysOverdue: dueInfo.daysOverdue,
+      status: dueInfo.status
     })
   }
 
@@ -159,26 +177,21 @@ export default defineEventHandler(async (event) => {
 
     const order = ordersMap.get(String(installment?.service_order_id || ''))
     if (!order) continue
-    if (orderStatusFilters.length > 0 && !orderStatusFilters.includes(String(order?.status || ''))) continue
+    if (order?.status === 'cancelled' || order?.status === 'estimate') continue
+    if (!allowedOrderStatuses.includes(String(order?.status || ''))) continue
     const clientId = String(order?.client_id || '')
     if (!clientId) continue
 
     const dueDate = installment?.due_date || null
-    const dueDateObj = dueDate ? new Date(`${dueDate}T00:00:00`) : null
-    const daysOverdue = dueDateObj && !Number.isNaN(dueDateObj.getTime()) ? Math.max(0, Math.floor((today.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24))) : 0
+    const dueInfo = getEligibleDueInfo(dueDate)
+    if (!dueInfo) continue
 
-    if (!debtorsMap[clientId]) debtorsMap[clientId] = { clientId, totalOwed: 0, pendingItems: [], daysOverdue: 0, earliestDue: null }
-    const debtor = debtorsMap[clientId]
     const amount = toNumber(installment?.amount, 0)
-    debtor.totalOwed += amount
-    if (daysOverdue > debtor.daysOverdue) debtor.daysOverdue = daysOverdue
-    if (dueDate && (!debtor.earliestDue || dueDate < debtor.earliestDue)) debtor.earliestDue = dueDate
-
-    debtor.pendingItems.push({
+    addPendingItem(clientId, {
       type: 'installment', id: installment.id, orderId: order.id, number: `${order?.number || '-'} P${installment?.installment_number || '?'}`,
       amount, dueDate, paymentMethod: installment?.payment_method || null,
-      orderStatus: order?.status || null, daysOverdue,
-      status: daysOverdue > 0 ? 'overdue' : 'current'
+      orderStatus: order?.status || null, daysOverdue: dueInfo.daysOverdue,
+      status: dueInfo.status
     })
   }
 
@@ -194,20 +207,11 @@ export default defineEventHandler(async (event) => {
     }
   })
 
+  const availableClients = debtors
+    .map(d => ({ value: d.clientId, label: d.clientName }))
+    .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
+
   if (clientIds.length > 0) debtors = debtors.filter(d => clientIds.includes(d.clientId))
-  if (statusFilters.length > 0) debtors = debtors.filter(d => statusFilters.includes(d.status))
-  if (paymentMethodFilters.length > 0) {
-    debtors = debtors.filter(d => d.pendingItems.some(item => paymentMethodFilters.includes(String(item.paymentMethod || 'no_payment'))))
-  }
-  if (dateFrom || dateTo) {
-    debtors = debtors.filter(d => d.pendingItems.some((item) => {
-      const due = item.dueDate ? new Date(`${item.dueDate}T00:00:00`) : null
-      if (!due || Number.isNaN(due.getTime())) return false
-      if (dateFrom && due < dateFrom) return false
-      if (dateTo && due > dateTo) return false
-      return true
-    }))
-  }
   if (searchTerm) {
     debtors = debtors.filter(d =>
       d.clientName.toLowerCase().includes(searchTerm)
@@ -275,8 +279,6 @@ export default defineEventHandler(async (event) => {
     overdue: debtors.filter(d => d.status === 'overdue').reduce((s, d) => s + d.totalOwed, 0),
     current: debtors.filter(d => d.status === 'current').reduce((s, d) => s + d.totalOwed, 0)
   }
-
-  const availableClients = clients.map(c => ({ value: c.id, label: c.name || 'No name' })).sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'))
 
   const sourceItems = viewMode === 'orders' ? orderRows : debtors
   const { data: paginatedItems, pagination } = paginate(sourceItems, page, pageSize)
