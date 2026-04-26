@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { formatCurrency, formatOptionalDate, getPurchasePaymentStatus, parseDateEnd, parseDateStart, sortFactor, toNumber } from '../../utils/report-helpers'
 
 interface PurchaseRecord {
@@ -61,9 +62,18 @@ export default defineEventHandler(async (event) => {
   const sortOrder: 'asc' | 'desc' = body?.sortOrder === 'asc' ? 'asc' : 'desc'
   const format = body?.format === 'pdf' ? 'pdf' : 'csv'
 
-  const [purchasesResult, suppliersResult, organizationResult] = await Promise.all([
-    supabase.from('purchases').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('purchase_date', { ascending: false }),
-    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+  const [purchasesRaw, suppliers, organizationResult] = await Promise.all([
+    fetchAllOrganizationRows<PurchaseRecord>(supabase, {
+      table: 'purchases',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'purchase_date' }
+    }),
+    fetchAllOrganizationRows<SupplierRecord>(supabase, {
+      table: 'suppliers',
+      organizationId,
+      nullColumns: ['deleted_at']
+    }),
     supabase
       .from('organizations')
       .select('name')
@@ -71,8 +81,6 @@ export default defineEventHandler(async (event) => {
       .maybeSingle()
   ])
 
-  const purchasesRaw = (purchasesResult.data ?? []) as PurchaseRecord[]
-  const suppliers = (suppliersResult.data ?? []) as SupplierRecord[]
   const organization = (organizationResult.data ?? null) as OrganizationRecord | null
   const suppliersMap = new Map<string, SupplierRecord>(suppliers.map(supplier => [String(supplier.id), supplier]))
 

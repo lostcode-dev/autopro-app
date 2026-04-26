@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd, toNumber, roundMoney, formatCurrency, formatOptionalDate, normalizeReportStatus } from '../../utils/report-helpers'
 
 function normalizeNumber(value: unknown) {
@@ -188,19 +189,39 @@ export default defineEventHandler(async (event) => {
   const sortBy = ['client', 'orderNumber', 'itemDescription', 'totalValue', 'totalCost', 'commissionCost', 'responsible', 'status', 'date', 'itemCount'].includes(body?.sortBy) ? body.sortBy : 'date'
   const sortOrder: 'asc' | 'desc' = body?.sortOrder === 'asc' ? 'asc' : 'desc'
 
-  const [ordersResult, clientsResult, employeesResult, productsResult, commissionRecordsResult] = await Promise.all([
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('entry_date', { ascending: false }),
-    supabase.from('clients').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('products').select('id, name, unit_cost_price, category_id').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).eq('record_type', 'comissao').order('reference_date', { ascending: false })
+  const [orders, clients, employees, products, commissionRecordsRaw] = await Promise.all([
+    fetchAllOrganizationRows(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'entry_date' }
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'clients',
+      organizationId,
+      columns: 'id, name',
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'employees',
+      organizationId,
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'products',
+      organizationId,
+      columns: 'id, name, unit_cost_price, category_id',
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'employee_financial_records',
+      organizationId,
+      eq: { record_type: 'comissao' },
+      order: { column: 'reference_date' }
+    })
   ])
 
-  const orders = ordersResult.data || []
-  const clients = clientsResult.data || []
-  const employees = employeesResult.data || []
-  const products = productsResult.data || []
-  const commissionRecords = (commissionRecordsResult.data || []).filter((r: any) => normalizeNumber(r?.amount) > 0)
+  const commissionRecords = commissionRecordsRaw.filter((r: any) => normalizeNumber(r?.amount) > 0)
 
   const clientsMap = new Map(clients.map((c: any) => [String(c.id), c]))
   const employeesMap = new Map(employees.map((e: any) => [String(e.id), e]))

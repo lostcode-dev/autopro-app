@@ -1,35 +1,15 @@
-import { createError, defineEventHandler, getQuery } from 'h3'
+import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { fetchAllOrganizationRows, type SupabaseReportRow } from '../../utils/supabase-pagination'
 import {
   parseDateStart, parseDateEnd, toNumber, qArr, formatDateKey, formatDayLabel,
   normalizeStatusFilters, matchesStatusFilters, paginate, sortFactor,
   getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel, normalizeReportStatus
 } from '../../utils/report-helpers'
 
-type ReportRow = Record<string, unknown>
-
-interface SupabaseQueryError {
-  message: string
-}
-
-interface SupabaseQueryResult {
-  data: ReportRow[] | null
-  error: SupabaseQueryError | null
-}
-
-interface SupabaseQueryBuilder {
-  select: (columns: string) => SupabaseQueryBuilder
-  eq: (column: string, value: unknown) => SupabaseQueryBuilder
-  is: (column: string, value: unknown) => SupabaseQueryBuilder
-  order: (column: string, options: { ascending: boolean }) => SupabaseQueryBuilder
-  range: (from: number, to: number) => Promise<SupabaseQueryResult>
-}
-
-interface SupabaseClientLike {
-  from: (table: string) => SupabaseQueryBuilder
-}
+type ReportRow = SupabaseReportRow
 
 function normalizeCategoryName(category: string) {
   return String(category || 'other').replace(/_/g, ' ').toUpperCase()
@@ -71,33 +51,6 @@ function buildEvolutionData(periodData: { orders?: ReportRow[], costsData?: Repo
   return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
 }
 
-async function fetchAllOrganizationRows(supabase: SupabaseClientLike, table: string, organizationId: string, orderColumn: string) {
-  const pageSize = 1000
-  const rows: ReportRow[] = []
-
-  for (let offset = 0; ; offset += pageSize) {
-    const { data, error } = await supabase
-      .from(table)
-      .select('*')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-      .order(orderColumn, { ascending: false })
-      .range(offset, offset + pageSize - 1)
-
-    if (error) {
-      throw createError({
-        statusCode: 500,
-        statusMessage: `Erro ao carregar dados de ${table}: ${error.message}`
-      })
-    }
-
-    rows.push(...(data || []))
-    if (!data || data.length < pageSize) break
-  }
-
-  return rows
-}
-
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -126,8 +79,18 @@ export default defineEventHandler(async (event) => {
   const selectedCategory = String(query.selectedCategory || '').trim()
 
   const [transactions, orders] = await Promise.all([
-    fetchAllOrganizationRows(supabase, 'financial_transactions', organizationId, 'due_date'),
-    fetchAllOrganizationRows(supabase, 'service_orders', organizationId, 'created_at')
+    fetchAllOrganizationRows(supabase, {
+      table: 'financial_transactions',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'due_date' }
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    })
   ])
 
   const expenseList = transactions.filter((t: ReportRow) => {

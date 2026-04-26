@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 export default defineEventHandler(async (event) => {
@@ -23,13 +24,19 @@ export default defineEventHandler(async (event) => {
   const orderStatusFilters = qArr(query.orderStatusFilters)
   const paymentStatusFilters = qArr(query.paymentStatusFilters)
 
-  const [ordersResult, clientsResult] = await Promise.all([
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null)
+  const [orders, clients] = await Promise.all([
+    fetchAllOrganizationRows(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'clients',
+      organizationId,
+      nullColumns: ['deleted_at']
+    })
   ])
-
-  const orders = ordersResult.data || []
-  const clients = clientsResult.data || []
   const clientsMap = new Map<string, any>(clients.map((c: any) => [String(c.id), c]))
 
   const filteredOrders = orders.filter((o: any) => {

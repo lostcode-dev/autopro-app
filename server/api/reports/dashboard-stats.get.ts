@@ -1,11 +1,7 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
-
-declare function createError(input: {
-  statusCode: number
-  statusMessage: string
-}): Error
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 
 declare function defineEventHandler<T>(
   handler: (event: Parameters<typeof requireAuthUser>[0]) => T | Promise<T>
@@ -48,18 +44,6 @@ function formatDateKeyInTimeZone(date: Date, timeZone = DASHBOARD_TIME_ZONE) {
   return `${year}-${month}-${day}`
 }
 
-function assertSupabaseResultOk(
-  result: { error?: { message: string } | null },
-  context: string
-) {
-  if (!result.error) return
-
-  throw createError({
-    statusCode: 500,
-    statusMessage: `Failed to load dashboard ${context}: ${result.error.message}`
-  })
-}
-
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
@@ -74,47 +58,38 @@ export default defineEventHandler(async (event) => {
   const defaultTo = `${currentYear}-${currentMonth}-${lastDay}`
 
   const [
-    ordersResult,
-    clientsResult,
-    vehiclesResult,
-    appointmentsResult
+    orders,
+    clients,
+    vehicles,
+    appointments
   ] = await Promise.all([
-    supabase
-      .from('service_orders')
-      .select('id, number, status, entry_date, reported_defect, total_amount, client_id, vehicle_id, created_at')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false }),
-
-    supabase
-      .from('clients')
-      .select('id, name')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null),
-
-    supabase
-      .from('vehicles')
-      .select('id, brand, model, license_plate')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null),
-
-    supabase
-      .from('appointments')
-      .select('id, time, status, service_type, appointment_date, client_id, vehicle_id')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-      .order('time', { ascending: true })
+    fetchAllOrganizationRows(supabase, {
+      table: 'service_orders',
+      organizationId,
+      columns: 'id, number, status, entry_date, reported_defect, total_amount, client_id, vehicle_id, created_at',
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'clients',
+      organizationId,
+      columns: 'id, name',
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'vehicles',
+      organizationId,
+      columns: 'id, brand, model, license_plate',
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'appointments',
+      organizationId,
+      columns: 'id, time, status, service_type, appointment_date, client_id, vehicle_id',
+      nullColumns: ['deleted_at'],
+      order: { column: 'time', ascending: true }
+    })
   ])
-
-  assertSupabaseResultOk(ordersResult, 'service orders')
-  assertSupabaseResultOk(clientsResult, 'clients')
-  assertSupabaseResultOk(vehiclesResult, 'vehicles')
-  assertSupabaseResultOk(appointmentsResult, 'appointments')
-
-  const orders = ordersResult.data ?? []
-  const clients = clientsResult.data ?? []
-  const vehicles = vehiclesResult.data ?? []
-  const appointments = appointmentsResult.data ?? []
 
   const clientNameById = new Map(clients.map(client => [String(client.id), String(client.name || '')]))
   const vehicleById = new Map(vehicles.map(vehicle => [String(vehicle.id), vehicle]))

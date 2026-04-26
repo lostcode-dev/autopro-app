@@ -1,4 +1,5 @@
 import { normalizeReportStatus, parseDateEnd, parseDateStart, roundMoney, toNumber, toStringArray } from './report-helpers'
+import { fetchAllOrganizationRows } from './supabase-pagination'
 
 interface EmployeeRecord {
   id: string
@@ -218,7 +219,7 @@ export async function getEmployeeCommissionReport({
   const employee = employeeRecord as EmployeeRecord
   const commissionCategoryIds = toStringArray(employee.commission_categories)
 
-  const [categoriesResult, recordsResult] = await Promise.all([
+  const [categoriesResult, rawRecordsData] = await Promise.all([
     commissionCategoryIds.length > 0
       ? supabase
           .from('product_categories')
@@ -227,13 +228,13 @@ export async function getEmployeeCommissionReport({
           .in('id', commissionCategoryIds)
           .is('deleted_at', null)
       : Promise.resolve({ data: [] }),
-    supabase
-      .from('employee_financial_records')
-      .select('*')
-      .eq('organization_id', organizationId)
-      .eq('employee_id', normalizedEmployeeId)
-      .is('deleted_at', null)
-      .order('reference_date', { ascending: false })
+    fetchAllOrganizationRows<EmployeeFinancialRecord>(supabase, {
+      table: 'employee_financial_records',
+      organizationId,
+      eq: { employee_id: normalizedEmployeeId },
+      nullColumns: ['deleted_at'],
+      order: { column: 'reference_date' }
+    })
   ])
 
   const categoryMap = new Map<string, string>(
@@ -242,7 +243,7 @@ export async function getEmployeeCommissionReport({
       .filter((entry): entry is [string, string] => Boolean(entry[0] && entry[1]))
   )
 
-  const rawRecords = ((recordsResult.data || []) as EmployeeFinancialRecord[])
+  const rawRecords = rawRecordsData
     .filter(record => isCommissionRecord(record.record_type))
 
   const serviceOrderIds = Array.from(new Set(
@@ -251,17 +252,17 @@ export async function getEmployeeCommissionReport({
       .filter(Boolean)
   ))
 
-  const { data: ordersData } = serviceOrderIds.length > 0
-    ? await supabase
-        .from('service_orders')
-        .select('id, number, status, payment_status, entry_date, client_name')
-        .eq('organization_id', organizationId)
-        .in('id', serviceOrderIds)
-        .is('deleted_at', null)
-    : { data: [] }
+  const ordersData = serviceOrderIds.length > 0
+    ? (await fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+        table: 'service_orders',
+        organizationId,
+        columns: 'id, number, status, payment_status, entry_date, client_name',
+        nullColumns: ['deleted_at']
+      })).filter(order => serviceOrderIds.includes(String(order.id)))
+    : []
 
   const ordersMap = new Map<string, ServiceOrderRecord>(
-    ((ordersData || []) as ServiceOrderRecord[]).map(order => [String(order.id), order])
+    ordersData.map(order => [String(order.id), order])
   )
 
   const parsedDateFrom = parseDateStart(dateFrom || undefined)

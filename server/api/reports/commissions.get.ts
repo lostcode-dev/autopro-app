@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 interface EmployeeRecord {
@@ -78,15 +79,24 @@ export default defineEventHandler(async (event) => {
   const page = Math.max(1, Math.floor(toNumber(query.page, 1)))
   const pageSize = Math.min(100, Math.max(1, Math.floor(toNumber(query.pageSize, 10))))
 
-  const [recordsResult, ordersResult, employeesResult] = await Promise.all([
-    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).order('reference_date', { ascending: false }),
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null)
+  const [records, orders, employees] = await Promise.all([
+    fetchAllOrganizationRows<EmployeeFinancialRecord>(supabase, {
+      table: 'employee_financial_records',
+      organizationId,
+      order: { column: 'reference_date' }
+    }),
+    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows<EmployeeRecord>(supabase, {
+      table: 'employees',
+      organizationId,
+      nullColumns: ['deleted_at']
+    })
   ])
-
-  const records = (recordsResult.data ?? []) as EmployeeFinancialRecord[]
-  const orders = (ordersResult.data ?? []) as ServiceOrderRecord[]
-  const employees = (employeesResult.data ?? []) as EmployeeRecord[]
 
   const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
   const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))

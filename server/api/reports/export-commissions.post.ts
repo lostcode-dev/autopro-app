@@ -3,6 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import {
   formatCurrency,
   formatOptionalDate,
@@ -90,10 +91,23 @@ export default defineEventHandler(async (event) => {
   const sortOrder: 'asc' | 'desc' = body?.sortOrder === 'asc' ? 'asc' : 'desc'
   const format = body?.format === 'pdf' ? 'pdf' : 'csv'
 
-  const [recordsResult, ordersResult, employeesResult, organizationResult] = await Promise.all([
-    supabase.from('employee_financial_records').select('*').eq('organization_id', organizationId).order('reference_date', { ascending: false }),
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('employees').select('*').eq('organization_id', organizationId).is('deleted_at', null),
+  const [records, orders, employees, organizationResult] = await Promise.all([
+    fetchAllOrganizationRows<EmployeeFinancialRecord>(supabase, {
+      table: 'employee_financial_records',
+      organizationId,
+      order: { column: 'reference_date' }
+    }),
+    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows<EmployeeRecord>(supabase, {
+      table: 'employees',
+      organizationId,
+      nullColumns: ['deleted_at']
+    }),
     supabase
       .from('organizations')
       .select('name')
@@ -101,9 +115,6 @@ export default defineEventHandler(async (event) => {
       .maybeSingle()
   ])
 
-  const records = (recordsResult.data ?? []) as EmployeeFinancialRecord[]
-  const orders = (ordersResult.data ?? []) as ServiceOrderRecord[]
-  const employees = (employeesResult.data ?? []) as EmployeeRecord[]
   const organization = (organizationResult.data ?? null) as OrganizationRecord | null
 
   const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))

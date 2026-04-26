@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { toNumber, qArr, parseDateStart, parseDateEnd, roundMoney, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 interface ClientRecord {
@@ -174,19 +175,38 @@ export default defineEventHandler(async (event) => {
   const selectedItemId = String(query.selectedItemId || '').trim()
   const selectedOrderId = String(query.selectedOrderId || '').trim()
 
-  const [ordersResult, clientsResult, employeesResult, productsResult, categoriesResult] = await Promise.all([
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('entry_date', { ascending: false }),
-    supabase.from('clients').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('employees').select('id, name').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('products').select('id, name, unit_cost_price, category_id').eq('organization_id', organizationId).is('deleted_at', null),
-    supabase.from('product_categories').select('id, name').eq('organization_id', organizationId).is('deleted_at', null)
+  const [orders, clients, employees, products, categories] = await Promise.all([
+    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'entry_date' }
+    }),
+    fetchAllOrganizationRows<ClientRecord>(supabase, {
+      table: 'clients',
+      organizationId,
+      columns: 'id, name',
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows<EmployeeRecord>(supabase, {
+      table: 'employees',
+      organizationId,
+      columns: 'id, name',
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows<ProductRecord>(supabase, {
+      table: 'products',
+      organizationId,
+      columns: 'id, name, unit_cost_price, category_id',
+      nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows<CategoryRecord>(supabase, {
+      table: 'product_categories',
+      organizationId,
+      columns: 'id, name',
+      nullColumns: ['deleted_at']
+    })
   ])
-
-  const orders = (ordersResult.data ?? []) as ServiceOrderRecord[]
-  const clients = (clientsResult.data ?? []) as ClientRecord[]
-  const employees = (employeesResult.data ?? []) as EmployeeRecord[]
-  const products = (productsResult.data ?? []) as ProductRecord[]
-  const categories = (categoriesResult.data ?? []) as CategoryRecord[]
 
   const clientsMap = new Map<string, ClientRecord>(clients.map(client => [String(client.id), client]))
   const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))

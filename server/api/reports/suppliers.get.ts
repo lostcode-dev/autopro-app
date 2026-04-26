@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor } from '../../utils/report-helpers'
 
 interface PurchaseItemRecord {
@@ -74,13 +75,19 @@ export default defineEventHandler(async (event) => {
   const page = Math.max(1, Math.floor(toNumber(query.page, 1)))
   const pageSize = Math.min(100, Math.max(1, Math.floor(toNumber(query.pageSize, 10))))
 
-  const [purchasesResult, suppliersResult] = await Promise.all([
-    supabase.from('purchases').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('purchase_date', { ascending: false }),
-    supabase.from('suppliers').select('*').eq('organization_id', organizationId).is('deleted_at', null)
+  const [allPurchases, suppliers] = await Promise.all([
+    fetchAllOrganizationRows<PurchaseRecord>(supabase, {
+      table: 'purchases',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'purchase_date' }
+    }),
+    fetchAllOrganizationRows<SupplierRecord>(supabase, {
+      table: 'suppliers',
+      organizationId,
+      nullColumns: ['deleted_at']
+    })
   ])
-
-  const allPurchases = (purchasesResult.data ?? []) as PurchaseRecord[]
-  const suppliers = (suppliersResult.data ?? []) as SupplierRecord[]
   const suppliersMap = new Map<string, SupplierRecord>(suppliers.map(supplier => [String(supplier.id), supplier]))
 
   let filteredPurchases = allPurchases

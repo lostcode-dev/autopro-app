@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd, toNumber, formatDateKey, formatDayLabel, normalizeReportStatus } from '../../utils/report-helpers'
 
 export default defineEventHandler(async (event) => {
@@ -20,15 +21,26 @@ export default defineEventHandler(async (event) => {
   const dateFrom = parseDateStart(String(query.dateFrom || defaultFrom))!
   const dateTo = parseDateEnd(String(query.dateTo || defaultTo))!
 
-  const [ordersResult, clientsResult, transactionsResult] = await Promise.all([
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('financial_transactions').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('due_date', { ascending: false })
+  const [orders, clients, transactions] = await Promise.all([
+    fetchAllOrganizationRows(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'clients',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows(supabase, {
+      table: 'financial_transactions',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'due_date' }
+    })
   ])
-
-  const orders = ordersResult.data || []
-  const clients = clientsResult.data || []
-  const transactions = transactionsResult.data || []
 
   const ordersInPeriod = orders.filter((o: any) => {
     const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null

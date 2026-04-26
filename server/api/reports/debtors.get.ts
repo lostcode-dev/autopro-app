@@ -2,6 +2,7 @@ import { defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 interface ServiceOrderRecord {
@@ -98,15 +99,23 @@ export default defineEventHandler(async (event) => {
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
 
-  const [ordersResult, installmentsResult, clientsResult] = await Promise.all([
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false }),
-    supabase.from('service_order_installments').select('*').eq('organization_id', organizationId),
-    supabase.from('clients').select('*').eq('organization_id', organizationId).is('deleted_at', null)
+  const [orders, installments, clients] = await Promise.all([
+    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+      table: 'service_orders',
+      organizationId,
+      nullColumns: ['deleted_at'],
+      order: { column: 'created_at' }
+    }),
+    fetchAllOrganizationRows<InstallmentRecord>(supabase, {
+      table: 'service_order_installments',
+      organizationId
+    }),
+    fetchAllOrganizationRows<ClientRecord>(supabase, {
+      table: 'clients',
+      organizationId,
+      nullColumns: ['deleted_at']
+    })
   ])
-
-  const orders = (ordersResult.data ?? []) as ServiceOrderRecord[]
-  const installments = (installmentsResult.data ?? []) as InstallmentRecord[]
-  const clients = (clientsResult.data ?? []) as ClientRecord[]
   const clientsMap = new Map<string, ClientRecord>(clients.map(c => [String(c.id), c]))
   const ordersMap = new Map<string, ServiceOrderRecord>(orders.map(order => [String(order.id || ''), order]))
 
