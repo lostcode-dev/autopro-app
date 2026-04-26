@@ -1,4 +1,4 @@
-import { defineEventHandler, getQuery } from 'h3'
+import { createError, defineEventHandler, getQuery } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
@@ -8,29 +8,52 @@ import {
   getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel, normalizeReportStatus
 } from '../../utils/report-helpers'
 
+type ReportRow = Record<string, unknown>
+
+interface SupabaseQueryError {
+  message: string
+}
+
+interface SupabaseQueryResult {
+  data: ReportRow[] | null
+  error: SupabaseQueryError | null
+}
+
+interface SupabaseQueryBuilder {
+  select: (columns: string) => SupabaseQueryBuilder
+  eq: (column: string, value: unknown) => SupabaseQueryBuilder
+  is: (column: string, value: unknown) => SupabaseQueryBuilder
+  order: (column: string, options: { ascending: boolean }) => SupabaseQueryBuilder
+  range: (from: number, to: number) => Promise<SupabaseQueryResult>
+}
+
+interface SupabaseClientLike {
+  from: (table: string) => SupabaseQueryBuilder
+}
+
 function normalizeCategoryName(category: string) {
   return String(category || 'other').replace(/_/g, ' ').toUpperCase()
 }
 
-function calculatePeriodData(orders: any[], transactions: any[], start: Date, end: Date, statusFilters: string[]) {
-  const periodOrders = orders.filter((o: any) => {
+function calculatePeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date, statusFilters: string[]) {
+  const periodOrders = orders.filter((o: ReportRow) => {
     const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
     const isCompleted = o?.status === 'completed' || o?.status === 'delivered'
     return !!entryDate && !Number.isNaN(entryDate.getTime()) && isCompleted && matchesStatusFilters(o?.payment_status, statusFilters) && entryDate >= start && entryDate <= end
   })
-  const periodCosts = transactions.filter((t: any) => {
+  const periodCosts = transactions.filter((t: ReportRow) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
     const isCost = t?.type === 'expense'
     const isCancelled = normalizeReportStatus(t?.status) === 'cancelled'
     return !!dueDate && !Number.isNaN(dueDate.getTime()) && isCost && !isCancelled && matchesStatusFilters(t?.status, statusFilters) && dueDate >= start && dueDate <= end
   })
-  const revenue = periodOrders.reduce((acc: number, o: any) => acc + toNumber(o?.total_amount, 0), 0)
-  const costs = periodCosts.reduce((acc: number, t: any) => acc + toNumber(t?.amount, 0), 0)
+  const revenue = periodOrders.reduce((acc: number, o: ReportRow) => acc + toNumber(o?.total_amount, 0), 0)
+  const costs = periodCosts.reduce((acc: number, t: ReportRow) => acc + toNumber(t?.amount, 0), 0)
   const profit = revenue - costs
   return { revenue, costs, profit, profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0, orderCount: periodOrders.length, orders: periodOrders, costsData: periodCosts }
 }
 
-function buildEvolutionData(periodData: any, start: Date, end: Date) {
+function buildEvolutionData(periodData: { orders?: ReportRow[], costsData?: ReportRow[] } | null, start: Date, end: Date) {
   const dailyData: Record<string, { revenue: number, costs: number, profit: number }> = {}
   const cursor = new Date(start)
   while (cursor <= end) {
@@ -46,6 +69,33 @@ function buildEvolutionData(periodData: any, start: Date, end: Date) {
     if (dailyData[key]) dailyData[key].costs += toNumber(t?.amount, 0)
   }
   return Object.entries(dailyData).map(([date, v]) => ({ name: formatDayLabel(date), ...v, profit: v.revenue - v.costs }))
+}
+
+async function fetchAllOrganizationRows(supabase: SupabaseClientLike, table: string, organizationId: string, orderColumn: string) {
+  const pageSize = 1000
+  const rows: ReportRow[] = []
+
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('organization_id', organizationId)
+      .is('deleted_at', null)
+      .order(orderColumn, { ascending: false })
+      .range(offset, offset + pageSize - 1)
+
+    if (error) {
+      throw createError({
+        statusCode: 500,
+        statusMessage: `Erro ao carregar dados de ${table}: ${error.message}`
+      })
+    }
+
+    rows.push(...(data || []))
+    if (!data || data.length < pageSize) break
+  }
+
+  return rows
 }
 
 export default defineEventHandler(async (event) => {
@@ -75,15 +125,12 @@ export default defineEventHandler(async (event) => {
   const compareMode = ['same_period_last_year', 'previous_month', 'previous_quarter'].includes(query.compareMode as string) ? String(query.compareMode) : 'previous_period'
   const selectedCategory = String(query.selectedCategory || '').trim()
 
-  const [transactionsResult, ordersResult] = await Promise.all([
-    supabase.from('financial_transactions').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('due_date', { ascending: false }),
-    supabase.from('service_orders').select('*').eq('organization_id', organizationId).is('deleted_at', null).order('created_at', { ascending: false })
+  const [transactions, orders] = await Promise.all([
+    fetchAllOrganizationRows(supabase, 'financial_transactions', organizationId, 'due_date'),
+    fetchAllOrganizationRows(supabase, 'service_orders', organizationId, 'created_at')
   ])
 
-  const transactions = transactionsResult.data || []
-  const orders = ordersResult.data || []
-
-  const expenseList = transactions.filter((t: any) => {
+  const expenseList = transactions.filter((t: ReportRow) => {
     if (t?.type !== 'expense') return false
     const st = normalizeReportStatus(t?.status)
     if (st === 'cancelled') return false
@@ -91,9 +138,9 @@ export default defineEventHandler(async (event) => {
     return true
   })
 
-  const availableCategories = (Array.from(new Set(expenseList.map((t: any) => String(t?.category || 'other')))) as string[]).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
+  const availableCategories = (Array.from(new Set(expenseList.map((t: ReportRow) => String(t?.category || 'other')))) as string[]).sort((a, b) => a.localeCompare(b, 'pt-BR', { sensitivity: 'base' }))
 
-  const filteredExpenses = expenseList.filter((t: any) => {
+  const filteredExpenses = expenseList.filter((t: ReportRow) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null
     if (!dueDate || Number.isNaN(dueDate.getTime())) return false
     if (dateFrom && dueDate < dateFrom) return false
@@ -109,7 +156,7 @@ export default defineEventHandler(async (event) => {
     return true
   })
 
-  const filteredOrders = orders.filter((o: any) => {
+  const filteredOrders = orders.filter((o: ReportRow) => {
     const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
     if (!entryDate || Number.isNaN(entryDate.getTime())) return false
     if (dateFrom && entryDate < dateFrom) return false
@@ -118,8 +165,8 @@ export default defineEventHandler(async (event) => {
     return matchesStatusFilters(o?.payment_status, statusFilters)
   })
 
-  const totalCosts = filteredExpenses.reduce((s: number, t: any) => s + toNumber(t?.amount, 0), 0)
-  const totalRevenue = filteredOrders.reduce((s: number, o: any) => s + toNumber(o?.total_amount, 0), 0)
+  const totalCosts = filteredExpenses.reduce((s: number, t: ReportRow) => s + toNumber(t?.amount, 0), 0)
+  const totalRevenue = filteredOrders.reduce((s: number, o: ReportRow) => s + toNumber(o?.total_amount, 0), 0)
   const netProfit = totalRevenue - totalCosts
   const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
 
@@ -169,15 +216,15 @@ export default defineEventHandler(async (event) => {
 
   if (includeCategoryDetails && selectedCategory) {
     const categoryEntries = filteredExpenses
-      .filter((t: any) => String(t?.category || 'other') === selectedCategory)
-      .sort((a: any, b: any) => String(b?.due_date || '').localeCompare(String(a?.due_date || '')))
-    const totalCategoryValue = categoryEntries.reduce((s: number, t: any) => s + toNumber(t?.amount, 0), 0)
+      .filter((t: ReportRow) => String(t?.category || 'other') === selectedCategory)
+      .sort((a: ReportRow, b: ReportRow) => String(b?.due_date || '').localeCompare(String(a?.due_date || '')))
+    const totalCategoryValue = categoryEntries.reduce((s: number, t: ReportRow) => s + toNumber(t?.amount, 0), 0)
     responseData.costsCategoryDetails = {
       categoryKey: selectedCategory,
       category: normalizeCategoryName(selectedCategory),
       totalItems: categoryEntries.length,
       totalValue: totalCategoryValue,
-      items: categoryEntries.map((t: any) => ({
+      items: categoryEntries.map((t: ReportRow) => ({
         id: t?.id, description: t?.description || 'No description', category: String(t?.category || 'other'),
         amount: toNumber(t?.amount, 0), status: normalizeReportStatus(t?.status),
         type: String(t?.type || 'expense').toLowerCase(), due_date: t?.due_date || null,
@@ -204,12 +251,12 @@ export default defineEventHandler(async (event) => {
         previousStartDate: formatDateKey(previousStartDate), previousEndDate: formatDateKey(previousEndDate)
       }
     }
-    const topProfitableOrders = (currentData?.orders || []).map((o: any) => {
+    const topProfitableOrders = (currentData?.orders || []).map((o: ReportRow) => {
       const revenue = toNumber(o?.total_amount, 0)
       const cost = toNumber(o?.total_cost_amount, 0)
       const profit = revenue - cost
       return { number: o?.number, revenue, cost, profit, margin: revenue > 0 ? (profit / revenue) * 100 : 0 }
-    }).sort((a: any, b: any) => b.profit - a.profit).slice(0, 10)
+    }).sort((a, b) => b.profit - a.profit).slice(0, 10)
 
     const variations = currentData && previousData
       ? {
