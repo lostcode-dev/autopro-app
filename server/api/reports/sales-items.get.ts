@@ -3,7 +3,8 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { toNumber, qArr, parseDateStart, parseDateEnd, roundMoney, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
+import type { SupabaseClientLike } from '../../utils/supabase-pagination'
+import { toNumber, parseDateStart, parseDateEnd, roundMoney, paginate, sortFactor, normalizeReportStatus, formatStatusLabel } from '../../utils/report-helpers'
 
 interface ClientRecord {
   id: string
@@ -13,6 +14,11 @@ interface ClientRecord {
 interface EmployeeRecord {
   id: string
   name?: string | null
+  has_commission?: boolean | null
+  commission_type?: string | null
+  commission_amount?: number | string | null
+  commission_base?: string | null
+  commission_categories?: unknown
 }
 
 interface ProductRecord {
@@ -34,12 +40,14 @@ interface CommissionRecord {
 
 interface ServiceOrderItem {
   product_id?: string | null
+  category_id?: string | null
   description?: string | null
   name?: string | null
   quantity?: number | string | null
   cost_amount?: number | string | null
   total_amount?: number | string | null
   unit_price?: number | string | null
+  commission_total?: number | string | null
   commissions?: CommissionRecord[] | null
 }
 
@@ -57,7 +65,17 @@ interface ServiceOrderRecord {
   payment_status?: string | null
   payment_method?: string | null
   entry_date?: string | null
+  discount?: number | string | null
+  total_taxes_amount?: number | string | null
   items?: ServiceOrderItem[] | null
+}
+
+interface EmployeeFinancialRecord {
+  id: string
+  employee_id?: string | null
+  service_order_id?: string | null
+  record_type?: string | null
+  amount?: number | string | null
 }
 
 interface ExpandedItemRow {
@@ -147,24 +165,286 @@ const sortableFields = new Set([
   'itemCount'
 ])
 
+function parseFilterList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return Array.from(new Set(value
+      .map(item => String(item || '').trim())
+      .filter(item => item && !['all', 'todos', 'null', 'undefined'].includes(item))))
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim()
+    if (!normalized || ['all', 'todos', '[]', '[ ]', 'null', 'undefined'].includes(normalized)) return []
+
+    if (normalized.startsWith('[') && normalized.endsWith(']')) {
+      try {
+        return parseFilterList(JSON.parse(normalized))
+      } catch {
+        return []
+      }
+    }
+
+    if (normalized.includes(',')) {
+      return Array.from(new Set(normalized
+        .split(',')
+        .map(item => item.trim())
+        .filter(item => item && !['all', 'todos', 'null', 'undefined'].includes(item))))
+    }
+
+    return [normalized].filter(item => !['all', 'todos', 'null', 'undefined'].includes(item))
+  }
+
+  return []
+}
+
+function mergeFilterLists(...values: unknown[]): string[] {
+  return Array.from(new Set(values.flatMap(value => parseFilterList(value))))
+}
+
+function normalizeNumber(value: unknown): number {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function normalizeId(value: unknown): string | null {
+  const id = String(value ?? '').trim()
+  return id.length > 0 ? id : null
+}
+
+function isCommissionRecord(value: unknown): boolean {
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'commission' || normalized === 'comissao'
+}
+
+function normalizeCommissionType(value: unknown): 'percentage' | 'fixed_amount' | null {
+  const type = String(value || '').trim().toLowerCase()
+  if (['percentage', 'percentual'].includes(type)) return 'percentage'
+  if (['fixed_amount', 'fixed', 'fixo', 'valor_fixo'].includes(type)) return 'fixed_amount'
+  return null
+}
+
+function normalizeCommissionBase(value: unknown): 'revenue' | 'profit' | null {
+  const base = String(value || '').trim().toLowerCase()
+  if (['profit', 'lucro'].includes(base)) return 'profit'
+  if (['revenue', 'faturamento', 'receita', 'venda'].includes(base)) return 'revenue'
+  return null
+}
+
+function getEmployeeCommissionConfig(employee: EmployeeRecord) {
+  const categories = Array.isArray(employee?.commission_categories)
+    ? employee.commission_categories.map(item => String(item)).filter(Boolean)
+    : []
+
+  return {
+    hasCommission: Boolean(employee?.has_commission),
+    type: normalizeCommissionType(employee?.commission_type),
+    base: normalizeCommissionBase(employee?.commission_base),
+    value: normalizeNumber(employee?.commission_amount),
+    categories
+  }
+}
+
+function buildCommissionTotalsByOrderEmployeeMap(records: EmployeeFinancialRecord[]) {
+  const totals = new Map<string, number>()
+
+  for (const record of records) {
+    const orderId = normalizeId(record?.service_order_id)
+    const employeeId = normalizeId(record?.employee_id)
+    if (!orderId || !employeeId) continue
+
+    const key = `${orderId}::${employeeId}`
+    totals.set(key, roundMoney(normalizeNumber(totals.get(key)) + normalizeNumber(record?.amount)))
+  }
+
+  return totals
+}
+
+function buildOrdersWithPersistedCommissionSet(records: EmployeeFinancialRecord[]) {
+  const orderIds = new Set<string>()
+
+  for (const record of records) {
+    const orderId = normalizeId(record?.service_order_id)
+    if (!orderId || normalizeNumber(record?.amount) <= 0) continue
+    orderIds.add(orderId)
+  }
+
+  return orderIds
+}
+
+function getResponsibles(order: ServiceOrderRecord, employeesMap: Map<string, EmployeeRecord>) {
+  if (Array.isArray(order?.responsible_employees) && order.responsible_employees.length > 0) {
+    const responsibles = order.responsible_employees
+      .map((item) => {
+        const employee = employeesMap.get(String(item?.employee_id || ''))
+        return {
+          id: employee?.id || String(item?.employee_id || ''),
+          name: employee?.name || 'Responsável não encontrado'
+        }
+      })
+      .filter(item => item.id)
+
+    if (responsibles.length > 0) return responsibles
+  }
+
+  if (order?.employee_responsible_id) {
+    const employee = employeesMap.get(String(order.employee_responsible_id))
+    return [{
+      id: employee?.id || String(order.employee_responsible_id),
+      name: employee?.name || 'Responsável não encontrado'
+    }]
+  }
+
+  return [] as Array<{ id: string, name: string }>
+}
+
+function getItemResponsiblesFromCommissions(item: ServiceOrderItem, employeesMap: Map<string, EmployeeRecord>) {
+  const commissions = Array.isArray(item?.commissions) ? item.commissions : []
+  const unique = new Map<string, { id: string, name: string }>()
+
+  for (const commission of commissions) {
+    const employeeId = normalizeId(commission?.employee_id)
+    if (!employeeId || unique.has(employeeId)) continue
+
+    const employee = employeesMap.get(employeeId)
+    unique.set(employeeId, {
+      id: employee?.id || employeeId,
+      name: employee?.name || 'Responsável não encontrado'
+    })
+  }
+
+  return Array.from(unique.values())
+}
+
+function computeEmployeeItemCommissions({
+  employee,
+  order,
+  items
+}: {
+  employee: EmployeeRecord | undefined
+  order: ServiceOrderRecord
+  items: Array<{ key: string, categoryId: string | null, totalValue: number, totalCost: number }>
+}) {
+  const result = new Map<string, number>()
+  items.forEach(item => result.set(item.key, 0))
+
+  if (!employee) return result
+
+  const config = getEmployeeCommissionConfig(employee)
+  if (!config.hasCommission || !config.type || config.value <= 0 || items.length === 0) return result
+
+  const eligibleItems = config.categories.length > 0
+    ? items.filter(item => item.categoryId && config.categories.includes(item.categoryId))
+    : items
+
+  if (eligibleItems.length === 0) return result
+
+  const orderDiscount = normalizeNumber(order?.discount)
+  const orderTaxes = normalizeNumber(order?.total_taxes_amount)
+  const allItemsSale = items.reduce((sum, item) => sum + normalizeNumber(item.totalValue), 0)
+  const eligibleSale = eligibleItems.reduce((sum, item) => sum + normalizeNumber(item.totalValue), 0)
+  const eligibleRatio = allItemsSale > 0 ? eligibleSale / allItemsSale : 0
+  const eligibleDiscount = orderDiscount * eligibleRatio
+  const eligibleTax = orderTaxes * eligibleRatio
+
+  if (config.type === 'percentage') {
+    for (const item of eligibleItems) {
+      const sale = normalizeNumber(item.totalValue)
+      const cost = normalizeNumber(item.totalCost)
+      const fraction = eligibleSale > 0 ? sale / eligibleSale : 1 / eligibleItems.length
+      const itemDiscount = eligibleDiscount * fraction
+      const itemTax = eligibleTax * fraction
+
+      let baseAmount = sale - itemDiscount
+      if (config.base === 'profit') {
+        baseAmount = Math.max(0, baseAmount - (cost + itemTax))
+      }
+
+      const value = roundMoney((baseAmount * config.value) / 100)
+      if (value > 0) result.set(item.key, value)
+    }
+
+    return result
+  }
+
+  const perItem = roundMoney(config.value / eligibleItems.length)
+  const distributed = roundMoney(perItem * eligibleItems.length)
+  const diff = roundMoney(config.value - distributed)
+
+  eligibleItems.forEach((item, index) => {
+    const value = index === 0 ? roundMoney(perItem + diff) : perItem
+    if (value > 0) result.set(item.key, value)
+  })
+
+  return result
+}
+
+function computeOrderItemCommissionMap({
+  order,
+  responsibles,
+  responsibleIdsSet,
+  employeesMap,
+  commissionTotalsByOrderEmployee,
+  normalizedItems
+}: {
+  order: ServiceOrderRecord
+  responsibles: Array<{ id: string, name: string }>
+  responsibleIdsSet: Set<string>
+  employeesMap: Map<string, EmployeeRecord>
+  commissionTotalsByOrderEmployee: Map<string, number>
+  normalizedItems: Array<{ key: string, categoryId: string | null, totalValue: number, totalCost: number }>
+}) {
+  const commissionByItemKey = new Map<string, number>()
+  normalizedItems.forEach(item => commissionByItemKey.set(item.key, 0))
+
+  const activeResponsibleIds = responsibleIdsSet.size > 0
+    ? responsibles.map(item => item.id).filter(id => responsibleIdsSet.has(id))
+    : responsibles.map(item => item.id)
+
+  if (activeResponsibleIds.length === 0 || normalizedItems.length === 0) return commissionByItemKey
+
+  for (const employeeId of activeResponsibleIds) {
+    const employeeKey = `${normalizeId(order?.id) || 'order'}::${employeeId}`
+    const persistedTotal = commissionTotalsByOrderEmployee.has(employeeKey)
+      ? roundMoney(commissionTotalsByOrderEmployee.get(employeeKey) || 0)
+      : 0
+
+    if (persistedTotal <= 0) continue
+
+    const employeeCommissions = computeEmployeeItemCommissions({
+      employee: employeesMap.get(employeeId),
+      order,
+      items: normalizedItems
+    })
+
+    employeeCommissions.forEach((value, key) => {
+      if (value > 0) {
+        commissionByItemKey.set(key, roundMoney(normalizeNumber(commissionByItemKey.get(key)) + value))
+      }
+    })
+  }
+
+  return commissionByItemKey
+}
+
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
+  const reportSupabase = supabase as unknown as SupabaseClientLike
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
   const query = getQuery(event)
 
   const dateFrom = parseDateStart(query.dateFrom as string)
   const dateTo = parseDateEnd(query.dateTo as string)
-  const clientIds = qArr(query.clientIds as string | string[] | undefined)
-  const orderIds = qArr(query.orderIds as string | string[] | undefined)
-  const responsibleIds = qArr(query.responsibleIds as string | string[] | undefined)
-  const statusFilters = qArr(query.statusFilters as string | string[] | undefined)
-  const paymentStatusFilters = qArr(query.paymentStatusFilters as string | string[] | undefined)
-  const paymentMethodFilters = qArr(query.paymentMethodFilters as string | string[] | undefined)
-  const categoryIds = qArr(query.categoryIds as string | string[] | undefined)
-  const costFilters = qArr((query.costFilters ?? query.costFilter) as string | string[] | undefined)
-  const costSources = qArr((query.costSources ?? query.costSource) as string | string[] | undefined)
+  const clientIds = mergeFilterLists(query.clientIds, query.clientId)
+  const orderIds = mergeFilterLists(query.orderIds, query.orderId)
+  const responsibleIds = mergeFilterLists(query.responsibleIds, query.responsibleId)
+  const statusFilters = mergeFilterLists(query.statusFilters, query.status)
+  const paymentStatusFilters = mergeFilterLists(query.paymentStatusFilters)
+  const paymentMethodFilters = mergeFilterLists(query.paymentMethodFilters, query.paymentMethods, query.formasPagamento)
+  const categoryIds = mergeFilterLists(query.categoryIds, query.categoryId)
+  const costFilters = mergeFilterLists(query.costFilters, query.costFilter)
+  const costSources = mergeFilterLists(query.costSources, query.costSource)
   const searchTerm = String(query.searchTerm || '').trim().toLowerCase()
   const viewMode = query.viewMode === 'os' ? 'os' : 'item'
   const sortBy = sortableFields.has(String(query.sortBy || '')) ? String(query.sortBy) : 'date'
@@ -175,36 +455,53 @@ export default defineEventHandler(async (event) => {
   const selectedItemId = String(query.selectedItemId || '').trim()
   const selectedOrderId = String(query.selectedOrderId || '').trim()
 
-  const [orders, clients, employees, products, categories] = await Promise.all([
-    fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {
+  const clientIdsSet = new Set(clientIds)
+  const orderIdsSet = new Set(orderIds)
+  const responsibleIdsSet = new Set(responsibleIds)
+  const statusFiltersSet = new Set(statusFilters)
+  const paymentStatusFiltersSet = new Set(paymentStatusFilters)
+  const paymentMethodFiltersSet = new Set(paymentMethodFilters)
+  const categoryIdsSet = new Set(categoryIds)
+  const costFiltersSet = new Set(costFilters.filter(value => value === 'withCost' || value === 'zeroCost'))
+  const costSourcesSet = new Set(costSources.filter(value => value === 'item' || value === 'product' || value === 'none'))
+
+  const [orders, clients, employees, products, categories, employeeFinancialRecords] = await Promise.all([
+    fetchAllOrganizationRows<ServiceOrderRecord>(reportSupabase, {
       table: 'service_orders',
       organizationId,
       nullColumns: ['deleted_at'],
       order: { column: 'entry_date' }
     }),
-    fetchAllOrganizationRows<ClientRecord>(supabase, {
+    fetchAllOrganizationRows<ClientRecord>(reportSupabase, {
       table: 'clients',
       organizationId,
       columns: 'id, name',
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows<EmployeeRecord>(supabase, {
+    fetchAllOrganizationRows<EmployeeRecord>(reportSupabase, {
       table: 'employees',
       organizationId,
-      columns: 'id, name',
+      columns: 'id, name, has_commission, commission_type, commission_amount, commission_base, commission_categories',
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows<ProductRecord>(supabase, {
+    fetchAllOrganizationRows<ProductRecord>(reportSupabase, {
       table: 'products',
       organizationId,
       columns: 'id, name, unit_cost_price, category_id',
       nullColumns: ['deleted_at']
     }),
-    fetchAllOrganizationRows<CategoryRecord>(supabase, {
+    fetchAllOrganizationRows<CategoryRecord>(reportSupabase, {
       table: 'product_categories',
       organizationId,
       columns: 'id, name',
       nullColumns: ['deleted_at']
+    }),
+    fetchAllOrganizationRows<EmployeeFinancialRecord>(reportSupabase, {
+      table: 'employee_financial_records',
+      organizationId,
+      columns: 'id, employee_id, service_order_id, record_type, amount',
+      nullColumns: ['deleted_at'],
+      order: { column: 'reference_date' }
     })
   ])
 
@@ -212,14 +509,28 @@ export default defineEventHandler(async (event) => {
   const employeesMap = new Map<string, EmployeeRecord>(employees.map(employee => [String(employee.id), employee]))
   const productsMap = new Map<string, ProductRecord>(products.map(product => [String(product.id), product]))
   const categoriesMap = new Map<string, CategoryRecord>(categories.map(category => [String(category.id), category]))
+  const commissionRecords = employeeFinancialRecords.filter(record => isCommissionRecord(record.record_type) && normalizeNumber(record.amount) > 0)
+  const commissionTotalsByOrderEmployee = buildCommissionTotalsByOrderEmployeeMap(commissionRecords)
+  const ordersWithPersistedCommission = buildOrdersWithPersistedCommissionSet(commissionRecords)
 
   let filteredOrders = orders.filter((order) => {
-    if (order?.status === 'cancelled') return false
-    if (statusFilters.length > 0 && !statusFilters.includes(String(order?.status || ''))) return false
-    if (paymentStatusFilters.length > 0 && !paymentStatusFilters.includes(normalizeReportStatus(order?.payment_status))) return false
-    if (paymentMethodFilters.length > 0 && !paymentMethodFilters.includes(String(order?.payment_method || 'no_payment'))) return false
-    if (clientIds.length > 0 && !clientIds.includes(String(order?.client_id || ''))) return false
-    if (orderIds.length > 0 && !orderIds.includes(String(order?.id || ''))) return false
+    if (statusFiltersSet.size > 0 && !statusFiltersSet.has(String(order?.status || ''))) return false
+    if (paymentStatusFiltersSet.size > 0 && !paymentStatusFiltersSet.has(normalizeReportStatus(order?.payment_status))) return false
+    if (paymentMethodFiltersSet.size > 0 && !paymentMethodFiltersSet.has(String(order?.payment_method || 'no_payment'))) return false
+
+    const clientId = normalizeId(order?.client_id)
+    const clientName = clientId ? clientsMap.get(clientId)?.name || 'Cliente sem nome' : 'Cliente sem nome'
+    if (clientIdsSet.size > 0) {
+      const clientCandidates = [clientId, `name:${clientName.toLowerCase()}`].filter(Boolean) as string[]
+      if (!clientCandidates.some(candidate => clientIdsSet.has(candidate))) return false
+    }
+
+    const orderId = normalizeId(order?.id)
+    const orderNumber = String(order?.number || '-')
+    if (orderIdsSet.size > 0) {
+      const orderCandidates = [orderId, `number:${orderNumber}`].filter(Boolean) as string[]
+      if (!orderCandidates.some(candidate => orderIdsSet.has(candidate))) return false
+    }
 
     const entryDate = order?.entry_date ? new Date(`${order.entry_date}T00:00:00`) : null
     if ((dateFrom || dateTo) && (!entryDate || Number.isNaN(entryDate.getTime()))) return false
@@ -229,12 +540,16 @@ export default defineEventHandler(async (event) => {
     return true
   })
 
-  if (responsibleIds.length > 0) {
+  if (responsibleIdsSet.size > 0) {
     filteredOrders = filteredOrders.filter((order) => {
-      const responsibles = Array.isArray(order?.responsible_employees) ? order.responsible_employees : []
-      const orderResponsibleId = order?.employee_responsible_id ? String(order.employee_responsible_id) : null
-      return responsibles.some(responsible => responsibleIds.includes(String(responsible?.employee_id || '')))
-        || (orderResponsibleId ? responsibleIds.includes(orderResponsibleId) : false)
+      const responsibles = getResponsibles(order, employeesMap)
+      const items = Array.isArray(order?.items) ? order.items : []
+      const storedItemResponsibleIds = new Set(items.flatMap(item => getItemResponsiblesFromCommissions(item, employeesMap).map(responsible => responsible.id)))
+      const effectiveResponsibleIds = storedItemResponsibleIds.size > 0
+        ? Array.from(storedItemResponsibleIds)
+        : responsibles.map(responsible => responsible.id)
+
+      return effectiveResponsibleIds.some(id => responsibleIdsSet.has(id))
     })
   }
 
@@ -252,57 +567,112 @@ export default defineEventHandler(async (event) => {
     const paymentStatus = normalizeReportStatus(order?.payment_status)
     const paymentMethod = String(order?.payment_method || 'no_payment')
     const date = String(order?.entry_date || '')
+    const responsibles = getResponsibles(order, employeesMap)
 
-    for (const [index, item] of items.entries()) {
+    const normalizedItems = items.map((item, index) => {
       const product = item?.product_id ? productsMap.get(String(item.product_id)) : null
-      const categoryId = product?.category_id ? String(product.category_id) : null
+      const categoryId = normalizeId(item?.category_id) ?? normalizeId(product?.category_id)
       const categoryName = categoryId ? categoriesMap.get(categoryId)?.name || 'Sem categoria' : 'Sem categoria'
-      const costSource: 'item' | 'product' | 'none' = item?.cost_amount != null && String(item.cost_amount) !== ''
+      const quantity = toNumber(item?.quantity, 1)
+      const hasItemCost = item?.cost_amount != null && String(item.cost_amount) !== ''
+      const hasProductCost = product?.unit_cost_price != null && String(product.unit_cost_price) !== ''
+      const costSource: 'item' | 'product' | 'none' = hasItemCost
         ? 'item'
-        : product?.unit_cost_price != null && String(product.unit_cost_price) !== ''
+        : hasProductCost
           ? 'product'
           : 'none'
-
-      if (categoryIds.length > 0 && categoryId && !categoryIds.includes(categoryId)) continue
-      if (categoryIds.length > 0 && !categoryId) continue
-
-      const quantity = toNumber(item?.quantity, 1)
-      const unitCost = item?.cost_amount != null && String(item.cost_amount) !== ''
-        ? toNumber(item.cost_amount, 0)
-        : toNumber(product?.unit_cost_price, 0)
+      const unitCost = hasItemCost ? toNumber(item?.cost_amount, 0) : toNumber(product?.unit_cost_price, 0)
       const totalCost = roundMoney(unitCost * quantity)
-      const commissionCost = roundMoney((Array.isArray(item?.commissions) ? item.commissions : []).reduce((sum, commission) => sum + toNumber(commission?.amount, 0), 0))
+      const totalCostForCommission = roundMoney(toNumber(item?.cost_amount, 0) * quantity)
       const totalValue = roundMoney(toNumber(item?.total_amount, 0) || (toNumber(item?.unit_price, 0) * quantity))
+
+      return {
+        key: `${orderId}_${index}`,
+        rawItem: item,
+        categoryId,
+        categoryName,
+        quantity,
+        unitCost,
+        totalCost,
+        totalCostForCommission,
+        totalValue,
+        costSource
+      }
+    })
+
+    const hasPersistedCommissionRecords = ordersWithPersistedCommission.has(orderId)
+    const hasStoredCommissions = normalizedItems.length > 0
+      && normalizedItems.every(item => item.rawItem?.commission_total != null && Array.isArray(item.rawItem?.commissions))
+
+    let commissionByItemKey = new Map<string, number>()
+    if (!hasPersistedCommissionRecords) {
+      commissionByItemKey = new Map(normalizedItems.map(item => [item.key, 0]))
+    } else if (hasStoredCommissions) {
+      for (const item of normalizedItems) {
+        const commissions = Array.isArray(item.rawItem?.commissions) ? item.rawItem.commissions : []
+        let total = 0
+
+        if (responsibleIdsSet.size > 0) {
+          for (const commission of commissions) {
+            if (responsibleIdsSet.has(String(commission?.employee_id || ''))) {
+              total += normalizeNumber(commission?.amount)
+            }
+          }
+        } else {
+          total = normalizeNumber(item.rawItem?.commission_total)
+        }
+
+        commissionByItemKey.set(item.key, roundMoney(total))
+      }
+    } else {
+      commissionByItemKey = computeOrderItemCommissionMap({
+        order,
+        responsibles,
+        responsibleIdsSet,
+        employeesMap,
+        commissionTotalsByOrderEmployee,
+        normalizedItems: normalizedItems.map(item => ({
+          key: item.key,
+          categoryId: item.categoryId,
+          totalValue: item.totalValue,
+          totalCost: item.totalCostForCommission
+        }))
+      })
+    }
+
+    for (const item of normalizedItems) {
+      if (categoryIdsSet.size > 0 && !item.categoryId) continue
+      if (categoryIdsSet.size > 0 && item.categoryId && !categoryIdsSet.has(item.categoryId)) continue
+
+      if (costFiltersSet.size === 1) {
+        if (costFiltersSet.has('withCost') && !(item.totalCost > 0)) continue
+        if (costFiltersSet.has('zeroCost') && !(item.totalCost <= 0)) continue
+      }
+
+      if (costSourcesSet.size > 0 && costSourcesSet.size < 3 && !costSourcesSet.has(item.costSource)) continue
+
+      const itemResponsiblesFromCommissions = getItemResponsiblesFromCommissions(item.rawItem, employeesMap)
+      const itemResponsibles = itemResponsiblesFromCommissions.length > 0 ? itemResponsiblesFromCommissions : responsibles
+      if (responsibleIdsSet.size > 0 && !itemResponsibles.some(responsible => responsibleIdsSet.has(responsible.id))) continue
+
+      const commissionCost = roundMoney(normalizeNumber(commissionByItemKey.get(item.key)))
+      const totalCost = item.totalCost
+      const totalValue = item.totalValue
       const totalCostWithCommission = roundMoney(totalCost + commissionCost)
       const profit = roundMoney(totalValue - totalCostWithCommission)
-
-      let responsible = ''
-      if (Array.isArray(item?.commissions) && item.commissions.length > 0) {
-        responsible = item.commissions
-          .map(commission => employeesMap.get(String(commission?.employee_id || ''))?.name || '')
-          .filter(Boolean)
-          .join(', ')
-      }
-      if (!responsible) {
-        const responsibles = Array.isArray(order?.responsible_employees) ? order.responsible_employees : []
-        responsible = responsibles
-          .map(itemResponsible => employeesMap.get(String(itemResponsible?.employee_id || ''))?.name || '')
-          .filter(Boolean)
-          .join(', ')
-      }
-      if (!responsible && order?.employee_responsible_id) {
-        responsible = employeesMap.get(String(order.employee_responsible_id))?.name || ''
-      }
+      const responsible = itemResponsibles.length > 0
+        ? itemResponsibles.map(responsibleItem => responsibleItem.name).join(', ')
+        : 'Sem responsável'
 
       expandedItems.push({
-        id: `${orderId}_${index}`,
+        id: item.key,
         orderId,
         clientId,
         client,
         orderNumber,
-        itemDescription: String(item?.description || item?.name || 'Item sem descrição'),
-        quantity,
-        unitCost,
+        itemDescription: String(item.rawItem?.description || item.rawItem?.name || 'Item sem descrição'),
+        quantity: item.quantity,
+        unitCost: item.unitCost,
         totalCost,
         commissionCost,
         totalCostWithCommission,
@@ -313,23 +683,11 @@ export default defineEventHandler(async (event) => {
         paymentStatus,
         paymentMethod,
         date,
-        categoryId,
-        categoryName,
-        costSource
+        categoryId: item.categoryId,
+        categoryName: item.categoryName,
+        costSource: item.costSource
       })
     }
-  }
-
-  if (costFilters.length > 0) {
-    expandedItems = expandedItems.filter((item) => {
-      if (costFilters.includes('withCost') && item.totalCost <= 0) return false
-      if (costFilters.includes('zeroCost') && item.totalCost > 0) return false
-      return true
-    })
-  }
-
-  if (costSources.length > 0) {
-    expandedItems = expandedItems.filter(item => costSources.includes(item.costSource))
   }
 
   if (searchTerm) {
@@ -497,7 +855,7 @@ export default defineEventHandler(async (event) => {
             .sort((employeeA, employeeB) => employeeA.label.localeCompare(employeeB.label, 'pt-BR', { sensitivity: 'base' })),
           availableStatuses: Array.from(new Set(orders.map(order => String(order?.status || '')).filter(Boolean)))
             .sort((statusA, statusB) => statusA.localeCompare(statusB, 'pt-BR', { sensitivity: 'base' }))
-            .map(status => ({ value: status, label: status })),
+            .map(status => ({ value: status, label: formatStatusLabel(status) })),
           availableCategories: categories
             .map(category => ({ value: category.id, label: category.name || 'Sem categoria' }))
             .sort((categoryA, categoryB) => categoryA.label.localeCompare(categoryB.label, 'pt-BR', { sensitivity: 'base' }))

@@ -16,6 +16,25 @@ function normalizeId(value: unknown) {
   return id.length > 0 ? id : null
 }
 
+function isCommissionRecord(value: unknown) {
+  const normalized = String(value || '').trim().toLowerCase()
+  return normalized === 'commission' || normalized === 'comissao'
+}
+
+function normalizeCommissionType(value: unknown): 'percentage' | 'fixed_amount' | null {
+  const type = String(value || '').trim().toLowerCase()
+  if (['percentage', 'percentual'].includes(type)) return 'percentage'
+  if (['fixed_amount', 'fixed', 'fixo', 'valor_fixo'].includes(type)) return 'fixed_amount'
+  return null
+}
+
+function normalizeCommissionBase(value: unknown): 'revenue' | 'profit' | null {
+  const base = String(value || '').trim().toLowerCase()
+  if (['profit', 'lucro'].includes(base)) return 'profit'
+  if (['revenue', 'faturamento', 'receita', 'venda'].includes(base)) return 'revenue'
+  return null
+}
+
 function parseStringList(value: unknown): string[] {
   if (Array.isArray(value)) return Array.from(new Set(value.map((i: unknown) => String(i || '').trim()).filter(Boolean)))
   if (typeof value === 'string') {
@@ -30,7 +49,13 @@ function parseStringList(value: unknown): string[] {
 
 function getEmployeeCommissionConfig(employee: any) {
   const categories = Array.isArray(employee?.commission_categories) ? employee.commission_categories.map((i: any) => String(i)).filter(Boolean) : []
-  return { hasCommission: Boolean(employee?.has_commission), type: String(employee?.commission_type || ''), base: String(employee?.commission_base || ''), value: normalizeNumber(employee?.commission_value), categories }
+  return {
+    hasCommission: Boolean(employee?.has_commission),
+    type: normalizeCommissionType(employee?.commission_type),
+    base: normalizeCommissionBase(employee?.commission_base),
+    value: normalizeNumber(employee?.commission_amount),
+    categories
+  }
 }
 
 function buildCommissionTotalsByOrderEmployeeMap(records: any[]) {
@@ -93,20 +118,20 @@ function computeEmployeeItemCommissions({ employee, order, items }: any) {
   if (eligibleItems.length === 0) return result
 
   const orderDiscount = normalizeNumber(order?.discount)
-  const orderTaxes = normalizeNumber(order?.total_tax_amount)
+  const orderTaxes = normalizeNumber(order?.total_taxes_amount)
   const allItemsSale = items.reduce((acc: number, item: any) => acc + normalizeNumber(item.totalValue), 0)
   const eligibleSale = eligibleItems.reduce((acc: number, item: any) => acc + normalizeNumber(item.totalValue), 0)
   const eligibleRatio = allItemsSale > 0 ? eligibleSale / allItemsSale : 0
   const eligibleDiscount = orderDiscount * eligibleRatio
   const eligibleTax = orderTaxes * eligibleRatio
 
-  if (config.type === 'percentual') {
+  if (config.type === 'percentage') {
     for (const item of eligibleItems) {
       const sale = normalizeNumber(item.totalValue)
       const cost = normalizeNumber(item.totalCost)
       const fraction = eligibleSale > 0 ? sale / eligibleSale : 1 / eligibleItems.length
       let base = sale - eligibleDiscount * fraction
-      if (config.base === 'lucro') base = Math.max(0, base - (cost + eligibleTax * fraction))
+      if (config.base === 'profit') base = Math.max(0, base - (cost + eligibleTax * fraction))
       const value = roundMoney((base * config.value) / 100)
       if (value > 0) result.set(item.key, value)
     }
@@ -216,12 +241,12 @@ export default defineEventHandler(async (event) => {
     fetchAllOrganizationRows(supabase, {
       table: 'employee_financial_records',
       organizationId,
-      eq: { record_type: 'comissao' },
+      nullColumns: ['deleted_at'],
       order: { column: 'reference_date' }
     })
   ])
 
-  const commissionRecords = commissionRecordsRaw.filter((r: any) => normalizeNumber(r?.amount) > 0)
+  const commissionRecords = commissionRecordsRaw.filter((r: any) => isCommissionRecord(r?.record_type) && normalizeNumber(r?.amount) > 0)
 
   const clientsMap = new Map(clients.map((c: any) => [String(c.id), c]))
   const employeesMap = new Map(employees.map((e: any) => [String(e.id), e]))
@@ -259,7 +284,7 @@ export default defineEventHandler(async (event) => {
 
     const normalizedItems = items.map((item: any, index: number) => {
       const product = item?.product_id ? productsMap.get(String(item.product_id)) : null
-      const itemCategoryId = product?.category_id ? String(product.category_id) : 'no_category'
+      const itemCategoryId = normalizeId(item?.category_id) || (product?.category_id ? String(product.category_id) : 'no_category')
       const quantity = toNumber(item?.quantity, 0)
       const unitPrice = toNumber(item?.unit_price, 0)
       const totalValue = toNumber(item?.total_amount, quantity * unitPrice)
