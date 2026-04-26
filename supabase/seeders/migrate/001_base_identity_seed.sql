@@ -34,7 +34,7 @@
 --
 -- Notes:
 --   - The new schema is multi-tenant, so legacy org-less system roles and
---     org-less default categories/taxes are replicated to each imported org.
+--     org-less default categories are replicated to each imported org.
 --   - Legacy role-action rows whose action ids do not exist in
 --     Action_export.csv are intentionally skipped.
 --   - auth.users/auth.identities and user_profiles.user_id share the same
@@ -495,40 +495,7 @@ BEGIN
 
   INSERT INTO tmp_tax_source VALUES
     ('68c0a862a4a3664141d94c00', '69864ce67137a313e5c26d4d', 'SIMPLES', 'federal', 8, '2025-09-09T22:21:22.829000Z'::timestamptz, '2026-02-16T12:42:01.696000Z'::timestamptz, 'contato@loker.com.br'),
-    ('68c0a6bdd81a26d9b5c21c02', '69864ce67137a313e5c26d4d', 'ISSQN', 'municipal', 5, '2025-09-09T22:14:21.658000Z'::timestamptz, '2026-02-16T12:42:01.642000Z'::timestamptz, 'contato@loker.com.br'),
-    ('68bc8cdcc9b039407a6cd3a6', NULL, 'SIMPLES', 'federal', 6, '2025-09-06T19:34:52.083000Z'::timestamptz, '2025-09-06T19:34:52.083000Z'::timestamptz, 'quotabankoficial@gmail.com'),
-    ('68bc8cc5fb9e2ee2e3dc97d5', NULL, 'ISSQN', 'municipal', 5, '2025-09-06T19:34:29.745000Z'::timestamptz, '2025-09-06T19:34:29.745000Z'::timestamptz, 'quotabankoficial@gmail.com'),
-    ('68bc87f48d579dc84c15192a', NULL, 'ISS', 'municipal', 5, '2025-09-06T19:13:56.257000Z'::timestamptz, '2025-09-06T19:13:56.257000Z'::timestamptz, 'beenkoficial@gmail.com');
-
-  INSERT INTO public.taxes (
-    id,
-    organization_id,
-    name,
-    type,
-    rate,
-    created_at,
-    created_by,
-    updated_at,
-    updated_by
-  )
-  SELECT
-    uuid_generate_v5(v_namespace, 'tax:' || src.legacy_tax_id || ':' || org_map.legacy_org_id),
-    org_map.organization_id,
-    src.name,
-    src.type,
-    src.rate,
-    src.created_at,
-    src.created_by,
-    src.updated_at,
-    src.created_by
-  FROM tmp_tax_source src
-  JOIN tmp_org_map org_map
-    ON src.legacy_org_id IS NULL
-  ON CONFLICT (organization_id, name) DO UPDATE
-  SET
-    type = EXCLUDED.type,
-    rate = EXCLUDED.rate,
-    updated_by = EXCLUDED.updated_by;
+    ('68c0a6bdd81a26d9b5c21c02', '69864ce67137a313e5c26d4d', 'ISSQN', 'municipal', 5, '2025-09-09T22:14:21.658000Z'::timestamptz, '2026-02-16T12:42:01.642000Z'::timestamptz, 'contato@loker.com.br');
 
   INSERT INTO public.taxes (
     id,
