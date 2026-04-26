@@ -156,8 +156,11 @@ BEGIN
         'quantity', COALESCE(NULLIF(item->>'quantidade', '')::numeric, 1),
         'unit_price', COALESCE(NULLIF(item->>'valor_unitario', '')::numeric, 0),
         'cost_price', COALESCE(NULLIF(item->>'valor_custo', '')::numeric, 0),
+        'cost_amount', COALESCE(NULLIF(item->>'valor_custo', '')::numeric, 0),
         'total_price', COALESCE(NULLIF(item->>'valor_total', '')::numeric, 0),
+        'total_amount', COALESCE(NULLIF(item->>'valor_total', '')::numeric, 0),
         'total_commission', COALESCE(NULLIF(item->>'comissao_total', '')::numeric, 0),
+        'commission_total', COALESCE(NULLIF(item->>'comissao_total', '')::numeric, 0),
         'commissions', COALESCE((
           SELECT jsonb_agg(jsonb_build_object(
             'employee_id', CASE WHEN COALESCE(commission->>'funcionario_id', '') <> '' THEN uuid_generate_v5(v_namespace, 'employee:' || (commission->>'funcionario_id')) ELSE NULL END,
