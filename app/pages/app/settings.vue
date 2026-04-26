@@ -73,7 +73,7 @@ const links = computed<NavigationMenuItem[][]>(() => {
     </template>
 
     <template #body>
-      <div class="flex flex-col gap-4 w-full lg:max-w-2xl mx-auto">
+      <div class="flex flex-col gap-4 w-full lg:max-w-4xl px-4 mx-auto">
         <NuxtPage />
       </div>
     </template>
