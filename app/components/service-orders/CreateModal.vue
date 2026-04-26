@@ -570,7 +570,7 @@ const itemCommissionMap = computed(() => {
       const eligibleItems = commissionCategories.length
         ? items.filter(
             (item) =>
-              !!item.category_id &&
+              !item.category_id ||
               commissionCategories.includes(item.category_id),
           )
         : items;
@@ -669,7 +669,7 @@ function computeResponsibleCommission(
     let matchingCost = 0;
 
     normalizedItems.value.forEach((item) => {
-      if (item.category_id && commissionCategories.includes(item.category_id)) {
+      if (!item.category_id || commissionCategories.includes(item.category_id)) {
         matchingSale += item.total_price;
         matchingCost += item.cost_price * item.quantity;
       }

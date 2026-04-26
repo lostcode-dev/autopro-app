@@ -142,14 +142,21 @@ export async function generateServiceOrderCommissions({
     for (const item of items) {
       if (commissionCategories.length > 0) {
         const itemCategoryId = item.category_id
+        // Skip only items that have an explicit category NOT in the employee's categories.
+        // Items without category_id are treated as eligible (matches UI behavior for migrated items).
         if (itemCategoryId && !commissionCategories.includes(itemCategoryId)) {
           continue
         }
       }
 
       const quantity = asNumber(item.quantity || 1)
-      const itemTotal = asNumber(item.total_price || item.sale_price || item.unit_price) * quantity
-      const itemCost = asNumber(item.cost_price) * quantity
+      // total_price/total_amount already include quantity (full line total) — don't multiply again
+      const rawTotal = item.total_price ?? item.total_amount
+      const itemTotal = rawTotal != null
+        ? asNumber(rawTotal)
+        : asNumber(item.unit_price) * quantity
+      // cost_price/cost_amount are per-unit costs — must multiply by quantity
+      const itemCost = asNumber(item.cost_price ?? item.cost_amount) * quantity
       const itemProfit = itemTotal - itemCost
 
       eligibleItemAmount += itemTotal
