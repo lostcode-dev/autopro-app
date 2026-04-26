@@ -708,6 +708,23 @@ function computeResponsibleCommission(
   };
 }
 
+const storedCommissionByEmployee = computed(() => {
+  if (!props.orderToEdit?.items) return new Map<string, number>()
+  const map = new Map<string, number>()
+  for (const item of props.orderToEdit.items) {
+    for (const c of item.commissions ?? []) {
+      if (c.employee_id) {
+        map.set(c.employee_id, (map.get(c.employee_id) ?? 0) + Number(c.amount ?? 0))
+      }
+    }
+  }
+  return map
+})
+
+function getStoredCommissionForEmployee(employeeId: string) {
+  return storedCommissionByEmployee.value.get(employeeId) ?? 0
+}
+
 const totalCommissionAmount = computed(() =>
   form.responsible_employees.reduce((total, employeeId) => {
     const employee = getEmployeeById(employeeId);
@@ -828,9 +845,9 @@ function updateResponsible(index: number, employeeId: string) {
 }
 
 function getResponsibleCommissionLabel(employeeId: string) {
-  return formatCurrency(
-    computeResponsibleCommission(getEmployeeById(employeeId)).value,
-  );
+  const fresh = computeResponsibleCommission(getEmployeeById(employeeId)).value
+  if (fresh > 0) return formatCurrency(fresh)
+  return formatCurrency(getStoredCommissionForEmployee(employeeId))
 }
 
 function getResponsibleRateLabel(employeeId: string) {
@@ -1510,7 +1527,7 @@ async function submit() {
                       </UFormField>
 
                       <div
-                        v-if="getEmployeeById(employeeId)"
+                        v-if="getEmployeeById(employeeId) || getStoredCommissionForEmployee(employeeId) > 0"
                         class="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-elevated/60 px-3 py-2 text-sm lg:flex-nowrap"
                       >
                         <UBadge
