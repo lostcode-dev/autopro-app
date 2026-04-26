@@ -1,7 +1,0 @@
-id,organization_id,name,type,rate,created_at,created_by,updated_at,updated_by,deleted_at,deleted_by
-0ba30026-1e0e-51ab-b785-fdea5750fe4d,386614c4-dcab-55d5-9084-c599df04ca3e,SIMPLES,federal,8.0000,2025-09-06 19:34:52.083+00,quotabankoficial@gmail.com,2026-04-25 21:53:49.347871+00,contato@loker.com.br,,
-16c084a7-a69b-5368-a6a8-b08d185efaa6,fda7436b-a384-5fd6-9f98-74b1547d0e61,ISS,municipal,5.0000,2025-09-06 19:13:56.257+00,beenkoficial@gmail.com,2025-09-06 19:13:56.257+00,beenkoficial@gmail.com,,
-48b54b1f-01b4-5404-867c-45df51636c5a,386614c4-dcab-55d5-9084-c599df04ca3e,ISS,municipal,5.0000,2025-09-06 19:13:56.257+00,beenkoficial@gmail.com,2025-09-06 19:13:56.257+00,beenkoficial@gmail.com,,
-565dc637-1a50-5c73-b392-fc3593a5a57d,fda7436b-a384-5fd6-9f98-74b1547d0e61,ISSQN,municipal,5.0000,2025-09-06 19:34:29.745+00,quotabankoficial@gmail.com,2025-09-06 19:34:29.745+00,quotabankoficial@gmail.com,,
-6cbaea0f-7010-5e5e-b20a-337f83b7c540,fda7436b-a384-5fd6-9f98-74b1547d0e61,SIMPLES,federal,6.0000,2025-09-06 19:34:52.083+00,quotabankoficial@gmail.com,2025-09-06 19:34:52.083+00,quotabankoficial@gmail.com,,
-d12f6884-9f0a-5dc4-9b00-aea618ac3d06,386614c4-dcab-55d5-9084-c599df04ca3e,ISSQN,municipal,5.0000,2025-09-06 19:34:29.745+00,quotabankoficial@gmail.com,2026-04-25 21:53:49.347871+00,contato@loker.com.br,,

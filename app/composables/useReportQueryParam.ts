@@ -16,6 +16,9 @@ const LS_KEY = 'autopro:report-params'
 const EMPTY_ARRAY_SENTINEL = '__empty__'
 
 type ParamValue = string | number | string[]
+interface ReportQueryParamOptions {
+  persist?: boolean
+}
 
 /** Read / write the shared localStorage object */
 function lsGet(): Record<string, ParamValue> {
@@ -87,9 +90,14 @@ function isEmpty<T extends ParamValue>(value: T, defaultValue: T): boolean {
   return value === defaultValue
 }
 
-export function useReportQueryParam<T extends ParamValue>(key: string, defaultValue: T) {
+export function useReportQueryParam<T extends ParamValue>(
+  key: string,
+  defaultValue: T,
+  options: ReportQueryParamOptions = {}
+) {
   const route = useRoute()
   const router = useRouter()
+  const persist = options.persist ?? true
 
   // ── Determine initial value ──────────────────────────────────────────────
   // 1. URL query param
@@ -98,7 +106,7 @@ export function useReportQueryParam<T extends ParamValue>(key: string, defaultVa
 
   if (rawQuery !== undefined && rawQuery !== '' && rawQuery !== null) {
     initial = coerce(rawQuery, defaultValue)
-  } else {
+  } else if (persist) {
     // 2. localStorage fallback
     const saved = lsGet()[key]
     if (saved !== undefined) {
@@ -126,13 +134,17 @@ export function useReportQueryParam<T extends ParamValue>(key: string, defaultVa
         && defaultValue.length > 0
 
       if (isExplicitEmptyArray) {
-        lsSet(key, value)
+        if (persist) {
+          lsSet(key, value)
+        }
         router.replace({ query: queryWithoutKey })
       } else if (isEmpty(value, defaultValue)) {
         lsRemove(key)
         router.replace({ query: queryWithoutKey })
       } else {
-        lsSet(key, value)
+        if (persist) {
+          lsSet(key, value)
+        }
         router.replace({
           query: {
             ...queryWithoutKey,
