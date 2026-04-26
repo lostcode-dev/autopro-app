@@ -44,7 +44,9 @@ export type ServiceOrderItem = {
   quantity: number
   unit_price: number
   total_price?: number | null
+  total_amount?: number | null
   cost_price?: number | null
+  cost_amount?: number | null
   product_id?: string | null
   category_id?: string | null
   commission_total?: number | null

@@ -21,7 +21,11 @@ function getItemSource(item: ServiceOrderDetailFull['order']['items'][number]) {
 }
 
 function getItemTotal(item: ServiceOrderDetailFull['order']['items'][number]) {
-  return item.total_price ?? item.unit_price * item.quantity
+  return item.total_price ?? item.total_amount ?? item.unit_price * item.quantity
+}
+
+function getItemCost(item: ServiceOrderDetailFull['order']['items'][number]) {
+  return item.cost_price ?? item.cost_amount ?? 0
 }
 
 function getItemCommission(index: number) {
@@ -133,7 +137,7 @@ function getItemCommission(index: number) {
                 {{ formatCurrency(item.unit_price) }}
               </td>
               <td class="px-4 py-4 text-right text-muted">
-                {{ formatCurrency(item.cost_price) }}
+                {{ formatCurrency(getItemCost(item)) }}
               </td>
               <td class="px-4 py-4 text-right font-semibold text-info">
                 {{ formatCurrency(getItemCommission(index)) }}
@@ -204,7 +208,7 @@ function getItemCommission(index: number) {
 
               <UFormField label="Custo">
                 <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default">
-                  {{ formatCurrency(item.cost_price) }}
+                  {{ formatCurrency(getItemCost(item)) }}
                 </div>
               </UFormField>
             </div>

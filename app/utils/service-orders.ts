@@ -108,11 +108,16 @@ function roundCurrency(value: number) {
   return Number(value.toFixed(2))
 }
 
+function getItemTotal(item: ServiceOrderItem) {
+  return toNumber(item.total_price ?? item.total_amount) || toNumber(item.unit_price) * toNumber(item.quantity)
+}
+
+function getItemCost(item: ServiceOrderItem) {
+  return toNumber(item.cost_price ?? item.cost_amount)
+}
+
 function getOrderSubtotal(order: ServiceOrderRaw) {
-  return (order.items ?? []).reduce(
-    (total, item) => total + toNumber(item.total_price ?? item.unit_price * item.quantity),
-    0
-  )
+  return (order.items ?? []).reduce((total, item) => total + getItemTotal(item), 0)
 }
 
 function getOrderTotalCost(order: ServiceOrderRaw) {
@@ -121,7 +126,7 @@ function getOrderTotalCost(order: ServiceOrderRaw) {
   }
 
   return (order.items ?? []).reduce(
-    (total, item) => total + toNumber(item.cost_price) * toNumber(item.quantity),
+    (total, item) => total + getItemCost(item) * toNumber(item.quantity),
     0
   )
 }
@@ -156,8 +161,8 @@ export function computeServiceOrderResponsibleCommission(
 
     ;(order.items ?? []).forEach((item) => {
       if (item.category_id && commissionCategories.includes(item.category_id)) {
-        matchingSale += toNumber(item.total_price ?? item.unit_price * item.quantity)
-        matchingCost += toNumber(item.cost_price) * toNumber(item.quantity)
+        matchingSale += getItemTotal(item)
+        matchingCost += getItemCost(item) * toNumber(item.quantity)
       }
     })
 
@@ -221,7 +226,7 @@ export function computeServiceOrderItemCommissionMap(
 
       const commissionAmount = toNumber(employee.commission_amount)
       const eligibleSale = eligibleItems.reduce(
-        (total, { item }) => total + toNumber(item.total_price ?? item.unit_price * item.quantity),
+        (total, { item }) => total + getItemTotal(item),
         0
       )
       const eligibleRatio = subtotal > 0 ? eligibleSale / subtotal : 0
@@ -230,7 +235,7 @@ export function computeServiceOrderItemCommissionMap(
 
       if (employee.commission_type === 'percentage') {
         eligibleItems.forEach(({ item, index }) => {
-          const itemTotal = toNumber(item.total_price ?? item.unit_price * item.quantity)
+          const itemTotal = getItemTotal(item)
           const fraction = eligibleSale > 0 ? itemTotal / eligibleSale : 0
           const itemDiscount = eligibleDiscount * fraction
           const itemTaxes = eligibleTaxes * fraction
@@ -239,7 +244,7 @@ export function computeServiceOrderItemCommissionMap(
           if (employee.commission_base === 'profit') {
             itemBase = Math.max(
               0,
-              itemBase - toNumber(item.cost_price) * toNumber(item.quantity) - itemTaxes
+              itemBase - getItemCost(item) * toNumber(item.quantity) - itemTaxes
             )
           }
 

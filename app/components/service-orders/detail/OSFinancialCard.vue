@@ -9,7 +9,7 @@ const props = defineProps<{
 
 const subtotal = computed(() =>
   (props.order.items ?? []).reduce(
-    (total, item) => total + (item.total_price ?? item.unit_price * item.quantity),
+    (total, item) => total + (item.total_price ?? item.total_amount ?? item.unit_price * item.quantity),
     0
   )
 )

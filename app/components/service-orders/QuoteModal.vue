@@ -113,7 +113,7 @@ function close() {
 }
 
 function getItemTotal(item: ServiceOrderItem) {
-  return Number(item.total_price ?? item.unit_price * item.quantity);
+  return Number(item.total_price ?? item.total_amount ?? item.unit_price * item.quantity);
 }
 
 function getClientPhone() {

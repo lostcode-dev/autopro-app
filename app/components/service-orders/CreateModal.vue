@@ -279,7 +279,7 @@ function mapOrderItemToDraftItem(item: ServiceOrderItem) {
     description: item.description ?? item.name ?? "",
     quantity: toNumber(item.quantity) || 1,
     unit_price: toNumber(item.unit_price),
-    cost_price: toNumber(item.cost_price),
+    cost_price: toNumber(item.cost_price ?? item.cost_amount),
     source: item.product_id ? "catalog" : "manual",
     product_id: item.product_id ?? null,
     category_id: item.category_id ?? null,
