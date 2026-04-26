@@ -101,6 +101,7 @@ const accountTypeOptions = [
   { label: 'Conta corrente', value: 'checking' },
   { label: 'Poupança', value: 'savings' },
   { label: 'Caixa', value: 'cash' },
+  { label: 'Investimento', value: 'investment' },
   { label: 'Outro', value: 'other' }
 ]
 </script>

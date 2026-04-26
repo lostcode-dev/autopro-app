@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
   if (isActiveParam === 'true') dbQuery = dbQuery.eq('is_active', true)
   else if (isActiveParam === 'false') dbQuery = dbQuery.eq('is_active', false)
 
-  const ALLOWED_SORT = ['account_name', 'account_type', 'bank_name', 'created_at'] as const
+  const ALLOWED_SORT = ['account_name', 'account_type', 'bank_name', 'current_balance', 'created_at'] as const
   const sortBy = ALLOWED_SORT.includes(query.sort_by as typeof ALLOWED_SORT[number])
     ? String(query.sort_by)
     : 'account_name'

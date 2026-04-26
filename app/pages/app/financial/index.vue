@@ -108,7 +108,7 @@ function normalizeStatusForApi(value: string) {
 
 function normalizeRecurrenceValue(value: unknown) {
   const normalized = String(value || '').trim().toLowerCase()
-  if (!normalized || normalized === 'null' || normalized === 'none' || normalized === 'nao_recorrente') return null
+  if (!normalized || ['null', 'none', 'non_recurring', 'nao_recorrente', 'sem recorrencia', 'sem recorrência'].includes(normalized)) return null
   if (normalized === 'mensal') return 'monthly'
   if (normalized === 'anual') return 'yearly'
   if (normalized === 'semanal') return 'weekly'
@@ -696,6 +696,10 @@ function formatRecurrence(value: unknown) {
   return String(value || 'Sem recorrência')
 }
 
+function hasRecurrence(value: unknown) {
+  return Boolean(normalizeRecurrenceValue(value))
+}
+
 function getBankAccountLabel(entry: Entry) {
   const accountId = String(entry.bank_account_id || '')
   if (!accountId) return 'Sem conta vinculada'
@@ -717,11 +721,24 @@ const categoryLabelMap: Record<string, string> = {
   taxes: 'Impostos',
   marketing: 'Marketing',
   other: 'Outros',
+  vendas: 'Vendas',
+  servicos: 'Serviços',
+  aluguel: 'Aluguel',
+  salarios: 'Salários',
+  fornecedores: 'Fornecedores',
+  impostos: 'Impostos',
+  outros: 'Outros'
 }
 
 function formatCategory(value: string | null | undefined): string {
   if (!value) return 'Sem categoria'
-  return categoryLabelMap[value] ?? value
+  const rawValue = String(value).trim()
+  const normalized = rawValue
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (categoryLabelMap[normalized]) return categoryLabelMap[normalized]
+  return rawValue.replace(/\S+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
 }
 
 const columns = [
@@ -905,7 +922,10 @@ const columns = [
               <p class="text-sm text-highlighted">
                 {{ formatCategory((row.original as Entry).category) }}
               </p>
-              <p class="text-xs text-muted">
+              <p
+                v-if="hasRecurrence((row.original as Entry).recurrence)"
+                class="text-xs text-muted"
+              >
                 {{ formatRecurrence((row.original as Entry).recurrence) }}
               </p>
             </div>

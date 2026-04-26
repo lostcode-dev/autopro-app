@@ -78,11 +78,9 @@ async function save() {
 }
 
 const taxTypeOptions = [
-  { label: 'ISS', value: 'iss' },
-  { label: 'ICMS', value: 'icms' },
-  { label: 'PIS', value: 'pis' },
-  { label: 'COFINS', value: 'cofins' },
-  { label: 'IPI', value: 'ipi' },
+  { label: 'Municipal', value: 'municipal' },
+  { label: 'Estadual', value: 'state' },
+  { label: 'Federal', value: 'federal' },
   { label: 'Outro', value: 'other' }
 ]
 </script>

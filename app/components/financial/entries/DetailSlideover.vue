@@ -78,9 +78,11 @@ function normalizeStatus(value: unknown) {
 }
 
 function normalizeRecurrence(value: unknown) {
-  const v = String(value || '').toLowerCase()
+  const v = String(value || '').trim().toLowerCase()
+  if (!v || ['null', 'none', 'non_recurring', 'nao_recorrente', 'sem recorrencia', 'sem recorrência'].includes(v)) return ''
   if (v === 'mensal') return 'monthly'
   if (v === 'anual') return 'yearly'
+  if (v === 'semanal') return 'weekly'
   return v
 }
 
@@ -143,11 +145,24 @@ const CATEGORY_LABEL_MAP: Record<string, string> = {
   taxes: 'Impostos',
   marketing: 'Marketing',
   other: 'Outros',
+  vendas: 'Vendas',
+  servicos: 'Serviços',
+  aluguel: 'Aluguel',
+  salarios: 'Salários',
+  fornecedores: 'Fornecedores',
+  impostos: 'Impostos',
+  outros: 'Outros'
 }
 
 function formatCategory(value: string | null | undefined): string {
   if (!value) return '—'
-  return CATEGORY_LABEL_MAP[value] ?? value
+  const rawValue = String(value).trim()
+  const normalized = rawValue
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+  if (CATEGORY_LABEL_MAP[normalized]) return CATEGORY_LABEL_MAP[normalized]
+  return rawValue.replace(/\S+/g, word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
 }
 
 const entry = computed(() => detail.value?.entry ?? null)
@@ -160,8 +175,7 @@ const entryRecurrence = computed(() => normalizeRecurrence(String(entry.value?.r
 
 const isInstallment = computed(() => Boolean(entry.value?.is_installment))
 const hasRecurrence = computed(() =>
-  Boolean(entry.value?.recurrence)
-  && !['non_recurring', 'nao_recorrente', ''].includes(String(entry.value?.recurrence ?? ''))
+  Boolean(entryRecurrence.value)
 )
 
 const bankAccountLabel = computed(() => {

@@ -179,7 +179,16 @@ async function confirmBulkDelete() {
 }
 
 const TAX_TYPE_LABELS: Record<string, string> = {
-  iss: 'ISS', icms: 'ICMS', pis: 'PIS', cofins: 'COFINS', ipi: 'IPI', other: 'Outro'
+  municipal: 'Municipal',
+  state: 'Estadual',
+  estadual: 'Estadual',
+  federal: 'Federal',
+  other: 'Outro',
+  iss: 'ISS',
+  icms: 'ICMS',
+  pis: 'PIS',
+  cofins: 'COFINS',
+  ipi: 'IPI'
 }
 
 const lineColumns = [
@@ -265,7 +274,8 @@ const lineColumns = [
                 :label="TAX_TYPE_LABELS[row.original.type as string] ?? row.original.type"
                 color="neutral"
                 variant="subtle"
-                size="xs"
+                size="sm"
+                class="font-medium"
               />
             </template>
 
@@ -313,7 +323,8 @@ const lineColumns = [
                           :label="TAX_TYPE_LABELS[tax.type as string] ?? tax.type"
                           color="neutral"
                           variant="subtle"
-                          size="xs"
+                          size="sm"
+                          class="font-medium"
                         />
                       </div>
                       <div class="flex shrink-0 items-center gap-1">

@@ -181,16 +181,30 @@ async function confirmBulkDelete() {
 }
 
 const accountTypeLabel = (type: string) =>
-  ({ checking: 'Corrente', savings: 'Poupança', cash: 'Caixa', other: 'Outro' }[type] ?? type)
+  ({ checking: 'Corrente', savings: 'Poupança', cash: 'Caixa', investment: 'Investimento', other: 'Outro' }[type] ?? type)
 
 const formatCurrency = (val: number | null) =>
   val != null ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val) : '-'
+
+function resolveCurrentBalance(account: BankAccount) {
+  const raw = account.current_balance ?? account.initial_balance
+  return raw != null ? Number(raw) : null
+}
+
+function formatBankRouting(account: BankAccount) {
+  const parts: string[] = []
+  if (account.branch)
+    parts.push(`Ag. ${account.branch}`)
+  if (account.account_number)
+    parts.push(`Cta. ${account.account_number}`)
+  return parts.join(' • ')
+}
 
 const lineColumns = [
   { accessorKey: 'account_name', header: 'Nome', enableSorting: true },
   { accessorKey: 'account_type', header: 'Tipo', enableSorting: true },
   { accessorKey: 'bank_name', header: 'Banco', enableSorting: true },
-  { accessorKey: 'initial_balance', header: 'Saldo inicial', enableSorting: false },
+  { accessorKey: 'current_balance', header: 'Saldo atual', enableSorting: true },
   { accessorKey: 'is_active', header: 'Status', enableSorting: false },
   { id: 'actions', header: 'Ações', enableSorting: false }
 ]
@@ -276,12 +290,31 @@ const lineColumns = [
                 :label="accountTypeLabel(row.original.account_type as string)"
                 color="neutral"
                 variant="subtle"
-                size="xs"
+                size="sm"
+                class="font-medium"
               />
             </template>
 
-            <template #initial_balance-cell="{ row }">
-              <span class="text-sm text-muted">{{ formatCurrency(row.original.initial_balance as number | null) }}</span>
+            <template #bank_name-cell="{ row }">
+              <div class="min-w-0">
+                <p class="truncate font-medium text-highlighted">
+                  {{ row.original.bank_name || 'Banco não informado' }}
+                </p>
+                <p v-if="formatBankRouting(row.original as BankAccount)" class="truncate text-xs text-muted">
+                  {{ formatBankRouting(row.original as BankAccount) }}
+                </p>
+              </div>
+            </template>
+
+            <template #current_balance-cell="{ row }">
+              <div class="space-y-1">
+                <p class="text-sm font-semibold text-highlighted">
+                  {{ formatCurrency(resolveCurrentBalance(row.original as BankAccount)) }}
+                </p>
+                <p class="text-xs text-muted">
+                  Inicial: {{ formatCurrency((row.original.initial_balance as number | null) ?? null) }}
+                </p>
+              </div>
             </template>
 
             <template #is_active-cell="{ row }">
@@ -289,7 +322,8 @@ const lineColumns = [
                 :label="row.original.is_active ? 'Ativa' : 'Inativa'"
                 :color="row.original.is_active ? 'success' : 'neutral'"
                 variant="subtle"
-                size="xs"
+                size="sm"
+                class="font-medium"
               />
             </template>
 
@@ -332,13 +366,15 @@ const lineColumns = [
                             :label="accountTypeLabel(account.account_type as string)"
                             color="neutral"
                             variant="subtle"
-                            size="xs"
+                            size="sm"
+                            class="font-medium"
                           />
                           <UBadge
                             :label="account.is_active ? 'Ativa' : 'Inativa'"
                             :color="account.is_active ? 'success' : 'neutral'"
                             variant="subtle"
-                            size="xs"
+                            size="sm"
+                            class="font-medium"
                           />
                         </div>
                       </div>
@@ -362,21 +398,24 @@ const lineColumns = [
                       </div>
                     </div>
                     <div class="grid grid-cols-2 gap-2 text-sm text-muted">
-                      <div class="flex items-center gap-2">
+                      <div class="col-span-2 flex items-start gap-2">
                         <UIcon name="i-lucide-building-2" class="size-4 shrink-0" />
-                        <span class="truncate">{{ account.bank_name || 'Banco não informado' }}</span>
+                        <div class="min-w-0">
+                          <p class="truncate text-sm text-highlighted">
+                            {{ account.bank_name || 'Banco não informado' }}
+                          </p>
+                          <p v-if="formatBankRouting(account as BankAccount)" class="truncate text-xs text-muted">
+                            {{ formatBankRouting(account as BankAccount) }}
+                          </p>
+                        </div>
                       </div>
                       <div class="flex items-center gap-2">
                         <UIcon name="i-lucide-wallet" class="size-4 shrink-0" />
-                        <span class="truncate">{{ formatCurrency(account.initial_balance as number | null) }}</span>
+                        <span class="truncate">Saldo atual: {{ formatCurrency(resolveCurrentBalance(account as BankAccount)) }}</span>
                       </div>
-                      <div v-if="account.branch" class="flex items-center gap-2">
-                        <UIcon name="i-lucide-git-branch" class="size-4 shrink-0" />
-                        <span class="truncate">Ag. {{ account.branch }}</span>
-                      </div>
-                      <div v-if="account.account_number" class="flex items-center gap-2">
-                        <UIcon name="i-lucide-hash" class="size-4 shrink-0" />
-                        <span class="truncate">Cta. {{ account.account_number }}</span>
+                      <div class="flex items-center gap-2">
+                        <UIcon name="i-lucide-badge-dollar-sign" class="size-4 shrink-0" />
+                        <span class="truncate">Saldo inicial: {{ formatCurrency((account.initial_balance as number | null) ?? null) }}</span>
                       </div>
                     </div>
                   </div>
