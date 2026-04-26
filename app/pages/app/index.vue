@@ -232,7 +232,7 @@ function getAppointmentStatusColor(status: string): 'success' | 'error' | 'neutr
                 <div class="flex items-start justify-between gap-3">
                   <div class="flex min-w-0 items-start gap-3">
                     <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
-                      <UIcon name="i-lucide-file-stack" class="size-5" />
+                      <UIcon name="i-lucide-clipboard-list" class="size-5" />
                     </div>
                     <div class="min-w-0 space-y-1">
                       <div class="flex items-center gap-2 flex-wrap">

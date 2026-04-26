@@ -14,6 +14,14 @@ type AccountsResponse = {
   page_size: number;
 };
 type ViewMode = "table" | "card";
+type BadgeColor =
+  | "primary"
+  | "secondary"
+  | "success"
+  | "info"
+  | "warning"
+  | "error"
+  | "neutral";
 
 const DEFAULT_PAGE_SIZE = 10;
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -286,6 +294,36 @@ const accountTypeLabel = (type: string) =>
     other: "Outro",
   })[type] ?? type;
 
+const accountTypeIcon = (type: string) =>
+  ({
+    checking: "i-lucide-landmark",
+    savings: "i-lucide-piggy-bank",
+    cash: "i-lucide-wallet",
+    investment: "i-lucide-chart-no-axes-combined",
+    other: "i-lucide-credit-card"
+  })[type] ?? "i-lucide-credit-card";
+
+const accountTypeAvatarClass = (type: string) =>
+  ({
+    checking: "bg-primary/12 text-primary",
+    savings: "bg-success/12 text-success",
+    cash: "bg-warning/12 text-warning",
+    investment: "bg-info/12 text-info",
+    other: "bg-neutral/12 text-muted"
+  })[type] ?? "bg-neutral/12 text-muted";
+
+const accountTypeBadgeColor = (type: string): BadgeColor =>
+  ({
+    checking: "primary",
+    savings: "success",
+    cash: "warning",
+    investment: "info",
+    other: "neutral"
+  } as Record<string, BadgeColor>)[type] ?? "neutral";
+
+const statusIcon = (active: boolean) =>
+  active ? "i-lucide-circle-check" : "i-lucide-circle-x";
+
 const formatCurrency = (val: number | null) =>
   val != null
     ? new Intl.NumberFormat("pt-BR", {
@@ -309,7 +347,6 @@ function formatBankRouting(account: BankAccount) {
 const lineColumns = [
   { accessorKey: "account_name", header: "Nome", enableSorting: true },
   { accessorKey: "account_type", header: "Tipo", enableSorting: true },
-  { accessorKey: "bank_name", header: "Banco", enableSorting: true },
   {
     accessorKey: "current_balance",
     header: "Saldo atual",
@@ -389,9 +426,13 @@ const lineColumns = [
             <template #account_name-cell="{ row }">
               <div class="flex items-center gap-3">
                 <div
-                  class="flex h-9 w-9 items-center justify-center rounded-full bg-primary/12"
+                  class="flex h-9 w-9 items-center justify-center rounded-full"
+                  :class="accountTypeAvatarClass(row.original.account_type as string)"
                 >
-                  <UIcon name="i-lucide-landmark" class="size-4 text-primary" />
+                  <UIcon
+                    :name="accountTypeIcon(row.original.account_type as string)"
+                    class="size-4"
+                  />
                 </div>
                 <div class="min-w-0">
                   <p class="truncate font-semibold text-highlighted">
@@ -413,7 +454,8 @@ const lineColumns = [
             <template #account_type-cell="{ row }">
               <UBadge
                 :label="accountTypeLabel(row.original.account_type as string)"
-                color="neutral"
+                :icon="accountTypeIcon(row.original.account_type as string)"
+                :color="accountTypeBadgeColor(row.original.account_type as string)"
                 variant="subtle"
                 size="sm"
                 class="font-medium"
@@ -435,6 +477,7 @@ const lineColumns = [
             <template #is_active-cell="{ row }">
               <UBadge
                 :label="row.original.is_active ? 'Ativa' : 'Inativa'"
+                :icon="statusIcon(Boolean(row.original.is_active))"
                 :color="row.original.is_active ? 'success' : 'neutral'"
                 variant="subtle"
                 size="sm"
@@ -468,11 +511,12 @@ const lineColumns = [
               <UCard class="border border-default/80 shadow-sm">
                 <div class="flex items-start gap-4">
                   <div
-                    class="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12"
+                    class="flex h-12 w-12 items-center justify-center rounded-2xl"
+                    :class="accountTypeAvatarClass(account.account_type as string)"
                   >
                     <UIcon
-                      name="i-lucide-landmark"
-                      class="size-5 text-primary"
+                      :name="accountTypeIcon(account.account_type as string)"
+                      class="size-5"
                     />
                   </div>
                   <div class="min-w-0 flex-1 space-y-3">
@@ -488,13 +532,15 @@ const lineColumns = [
                             :label="
                               accountTypeLabel(account.account_type as string)
                             "
-                            color="neutral"
+                            :icon="accountTypeIcon(account.account_type as string)"
+                            :color="accountTypeBadgeColor(account.account_type as string)"
                             variant="subtle"
                             size="sm"
                             class="font-medium"
                           />
                           <UBadge
                             :label="account.is_active ? 'Ativa' : 'Inativa'"
+                            :icon="statusIcon(Boolean(account.is_active))"
                             :color="account.is_active ? 'success' : 'neutral'"
                             variant="subtle"
                             size="sm"
