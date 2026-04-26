@@ -119,7 +119,7 @@ export default defineEventHandler(async (event) => {
   const clientNameById = new Map(clients.map(client => [String(client.id), String(client.name || '')]))
   const vehicleById = new Map(vehicles.map(vehicle => [String(vehicle.id), vehicle]))
 
-  const openOrdersCount = orders.filter(order => ['open', 'in_progress', 'waiting_for_part'].includes(String(order.status))).length
+  const openOrdersCount = orders.filter(order => ['open', 'in_progress'].includes(String(order.status))).length
 
   const grossRevenue = orders
     .filter(order => ['completed', 'delivered'].includes(String(order.status))
