@@ -85,15 +85,16 @@ interface MasterProductItem {
 }
 
 interface ServiceOrderDraftItem {
-  id: string;
-  name: string;
-  description: string;
-  quantity: number;
-  unit_price: number | string;
-  cost_price: number | string;
-  source: "manual" | "catalog";
-  product_id?: string | null;
-  category_id?: string | null;
+  id: string
+  name: string
+  description: string
+  quantity: number
+  unit_price: number | string
+  cost_price: number | string
+  source: "manual" | "catalog"
+  product_id?: string | null
+  category_id?: string | null
+  stored_commission?: number | null
 }
 
 interface MasterProductEditor {
@@ -269,6 +270,7 @@ function createDraftItem(
     source: "manual",
     product_id: null,
     category_id: null,
+    stored_commission: null,
     ...overrides,
   };
 }
@@ -283,6 +285,7 @@ function mapOrderItemToDraftItem(item: ServiceOrderItem) {
     source: item.product_id ? "catalog" : "manual",
     product_id: item.product_id ?? null,
     category_id: item.category_id ?? null,
+    stored_commission: item.commission_total ?? item.total_commission ?? null,
   });
 }
 
@@ -649,7 +652,10 @@ const normalizedItemsWithCommission = computed(() =>
 )
 
 function getItemCommission(itemId: string) {
-  return itemCommissionMap.value.get(itemId) ?? 0;
+  const computed = itemCommissionMap.value.get(itemId) ?? 0
+  if (computed > 0) return computed
+  const draftItem = form.items.find(i => i.id === itemId)
+  return draftItem?.stored_commission ?? 0
 }
 
 function computeResponsibleCommission(
@@ -727,10 +733,12 @@ function getStoredCommissionForEmployee(employeeId: string) {
 
 const totalCommissionAmount = computed(() =>
   form.responsible_employees.reduce((total, employeeId) => {
-    const employee = getEmployeeById(employeeId);
-    return total + computeResponsibleCommission(employee).value;
-  }, 0),
-);
+    const employee = getEmployeeById(employeeId)
+    const fresh = computeResponsibleCommission(employee).value
+    if (fresh > 0) return total + fresh
+    return total + getStoredCommissionForEmployee(employeeId)
+  }, 0)
+)
 
 const estimatedProfit = computed(
   () =>
