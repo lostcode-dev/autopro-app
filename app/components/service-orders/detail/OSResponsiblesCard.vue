@@ -23,10 +23,21 @@ type ResponsibleInfo = {
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
   return props.responsibleNames.map((r) => {
     const emp = props.employees.find(e => e.id === r.employee_id)
-    // Sum all stored commission records for this employee on this order
-    const storedAmount = props.commissions
+
+    // Primary: sum per-item commissions[] JSONB array (populated by seeder/seed-commissions)
+    const itemsAmount = (props.order.items ?? []).reduce((sum, item) => {
+      const itemCommissions = item.commissions ?? []
+      const match = itemCommissions
+        .filter(c => c.employee_id === r.employee_id)
+        .reduce((s, c) => s + Number(c.amount ?? 0), 0)
+      return sum + match
+    }, 0)
+
+    // Fallback: employee_financial_records (only present after payment is processed)
+    const financialAmount = props.commissions
       .filter(c => c.employee_id === r.employee_id)
       .reduce((sum, c) => sum + Number(c.amount ?? 0), 0)
+
     return {
       employee_id: r.employee_id,
       name: r.name,
@@ -35,7 +46,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       commission_base: emp?.commission_base,
       commission_categories: emp?.commission_categories ?? [],
       has_commission: Boolean(emp?.has_commission),
-      commission_amount: storedAmount
+      commission_amount: itemsAmount > 0 ? itemsAmount : financialAmount
     }
   })
 })

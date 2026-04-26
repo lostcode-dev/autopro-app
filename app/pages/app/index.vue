@@ -204,7 +204,7 @@ function getAppointmentStatusColor(status: string): 'success' | 'error' | 'neutr
           </NuxtLink>
         </div>
 
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 2xl:grid-cols-2 gap-4">
           <!-- Ordens recentes -->
           <UPageCard icon="i-lucide-clipboard-list" variant="subtle">
             <template #title>

@@ -1824,7 +1824,7 @@ async function submit() {
           <UCard variant="subtle">
             <template #header>
               <div
-                class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"
+                class="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between"
               >
                 <div class="flex items-center gap-2">
                   <UIcon name="i-lucide-package" class="size-4 text-primary" />
