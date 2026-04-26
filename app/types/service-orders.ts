@@ -50,6 +50,7 @@ export type ServiceOrderItem = {
   product_id?: string | null
   category_id?: string | null
   commission_total?: number | null
+  total_commission?: number | null
 }
 
 export type ServiceOrderSelectedTax = {

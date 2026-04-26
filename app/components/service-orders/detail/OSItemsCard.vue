@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import type { ServiceOrderDetailFull } from '~/types/service-orders'
-import {
-  computeServiceOrderItemCommissionMap,
-  formatCurrency
-} from '~/utils/service-orders'
+import { formatCurrency } from '~/utils/service-orders'
+
+type OrderItem = ServiceOrderDetailFull['order']['items'][number]
 
 const props = defineProps<{
   order: ServiceOrderDetailFull['order']
@@ -12,24 +11,20 @@ const props = defineProps<{
 
 const items = computed(() => props.order.items ?? [])
 
-const itemCommissionMap = computed(() =>
-  computeServiceOrderItemCommissionMap(props.order, props.employees)
-)
-
-function getItemSource(item: ServiceOrderDetailFull['order']['items'][number]) {
+function getItemSource(item: OrderItem) {
   return item.product_id ? 'catalog' : 'manual'
 }
 
-function getItemTotal(item: ServiceOrderDetailFull['order']['items'][number]) {
+function getItemTotal(item: OrderItem) {
   return item.total_price ?? item.total_amount ?? item.unit_price * item.quantity
 }
 
-function getItemCost(item: ServiceOrderDetailFull['order']['items'][number]) {
+function getItemCost(item: OrderItem) {
   return item.cost_price ?? item.cost_amount ?? 0
 }
 
-function getItemCommission(index: number) {
-  return itemCommissionMap.value.get(index) ?? 0
+function getItemCommission(item: OrderItem) {
+  return item.commission_total ?? item.total_commission ?? 0
 }
 </script>
 
@@ -140,7 +135,7 @@ function getItemCommission(index: number) {
                 {{ formatCurrency(getItemCost(item)) }}
               </td>
               <td class="px-4 py-4 text-right font-semibold text-info">
-                {{ formatCurrency(getItemCommission(index)) }}
+                {{ formatCurrency(getItemCommission(item)) }}
               </td>
               <td class="px-4 py-4 text-right font-semibold text-highlighted">
                 {{ formatCurrency(getItemTotal(item)) }}
@@ -217,7 +212,7 @@ function getItemCommission(index: number) {
               <div class="flex items-center justify-between gap-3">
                 <span class="text-muted">Total do item</span>
                 <span class="text-xs font-medium text-info">
-                  Com.: {{ formatCurrency(getItemCommission(index)) }}
+                  Com.: {{ formatCurrency(getItemCommission(item)) }}
                 </span>
               </div>
               <p class="mt-1 font-semibold text-highlighted">

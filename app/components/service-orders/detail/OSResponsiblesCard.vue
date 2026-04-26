@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import type { ServiceOrderDetailFull } from '~/types/service-orders'
-import {
-  computeServiceOrderResponsibleCommission,
-  formatCurrency
-} from '~/utils/service-orders'
+import { formatCurrency } from '~/utils/service-orders'
 
 const props = defineProps<{
   order: ServiceOrderDetailFull['order']
   responsibleNames: ServiceOrderDetailFull['responsibleNames']
   employees: ServiceOrderDetailFull['employees']
+  commissions: ServiceOrderDetailFull['commissions']
 }>()
 
 type ResponsibleInfo = {
@@ -20,13 +18,15 @@ type ResponsibleInfo = {
   commission_categories: string[]
   has_commission: boolean
   commission_amount: number | null
-  has_matching_items: boolean
 }
 
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
   return props.responsibleNames.map((r) => {
     const emp = props.employees.find(e => e.id === r.employee_id)
-    const commissionEstimate = computeServiceOrderResponsibleCommission(props.order, emp)
+    // Sum all stored commission records for this employee on this order
+    const storedAmount = props.commissions
+      .filter(c => c.employee_id === r.employee_id)
+      .reduce((sum, c) => sum + Number(c.amount ?? 0), 0)
     return {
       employee_id: r.employee_id,
       name: r.name,
@@ -35,8 +35,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       commission_base: emp?.commission_base,
       commission_categories: emp?.commission_categories ?? [],
       has_commission: Boolean(emp?.has_commission),
-      commission_amount: commissionEstimate.value,
-      has_matching_items: commissionEstimate.hasMatchingItems
+      commission_amount: storedAmount
     }
   })
 })
@@ -72,15 +71,6 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
       icon: 'i-lucide-circle-off'
     }
   }
-
-  if (assignee.commission_categories.length > 0 && !assignee.has_matching_items) {
-    return {
-      label: 'Sem itens nas categorias',
-      color: 'warning' as const,
-      icon: 'i-lucide-triangle-alert'
-    }
-  }
-
   return null
 }
 </script>
