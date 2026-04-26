@@ -265,82 +265,6 @@ BEGIN
     created_by varchar(200)
   );
 
-  CREATE TEMP TABLE tmp_vehicle_placeholder_org_source (
-    legacy_org_id text PRIMARY KEY
-  ) ON COMMIT DROP;
-
-  INSERT INTO tmp_vehicle_placeholder_org_source (
-    legacy_org_id
-  )
-  SELECT DISTINCT src.legacy_org_id
-  FROM tmp_vehicle_source AS src
-  WHERE src.legacy_org_id IS NOT NULL;
-
-  INSERT INTO public.clients (
-    id,
-    organization_id,
-    name,
-    person_type,
-    tax_id,
-    phone,
-    email,
-    zip_code,
-    street,
-    address_number,
-    address_complement,
-    neighborhood,
-    city,
-    state,
-    employee_responsible_id,
-    responsible_employees,
-    notes,
-    created_at,
-    created_by,
-    updated_at,
-    updated_by,
-    deleted_at,
-    deleted_by
-  )
-  SELECT
-    uuid_generate_v5(v_namespace, 'client:placeholder_vehicle_owner:' || src.legacy_org_id),
-    organizations.id,
-    'Cliente legado sem vinculo',
-    'pf',
-    NULL,
-    '0000000000',
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    NULL,
-    '[]'::jsonb,
-    'Auto-created during migration for vehicles without a client reference.',
-    now(),
-    'migration:003_operational_catalog_seed',
-    now(),
-    'migration:003_operational_catalog_seed',
-    NULL,
-    NULL
-  FROM tmp_vehicle_placeholder_org_source AS src
-  JOIN public.organizations AS organizations
-    ON organizations.id = uuid_generate_v5(v_namespace, 'organization:' || src.legacy_org_id)
-  ON CONFLICT (id) DO UPDATE
-  SET
-    organization_id = EXCLUDED.organization_id,
-    name = EXCLUDED.name,
-    person_type = EXCLUDED.person_type,
-    phone = EXCLUDED.phone,
-    responsible_employees = EXCLUDED.responsible_employees,
-    notes = EXCLUDED.notes,
-    updated_at = EXCLUDED.updated_at,
-    updated_by = EXCLUDED.updated_by,
-    deleted_at = NULL,
-    deleted_by = NULL;
-
   INSERT INTO public.product_categories (
     id,
     organization_id,
@@ -783,7 +707,7 @@ BEGIN
   SELECT
     uuid_generate_v5(v_namespace, 'vehicle:' || src.legacy_vehicle_id),
     organizations.id,
-    COALESCE(clients.id, placeholder_clients.id),
+    clients.id,
     src.license_plate,
     src.brand,
     src.model,
@@ -802,8 +726,6 @@ BEGIN
   FROM tmp_vehicle_source AS src
   JOIN public.organizations AS organizations
     ON organizations.id = uuid_generate_v5(v_namespace, 'organization:' || src.legacy_org_id)
-  JOIN public.clients AS placeholder_clients
-    ON placeholder_clients.id = uuid_generate_v5(v_namespace, 'client:placeholder_vehicle_owner:' || src.legacy_org_id)
   LEFT JOIN public.clients AS clients
     ON src.legacy_client_id IS NOT NULL
    AND clients.id = uuid_generate_v5(v_namespace, 'client:' || src.legacy_client_id)
@@ -893,7 +815,7 @@ BEGIN
        OR organizations.id IS NULL
   );
 
-  RAISE NOTICE 'Attached % vehicles to placeholder clients due to missing client mapping.', (
+  RAISE NOTICE 'Imported % vehicles without client reference.', (
     SELECT count(*)
     FROM tmp_vehicle_source AS src
     JOIN public.organizations AS organizations
