@@ -8,8 +8,8 @@ declare function createError(input: {
 }): Error
 
 declare function defineEventHandler<T>(
-  handler: (event: unknown) => T | Promise<T>
-): (event: unknown) => Promise<T>
+  handler: (event: Parameters<typeof requireAuthUser>[0]) => T | Promise<T>
+): (event: Parameters<typeof requireAuthUser>[0]) => Promise<T>
 
 export interface RecentOrder {
   id: string
@@ -31,6 +31,23 @@ export interface TodayAppointment {
   vehicleLabel: string
 }
 
+const DASHBOARD_TIME_ZONE = 'America/Sao_Paulo'
+
+function formatDateKeyInTimeZone(date: Date, timeZone = DASHBOARD_TIME_ZONE) {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  })
+
+  const parts = formatter.formatToParts(date)
+  const year = parts.find(part => part.type === 'year')?.value ?? '0000'
+  const month = parts.find(part => part.type === 'month')?.value ?? '01'
+  const day = parts.find(part => part.type === 'day')?.value ?? '01'
+  return `${year}-${month}-${day}`
+}
+
 function assertSupabaseResultOk(
   result: { error?: { message: string } | null },
   context: string
@@ -48,126 +65,104 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
-  // Default to current month for faturamento (Card 2)
   const now = new Date()
-  const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-  const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
-
-  // Today's date in YYYY-MM-DD (server local time)
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const todayStr = formatDateKeyInTimeZone(now)
+  const [currentYear, currentMonth] = todayStr.split('-')
+  const defaultFrom = `${currentYear}-${currentMonth}-01`
+  const nextMonthUtc = new Date(Date.UTC(Number(currentYear), Number(currentMonth), 1))
+  const lastDay = formatDateKeyInTimeZone(new Date(nextMonthUtc.getTime() - 24 * 60 * 60 * 1000)).slice(-2)
+  const defaultTo = `${currentYear}-${currentMonth}-${lastDay}`
 
   const [
-    openOrdersResult,
-    revenueOrdersResult,
-    totalClientsResult,
-    todayAppointmentsCountResult,
-    recentOrdersResult,
-    todayScheduleResult
+    ordersResult,
+    clientsResult,
+    vehiclesResult,
+    appointmentsResult
   ] = await Promise.all([
-    // Card 1: OS em andamento (snapshot atual)
     supabase
       .from('service_orders')
-      .select('id', { count: 'exact', head: true })
+      .select('id, number, status, entry_date, reported_defect, total_amount, client_id, vehicle_id, created_at')
       .eq('organization_id', organizationId)
       .is('deleted_at', null)
-      .in('status', ['open', 'in_progress', 'waiting_for_part']),
+      .order('created_at', { ascending: false }),
 
-    // Card 2: Faturamento do período
-    supabase
-      .from('service_orders')
-      .select('total_amount')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-      .in('status', ['completed', 'delivered'])
-      .gte('entry_date', defaultFrom)
-      .lte('entry_date', defaultTo),
-
-    // Card 3: Total de clientes
     supabase
       .from('clients')
-      .select('id', { count: 'exact', head: true })
+      .select('id, name')
       .eq('organization_id', organizationId)
       .is('deleted_at', null),
 
-    // Card 4: Agendamentos hoje
+    supabase
+      .from('vehicles')
+      .select('id, brand, model, license_plate')
+      .eq('organization_id', organizationId)
+      .is('deleted_at', null),
+
     supabase
       .from('appointments')
-      .select('id', { count: 'exact', head: true })
+      .select('id, time, status, service_type, appointment_date, client_id, vehicle_id')
       .eq('organization_id', organizationId)
       .is('deleted_at', null)
-      .eq('appointment_date', todayStr),
-
-    // Seção: últimas 5 OS
-    supabase
-      .from('service_orders')
-      .select('id, number, status, entry_date, reported_defect, total_amount, clients(name), vehicles(brand, model, license_plate)')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(5),
-
-    // Seção: agenda de hoje
-    supabase
-      .from('appointments')
-      .select('id, time, status, service_type, clients(name), vehicles(brand, model)')
-      .eq('organization_id', organizationId)
-      .is('deleted_at', null)
-      .eq('appointment_date', todayStr)
       .order('time', { ascending: true })
   ])
 
-  assertSupabaseResultOk(openOrdersResult, 'open orders')
-  assertSupabaseResultOk(revenueOrdersResult, 'revenue orders')
-  assertSupabaseResultOk(totalClientsResult, 'total clients')
-  assertSupabaseResultOk(todayAppointmentsCountResult, 'today appointments count')
-  assertSupabaseResultOk(recentOrdersResult, 'recent orders')
-  assertSupabaseResultOk(todayScheduleResult, 'today schedule')
+  assertSupabaseResultOk(ordersResult, 'service orders')
+  assertSupabaseResultOk(clientsResult, 'clients')
+  assertSupabaseResultOk(vehiclesResult, 'vehicles')
+  assertSupabaseResultOk(appointmentsResult, 'appointments')
 
-  const openOrdersCount = openOrdersResult.count ?? 0
+  const orders = ordersResult.data ?? []
+  const clients = clientsResult.data ?? []
+  const vehicles = vehiclesResult.data ?? []
+  const appointments = appointmentsResult.data ?? []
 
-  const grossRevenue = (revenueOrdersResult.data ?? []).reduce(
-    (sum: number, o: { total_amount: unknown }) => sum + (Number(o.total_amount) || 0),
-    0
-  )
+  const clientNameById = new Map(clients.map(client => [String(client.id), String(client.name || '')]))
+  const vehicleById = new Map(vehicles.map(vehicle => [String(vehicle.id), vehicle]))
 
-  const totalClients = totalClientsResult.count ?? 0
+  const openOrdersCount = orders.filter(order => ['open', 'in_progress', 'waiting_for_part'].includes(String(order.status))).length
 
-  const todayAppointmentsCount = todayAppointmentsCountResult.count ?? 0
+  const grossRevenue = orders
+    .filter(order => ['completed', 'delivered'].includes(String(order.status))
+      && String(order.entry_date || '') >= defaultFrom
+      && String(order.entry_date || '') <= defaultTo)
+    .reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0)
 
-  type RawOrder = { id: string, number: string | number, status: string, entry_date: string, reported_defect: string | null, total_amount: unknown, clients: { name: string } | { name: string }[] | null, vehicles: { brand: string, model: string, license_plate: string | null } | { brand: string, model: string, license_plate: string | null }[] | null }
-  const recentOrders: RecentOrder[] = ((recentOrdersResult.data ?? []) as RawOrder[]).map((o) => {
-    const client = Array.isArray(o.clients) ? o.clients[0] : o.clients
-    const vehicle = Array.isArray(o.vehicles) ? o.vehicles[0] : o.vehicles
-    const brand = vehicle?.brand ?? ''
-    const model = vehicle?.model ?? ''
-    const plate = vehicle?.license_plate ?? ''
+  const totalClients = clients.length
+
+  const todaySchedule = appointments
+    .filter(appointment => String(appointment.appointment_date || '') === todayStr)
+    .map((appointment) => {
+      const vehicle = vehicleById.get(String(appointment.vehicle_id || ''))
+      const brand = String(vehicle?.brand || '')
+      const model = String(vehicle?.model || '')
+      return {
+        id: String(appointment.id),
+        time: String(appointment.time || ''),
+        status: String(appointment.status || ''),
+        service_type: String(appointment.service_type || ''),
+        clientName: clientNameById.get(String(appointment.client_id || '')) || '—',
+        vehicleLabel: [brand, model].filter(Boolean).join(' ') || '—'
+      }
+    })
+
+  const todayAppointmentsCount = todaySchedule.length
+
+  const recentOrders: RecentOrder[] = orders.slice(0, 5).map((order) => {
+    const vehicle = vehicleById.get(String(order.vehicle_id || ''))
+    const brand = String(vehicle?.brand || '')
+    const model = String(vehicle?.model || '')
+    const plate = String(vehicle?.license_plate || '')
     const vehicleLabel = [brand, model].filter(Boolean).join(' ') + (plate ? ` — ${plate}` : '')
-    return {
-      id: o.id,
-      number: o.number,
-      status: o.status,
-      entry_date: o.entry_date,
-      reported_defect: o.reported_defect ?? null,
-      total_amount: Number(o.total_amount) || 0,
-      clientName: client?.name ?? '—',
-      vehicleLabel: vehicleLabel || '—'
-    }
-  })
 
-  type RawAppt = { id: string, time: string, status: string, service_type: string, clients: { name: string } | { name: string }[] | null, vehicles: { brand: string, model: string } | { brand: string, model: string }[] | null }
-  const todaySchedule: TodayAppointment[] = ((todayScheduleResult.data ?? []) as RawAppt[]).map((a) => {
-    const client = Array.isArray(a.clients) ? a.clients[0] : a.clients
-    const vehicle = Array.isArray(a.vehicles) ? a.vehicles[0] : a.vehicles
-    const brand = vehicle?.brand ?? ''
-    const model = vehicle?.model ?? ''
     return {
-      id: a.id,
-      time: a.time,
-      status: a.status,
-      service_type: a.service_type,
-      clientName: client?.name ?? '—',
-      vehicleLabel: [brand, model].filter(Boolean).join(' ') || '—'
+      id: String(order.id),
+      number: String(order.number ?? ''),
+      status: String(order.status || ''),
+      entry_date: String(order.entry_date || ''),
+      reported_defect: order.reported_defect ? String(order.reported_defect) : null,
+      total_amount: Number(order.total_amount) || 0,
+      clientName: clientNameById.get(String(order.client_id || '')) || '—',
+      vehicleLabel: vehicleLabel || '—'
     }
   })
 

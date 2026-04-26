@@ -45,7 +45,7 @@ function formatDate(value: string) {
   return `${d}/${m}/${y}`
 }
 
-const statusColorMap: Record<string, string> = {
+const statusColorMap: Record<string, 'success' | 'error' | 'neutral' | 'info' | 'warning'> = {
   estimate: 'neutral',
   open: 'info',
   in_progress: 'warning',
@@ -64,7 +64,11 @@ const statusLabelMap: Record<string, string> = {
   cancelled: 'Cancelada'
 }
 
-const apptStatusColorMap: Record<string, string> = {
+function getStatusColor(status: string): 'success' | 'error' | 'neutral' | 'info' | 'warning' {
+  return statusColorMap[status] ?? 'neutral'
+}
+
+const apptStatusColorMap: Record<string, 'success' | 'error' | 'neutral' | 'info' | 'warning'> = {
   scheduled: 'neutral',
   confirmed: 'success',
   cancelled: 'error',
@@ -75,6 +79,10 @@ const apptStatusLabelMap: Record<string, string> = {
   confirmed: 'Confirmado',
   cancelled: 'Cancelado',
   completed: 'Concluído'
+}
+
+function getAppointmentStatusColor(status: string): 'success' | 'error' | 'neutral' | 'info' | 'warning' {
+  return apptStatusColorMap[status] ?? 'neutral'
 }
 </script>
 
@@ -214,45 +222,58 @@ const apptStatusLabelMap: Record<string, string> = {
               <UIcon name="i-lucide-wind" class="text-2xl text-muted" />
               Nenhuma ordem de serviço encontrada.
             </div>
-            <ul v-else class="divide-y divide-default text-sm">
-              <li v-for="order in dashStats!.recentOrders" :key="order.id">
-                <NuxtLink
-                  to="/app/service-orders"
-                  class="py-2 flex items-start justify-between gap-2 hover:bg-elevated/50 rounded-md px-1 -mx-1 transition"
-                >
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2 flex-wrap">
-                      <p class="font-medium">
-                        OS {{ order.number }} — {{ order.clientName }}
-                      </p>
-                      <UBadge
-                        :color="statusColorMap[order.status] ?? 'neutral'"
-                        variant="subtle"
-                        :label="statusLabelMap[order.status] ?? order.status"
-                        size="xs"
-                      />
+            <div v-else class="grid gap-3 sm:grid-cols-2">
+              <NuxtLink
+                v-for="order in dashStats!.recentOrders"
+                :key="order.id"
+                to="/app/service-orders"
+                class="group rounded-xl border border-default/70 bg-elevated/40 p-4 transition hover:border-primary/40 hover:bg-elevated/70 hover:shadow-sm"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex min-w-0 items-start gap-3">
+                    <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/12 text-primary">
+                      <UIcon name="i-lucide-file-stack" class="size-5" />
                     </div>
-                    <p class="text-muted text-xs truncate">
-                      {{ order.vehicleLabel }}
-                    </p>
-                    <p
-                      v-if="order.reported_defect"
-                      class="text-muted text-xs truncate"
-                    >
-                      {{ order.reported_defect }}
-                    </p>
+                    <div class="min-w-0 space-y-1">
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <p class="truncate font-semibold text-highlighted">
+                          OS {{ order.number }}
+                        </p>
+                        <UBadge
+                          :color="getStatusColor(order.status)"
+                          variant="subtle"
+                          :label="statusLabelMap[order.status] ?? order.status"
+                          size="sm"
+                          class="font-medium"
+                        />
+                      </div>
+                      <p class="truncate text-sm text-default">
+                        {{ order.clientName }}
+                      </p>
+                    </div>
                   </div>
                   <div class="text-right shrink-0">
-                    <p class="text-xs font-medium">
+                    <p class="text-sm font-semibold text-highlighted">
                       {{ formatCurrency(order.total_amount) }}
                     </p>
-                    <p class="text-muted text-xs">
+                    <p class="text-xs text-muted">
                       {{ formatDate(order.entry_date) }}
                     </p>
                   </div>
-                </NuxtLink>
-              </li>
-            </ul>
+                </div>
+
+                <div class="mt-4 space-y-2 text-xs text-muted">
+                  <div class="flex items-center gap-2">
+                    <UIcon name="i-lucide-car-front" class="size-4 shrink-0" />
+                    <span class="truncate">{{ order.vehicleLabel }}</span>
+                  </div>
+                  <div v-if="order.reported_defect" class="flex items-center gap-2">
+                    <UIcon name="i-lucide-wrench" class="size-4 shrink-0" />
+                    <span class="truncate">{{ order.reported_defect }}</span>
+                  </div>
+                </div>
+              </NuxtLink>
+            </div>
           </UPageCard>
 
           <!-- Agenda de hoje -->
@@ -292,7 +313,7 @@ const apptStatusLabelMap: Record<string, string> = {
                     </p>
                   </div>
                   <UBadge
-                    :color="apptStatusColorMap[appt.status] ?? 'neutral'"
+                    :color="getAppointmentStatusColor(appt.status)"
                     variant="subtle"
                     :label="apptStatusLabelMap[appt.status] ?? appt.status"
                     size="sm"
