@@ -1,7 +1,15 @@
-import { defineEventHandler } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+
+declare function createError(input: {
+  statusCode: number
+  statusMessage: string
+}): Error
+
+declare function defineEventHandler<T>(
+  handler: (event: unknown) => T | Promise<T>
+): (event: unknown) => Promise<T>
 
 export interface RecentOrder {
   id: string
@@ -21,6 +29,18 @@ export interface TodayAppointment {
   service_type: string
   clientName: string
   vehicleLabel: string
+}
+
+function assertSupabaseResultOk(
+  result: { error?: { message: string } | null },
+  context: string
+) {
+  if (!result.error) return
+
+  throw createError({
+    statusCode: 500,
+    statusMessage: `Failed to load dashboard ${context}: ${result.error.message}`
+  })
 }
 
 export default defineEventHandler(async (event) => {
@@ -81,7 +101,7 @@ export default defineEventHandler(async (event) => {
     // Seção: últimas 5 OS
     supabase
       .from('service_orders')
-      .select('id, number, status, entry_date, reported_defect, total_amount, clients(name), vehicles(brand, model, plate)')
+      .select('id, number, status, entry_date, reported_defect, total_amount, clients(name), vehicles(brand, model, license_plate)')
       .eq('organization_id', organizationId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
@@ -97,6 +117,13 @@ export default defineEventHandler(async (event) => {
       .order('time', { ascending: true })
   ])
 
+  assertSupabaseResultOk(openOrdersResult, 'open orders')
+  assertSupabaseResultOk(revenueOrdersResult, 'revenue orders')
+  assertSupabaseResultOk(totalClientsResult, 'total clients')
+  assertSupabaseResultOk(todayAppointmentsCountResult, 'today appointments count')
+  assertSupabaseResultOk(recentOrdersResult, 'recent orders')
+  assertSupabaseResultOk(todayScheduleResult, 'today schedule')
+
   const openOrdersCount = openOrdersResult.count ?? 0
 
   const grossRevenue = (revenueOrdersResult.data ?? []).reduce(
@@ -108,13 +135,13 @@ export default defineEventHandler(async (event) => {
 
   const todayAppointmentsCount = todayAppointmentsCountResult.count ?? 0
 
-  type RawOrder = { id: string, number: string | number, status: string, entry_date: string, reported_defect: string | null, total_amount: unknown, clients: { name: string } | { name: string }[] | null, vehicles: { brand: string, model: string, plate: string } | { brand: string, model: string, plate: string }[] | null }
+  type RawOrder = { id: string, number: string | number, status: string, entry_date: string, reported_defect: string | null, total_amount: unknown, clients: { name: string } | { name: string }[] | null, vehicles: { brand: string, model: string, license_plate: string | null } | { brand: string, model: string, license_plate: string | null }[] | null }
   const recentOrders: RecentOrder[] = ((recentOrdersResult.data ?? []) as RawOrder[]).map((o) => {
     const client = Array.isArray(o.clients) ? o.clients[0] : o.clients
     const vehicle = Array.isArray(o.vehicles) ? o.vehicles[0] : o.vehicles
     const brand = vehicle?.brand ?? ''
     const model = vehicle?.model ?? ''
-    const plate = vehicle?.plate ?? ''
+    const plate = vehicle?.license_plate ?? ''
     const vehicleLabel = [brand, model].filter(Boolean).join(' ') + (plate ? ` — ${plate}` : '')
     return {
       id: o.id,
