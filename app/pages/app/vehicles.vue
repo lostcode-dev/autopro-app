@@ -506,7 +506,7 @@ const lineColumns = [
                     </span>
                   </p>
                   <p class="truncate text-xs text-muted">
-                    {{ row.original.color || "Cor não informada" }}
+                    {{ row.original.color || "-" }}
                   </p>
                 </div>
               </div>
@@ -515,7 +515,7 @@ const lineColumns = [
             <!-- Coluna Placa -->
             <template #license_plate-cell="{ row }">
               <span class="font-mono text-sm font-semibold text-highlighted">
-                {{ row.original.license_plate || "Sem placa" }}
+                {{ row.original.license_plate || "-" }}
               </span>
             </template>
 
@@ -601,7 +601,7 @@ const lineColumns = [
                           class="font-mono text-sm font-semibold text-default"
                         >
                           {{
-                            (vehicle as Vehicle).license_plate || "Sem placa"
+                            (vehicle as Vehicle).license_plate || "-"
                           }}
                         </span>
                       </div>
@@ -771,7 +771,7 @@ const lineColumns = [
           </h2>
           <div class="mt-1 flex flex-wrap items-center gap-2">
             <UBadge
-              :label="selectedVehicle.license_plate || 'Sem placa'"
+              :label="selectedVehicle.license_plate || '-'"
               color="neutral"
               variant="subtle"
             />

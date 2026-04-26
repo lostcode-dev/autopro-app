@@ -562,7 +562,7 @@ function openHistoryModal(client: Client) {
                     {{ row.original.name }}
                   </p>
                   <p class="truncate text-xs text-muted">
-                    {{ row.original.email || "E-mail não informado" }}
+                    {{ row.original.email || "-" }}
                   </p>
                 </div>
               </div>
@@ -718,7 +718,7 @@ function openHistoryModal(client: Client) {
                       <div class="flex items-center gap-2">
                         <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
                         <span class="truncate">{{
-                          client.email || "E-mail não informado"
+                          client.email || "-"
                         }}</span>
                       </div>
                       <div class="flex items-center gap-2">

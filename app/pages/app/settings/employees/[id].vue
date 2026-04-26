@@ -526,7 +526,7 @@ async function exportReport(format: 'csv' | 'pdf') {
                         Endereço e contato
                       </p>
                       <p class="text-sm font-medium text-highlighted">
-                        {{ employee.email || 'E-mail não informado' }}
+                        {{ employee.email || '-' }}
                       </p>
                       <p class="text-sm text-muted">
                         {{ buildAddress(employee) }}

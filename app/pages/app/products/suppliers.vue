@@ -939,7 +939,7 @@ const lineColumns = [
                   </div>
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-mail" class="size-4 shrink-0" />
-                    <span class="truncate">{{ supplier.email || 'E-mail não informado' }}</span>
+                    <span class="truncate">{{ supplier.email || '-' }}</span>
                   </div>
                   <div class="flex items-center gap-2">
                     <UIcon name="i-lucide-map-pinned" class="size-4 shrink-0" />
