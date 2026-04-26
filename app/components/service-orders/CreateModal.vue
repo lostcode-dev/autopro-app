@@ -633,11 +633,20 @@ const itemCommissionMap = computed(() => {
 });
 
 const normalizedItemsWithCommission = computed(() =>
-  normalizedItems.value.map((item) => ({
-    ...item,
-    commission_total: itemCommissionMap.value.get(item.id) ?? 0,
-  })),
-);
+  normalizedItems.value.map((item) => {
+    const { id: _id, ...itemWithoutId } = item
+    const commissionTotal = itemCommissionMap.value.get(item.id) ?? 0
+    return {
+      ...itemWithoutId,
+      total_price: item.total_price,
+      total_amount: item.total_price,
+      cost_price: item.cost_price,
+      cost_amount: item.cost_price,
+      commission_total: commissionTotal,
+      total_commission: commissionTotal
+    }
+  })
+)
 
 function getItemCommission(itemId: string) {
   return itemCommissionMap.value.get(itemId) ?? 0;
