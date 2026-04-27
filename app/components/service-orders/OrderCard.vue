@@ -154,6 +154,13 @@ function initials(value: string | null | undefined) {
                 </p>
               </div>
 
+              <div v-if="order.master_product_name" class="flex min-w-0 items-center gap-1.5">
+                <UIcon name="i-lucide-box" class="size-3.5 shrink-0 text-warning" />
+                <p class="truncate">
+                  {{ order.master_product_name }}
+                </p>
+              </div>
+
               <div class="flex shrink-0 items-center gap-1.5">
                 <UIcon name="i-lucide-calendar-days" class="size-3.5 text-muted" />
                 <span>{{ formatDate(order.entry_date) }}</span>
@@ -277,27 +284,25 @@ function initials(value: string | null | undefined) {
               class="px-2.5 py-1"
             />
 
-            <div v-if="order.responsible_names?.length" class="flex items-center gap-2 rounded-full bg-info/5 px-2 py-1">
+            <div v-if="order.responsible_names?.length" class="flex flex-wrap items-center gap-1.5">
               <UIcon name="i-lucide-user-round-cog" class="size-3.5 shrink-0 text-info" />
-              <div class="flex -space-x-1.5">
+              <div class="flex -space-x-2">
                 <UAvatar
                   v-for="name in order.responsible_names"
                   :key="name"
                   :text="initials(name)"
                   size="xs"
-                  :ui="{ root: 'ring-2 ring-info/30 bg-info/10 text-info' }"
+                  :ui="{ root: 'ring-2 ring-default bg-info/25 text-info font-semibold' }"
                 />
               </div>
-              <div class="flex flex-wrap gap-1">
-                <UBadge
-                  v-for="name in order.responsible_names"
-                  :key="name"
-                  :label="name"
-                  color="info"
-                  variant="soft"
-                  size="xs"
-                />
-              </div>
+              <UBadge
+                v-for="name in order.responsible_names"
+                :key="name"
+                :label="name"
+                color="info"
+                variant="soft"
+                size="sm"
+              />
             </div>
           </div>
           <div class="shrink-0 text-right">
