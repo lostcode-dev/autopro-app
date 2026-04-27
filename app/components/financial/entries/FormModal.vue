@@ -325,7 +325,7 @@ function buildBody() {
     amount: Number(form.amount),
     due_date: form.due_date,
     type: form.type,
-    status: form.status === "paid" ? "pago" : "pendente",
+    status: form.status,
     category: form.category.trim(),
     bank_account_id:
       form.bank_account_id === NO_BANK_ACCOUNT ? null : form.bank_account_id,
