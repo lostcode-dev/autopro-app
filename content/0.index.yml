@@ -66,7 +66,7 @@ features:
       description: O time da oficina opera em um contexto, o administrativo em outro. Cada um com o que precisa, sem informação misturada.
       icon: i-lucide-split-square-vertical
     - title: Emissão de nota fiscal integrada
-      description: NFS-e e NF-e emitidas diretamente pelo sistema, com cancelamento, carta de correção e download de PDF — sem sair da plataforma.
+      description: NFS-e emitidas diretamente pelo sistema, com cancelamento, carta de correção e download de PDF — sem sair da plataforma.
       icon: i-lucide-file-stack
     - title: Controle de estoque com alertas
       description: Quantidade mínima configurável por peça, vinculada ao fornecedor. Você sabe antes de acabar, não depois de deixar o cliente esperando.
@@ -74,9 +74,6 @@ features:
     - title: Comissões calculadas automaticamente
       description: Regras flexíveis por funcionário — percentual sobre faturamento ou lucro, por categoria de serviço. Sem calcular na mão, sem divergência.
       icon: i-lucide-percent
-    - title: Fim das planilhas e do caderno
-      description: Substitua anotações soltas, grupos de WhatsApp e planilhas por um fluxo único que o time inteiro usa — do mecânico ao dono.
-      icon: i-lucide-layout-dashboard
 testimonials:
   headline: Feito para oficinas que cansaram de improvisar
   title: O time para de adivinhar. O dono para de apagar incêndio.

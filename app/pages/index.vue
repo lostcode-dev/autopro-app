@@ -72,6 +72,11 @@ const heroLinks = computed(() => (page.value?.hero?.links ?? []).map((link: Reco
   }
 })))
 
+const sectionImages = [
+  { src: '/homepage/service_order.png', alt: 'Ordens de serviço no AutoPro' },
+  { src: '/homepage/report.png', alt: 'Relatórios financeiros no AutoPro' }
+]
+
 const ctaProps = computed(() => {
   if (!page.value?.cta)
     return undefined
@@ -123,7 +128,14 @@ const ctaProps = computed(() => {
       :reverse="section.reverse"
       :features="section.features"
     >
-      <ImagePlaceholder />
+      <NuxtImg
+        v-if="sectionImages[index]"
+        :src="sectionImages[index]!.src"
+        :alt="sectionImages[index]!.alt"
+        class="w-full rounded-2xl shadow-2xl ring-1 ring-default"
+        loading="lazy"
+      />
+      <ImagePlaceholder v-else />
     </UPageSection>
 
     <UPageSection
