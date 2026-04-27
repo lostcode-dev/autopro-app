@@ -171,9 +171,6 @@ const productCatalog = ref<ProductCatalogItem[]>([]);
 const masterProducts = ref<MasterProductItem[]>([]);
 const taxesCatalog = ref<TaxItem[]>([]);
 
-const selectedProductId = ref('')
-const productSearch = ref('')
-const productSearchOpen = ref(false)
 const isLoadingOptions = ref(false);
 const isLoadingNextNumber = ref(false);
 const optionsLoaded = ref(false);
@@ -476,15 +473,6 @@ function getResponsibleSelectOptions(index: number) {
     (option: SelectOption) => !selectedIds.has(option.value),
   );
 }
-
-const filteredProducts = computed(() => {
-  const term = productSearch.value.trim().toLowerCase()
-  if (!term) return productCatalog.value
-  return productCatalog.value.filter(p =>
-    p.name.toLowerCase().includes(term)
-    || p.code.toLowerCase().includes(term)
-  )
-})
 
 const masterProductSelectOptions = computed<SelectOption[]>(() =>
   masterProducts.value.map((product) => ({
@@ -796,12 +784,7 @@ function addManualItem() {
   form.items.push(createDraftItem());
 }
 
-function addProductItem() {
-  const product = productCatalog.value.find(
-    option => option.id === selectedProductId.value
-  )
-  if (!product) return
-
+function addProductItem(product: ProductCatalogItem) {
   if (product.type === 'group' && product.group_items?.length) {
     for (const groupItem of product.group_items) {
       form.items.push(
@@ -831,10 +814,6 @@ function addProductItem() {
       })
     )
   }
-
-  selectedProductId.value = ''
-  productSearch.value = ''
-  productSearchOpen.value = false
 }
 
 function removeItem(itemId: string) {
@@ -1051,7 +1030,6 @@ async function confirmDeleteMasterProduct() {
 
 function resetForm() {
   itemCounter.value = 0;
-  selectedProductId.value = "";
   masterProductSearch.value = "";
   form.number = "";
   form.status = "estimate";
@@ -1899,31 +1877,18 @@ async function submit() {
               <div
                 class="rounded-2xl border border-dashed border-primary/30 bg-gradient-to-br from-primary/10 via-elevated to-info/5 p-4"
               >
-                <div class="flex items-end gap-3">
-                  <UFormField
-                    label="Adicionar produto ou serviço"
-                    class="min-w-0 flex-1"
-                  >
-                    <USelectMenu
-                      v-model="selectedProductId"
-                      :items="productSelectOptions"
-                      value-key="value"
-                      class="w-full"
-                      searchable
-                      placeholder="Busque pelo nome, código ou valor"
-                    />
-                  </UFormField>
-
-                  <UTooltip text="Trazer para a OS">
-                    <UButton
-                      icon="i-lucide-plus"
-                      size="sm"
-                      square
-                      :disabled="!selectedProductId"
-                      @click="addProductItem"
-                    />
-                  </UTooltip>
-                </div>
+                <UFormField label="Adicionar Produto/Serviço">
+                  <template #label>
+                    <span class="flex items-center gap-1.5 text-sm font-medium text-highlighted">
+                      <UIcon name="i-lucide-package-plus" class="size-4 text-primary" />
+                      Adicionar Produto/Serviço
+                    </span>
+                  </template>
+                  <ServiceOrdersProductSelectInput
+                    :products="productCatalog"
+                    @select="addProductItem"
+                  />
+                </UFormField>
               </div>
 
               <div
