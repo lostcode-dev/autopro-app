@@ -54,6 +54,7 @@ interface EmployeeItem {
 }
 
 interface ProductGroupItem {
+  description?: string | null;
   quantity: number;
   cost_price: number;
   sale_price: number;
@@ -170,7 +171,9 @@ const productCatalog = ref<ProductCatalogItem[]>([]);
 const masterProducts = ref<MasterProductItem[]>([]);
 const taxesCatalog = ref<TaxItem[]>([]);
 
-const selectedProductId = ref("");
+const selectedProductId = ref('')
+const productSearch = ref('')
+const productSearchOpen = ref(false)
 const isLoadingOptions = ref(false);
 const isLoadingNextNumber = ref(false);
 const optionsLoaded = ref(false);
@@ -2024,14 +2027,14 @@ async function submit() {
                   </table>
                 </div>
 
-                <div class="space-y-3 lg:hidden">
+                <div class="space-y-2 lg:hidden">
                   <div
                     v-for="item in form.items"
                     :key="item.id"
-                    class="rounded-2xl border border-default bg-default p-4 shadow-xs"
+                    class="rounded-2xl border border-default bg-default p-3 shadow-xs"
                   >
-                    <div class="flex items-start justify-between gap-3">
-                      <div class="flex min-w-0 items-center gap-2">
+                    <div class="flex items-start justify-between gap-2">
+                      <div class="flex min-w-0 flex-1 items-center gap-2">
                         <UTooltip
                           :text="
                             item.source === 'catalog'
@@ -2057,17 +2060,21 @@ async function submit() {
                             />
                           </div>
                         </UTooltip>
+                        <p class="min-w-0 flex-1 truncate text-sm font-medium text-highlighted">
+                          {{ item.description || item.name || 'Item sem descrição' }}
+                        </p>
                       </div>
                       <UButton
                         icon="i-lucide-trash-2"
                         color="error"
                         variant="ghost"
                         square
+                        size="xs"
                         @click="removeItem(item.id)"
                       />
                     </div>
 
-                    <div class="mt-4 space-y-4">
+                    <div class="mt-3 space-y-3">
                       <UFormField label="Descrição">
                         <UInput
                           v-model="item.description"
@@ -2076,7 +2083,7 @@ async function submit() {
                         />
                       </UFormField>
 
-                      <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div class="grid grid-cols-3 gap-2">
                         <UFormField label="Quantidade">
                           <UInput
                             :model-value="String(item.quantity)"
@@ -2099,15 +2106,14 @@ async function submit() {
                         </UFormField>
                       </div>
 
-                      <div class="rounded-xl bg-elevated/60 px-4 py-3 text-sm">
-                        <div class="flex items-center justify-between gap-3">
-                          <span class="text-muted">Total do item</span>
+                      <div class="rounded-xl bg-elevated/60 px-3 py-2 text-sm">
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="text-muted">Total</span>
                           <span class="text-xs font-medium text-info">
-                            Com.:
-                            {{ formatCurrency(getItemCommission(item.id)) }}
+                            Com.: {{ formatCurrency(getItemCommission(item.id)) }}
                           </span>
                         </div>
-                        <p class="mt-1 font-semibold text-highlighted">
+                        <p class="mt-0.5 font-semibold text-highlighted">
                           {{ formatCurrency(getItemTotal(item)) }}
                         </p>
                       </div>

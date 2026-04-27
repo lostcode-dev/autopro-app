@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event)
 
   const page = Math.max(1, Number(query.page) || 1)
-  const pageSize = Math.min(100, Math.max(1, Number(query.page_size) || 50))
+  const pageSize = Math.min(1000, Math.max(1, Number(query.page_size) || 50))
   const from = (page - 1) * pageSize
   const to = from + pageSize - 1
 
