@@ -164,6 +164,11 @@ export default defineEventHandler(async (event) => {
       master_product_name: masterProductNameById.get(order.master_product_id) || null,
       employee_responsible_id: order.employee_responsible_id,
       responsible_name: resolvedAssigneeId ? employeeNameById.get(resolvedAssigneeId) || null : null,
+      responsible_names: Array.isArray(order.responsible_employees) && order.responsible_employees.length > 0
+        ? order.responsible_employees.map((e: any) => employeeNameById.get(e.employee_id)).filter(Boolean)
+        : resolvedAssigneeId && employeeNameById.get(resolvedAssigneeId)
+          ? [employeeNameById.get(resolvedAssigneeId)]
+          : [],
       responsible_employees: order.responsible_employees || [],
       entry_date: order.entry_date,
       reported_defect: order.reported_defect,

@@ -12,6 +12,7 @@ export type ServiceOrder = {
   reported_defect: string | null
   total_amount: number | null
   responsible_name: string | null
+  responsible_names: string[]
   has_commissions: boolean
   installments_progress: { paid: number, total: number } | null
 }

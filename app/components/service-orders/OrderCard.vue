@@ -136,14 +136,15 @@ function initials(value: string | null | undefined) {
                 OS #{{ order.number }}
               </p>
 
-              <UTooltip v-if="order.client_name" :text="order.client_name">
+              <div v-if="order.client_name" class="flex items-center gap-1.5">
                 <UAvatar
                   :text="initials(order.client_name)"
                   size="xs"
                   class="shrink-0"
                   :ui="{ root: 'ring-2 ring-primary/20 bg-primary/10 text-primary' }"
                 />
-              </UTooltip>
+                <span class="truncate text-sm text-muted">{{ order.client_name }}</span>
+              </div>
             </div>
             <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
               <div class="flex min-w-0 items-center gap-1.5">
@@ -276,19 +277,27 @@ function initials(value: string | null | undefined) {
               class="px-2.5 py-1"
             />
 
-            <div class="flex items-center gap-1.5 rounded-full bg-info/5 px-1.5 py-1">
-              <UIcon
-                v-if="order.responsible_name"
-                name="i-lucide-user-round-cog"
-                class="size-3.5 shrink-0 text-info"
-              />
-              <UTooltip v-if="order.responsible_name" :text="`${order.responsible_name}`">
+            <div v-if="order.responsible_names?.length" class="flex items-center gap-2 rounded-full bg-info/5 px-2 py-1">
+              <UIcon name="i-lucide-user-round-cog" class="size-3.5 shrink-0 text-info" />
+              <div class="flex -space-x-1.5">
                 <UAvatar
-                  :text="initials(order.responsible_name)"
+                  v-for="name in order.responsible_names"
+                  :key="name"
+                  :text="initials(name)"
                   size="xs"
-                  :ui="{ root: 'ring-2 ring-info/20 bg-info/10 text-info' }"
+                  :ui="{ root: 'ring-2 ring-info/30 bg-info/10 text-info' }"
                 />
-              </UTooltip>
+              </div>
+              <div class="flex flex-wrap gap-1">
+                <UBadge
+                  v-for="name in order.responsible_names"
+                  :key="name"
+                  :label="name"
+                  color="info"
+                  variant="soft"
+                  size="xs"
+                />
+              </div>
             </div>
           </div>
           <div class="shrink-0 text-right">
