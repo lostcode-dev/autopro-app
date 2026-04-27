@@ -292,7 +292,7 @@ function initials(value: string | null | undefined) {
                   :key="name"
                   :text="initials(name)"
                   size="xs"
-                  :ui="{ root: 'ring-2 ring-default bg-info text-info font-semibold' }"
+                  :ui="{ root: 'ring-2 ring-default bg-info text-white font-semibold' }"
                 />
               </div>
               <UBadge
