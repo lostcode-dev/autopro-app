@@ -75,13 +75,18 @@ export default defineNuxtConfig({
   },
 
   routeRules: {
-    '/docs': { redirect: '/docs/getting-started', prerender: false },
+    '/': { prerender: true },
+    '/docs': { redirect: '/docs/getting-started' },
+    '/docs/**': { prerender: true },
+    '/pricing': { prerender: true },
+    '/blog': { prerender: true },
+    '/blog/**': { prerender: true },
+    '/changelog': { prerender: true },
+    '/changelog/**': { prerender: true },
     '/app': { prerender: false },
     '/app/**': { prerender: false },
     '/checkout/**': { prerender: false },
-    '/api/**': {
-      cors: true
-    }
+    '/api/**': { cors: true }
   },
 
   sourcemap: {
