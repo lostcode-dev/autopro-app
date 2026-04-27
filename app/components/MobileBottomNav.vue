@@ -3,6 +3,7 @@ import { ActionCode } from '~/constants/action-codes'
 
 const route = useRoute()
 const workshop = useWorkshopPermissions()
+const reportsAccess = useReportsAccess()
 
 const items = computed(() => [
   { label: 'Inicio', icon: 'i-lucide-house', to: '/app/' },
@@ -19,7 +20,7 @@ const moreItems = computed(() => [
   workshop.can(ActionCode.VEHICLES_READ) ? { label: 'Veiculos', icon: 'i-lucide-car-front', to: '/app/vehicles' } : null,
   workshop.can(ActionCode.PRODUCTS_READ) ? { label: 'Produtos', icon: 'i-lucide-package', to: '/app/products' } : null,
   workshop.can(ActionCode.INVENTORY_READ) ? { label: 'Estoque', icon: 'i-lucide-box', to: '/app/products/inventory' } : null,
-  workshop.can(ActionCode.REPORTS_VIEW) ? { label: 'Relatorios', icon: 'i-lucide-bar-chart-3', to: '/app/reports' } : null,
+  reportsAccess.hasReportsAccess.value ? { label: 'Relatorios', icon: 'i-lucide-bar-chart-3', to: reportsAccess.firstReportPath.value } : null,
   { label: 'Configuracoes', icon: 'i-lucide-settings', to: '/app/settings' }
 ].filter(Boolean) as Array<{ label: string, icon: string, to: string }>)
 

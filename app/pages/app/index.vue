@@ -6,6 +6,7 @@ const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
   ? useRequestHeaders(['cookie'])
   : undefined
+const { firstReportPath } = useReportsAccess()
 
 const { data: dashStats, status } = await useAsyncData('dashboard-stats', () =>
   requestFetch<{
@@ -122,7 +123,7 @@ function getAppointmentStatusColor(status: string): 'success' | 'error' | 'neutr
             </div>
           </UPageCard>
 
-          <UPageCard to="/app/reports" variant="subtle" class="text-center">
+          <UPageCard :to="firstReportPath" variant="subtle" class="text-center">
             <div class="flex flex-col items-center gap-1">
               <div>
                 <UIcon

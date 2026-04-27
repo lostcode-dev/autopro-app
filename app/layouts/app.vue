@@ -6,6 +6,7 @@ const open = ref(false)
 const sidebarCollapsed = ref(true)
 const isMobile = ref(false)
 const workshop = useWorkshopPermissions()
+const reportsAccess = useReportsAccess()
 const route = useRoute()
 let mediaQuery: MediaQueryList | null = null
 
@@ -126,39 +127,15 @@ const links = computed<NavigationMenuItem[][]>(() => {
     ? [triggerItem('Financeiro', 'i-lucide-dollar-sign', '/app/financial', sortChildren(financeChildren))]
     : []
 
-  const reportsChildren: NavigationMenuItem[] = [
-    item('Visão geral', 'i-lucide-layout-dashboard', '/app/reports')
-  ]
+  const reportsChildren: NavigationMenuItem[] = reportsAccess.allowedReportItems.value.map(report =>
+    item(report.label, report.icon, report.to)
+  )
 
-  if (workshop.can(ActionCode.REPORTS_CUSTOMERS))
-    reportsChildren.push(item('Clientes', 'i-lucide-users', '/app/reports/customers'))
-
-  if (workshop.can(ActionCode.REPORTS_COMMISSIONS))
-    reportsChildren.push(item('Comissões', 'i-lucide-hand-coins', '/app/reports/commissions'))
-
-  if (workshop.can(ActionCode.REPORTS_PURCHASES))
-    reportsChildren.push(item('Compras', 'i-lucide-shopping-cart', '/app/reports/purchases'))
-
-  if (workshop.can(ActionCode.REPORTS_COSTS))
-    reportsChildren.push(item('Custos', 'i-lucide-badge-dollar-sign', '/app/reports/costs'))
-
-  if (workshop.can(ActionCode.REPORTS_DEBTORS))
-    reportsChildren.push(item('Devedores', 'i-lucide-badge-alert', '/app/reports/debtors'))
-
-  if (workshop.can(ActionCode.REPORTS_SUPPLIERS))
-    reportsChildren.push(item('Fornecedores', 'i-lucide-truck', '/app/reports/suppliers'))
-
-  if (workshop.can(ActionCode.REPORTS_PROFIT))
-    reportsChildren.push(item('Lucro', 'i-lucide-trending-up', '/app/reports/profit'))
-
-  if (workshop.can(ActionCode.REPORTS_SALES))
-    reportsChildren.push(item('Itens vendidos', 'i-lucide-package-search', '/app/reports/sales-items'))
-
-  const reports: NavigationMenuItem[] = workshop.can(ActionCode.REPORTS_VIEW)
+  const reports: NavigationMenuItem[] = reportsAccess.hasReportsAccess.value
     ? [{
         label: 'Relatórios',
         icon: 'i-lucide-bar-chart-3',
-        to: '/app/reports',
+        to: reportsAccess.firstReportPath.value,
         open: shouldOpenGroup('/app/reports', reportsChildren),
         type: 'trigger',
         children: sortChildren(reportsChildren)

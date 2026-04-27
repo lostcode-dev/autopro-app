@@ -634,7 +634,7 @@ watch(
             </div>
           </div>
 
-          <div class="grid gap-4 xl:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
+          <div class="grid gap-4">
             <UPageCard
               title="Dados do papel"
               description="Atualize o nome exibido e a descrição usada pela equipe."
