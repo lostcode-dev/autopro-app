@@ -297,14 +297,6 @@ function initials(value: string | null | undefined) {
 
             <div v-if="order.responsible_names?.length" class="flex flex-wrap items-center gap-1.5">
               <UIcon name="i-lucide-user-round-cog" class="size-3.5 shrink-0 text-info" />
-              <div class="flex -space-x-2">
-                <UAvatar
-                  v-for="name in order.responsible_names"
-                  :key="name"
-                  :text="initials(name)"
-                  size="xs"
-                />
-              </div>
               <UBadge
                 v-for="name in order.responsible_names"
                 :key="name"
