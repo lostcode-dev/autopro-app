@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ServiceOrderDetailFull } from '~/types/service-orders'
-import { formatCurrency } from '~/utils/service-orders'
+import { formatCurrency, computeServiceOrderResponsibleCommission } from '~/utils/service-orders'
 
 const props = defineProps<{
   order: ServiceOrderDetailFull['order']
@@ -20,42 +20,8 @@ type ResponsibleInfo = {
   commission_amount: number | null
 }
 
-function calculateFromConfig(
-  emp: ServiceOrderDetailFull['employees'][number],
-  items: NonNullable<ServiceOrderDetailFull['order']['items']>,
-  responsibleCount: number
-): number {
-  if (!emp.has_commission) return 0
-
-  const commissionValue = Number(emp.commission_amount || 0)
-  const categories = emp.commission_categories ?? []
-  let total = 0
-
-  for (const item of items) {
-    if (categories.length > 0 && item.category_id && !categories.includes(item.category_id)) continue
-
-    const quantity = Number(item.quantity || 1)
-    const rawTotal = item.total_price ?? item.total_amount
-    const itemTotal = rawTotal != null ? Number(rawTotal) : Number(item.unit_price) * quantity
-    const itemCost = Number(item.cost_price ?? item.cost_amount ?? 0) * quantity
-
-    let amount = 0
-    if (emp.commission_type === 'percentage') {
-      const base = emp.commission_base === 'profit' ? Math.max(0, itemTotal - itemCost) : itemTotal
-      amount = (base * commissionValue) / 100
-    } else {
-      amount = commissionValue * quantity
-    }
-
-    total += amount / responsibleCount
-  }
-
-  return Number(total.toFixed(2))
-}
-
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
   const items = props.order.items ?? []
-  const responsibleCount = props.responsibleNames.length || 1
 
   return props.responsibleNames.map((r) => {
     const emp = props.employees.find(e => e.id === r.employee_id)
@@ -73,7 +39,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       .reduce((sum, c) => sum + Number(c.amount ?? 0), 0)
 
     // 3. Calculated from employee commission config (always available)
-    const calculatedAmount = emp ? calculateFromConfig(emp, items, responsibleCount) : 0
+    const calculatedAmount = emp ? computeServiceOrderResponsibleCommission(props.order, emp).value : 0
 
     const commission_amount = itemsAmount > 0
       ? itemsAmount
