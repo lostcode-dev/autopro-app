@@ -63,7 +63,13 @@ export const ADVANCE_STATUS_MAP: Record<string, AdvanceInfo> = {
 export const EDITABLE_ORDER_STATUSES = ['estimate', 'open', 'in_progress', 'waiting_for_part'] as const
 
 export function canEditServiceOrder(status: string | null | undefined, paymentStatus: string | null | undefined) {
-  return EDITABLE_ORDER_STATUSES.includes((status ?? '') as (typeof EDITABLE_ORDER_STATUSES)[number])
+  const s = status ?? ''
+
+  if (s === 'completed') {
+    return paymentStatus !== 'paid' && paymentStatus !== 'partial'
+  }
+
+  return EDITABLE_ORDER_STATUSES.includes(s as (typeof EDITABLE_ORDER_STATUSES)[number])
     && paymentStatus === 'pending'
 }
 
