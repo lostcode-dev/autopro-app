@@ -22,6 +22,7 @@ const emit = defineEmits<{
   'quote': [order: ServiceOrder]
   'duplicate': [order: ServiceOrder]
   'pay': [order: ServiceOrder]
+  'pdf': [order: ServiceOrder]
 }>()
 
 const statusColorMap: Record<string, string> = {
@@ -199,6 +200,16 @@ function initials(value: string | null | undefined) {
                 variant="ghost"
                 size="sm"
                 @click="emit('quote', order)"
+              />
+            </UTooltip>
+
+            <UTooltip text="Exportar PDF">
+              <UButton
+                icon="i-lucide-file-down"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                @click="emit('pdf', order)"
               />
             </UTooltip>
 

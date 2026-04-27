@@ -30,6 +30,7 @@ type OrganizationData = {
 const props = defineProps<{
   open: boolean;
   orderId: string | null;
+  quoteMode?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -234,7 +235,7 @@ async function downloadPdf() {
             <p
               class="font-semibold uppercase tracking-[0.22em] text-primary/80"
             >
-              Visualização do Orçamento
+              {{ quoteMode !== false ? "Visualização do Orçamento" : "Visualização da OS" }}
             </p>
             <div
               class="flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between"
@@ -246,7 +247,7 @@ async function downloadPdf() {
                   {{
                     detail?.order.number
                       ? `OS #${detail.order.number}`
-                      : "Orçamento de serviços"
+                      : (quoteMode !== false ? "Orçamento de serviços" : "Ordem de Serviço")
                   }}
                 </h1>
               </div>
@@ -446,6 +447,7 @@ async function downloadPdf() {
               </div>
 
               <div
+                v-if="quoteMode !== false"
                 class="rounded-[24px] border border-slate-200 bg-slate-50 px-6 py-4 text-center"
               >
                 <p class="text-lg font-black tracking-[0.18em] text-slate-950">
@@ -621,7 +623,7 @@ async function downloadPdf() {
               </div>
 
               <footer class="border-t border-slate-200 pt-6 text-center">
-                <p class="text-sm font-medium text-slate-600">
+                <p v-if="quoteMode !== false" class="text-sm font-medium text-slate-600">
                   Este orçamento tem validade de 30 dias.
                 </p>
                 <p class="mt-1 text-sm text-slate-500">

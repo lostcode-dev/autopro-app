@@ -360,6 +360,8 @@ const editingOrder = ref<ServiceOrderRaw | null>(null)
 const editingIds = ref(new Set<string>())
 const showQuoteModal = ref(false)
 const quoteOrderId = ref<string | null>(null)
+const showPdfModal = ref(false)
+const pdfOrderId = ref<string | null>(null)
 
 watch(showCreateModal, (opened) => {
   if (!opened) editingOrder.value = null
@@ -367,6 +369,10 @@ watch(showCreateModal, (opened) => {
 
 watch(showQuoteModal, (opened) => {
   if (!opened) quoteOrderId.value = null
+})
+
+watch(showPdfModal, (opened) => {
+  if (!opened) pdfOrderId.value = null
 })
 
 function openEdit(order: ServiceOrderRaw) {
@@ -407,6 +413,11 @@ function openQuoteFromList(order: ServiceOrder) {
 function openQuoteFromDetail(orderId: string) {
   closeDetail()
   openQuote(orderId)
+}
+
+function openPdfFromList(order: ServiceOrder) {
+  pdfOrderId.value = order.id
+  showPdfModal.value = true
 }
 </script>
 
@@ -480,6 +491,7 @@ function openQuoteFromDetail(orderId: string) {
                 @advance-status="advanceStatus"
                 @edit="openEditFromList"
                 @quote="openQuoteFromList"
+                @pdf="openPdfFromList"
                 @duplicate="duplicate"
                 @pay="requestPay"
                 @cancel="requestCancel"
@@ -569,6 +581,12 @@ function openQuoteFromDetail(orderId: string) {
   <ServiceOrdersQuoteModal
     v-model:open="showQuoteModal"
     :order-id="quoteOrderId"
+  />
+
+  <ServiceOrdersQuoteModal
+    v-model:open="showPdfModal"
+    :order-id="pdfOrderId"
+    :quote-mode="false"
   />
 
   <!-- ── Payment Modal ────────────────────────────────────────────────────────── -->
