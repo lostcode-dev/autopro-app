@@ -51,11 +51,11 @@ function resolveUpdatedDueDate(originalEntry: Record<string, any>, currentEntry:
 
   if (!originalDate || !currentDate) return requestedDueDate
 
-  if (recurrence === 'mensal') {
+  if (recurrence === 'mensal' || recurrence === 'monthly') {
     const monthOffset = differenceInCalendarMonths(currentDate, originalDate)
     return formatDateOnly(addMonths(requestedDate, monthOffset)) || requestedDueDate
   }
-  if (recurrence === 'anual') {
+  if (recurrence === 'anual' || recurrence === 'annual') {
     const yearOffset = differenceInCalendarYears(currentDate, originalDate)
     return formatDateOnly(addYears(requestedDate, yearOffset)) || requestedDueDate
   }

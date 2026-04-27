@@ -51,18 +51,17 @@ function normalizeRecurrence(value: unknown) {
     .toLowerCase();
   if (!v || ["null", "none", "nao_recorrente", NO_RECURRENCE].includes(v))
     return NO_RECURRENCE;
-  if (v === "mensal") return "monthly";
-  if (v === "anual") return "yearly";
+  if (v === "mensal" || v === "monthly") return "monthly";
+  if (v === "anual" || v === "annual") return "yearly";
   if (v === "semanal") return "weekly";
   return ["monthly", "yearly", "weekly"].includes(v) ? v : NO_RECURRENCE;
 }
 
 function recurrenceForApi(value: string) {
   if (value === NO_RECURRENCE) return null;
-  if (value === "monthly") return "mensal";
-  if (value === "yearly") return "anual";
-  if (value === "weekly") return "semanal";
-  return value;
+  if (value === "monthly") return "monthly";
+  if (value === "yearly") return "annual";
+  return null;
 }
 
 // ── Categories ─────────────────────────────────────────────────────────────────
