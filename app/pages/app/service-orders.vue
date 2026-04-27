@@ -79,27 +79,24 @@ async function syncQuery() {
     await router.replace({ query: next })
 }
 
-// ─── Data loading (useAsyncData + page accumulation) ─────────────────────────
+// ─── Data loading (useInfiniteList composable) ────────────────────────────────
 
 const LIMIT = 20
-const page = ref(1)
-const refreshKey = ref(0)
-const accumulatedOrders = ref<ServiceOrder[]>([])
-const totalFiltered = ref(0)
 
-const queryKey = computed(
-  () => `service-orders-${refreshKey.value}-${page.value}-${apiSearch.value}-${statusFilter.value}-${clientIdFilter.value}-${vehicleIdFilter.value}-${responsibleIdFilter.value}-${dateFrom.value}-${dateTo.value}`
-)
-
-const { data, status: fetchStatus } = await useAsyncData(
-  () => queryKey.value,
-  async () => {
-    if (!canRead.value) {
-      return {
-        data: { items: [] as ServiceOrder[], nextCursor: null, totalFiltered: 0, totalAll: 0 }
-      } satisfies ServiceOrdersApiResponse
-    }
-    return requestFetch<ServiceOrdersApiResponse>('/api/service-orders', {
+const {
+  items: accumulatedOrders,
+  total: totalFiltered,
+  hasMore,
+  isLoading,
+  isLoadingMore,
+  load: loadOrders,
+  loadMore,
+  softRefresh,
+  reset: resetList
+} = useInfiniteList<ServiceOrder>(
+  async ({ cursor, limit }) => {
+    if (!canRead.value) return { items: [], total: 0 }
+    const res = await requestFetch<ServiceOrdersApiResponse>('/api/service-orders', {
       headers: requestHeaders,
       query: {
         searchTerm: apiSearch.value || undefined,
@@ -110,41 +107,16 @@ const { data, status: fetchStatus } = await useAsyncData(
         useDateFilter: (dateFrom.value && dateTo.value) ? 'true' : undefined,
         dateFrom: dateFrom.value || undefined,
         dateTo: dateTo.value || undefined,
-        cursor: (page.value - 1) * LIMIT,
-        limit: LIMIT
+        cursor,
+        limit
       }
     })
+    return { items: res.data.items, total: res.data.totalFiltered }
   },
-  { watch: [queryKey] }
+  { pageSize: LIMIT }
 )
 
-watch(
-  data,
-  (newData) => {
-    const items = newData?.data.items ?? []
-    totalFiltered.value = newData?.data.totalFiltered ?? 0
-    if (page.value === 1) {
-      accumulatedOrders.value = items
-    } else {
-      accumulatedOrders.value = [...accumulatedOrders.value, ...items]
-    }
-  },
-  { immediate: true }
-)
-
-const hasMore = computed(
-  () => accumulatedOrders.value.length < totalFiltered.value
-)
-const isLoading = computed(
-  () => fetchStatus.value === 'pending' && page.value === 1
-)
-const isLoadingMore = computed(
-  () => fetchStatus.value === 'pending' && page.value > 1
-)
-
-function loadMore() {
-  if (hasMore.value && fetchStatus.value !== 'pending') page.value++
-}
+await loadOrders()
 
 // ─── Watchers ──────────────────────────────────────────────────────────────────
 
@@ -158,9 +130,7 @@ watchDebounced(
 )
 
 watch([apiSearch, statusFilter, clientIdFilter, vehicleIdFilter, responsibleIdFilter, dateFrom, dateTo], () => {
-  accumulatedOrders.value = []
-  totalFiltered.value = 0
-  page.value = 1
+  resetList()
 })
 
 watch(statusFilter, syncQuery)
@@ -377,16 +347,10 @@ async function confirmDelete() {
 
 // ─── Status options (kept for reference) are now in ServiceOrdersOrdersFilters ─
 
-// ─── Force reload helper ──────────────────────────────────────────────────────
+// ─── Refresh helper ───────────────────────────────────────────────────────────
 
 function forceReload() {
-  accumulatedOrders.value = []
-  totalFiltered.value = 0
-  if (page.value === 1) {
-    refreshKey.value++
-  } else {
-    page.value = 1
-  }
+  softRefresh()
 }
 
 // ─── Create ───────────────────────────────────────────────────────────────────
