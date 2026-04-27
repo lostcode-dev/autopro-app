@@ -203,16 +203,6 @@ function initials(value: string | null | undefined) {
               />
             </UTooltip>
 
-            <UTooltip text="Exportar PDF">
-              <UButton
-                icon="i-lucide-file-down"
-                color="neutral"
-                variant="ghost"
-                size="sm"
-                @click="emit('pdf', order)"
-              />
-            </UTooltip>
-
             <UTooltip v-if="canEdit" text="Editar OS">
               <UButton
                 icon="i-lucide-pencil"
@@ -232,6 +222,16 @@ function initials(value: string | null | undefined) {
                 variant="ghost"
                 size="sm"
                 @click="emit('view', order)"
+              />
+            </UTooltip>
+
+            <UTooltip v-if="!isEstimate" text="Exportar PDF">
+              <UButton
+                icon="i-lucide-file-down"
+                color="neutral"
+                variant="ghost"
+                size="sm"
+                @click="emit('pdf', order)"
               />
             </UTooltip>
 
