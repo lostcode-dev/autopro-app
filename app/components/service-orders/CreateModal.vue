@@ -541,14 +541,14 @@ const totalTaxesAmount = computed(() =>
   selectedTaxes.value.reduce((total, tax) => total + tax.calculated_amount, 0),
 );
 
-const itemCommissionMap = computed(() => {
-  const commissionByItemId = new Map<string, number>();
+type ItemCommissionEntry = { total: number; commissions: { employee_id: string; amount: number }[] }
+
+const itemCommissionDetail = computed(() => {
+  const detail = new Map<string, ItemCommissionEntry>();
   const items = normalizedItems.value;
   const allItemsSale = subtotal.value;
 
-  items.forEach((item) => {
-    commissionByItemId.set(item.id, 0);
-  });
+  items.forEach((item) => detail.set(item.id, { total: 0, commissions: [] }));
 
   form.responsible_employees
     .map((employeeId) => getEmployeeById(employeeId))
@@ -591,12 +591,10 @@ const itemCommissionMap = computed(() => {
             );
           }
 
-          const nextValue = roundCurrency((itemBase * commissionAmount) / 100);
-
-          commissionByItemId.set(
-            item.id,
-            roundCurrency((commissionByItemId.get(item.id) ?? 0) + nextValue),
-          );
+          const amount = roundCurrency((itemBase * commissionAmount) / 100);
+          const entry = detail.get(item.id)!;
+          entry.total = roundCurrency(entry.total + amount);
+          if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount });
         });
         return;
       }
@@ -610,22 +608,30 @@ const itemCommissionMap = computed(() => {
       const remainder = roundCurrency(commissionAmount - distributedTotal);
 
       eligibleItems.forEach((item, index) => {
-        const nextValue =
+        const amount =
           index === 0 ? roundCurrency(perItemValue + remainder) : perItemValue;
-        commissionByItemId.set(
-          item.id,
-          roundCurrency((commissionByItemId.get(item.id) ?? 0) + nextValue),
-        );
+        const entry = detail.get(item.id)!;
+        entry.total = roundCurrency(entry.total + amount);
+        if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount });
       });
     });
 
-  return commissionByItemId;
+  return detail;
+});
+
+const itemCommissionMap = computed(() => {
+  const map = new Map<string, number>();
+  for (const [itemId, { total }] of itemCommissionDetail.value) {
+    map.set(itemId, total);
+  }
+  return map;
 });
 
 const normalizedItemsWithCommission = computed(() =>
   normalizedItems.value.map((item) => {
     const { id: _id, ...itemWithoutId } = item
-    const commissionTotal = itemCommissionMap.value.get(item.id) ?? 0
+    const detail = itemCommissionDetail.value.get(item.id)
+    const commissionTotal = detail?.total ?? 0
     return {
       ...itemWithoutId,
       total_price: item.total_price,
@@ -633,7 +639,8 @@ const normalizedItemsWithCommission = computed(() =>
       cost_price: item.cost_price,
       cost_amount: item.cost_price,
       commission_total: commissionTotal,
-      total_commission: commissionTotal
+      total_commission: commissionTotal,
+      commissions: detail?.commissions ?? []
     }
   })
 )

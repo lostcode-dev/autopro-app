@@ -20,23 +20,66 @@ type ResponsibleInfo = {
   commission_amount: number | null
 }
 
+function calculateFromConfig(
+  emp: ServiceOrderDetailFull['employees'][number],
+  items: NonNullable<ServiceOrderDetailFull['order']['items']>,
+  responsibleCount: number
+): number {
+  if (!emp.has_commission) return 0
+
+  const commissionValue = Number(emp.commission_amount || 0)
+  const categories = emp.commission_categories ?? []
+  let total = 0
+
+  for (const item of items) {
+    if (categories.length > 0 && item.category_id && !categories.includes(item.category_id)) continue
+
+    const quantity = Number(item.quantity || 1)
+    const rawTotal = item.total_price ?? item.total_amount
+    const itemTotal = rawTotal != null ? Number(rawTotal) : Number(item.unit_price) * quantity
+    const itemCost = Number(item.cost_price ?? item.cost_amount ?? 0) * quantity
+
+    let amount = 0
+    if (emp.commission_type === 'percentage') {
+      const base = emp.commission_base === 'profit' ? Math.max(0, itemTotal - itemCost) : itemTotal
+      amount = (base * commissionValue) / 100
+    } else {
+      amount = commissionValue * quantity
+    }
+
+    total += amount / responsibleCount
+  }
+
+  return Number(total.toFixed(2))
+}
+
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
+  const items = props.order.items ?? []
+  const responsibleCount = props.responsibleNames.length || 1
+
   return props.responsibleNames.map((r) => {
     const emp = props.employees.find(e => e.id === r.employee_id)
 
-    // Primary: sum per-item commissions[] JSONB array (populated by seeder/seed-commissions)
-    const itemsAmount = (props.order.items ?? []).reduce((sum, item) => {
-      const itemCommissions = item.commissions ?? []
-      const match = itemCommissions
+    // 1. Per-item commissions[] saved by CreateModal
+    const itemsAmount = items.reduce((sum, item) => {
+      return sum + (item.commissions ?? [])
         .filter(c => c.employee_id === r.employee_id)
         .reduce((s, c) => s + Number(c.amount ?? 0), 0)
-      return sum + match
     }, 0)
 
-    // Fallback: employee_financial_records (only present after payment is processed)
+    // 2. employee_financial_records (populated after payment)
     const financialAmount = props.commissions
       .filter(c => c.employee_id === r.employee_id)
       .reduce((sum, c) => sum + Number(c.amount ?? 0), 0)
+
+    // 3. Calculated from employee commission config (always available)
+    const calculatedAmount = emp ? calculateFromConfig(emp, items, responsibleCount) : 0
+
+    const commission_amount = itemsAmount > 0
+      ? itemsAmount
+      : financialAmount > 0
+        ? financialAmount
+        : calculatedAmount
 
     return {
       employee_id: r.employee_id,
@@ -46,7 +89,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       commission_base: emp?.commission_base,
       commission_categories: emp?.commission_categories ?? [],
       has_commission: Boolean(emp?.has_commission),
-      commission_amount: itemsAmount > 0 ? itemsAmount : financialAmount
+      commission_amount
     }
   })
 })

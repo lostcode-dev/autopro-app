@@ -20,8 +20,8 @@ defineProps<{
           </h3>
         </div>
       </template>
-      <dl class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3 sm:col-span-2 w-full">
+      <dl class="grid grid-cols-1 gap-3 text-sm">
+        <div class="flex items-start gap-3 rounded-xl bg-elevated/70 p-3 w-full">
           <UIcon name="i-lucide-id-card" class="mt-0.5 size-4 shrink-0 text-primary" />
           <div class="min-w-0">
             <dt class="text-xs uppercase tracking-wide text-muted">
