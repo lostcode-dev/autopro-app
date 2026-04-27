@@ -477,12 +477,14 @@ function getResponsibleSelectOptions(index: number) {
   );
 }
 
-const productSelectOptions = computed<SelectOption[]>(() =>
-  productCatalog.value.map((product) => ({
-    label: `${product.name}${product.code ? ` • ${product.code}` : ""} • ${formatCurrency(getProductUnitSale(product))}`,
-    value: product.id,
-  })),
-);
+const filteredProducts = computed(() => {
+  const term = productSearch.value.trim().toLowerCase()
+  if (!term) return productCatalog.value
+  return productCatalog.value.filter(p =>
+    p.name.toLowerCase().includes(term)
+    || p.code.toLowerCase().includes(term)
+  )
+})
 
 const masterProductSelectOptions = computed<SelectOption[]>(() =>
   masterProducts.value.map((product) => ({
@@ -796,24 +798,43 @@ function addManualItem() {
 
 function addProductItem() {
   const product = productCatalog.value.find(
-    (option) => option.id === selectedProductId.value,
-  );
-  if (!product) return;
+    option => option.id === selectedProductId.value
+  )
+  if (!product) return
 
-  form.items.push(
-    createDraftItem({
-      name: product.name,
-      description: product.name,
-      quantity: 1,
-      unit_price: getProductUnitSale(product),
-      cost_price: getProductUnitCost(product),
-      source: "catalog",
-      product_id: product.id,
-      category_id: product.category_id ?? null,
-    }),
-  );
+  if (product.type === 'group' && product.group_items?.length) {
+    for (const groupItem of product.group_items) {
+      form.items.push(
+        createDraftItem({
+          name: groupItem.description || product.name,
+          description: groupItem.description || product.name,
+          quantity: toNumber(groupItem.quantity) || 1,
+          unit_price: toNumber(groupItem.sale_price),
+          cost_price: toNumber(groupItem.cost_price),
+          source: 'catalog',
+          product_id: product.id,
+          category_id: product.category_id ?? null
+        })
+      )
+    }
+  } else {
+    form.items.push(
+      createDraftItem({
+        name: product.name,
+        description: product.name,
+        quantity: 1,
+        unit_price: getProductUnitSale(product),
+        cost_price: getProductUnitCost(product),
+        source: 'catalog',
+        product_id: product.id,
+        category_id: product.category_id ?? null
+      })
+    )
+  }
 
-  selectedProductId.value = "";
+  selectedProductId.value = ''
+  productSearch.value = ''
+  productSearchOpen.value = false
 }
 
 function removeItem(itemId: string) {
