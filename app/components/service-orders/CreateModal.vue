@@ -167,7 +167,6 @@ const toast = useToast();
 const clientOptions = ref<SelectOption[]>([]);
 const vehicleCatalog = ref<VehicleItem[]>([]);
 const employeeCatalog = ref<EmployeeItem[]>([]);
-const productCatalog = ref<ProductCatalogItem[]>([]);
 const masterProducts = ref<MasterProductItem[]>([]);
 const taxesCatalog = ref<TaxItem[]>([]);
 
@@ -399,7 +398,6 @@ async function loadOptions() {
       clientsRes,
       vehiclesRes,
       employeesRes,
-      productsRes,
       masterProductsRes,
       taxesRes,
     ] = await Promise.all([
@@ -410,9 +408,6 @@ async function loadOptions() {
         query: { page_size: 500 },
       }),
       $fetch<{ items: EmployeeItem[] }>("/api/employees"),
-      $fetch<{ items: ProductCatalogItem[] }>("/api/products", {
-        query: { page_size: 500, sort_by: "name", sort_order: "asc" },
-      }),
       $fetch<{ items: MasterProductItem[] }>("/api/master-products", {
         query: { page_size: 500 },
       }),
@@ -427,7 +422,6 @@ async function loadOptions() {
     }));
     vehicleCatalog.value = vehiclesRes.items ?? [];
     employeeCatalog.value = employeesRes.items ?? [];
-    productCatalog.value = productsRes.items ?? [];
     masterProducts.value = masterProductsRes.items ?? [];
     taxesCatalog.value = taxesRes.items ?? [];
     optionsLoaded.value = true;
@@ -1885,7 +1879,6 @@ async function submit() {
                     </span>
                   </template>
                   <ServiceOrdersProductSelectInput
-                    :products="productCatalog"
                     @select="addProductItem"
                   />
                 </UFormField>
