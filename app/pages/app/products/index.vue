@@ -68,7 +68,7 @@ const page = ref(parsePage(route.query.page))
 const pageSize = ref(parsePageSize(route.query.pageSize))
 const viewMode = ref<ViewMode>(parseView(route.query.view))
 
-const DEFAULT_SORT = { id: 'name', desc: false }
+const DEFAULT_SORT = { id: 'code', desc: true }
 const sorting = ref<SortingState>(
   typeof route.query.sortBy === 'string' && route.query.sortBy
     ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
