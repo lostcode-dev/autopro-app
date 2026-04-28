@@ -191,6 +191,13 @@ async function syncQuery() {
   await router.replace({ query: nextQuery })
 }
 
+async function submitSearch(value: string) {
+  search.value = value
+  debouncedSearch.value = value
+  page.value = 1
+  await syncQuery()
+}
+
 watch(
   () => route.query,
   (query) => {
@@ -501,6 +508,7 @@ function openHistoryModal(client: Client) {
             empty-icon="i-lucide-users"
             empty-title="Nenhum cliente encontrado"
             empty-description="Cadastre um cliente ou ajuste os filtros para continuar."
+            @search-submit="submitSearch"
           >
             <template #toolbar-right>
               <UTooltip text="Importar clientes">

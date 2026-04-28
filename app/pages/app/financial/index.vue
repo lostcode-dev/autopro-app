@@ -338,6 +338,15 @@ async function syncQuery() {
   await router.replace({ query: nextQuery })
 }
 
+async function submitSearch(value: string) {
+  search.value = value
+  debouncedSearch.value = value
+  accumulatedItems.value = []
+  rowSelection.value = {}
+  page.value = 1
+  await syncQuery()
+}
+
 watch(
   () => route.query,
   (query) => {
@@ -817,6 +826,7 @@ const columns = [
           empty-icon="i-lucide-wallet-cards"
           empty-title="Nenhum lançamento encontrado"
           empty-description="Cadastre lançamentos ou ajuste os filtros para continuar."
+          @search-submit="submitSearch"
           @load-more="loadMore"
         >
           <template #toolbar-right>

@@ -183,6 +183,13 @@ async function syncQuery() {
   await router.replace({ query: nextQuery })
 }
 
+async function submitSearch(value: string) {
+  search.value = value
+  debouncedSearch.value = value
+  page.value = 1
+  await syncQuery()
+}
+
 watch(
   () => route.query,
   (query) => {
@@ -668,6 +675,7 @@ const lineColumns = [
           empty-icon="i-lucide-clipboard-list"
           empty-title="Nenhuma solicitação encontrada"
           empty-description="Cadastre solicitações ou ajuste os filtros para continuar."
+          @search-submit="submitSearch"
         >
           <template #toolbar-right>
             <UTooltip

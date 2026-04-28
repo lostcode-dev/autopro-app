@@ -94,6 +94,13 @@ async function syncQuery() {
   await router.replace({ query: nextQuery })
 }
 
+async function submitSearch(value: string) {
+  search.value = value
+  debouncedSearch.value = value
+  page.value = 1
+  await syncQuery()
+}
+
 watch(() => route.query, (query) => {
   const nextSearch = typeof query.search === 'string' ? query.search : ''
   const nextPage = parsePage(query.page)
@@ -225,6 +232,7 @@ const lineColumns = [
             empty-icon="i-lucide-credit-card"
             empty-title="Nenhuma maquininha encontrada"
             empty-description="Cadastre uma maquininha para começar."
+            @search-submit="submitSearch"
           >
             <template #toolbar-right>
               <UTooltip v-if="canUpdate" :text="selectedCount > 0 ? `Excluir ${selectedCount} selecionada(s)` : 'Excluir seleção'">

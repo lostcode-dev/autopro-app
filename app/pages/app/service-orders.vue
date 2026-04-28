@@ -81,6 +81,12 @@ async function syncQuery() {
 
 // ─── Data loading (useInfiniteList composable) ────────────────────────────────
 
+async function submitSearch(value: string) {
+  search.value = value
+  apiSearch.value = value
+  await syncQuery()
+}
+
 const LIMIT = 20
 
 const {
@@ -451,6 +457,7 @@ function openPdfFromList(order: ServiceOrder) {
           empty-title="Nenhuma ordem de serviço encontrada"
           empty-description="Crie uma OS ou ajuste os filtros para continuar."
           row-skeleton-class="h-24 w-full rounded-xl"
+          @search-submit="submitSearch"
           @load-more="loadMore"
         >
           <template #filters>

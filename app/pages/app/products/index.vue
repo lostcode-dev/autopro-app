@@ -163,6 +163,13 @@ async function syncQuery() {
   await router.replace({ query: nextQuery })
 }
 
+async function submitSearch(value: string) {
+  search.value = value
+  debouncedSearch.value = value
+  page.value = 1
+  await syncQuery()
+}
+
 watch(
   () => route.query,
   (query) => {
@@ -491,6 +498,7 @@ const lineColumns = [
           empty-icon="i-lucide-package-search"
           empty-title="Nenhum produto encontrado"
           empty-description="Cadastre um produto ou ajuste os filtros para continuar."
+          @search-submit="submitSearch"
         >
           <template #toolbar-right>
             <UTooltip text="Exportar produtos">

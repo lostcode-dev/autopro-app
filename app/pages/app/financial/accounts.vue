@@ -144,6 +144,13 @@ async function syncQuery() {
   await router.replace({ query: nextQuery });
 }
 
+async function submitSearch(value: string) {
+  search.value = value;
+  debouncedSearch.value = value;
+  page.value = 1;
+  await syncQuery();
+}
+
 watch(
   () => route.query,
   (query) => {
@@ -395,6 +402,7 @@ const lineColumns = [
             empty-icon="i-lucide-landmark"
             empty-title="Nenhuma conta encontrada"
             empty-description="Cadastre uma conta bancária para começar."
+            @search-submit="submitSearch"
           >
             <template #toolbar-right>
               <UTooltip
