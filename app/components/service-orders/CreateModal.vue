@@ -278,6 +278,49 @@ async function loadMasterProducts(force = false) {
   masterProducts.value = res.items ?? [];
 }
 
+async function backfillItemCategories() {
+  const productIds = [
+    ...new Set(
+      form.items
+        .filter((item) => item.product_id && item.category_id == null)
+        .map((item) => item.product_id as string),
+    ),
+  ];
+  if (!productIds.length) return;
+
+  try {
+    const res = await $fetch<{
+      items: Array<{
+        id: string;
+        category_id: string | null;
+        product_categories: { id: string; name: string } | null;
+      }>;
+    }>("/api/products", { query: { page_size: 500 } });
+
+    const productMap = new Map(
+      (res.items ?? []).map((p) => [
+        p.id,
+        {
+          category_id: p.category_id ?? null,
+          category_name: p.product_categories?.name ?? null,
+        },
+      ]),
+    );
+
+    for (const item of form.items) {
+      if (item.product_id && item.category_id == null) {
+        const cat = productMap.get(item.product_id);
+        if (cat !== undefined) {
+          item.category_id = cat.category_id;
+          item.category_name = cat.category_name;
+        }
+      }
+    }
+  } catch {
+    // fail silently — commission will be calculated without category filter
+  }
+}
+
 async function loadNextNumber() {
   const requestId = ++nextNumberRequestId;
   isLoadingNextNumber.value = true;
@@ -794,6 +837,7 @@ watch(
       loadOptions();
       if (isEditMode.value && props.orderToEdit) {
         populateFormFromOrder(props.orderToEdit);
+        backfillItemCategories();
       } else {
         loadNextNumber();
       }
