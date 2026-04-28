@@ -503,7 +503,7 @@ BEGIN
       uuid_generate_v5(v_namespace, 'product:' || src.legacy_product_id) AS id,
       organizations.id AS organization_id,
       src.name,
-      src.code,
+      src.code::integer AS code,
       src.type,
       categories.id AS category_id,
       COALESCE(src.track_inventory, false) AS track_inventory,
@@ -519,7 +519,7 @@ BEGIN
       src.created_by,
       COALESCE(src.updated_at, COALESCE(src.created_at, now())) AS updated_at,
       row_number() OVER (
-        PARTITION BY organizations.id, src.code
+        PARTITION BY organizations.id, src.code::integer
         ORDER BY
           COALESCE(src.updated_at, src.created_at, '-infinity'::timestamptz) DESC,
           src.legacy_product_id DESC
@@ -533,6 +533,7 @@ BEGIN
     WHERE src.legacy_org_id IS NOT NULL
       AND src.name IS NOT NULL
       AND src.code IS NOT NULL
+      AND btrim(src.code) ~ '^\d+$'
   )
   INSERT INTO public.products (
     id,
@@ -575,7 +576,7 @@ BEGIN
     NULL
   FROM product_rows
   WHERE rn = 1
-  ON CONFLICT (organization_id, code) DO UPDATE
+  ON CONFLICT (organization_id, code) WHERE deleted_at IS NULL DO UPDATE
   SET
     name = EXCLUDED.name,
     type = EXCLUDED.type,
@@ -617,7 +618,11 @@ BEGIN
       ON product_src.legacy_product_id = src.legacy_product_id
     LEFT JOIN public.products AS products
       ON products.organization_id = organizations.id
-     AND products.code = product_src.code
+     AND products.code = CASE
+       WHEN btrim(product_src.code) ~ '^\d+$' THEN product_src.code::integer
+       ELSE NULL
+     END
+     AND products.deleted_at IS NULL
     WHERE src.legacy_org_id IS NOT NULL
       AND src.description IS NOT NULL
       AND src.code IS NOT NULL

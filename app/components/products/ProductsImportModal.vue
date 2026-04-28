@@ -17,10 +17,10 @@ const hasRows = computed(() => parsedRows.value.length > 0)
 
 const TEMPLATE_CSV = [
   'nome,codigo,tipo,categoria,preco_custo,preco_venda,controlar_estoque,estoque_inicial,produto_pai_codigo,item_descricao,item_quantidade,item_preco_custo,item_preco_venda,item_controlar_estoque,item_estoque_inicial',
-  'Filtro de Óleo,FO001,unit,Filtros,10.00,25.00,true,5,,,,,,,',
-  'Kit de Freios,KF001,group,Freios,,,,,,,,,,,,',
-  ',,,,,,,,KF001,Pastilha Dianteira,2,15.00,35.00,true,4',
-  ',,,,,,,,KF001,Disco de Freio,2,30.00,60.00,false,0'
+  'Filtro de Oleo,101,unit,Filtros,10.00,25.00,true,5,,,,,,,',
+  'Kit de Freios,102,group,Freios,,,,,,,,,,,,',
+  ',,,,,,,,102,Pastilha Dianteira,2,15.00,35.00,true,4',
+  ',,,,,,,,102,Disco de Freio,2,30.00,60.00,false,0'
 ].join('\n')
 
 function downloadTemplate() {
@@ -73,14 +73,14 @@ function onFileChange(event: Event) {
 function buildImportRows() {
   return parsedRows.value.map(row => ({
     name: row.nome,
-    code: row.codigo,
+    code: row.codigo ? Number(row.codigo) : undefined,
     type: row.tipo as 'unit' | 'group',
     category: row.categoria || undefined,
     cost_price: row.preco_custo ? Number(row.preco_custo) : undefined,
     sale_price: row.preco_venda ? Number(row.preco_venda) : undefined,
     track_inventory: row.controlar_estoque?.toLowerCase() === 'true',
     initial_stock: row.estoque_inicial ? Number(row.estoque_inicial) : undefined,
-    parent_product_code: row.produto_pai_codigo || undefined,
+    parent_product_code: row.produto_pai_codigo ? Number(row.produto_pai_codigo) : undefined,
     item_description: row.item_descricao || undefined,
     item_quantity: row.item_quantidade ? Number(row.item_quantidade) : undefined,
     item_cost_price: row.item_preco_custo ? Number(row.item_preco_custo) : undefined,
@@ -165,7 +165,7 @@ function onClose(value: boolean) {
             </p>
             <div class="rounded bg-elevated px-3 py-2 font-mono text-xs overflow-x-auto">
               nome,codigo,tipo,categoria,preco_custo,preco_venda,controlar_estoque,estoque_inicial<br>
-              Filtro de Óleo,FO001,unit,Filtros,10.00,25.00,true,5
+              Filtro de Oleo,101,unit,Filtros,10.00,25.00,true,5
             </div>
           </div>
 
@@ -175,8 +175,8 @@ function onClose(value: boolean) {
             </p>
             <div class="rounded bg-elevated px-3 py-2 font-mono text-xs overflow-x-auto">
               nome,codigo,tipo,...,produto_pai_codigo,item_descricao,item_quantidade,item_preco_custo,item_preco_venda,item_controlar_estoque,item_estoque_inicial<br>
-              Kit de Freios,KF001,group,Freios,,,,,...<br>
-              ,,,,,,,,KF001,Pastilha Dianteira,2,15.00,35.00,true,4
+              Kit de Freios,102,group,Freios,,,,,...<br>
+              ,,,,,,,,102,Pastilha Dianteira,2,15.00,35.00,true,4
             </div>
           </div>
         </div>

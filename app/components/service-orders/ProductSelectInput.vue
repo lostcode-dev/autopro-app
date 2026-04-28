@@ -11,7 +11,7 @@ interface ProductGroupItem {
 interface ProductCatalogItem {
   id: string
   name: string
-  code: string
+  code: number
   type: 'unit' | 'group'
   category_id?: string | null
   product_categories?: { id: string; name: string } | null

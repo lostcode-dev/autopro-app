@@ -29,7 +29,7 @@ const categoryOptions = computed(() =>
 
 const form = reactive({
   name: '',
-  code: '',
+  code: '' as number | string,
   type: 'unit' as ProductItem['type'],
   category_id: '',
   track_inventory: true,
@@ -122,21 +122,19 @@ async function loadNextCode() {
   isLoadingNextCode.value = true
 
   try {
-    const res = await $fetch<{ code: string }>('/api/products/next-code')
+    const res = await $fetch<{ code: number }>('/api/products/next-code')
     if (requestId !== nextCodeRequestId || !props.open)
       return
 
-    if (form.code.trim())
+    if (String(form.code).trim())
       return
 
-    form.code = res.code || generateCode('P')
+    form.code = res.code || 1
   } catch {
     if (requestId === nextCodeRequestId && props.open) {
-      if (!form.code.trim())
-        form.code = generateCode('P')
       toast.add({
         title: 'Não foi possível sugerir o próximo código',
-        description: 'Um código temporário foi preenchido e pode ser editado.',
+        description: 'Preencha um número manualmente para continuar.',
         color: 'warning'
       })
     }
@@ -219,7 +217,8 @@ async function save() {
   if (isSaving.value)
     return
 
-  if (!form.name.trim() || !form.code.trim()) {
+  const productCode = Number(form.code)
+  if (!form.name.trim() || !Number.isSafeInteger(productCode) || productCode <= 0) {
     toast.add({ title: 'Preencha nome e código do produto', color: 'warning' })
     return
   }
@@ -229,7 +228,7 @@ async function save() {
   try {
     const body = {
       name: form.name.trim(),
-      code: form.code.trim(),
+      code: productCode,
       type: form.type,
       category_id: form.category_id || null,
       track_inventory: form.type === 'unit' ? form.track_inventory : false,
@@ -375,15 +374,18 @@ async function save() {
 
                 <UFormField
                   label="Código"
-                  description="Sugerido automaticamente em sequência, mas pode ser alterado."
                   required
                 >
                   <UInput
                     v-model="form.code"
                     icon="i-lucide-scan-barcode"
                     :trailing-icon="isLoadingNextCode ? 'i-lucide-loader-circle' : undefined"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
                     class="w-full"
-                    placeholder="SKU ou código interno"
+                    placeholder="Ex: 81"
                   />
                 </UFormField>
 

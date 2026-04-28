@@ -16,7 +16,7 @@ export type GroupItem = {
 export type ProductItem = {
   id: string
   name: string
-  code: string
+  code: number
   type: 'unit' | 'group'
   category_id: string | null
   track_inventory: boolean

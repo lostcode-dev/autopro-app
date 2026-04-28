@@ -3,14 +3,14 @@ import { requireAuthUser } from '../../utils/require-auth'
 
 interface ImportRow {
   name: string
-  code: string
+  code: string | number
   type: 'unit' | 'group'
   category?: string
   cost_price?: number
   sale_price?: number
   track_inventory?: boolean
   initial_stock?: number
-  parent_product_code?: string
+  parent_product_code?: string | number
   item_description?: string
   item_quantity?: number
   item_cost_price?: number
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
   // Build group items map: code → items[]
   const groupItemsMap: Record<string, GroupItemData[]> = {}
   for (const itemRow of itemRows) {
-    const code = itemRow.parent_product_code!
+    const code = String(itemRow.parent_product_code!)
     if (!groupItemsMap[code]) groupItemsMap[code] = []
     groupItemsMap[code].push({
       description: itemRow.item_description ?? '',
@@ -88,8 +88,14 @@ export default defineEventHandler(async (event) => {
   for (let i = 0; i < productRows.length; i++) {
     const row = productRows[i]!
     try {
+      const productCode = Number(row.code)
+      if (!Number.isSafeInteger(productCode) || productCode <= 0) {
+        errors.push({ row: i + 1, message: 'O código do produto deve ser um número inteiro positivo' })
+        continue
+      }
+
       const isGroup = row.type === 'group'
-      const groupItems = isGroup ? (groupItemsMap[row.code] ?? []) : null
+      const groupItems = isGroup ? (groupItemsMap[String(row.code)] ?? []) : null
       const trackInventory = isGroup ? false : (row.track_inventory === true || String(row.track_inventory).toLowerCase() === 'true')
 
       const { data: product, error } = await supabase
@@ -97,7 +103,7 @@ export default defineEventHandler(async (event) => {
         .insert({
           organization_id: organizationId,
           name: row.name,
-          code: row.code,
+          code: productCode,
           type: row.type,
           category_id: row.category ? (categoryMap[row.category] ?? null) : null,
           track_inventory: trackInventory,

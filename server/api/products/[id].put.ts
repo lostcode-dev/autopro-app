@@ -36,11 +36,15 @@ export default defineEventHandler(async (event) => {
     group_items
   } = body
 
+  const productCode = code === undefined ? undefined : Number(code)
+  if (code !== undefined && (!Number.isSafeInteger(productCode) || productCode <= 0))
+    throw createError({ statusCode: 400, statusMessage: 'O código do produto deve ser um número inteiro positivo' })
+
   const { data: item, error } = await supabase
     .from('products')
     .update({
       ...(name !== undefined && { name }),
-      ...(code !== undefined && { code }),
+      ...(code !== undefined && { code: productCode }),
       ...(type !== undefined && { type }),
       ...(category_id !== undefined && { category_id }),
       ...(track_inventory !== undefined && { track_inventory }),

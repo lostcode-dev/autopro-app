@@ -45,7 +45,10 @@ export default defineEventHandler(async (event) => {
     .is('deleted_at', null)
 
   if (search) {
-    dbQuery = dbQuery.or(`name.ilike.%${search}%,code.ilike.%${search}%`)
+    const numericSearch = Number(search)
+    dbQuery = Number.isSafeInteger(numericSearch) && numericSearch > 0
+      ? dbQuery.or(`name.ilike.%${search}%,code.eq.${numericSearch}`)
+      : dbQuery.ilike('name', `%${search}%`)
   }
 
   if (type) {

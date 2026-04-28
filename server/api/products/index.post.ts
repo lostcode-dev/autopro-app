@@ -31,12 +31,16 @@ export default defineEventHandler(async (event) => {
   if (!name || !code || !type)
     throw createError({ statusCode: 400, statusMessage: 'name, code e type são obrigatórios' })
 
+  const productCode = Number(code)
+  if (!Number.isSafeInteger(productCode) || productCode <= 0)
+    throw createError({ statusCode: 400, statusMessage: 'O código do produto deve ser um número inteiro positivo' })
+
   const { data: item, error } = await supabase
     .from('products')
     .insert({
       organization_id: organizationId,
       name,
-      code,
+      code: productCode,
       type,
       category_id,
       track_inventory,

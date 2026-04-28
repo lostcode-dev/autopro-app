@@ -28,6 +28,7 @@ DECLARE
   v_part_ids            uuid[];
   v_bank_account_id     uuid;
   v_purchase_ids        uuid[];
+  v_product_code_start  int;
 
   -- Loop helpers
   v_idx                 int;
@@ -317,6 +318,10 @@ BEGIN
   -- =========================================================================
   v_product_ids := ARRAY[]::uuid[];
 
+  SELECT COALESCE(MAX(code), 0) INTO v_product_code_start
+    FROM public.products
+   WHERE organization_id = v_organization_id;
+
   FOR v_idx IN 1..array_length(v_product_names, 1) LOOP
     INSERT INTO public.products (
       organization_id, name, code, type, category_id,
@@ -326,7 +331,7 @@ BEGIN
     ) VALUES (
       v_organization_id,
       v_product_names[v_idx],
-      format('PROD-%s', lpad(v_idx::text, 4, '0')),
+      v_product_code_start + v_idx,
       CASE WHEN v_idx % 8 = 0 THEN 'group' ELSE 'unit' END,
       v_category_ids[((v_idx - 1) % v_cat_count) + 1],
       CASE WHEN v_idx % 8 != 0 THEN true ELSE false END,

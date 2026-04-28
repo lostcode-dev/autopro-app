@@ -14,7 +14,7 @@ type LowStockFilter = 'all' | 'low' | 'available'
 type ProductOption = {
   id: string
   name: string
-  code: string
+  code: number
   type: 'unit' | 'group'
   unit_sale_price: number | null
   unit_cost_price: number | null
