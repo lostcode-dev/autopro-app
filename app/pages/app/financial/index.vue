@@ -751,13 +751,13 @@ function formatCategory(value: string | null | undefined): string {
 }
 
 const columns = [
-  { accessorKey: 'description', header: 'Lançamento', enableSorting: false },
-  { accessorKey: 'category', header: 'Categoria', enableSorting: false },
-  { accessorKey: 'due_date', header: 'Vencimento', enableSorting: false },
-  { id: 'type', header: 'Tipo', enableSorting: false },
-  { id: 'status_col', header: 'Status', enableSorting: false },
-  { id: 'amount_col', header: 'Valor', enableSorting: false },
-  { id: 'actions', header: '', enableSorting: false }
+  { accessorKey: 'description', header: 'Lançamento', enableSorting: false, meta: { class: { th: 'w-[36%]', td: 'w-[36%]' } } },
+  { accessorKey: 'category', header: 'Categoria', enableSorting: false, meta: { class: { th: 'w-40', td: 'w-40' } } },
+  { accessorKey: 'due_date', header: 'Vencimento', enableSorting: false, meta: { class: { th: 'w-32', td: 'w-32 whitespace-nowrap' } } },
+  { id: 'type', header: 'Tipo', enableSorting: false, meta: { class: { th: 'w-28', td: 'w-28' } } },
+  { id: 'status_col', header: 'Status', enableSorting: false, meta: { class: { th: 'w-32', td: 'w-32' } } },
+  { id: 'amount_col', header: 'Valor', enableSorting: false, meta: { class: { th: 'w-36 text-right', td: 'w-36 text-right whitespace-nowrap' } } },
+  { id: 'actions', header: '', enableSorting: false, meta: { class: { th: 'w-40', td: 'w-40' } } }
 ]
 </script>
 
@@ -821,6 +821,7 @@ const columns = [
           :total="totalFromServer"
           :selectable="true"
           :get-row-id="(row) => String(row.id ?? '')"
+          table-class="table-fixed min-w-[1120px] w-full"
           show-search
           search-placeholder="Buscar por descrição..."
           empty-icon="i-lucide-wallet-cards"
@@ -969,7 +970,7 @@ const columns = [
 
           <template #amount_col-cell="{ row }">
             <span
-              class="text-sm font-semibold"
+              class="block w-full text-right text-sm font-semibold tabular-nums"
               :class="row.original.type === 'income' ? 'text-success' : 'text-error'"
             >
               {{ formatCurrency(row.original.amount as string | number) }}
