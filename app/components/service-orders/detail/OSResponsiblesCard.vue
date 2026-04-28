@@ -4,6 +4,7 @@ import {
   computeServiceOrderCommissionBreakdown,
   formatCurrency,
 } from "~/utils/service-orders";
+import type { CommissionBreakdownLine } from "../CommissionBreakdownPopover.vue";
 
 const props = defineProps<{
   order: ServiceOrderDetailFull["order"];
@@ -21,6 +22,7 @@ type ResponsibleInfo = {
   commission_categories: string[];
   has_commission: boolean;
   commission_amount: number | null;
+  item_breakdown: CommissionBreakdownLine[];
 };
 
 const commissionBreakdown = computed(() =>
@@ -28,12 +30,28 @@ const commissionBreakdown = computed(() =>
 );
 
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
+  const items = props.order.items ?? [];
+
   return props.responsibleNames.map((r) => {
     const emp = props.employees.find((e) => e.id === r.employee_id);
 
     const commission_amount = emp
       ? (commissionBreakdown.value.byEmployeeId.get(emp.id)?.value ?? 0)
       : 0;
+
+    const item_breakdown: CommissionBreakdownLine[] = [];
+    if (emp) {
+      for (const [itemIndex, entry] of commissionBreakdown.value.byItemIndex) {
+        const c = entry.commissions.find((x) => x.employee_id === emp.id);
+        if (!c || c.amount <= 0) continue;
+        const item = items[itemIndex];
+        if (!item) continue;
+        item_breakdown.push({
+          label: item.description || item.name || `Item ${itemIndex + 1}`,
+          amount: c.amount,
+        });
+      }
+    }
 
     return {
       employee_id: r.employee_id,
@@ -44,6 +62,7 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       commission_categories: emp?.commission_categories ?? [],
       has_commission: Boolean(emp?.has_commission),
       commission_amount,
+      item_breakdown,
     };
   });
 });
@@ -123,12 +142,21 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
             <div
               class="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-elevated/60 px-3 py-2 text-sm lg:flex-nowrap"
             >
-              <UBadge
-                color="primary"
-                variant="soft"
-                leading-icon="i-lucide-wallet-cards"
-                :label="`Comissão: ${formatCurrency(assignee.commission_amount)}`"
-              />
+              <ServiceOrdersCommissionBreakdownPopover
+                :total="assignee.commission_amount ?? 0"
+                :lines="assignee.item_breakdown"
+                title="Comissão por item"
+                empty-message="Nenhum item comissionado"
+                :disabled="!assignee.item_breakdown.length"
+              >
+                <UBadge
+                  color="primary"
+                  variant="soft"
+                  leading-icon="i-lucide-wallet-cards"
+                  :label="`Comissão: ${formatCurrency(assignee.commission_amount)}`"
+                  class="cursor-default"
+                />
+              </ServiceOrdersCommissionBreakdownPopover>
               <UBadge
                 v-if="getResponsibleRateLabel(assignee)"
                 color="success"

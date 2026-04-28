@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/service-orders'
+import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
 interface SelectOption { label: string; value: string }
 
@@ -9,6 +10,7 @@ export type EmployeeCommissionDisplay = {
   baseLabel: string | null
   note: { label: string; color: 'neutral' | 'warning'; icon: string } | null
   hasInfo: boolean
+  itemBreakdown: CommissionBreakdownLine[]
 }
 
 const props = defineProps<{
@@ -87,12 +89,21 @@ function getOptionsForIndex(index: number) {
               v-if="employeeCommissions[employeeId]?.hasInfo"
               class="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-elevated/60 px-3 py-2 text-sm lg:flex-nowrap"
             >
-              <UBadge
-                color="primary"
-                variant="soft"
-                leading-icon="i-lucide-wallet-cards"
-                :label="`Comissão: ${employeeCommissions[employeeId]!.commissionLabel}`"
-              />
+              <ServiceOrdersCommissionBreakdownPopover
+                :total="employeeCommissions[employeeId]!.itemBreakdown.reduce((s, l) => s + l.amount, 0)"
+                :lines="employeeCommissions[employeeId]!.itemBreakdown"
+                title="Comissão por item"
+                empty-message="Nenhum item comissionado"
+                :disabled="!employeeCommissions[employeeId]!.itemBreakdown.length"
+              >
+                <UBadge
+                  color="primary"
+                  variant="soft"
+                  leading-icon="i-lucide-wallet-cards"
+                  :label="`Comissão: ${employeeCommissions[employeeId]!.commissionLabel}`"
+                  class="cursor-default"
+                />
+              </ServiceOrdersCommissionBreakdownPopover>
               <UBadge
                 v-if="employeeCommissions[employeeId]!.rateLabel"
                 color="success"

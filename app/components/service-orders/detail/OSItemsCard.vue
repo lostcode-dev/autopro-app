@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { ServiceOrderDetailFull } from '~/types/service-orders'
 import { formatCurrency } from '~/utils/service-orders'
+import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
 type OrderItem = ServiceOrderDetailFull['order']['items'][number]
 
@@ -25,6 +26,23 @@ function getItemCost(item: OrderItem) {
 
 function getItemCommission(item: OrderItem) {
   return item.commission_total ?? item.total_commission ?? 0
+}
+
+function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
+  return (item.commissions ?? [])
+    .filter(c => (c.amount ?? 0) > 0)
+    .map(c => {
+      const emp = props.employees.find(e => e.id === c.employee_id)
+      const typeLabel =
+        c.commission_type === 'percentage'
+          ? `${c.commission_percentage}% • ${c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'}`
+          : `Valor fixo • ${c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'}`
+      return {
+        label: emp?.name ?? 'Funcionário',
+        sublabel: typeLabel,
+        amount: Number(c.amount ?? 0),
+      }
+    })
 }
 </script>
 
@@ -135,7 +153,22 @@ function getItemCommission(item: OrderItem) {
                 {{ formatCurrency(getItemCost(item)) }}
               </td>
               <td class="px-4 py-4 text-right font-semibold text-info">
-                {{ formatCurrency(getItemCommission(item)) }}
+                <ServiceOrdersCommissionBreakdownPopover
+                  :total="getItemCommission(item)"
+                  :lines="getItemCommissionLines(item)"
+                  title="Comissão por funcionário"
+                  empty-message="Nenhum funcionário responsável"
+                  :disabled="!getItemCommissionLines(item).length"
+                >
+                  <span class="inline-flex cursor-default items-center gap-1">
+                    {{ formatCurrency(getItemCommission(item)) }}
+                    <UIcon
+                      v-if="getItemCommissionLines(item).length"
+                      name="i-lucide-info"
+                      class="size-3 text-info/60"
+                    />
+                  </span>
+                </ServiceOrdersCommissionBreakdownPopover>
               </td>
               <td class="px-4 py-4 text-right font-semibold text-highlighted">
                 {{ formatCurrency(getItemTotal(item)) }}
@@ -211,9 +244,22 @@ function getItemCommission(item: OrderItem) {
             <div class="rounded-xl bg-elevated/60 px-4 py-3 text-sm">
               <div class="flex items-center justify-between gap-3">
                 <span class="text-muted">Total do item</span>
-                <span class="text-xs font-medium text-info">
-                  Com.: {{ formatCurrency(getItemCommission(item)) }}
-                </span>
+                  <ServiceOrdersCommissionBreakdownPopover
+                    :total="getItemCommission(item)"
+                    :lines="getItemCommissionLines(item)"
+                    title="Comissão por funcionário"
+                    empty-message="Nenhum funcionário responsável"
+                    :disabled="!getItemCommissionLines(item).length"
+                  >
+                    <span class="inline-flex cursor-default items-center gap-1 text-xs font-medium text-info">
+                      Com.: {{ formatCurrency(getItemCommission(item)) }}
+                      <UIcon
+                        v-if="getItemCommissionLines(item).length"
+                        name="i-lucide-info"
+                        class="size-3 text-info/60"
+                      />
+                    </span>
+                  </ServiceOrdersCommissionBreakdownPopover>
               </div>
               <p class="mt-1 font-semibold text-highlighted">
                 {{ formatCurrency(getItemTotal(item)) }}

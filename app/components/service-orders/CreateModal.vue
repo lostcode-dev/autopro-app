@@ -19,6 +19,7 @@ import type {
   ServiceOrderSelectedTax,
 } from "../../types/service-orders";
 import type { EmployeeCommissionDisplay } from "./create/ResponsiblesCard.vue";
+import type { ItemCommissionDisplayDetail } from "./create/ItemsCard.vue";
 
 const props = defineProps<{
   open: boolean;
@@ -470,6 +471,38 @@ const itemCommissionMap = computed(() => {
   return map;
 });
 
+const itemCommissionDisplayDetailMap = computed(() => {
+  const map = new Map<string, ItemCommissionDisplayDetail>();
+  normalizedItems.value.forEach((normalizedItem, index) => {
+    const entry = commissionBreakdown.value.byItemIndex.get(index) ?? {
+      total: 0,
+      commissions: [],
+    };
+    map.set(normalizedItem.id, {
+      total: entry.total,
+      lines: entry.commissions
+        .filter((c) => c.amount > 0)
+        .map((c) => {
+          const emp = getEmployeeById(c.employee_id);
+          const typeSublabel =
+            c.commission_type === 'percentage'
+              ? `${c.commission_percentage}% • ${
+                  c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
+                }`
+              : `Valor fixo • ${
+                  c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'
+                }`;
+          return {
+            label: emp?.name ?? 'Funcionário',
+            sublabel: typeSublabel,
+            amount: c.amount,
+          };
+        }),
+    });
+  });
+  return map;
+});
+
 const normalizedItemsWithCommission = computed(() =>
   normalizedItems.value.map((item) => {
     const { id: _id, ...itemWithoutId } = item;
@@ -583,12 +616,24 @@ const employeeCommissionsDisplay = computed<
       };
     }
 
+    const itemBreakdown = normalizedItems.value
+      .map((normalizedItem) => {
+        const detail = itemCommissionDetail.value.get(normalizedItem.id);
+        const c = detail?.commissions.find(
+          (commission) => commission.employee_id === employeeId,
+        );
+        if (!c || c.amount <= 0) return null;
+        return { label: normalizedItem.description || normalizedItem.name, amount: c.amount };
+      })
+      .filter(Boolean) as { label: string; amount: number }[];
+
     result[employeeId] = {
       commissionLabel: formatCurrency(commissionValue),
       rateLabel,
       baseLabel,
       note,
       hasInfo: !!employee || stored > 0,
+      itemBreakdown,
     };
   }
   return result;
@@ -1068,6 +1113,7 @@ async function submit() {
           <ServiceOrdersCreateItemsCard
             :items="form.items"
             :item-commission-map="itemCommissionMap"
+            :item-commission-detail-map="itemCommissionDisplayDetailMap"
             @add-manual="addManualItem"
             @add-product="addProductItem"
             @remove="removeItem"

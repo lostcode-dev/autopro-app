@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/service-orders'
 import type { ServiceOrderDraftItem } from '~/types/service-orders'
+import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
 interface ProductGroupItem {
   description?: string | null
@@ -19,9 +20,15 @@ interface ProductCatalogItem {
   group_items?: ProductGroupItem[] | null
 }
 
+export type ItemCommissionDisplayDetail = {
+  total: number
+  lines: CommissionBreakdownLine[]
+}
+
 const props = defineProps<{
   items: ServiceOrderDraftItem[]
   itemCommissionMap: Map<string, number>
+  itemCommissionDetailMap?: Map<string, ItemCommissionDisplayDetail>
 }>()
 
 const emit = defineEmits<{
@@ -44,6 +51,13 @@ function getItemCommission(item: ServiceOrderDraftItem) {
   const computed = (props.itemCommissionMap.get(item.id) ?? 0)
   if (computed > 0) return computed
   return item.stored_commission ?? 0
+}
+
+function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDisplayDetail {
+  const detail = props.itemCommissionDetailMap?.get(item.id)
+  if (detail) return detail
+  const fallback = getItemCommission(item)
+  return { total: fallback, lines: [] }
 }
 </script>
 
@@ -142,7 +156,22 @@ function getItemCommission(item: ServiceOrderDraftItem) {
                   <UiCurrencyInput v-model="item.cost_price" />
                 </td>
                 <td class="px-4 py-4 text-right font-semibold text-info">
-                  {{ formatCurrency(getItemCommission(item)) }}
+                  <ServiceOrdersCommissionBreakdownPopover
+                    :total="getItemCommissionDetail(item).total"
+                    :lines="getItemCommissionDetail(item).lines"
+                    title="Comissão por funcionário"
+                    empty-message="Nenhum funcionário responsável"
+                    :disabled="!getItemCommissionDetail(item).lines.length"
+                  >
+                    <span class="inline-flex items-center gap-1">
+                      {{ formatCurrency(getItemCommission(item)) }}
+                      <UIcon
+                        v-if="getItemCommissionDetail(item).lines.length"
+                        name="i-lucide-info"
+                        class="size-3 text-info/60"
+                      />
+                    </span>
+                  </ServiceOrdersCommissionBreakdownPopover>
                 </td>
                 <td class="px-4 py-4 text-right font-semibold text-highlighted">
                   {{ formatCurrency(getItemTotal(item)) }}
@@ -216,9 +245,22 @@ function getItemCommission(item: ServiceOrderDraftItem) {
               <div class="rounded-xl bg-elevated/60 px-3 py-2 text-sm">
                 <div class="flex items-center justify-between gap-2">
                   <span class="text-muted">Total</span>
-                  <span class="text-xs font-medium text-info">
-                    Com.: {{ formatCurrency(getItemCommission(item)) }}
-                  </span>
+                  <ServiceOrdersCommissionBreakdownPopover
+                    :total="getItemCommissionDetail(item).total"
+                    :lines="getItemCommissionDetail(item).lines"
+                    title="Comissão por funcionário"
+                    empty-message="Nenhum funcionário responsável"
+                    :disabled="!getItemCommissionDetail(item).lines.length"
+                  >
+                    <span class="inline-flex cursor-default items-center gap-1 text-xs font-medium text-info">
+                      Com.: {{ formatCurrency(getItemCommission(item)) }}
+                      <UIcon
+                        v-if="getItemCommissionDetail(item).lines.length"
+                        name="i-lucide-info"
+                        class="size-3 text-info/60"
+                      />
+                    </span>
+                  </ServiceOrdersCommissionBreakdownPopover>
                 </div>
                 <p class="mt-0.5 font-semibold text-highlighted">{{ formatCurrency(getItemTotal(item)) }}</p>
               </div>
