@@ -554,10 +554,6 @@ async function save() {
 
     <template #footer>
       <div class="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-        <p class="text-xs text-muted">
-          Campos com asterisco são obrigatórios.
-        </p>
-
         <div class="flex items-center justify-end gap-3">
           <UButton
             label="Cancelar"
