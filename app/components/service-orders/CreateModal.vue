@@ -354,13 +354,13 @@ const employeeSelectOptions = computed<SelectOption[]>(() =>
   employeeCatalog.value.map((e) => ({ label: e.name, value: e.id })),
 );
 
-const masterProductSelectOptions = computed<SelectOption[]>(() =>
-  masterProducts.value.map((p) => ({ label: p.name, value: p.id })),
-);
+const selectedMasterProductRef = ref<MasterProductItem | null>(null);
 
 const selectedMasterProduct = computed(
   () =>
-    masterProducts.value.find((p) => p.id === form.master_product_id) ?? null,
+    selectedMasterProductRef.value?.id === form.master_product_id
+      ? selectedMasterProductRef.value
+      : (masterProducts.value.find((p) => p.id === form.master_product_id) ?? null),
 );
 
 // ─── Normalized items + totals ────────────────────────────────────────────────
@@ -759,16 +759,29 @@ function openMasterProductEdit(product: MasterProductItem) {
   masterProductEditorOpen.value = true;
 }
 
+function onSelectMasterProduct(product: MasterProductItem) {
+  selectedMasterProductRef.value = product;
+}
+
+function onClearMasterProduct() {
+  form.master_product_id = "";
+  selectedMasterProductRef.value = null;
+}
+
 async function onMasterProductSaved(product: MasterProductItem) {
   await loadMasterProducts(true);
   if (masterProductEditorMode.value === "create") {
     form.master_product_id = product.id;
+    selectedMasterProductRef.value = product;
   }
 }
 
 async function onMasterProductDeleted(id: string) {
   await loadMasterProducts(true);
-  if (form.master_product_id === id) form.master_product_id = "";
+  if (form.master_product_id === id) {
+    form.master_product_id = "";
+    selectedMasterProductRef.value = null;
+  }
 }
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
@@ -817,6 +830,7 @@ watch(
 
 function resetForm() {
   itemCounter.value = 0;
+  selectedMasterProductRef.value = null;
   form.number = "";
   form.status = "estimate";
   form.client_id = "";
@@ -1071,9 +1085,10 @@ async function submit() {
               v-model:expected-date="form.expected_date"
               :client-options="clientOptions"
               :vehicle-options="vehicleOptions"
-              :master-product-options="masterProductSelectOptions"
               :selected-master-product="selectedMasterProduct"
               :is-loading-next-number="isLoadingNextNumber"
+              @select-master-product="onSelectMasterProduct"
+              @clear-master-product="onClearMasterProduct"
               @open-master-product-editor="openMasterProductCreate"
               @open-master-product-manager="masterProductManagerOpen = true"
             />

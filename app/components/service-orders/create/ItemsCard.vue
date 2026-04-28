@@ -113,7 +113,9 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
           <table class="min-w-full divide-y divide-default overflow-hidden rounded-2xl border border-default bg-default text-sm">
             <thead class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted">
               <tr>
-                <th class="px-4 py-3 font-medium">Descrição</th>
+                <th class="min-w-80 px-4 py-3 font-medium">
+                  Descrição
+                </th>
                 <th class="w-24 px-4 py-3 font-medium">Qtd</th>
                 <th class="w-32 px-4 py-3 font-medium">Venda</th>
                 <th class="w-32 px-4 py-3 font-medium">Custo</th>

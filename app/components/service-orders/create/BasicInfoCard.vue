@@ -1,6 +1,7 @@
 <script setup lang="ts">
 interface SelectOption { label: string; value: string }
 interface MasterProductDisplay { name: string; description?: string | null }
+interface MasterProductSelected { id: string; name: string; description: string | null; notes: string | null }
 
 defineProps<{
   number: string
@@ -12,7 +13,6 @@ defineProps<{
   expectedDate: string | undefined
   clientOptions: SelectOption[]
   vehicleOptions: SelectOption[]
-  masterProductOptions: SelectOption[]
   selectedMasterProduct: MasterProductDisplay | null
   isLoadingNextNumber: boolean
 }>()
@@ -25,6 +25,8 @@ const emit = defineEmits<{
   'update:masterProductId': [v: string]
   'update:entryDate': [v: string | undefined]
   'update:expectedDate': [v: string | undefined]
+  'selectMasterProduct': [product: MasterProductSelected]
+  'clearMasterProduct': []
   'openMasterProductEditor': []
   'openMasterProductManager': []
 }>()
@@ -120,13 +122,12 @@ const statusOptions = [
         <UFormField label="Produto master">
           <div class="space-y-3">
             <div class="flex items-start gap-2">
-              <USelectMenu
+              <ServiceOrdersMasterProductSelectInput
                 :model-value="masterProductId"
-                :items="[{ label: 'Sem produto master', value: '' }, ...masterProductOptions]"
-                value-key="value"
+                :selected-product="selectedMasterProduct"
                 class="min-w-0 flex-1"
-                searchable
-                @update:model-value="emit('update:masterProductId', String($event ?? ''))"
+                @select="(p) => { emit('update:masterProductId', p.id); emit('selectMasterProduct', p) }"
+                @clear="emit('clearMasterProduct')"
               />
               <div class="flex shrink-0 items-center gap-2">
                 <UTooltip text="Novo produto master">
