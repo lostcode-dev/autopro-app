@@ -3,8 +3,6 @@ import type { ServiceOrderDetailFull } from "~/types/service-orders";
 import {
   computeServiceOrderCommissionBreakdown,
   formatCurrency,
-  sumFinancialCommissionsForEmployee,
-  sumStoredItemCommissionsForEmployee,
 } from "~/utils/service-orders";
 
 const props = defineProps<{

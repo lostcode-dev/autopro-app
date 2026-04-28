@@ -3,6 +3,11 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { computeNextOsNumber, normalizeOsNumber } from '../../utils/service-order-number'
+import {
+  computeServiceOrderItemsWithCommissionSnapshots,
+  type ServiceOrderCommissionEmployee,
+  type ServiceOrderCommissionItem
+} from '../../utils/service-order-item-commissions'
 
 /**
  * POST /api/service-orders
@@ -133,6 +138,42 @@ export default defineEventHandler(async (event) => {
     installment_count: keepExisting('installment_count', 0),
     notes: keepExisting('notes', null),
     updated_by: authUser.email
+  }
+
+  const itemsForCommission = Array.isArray(orderPayload.items) ? orderPayload.items as ServiceOrderCommissionItem[] : []
+  const responsiblesForCommission = Array.isArray(orderPayload.responsible_employees)
+    ? orderPayload.responsible_employees as Array<{ employee_id?: string | null }>
+    : []
+
+  if (itemsForCommission.length > 0 && responsiblesForCommission.length > 0) {
+    const { data: employeesForCommission, error: employeesError } = await supabase
+      .from('employees')
+      .select('id, has_commission, commission_type, commission_amount, commission_base, commission_categories')
+      .eq('organization_id', organizationId)
+      .is('deleted_at', null)
+
+    if (employeesError) {
+      throw createError({ statusCode: 500, statusMessage: employeesError.message })
+    }
+
+    const commissionSnapshot = computeServiceOrderItemsWithCommissionSnapshots({
+      items: itemsForCommission,
+      responsibleEmployees: responsiblesForCommission,
+      employees: (employeesForCommission ?? []) as ServiceOrderCommissionEmployee[],
+      discount: orderPayload.discount,
+      totalTaxesAmount: orderPayload.total_taxes_amount
+    })
+
+    orderPayload.items = commissionSnapshot.items
+    orderPayload.commission_amount = commissionSnapshot.commissionAmount
+  } else {
+    orderPayload.items = itemsForCommission.map(item => ({
+      ...item,
+      commission_total: 0,
+      total_commission: 0,
+      commissions: []
+    }))
+    orderPayload.commission_amount = 0
   }
 
   let savedOrder: SavedOrderRecord

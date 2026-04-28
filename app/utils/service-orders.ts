@@ -134,6 +134,9 @@ export type ServiceOrderCommissionEstimate = {
 export type ServiceOrderItemCommission = {
   employee_id: string
   amount: number
+  commission_type: string | null
+  commission_base: string | null
+  commission_percentage: number | null
 }
 
 export type ServiceOrderItemCommissionEntry = {
@@ -232,7 +235,13 @@ export function computeServiceOrderCommissionBreakdown(
         const entry = byItemIndex.get(index)!
         entry.total = roundCurrency(entry.total + value)
         if (value > 0) {
-          entry.commissions.push({ employee_id: employee.id, amount: value })
+          entry.commissions.push({
+            employee_id: employee.id,
+            amount: value,
+            commission_type: employee.commission_type ?? null,
+            commission_base: employee.commission_base ?? null,
+            commission_percentage: commissionAmount
+          })
         }
         employeeTotal = roundCurrency(employeeTotal + value)
       }
@@ -246,7 +255,13 @@ export function computeServiceOrderCommissionBreakdown(
         const entry = byItemIndex.get(index)!
         entry.total = roundCurrency(entry.total + value)
         if (value > 0) {
-          entry.commissions.push({ employee_id: employee.id, amount: value })
+          entry.commissions.push({
+            employee_id: employee.id,
+            amount: value,
+            commission_type: employee.commission_type ?? null,
+            commission_base: employee.commission_base ?? null,
+            commission_percentage: null
+          })
         }
         employeeTotal = roundCurrency(employeeTotal + value)
       })

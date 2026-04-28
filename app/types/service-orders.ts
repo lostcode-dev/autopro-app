@@ -66,7 +66,13 @@ export type ServiceOrderItem = {
   category_id?: string | null
   commission_total?: number | null
   total_commission?: number | null
-  commissions?: { employee_id?: string | null, amount?: number | null }[] | null
+  commissions?: {
+    employee_id?: string | null
+    amount?: number | null
+    commission_type?: string | null
+    commission_base?: string | null
+    commission_percentage?: number | null
+  }[] | null
 }
 
 export type ServiceOrderSelectedTax = {
