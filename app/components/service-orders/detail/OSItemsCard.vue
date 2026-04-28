@@ -136,10 +136,20 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
                     </div>
                   </UTooltip>
 
-                  <div class="min-w-0 flex-1 rounded-xl border border-default bg-default px-3 py-2 text-default">
-                    <span class="block truncate">
-                      {{ item.description || item.name || '—' }}
-                    </span>
+                  <div class="min-w-0 flex-1">
+                    <div v-if="item.category_name" class="mb-1">
+                      <UBadge
+                        :label="item.category_name"
+                        color="neutral"
+                        variant="subtle"
+                        size="xs"
+                      />
+                    </div>
+                    <div class="rounded-xl border border-default bg-default px-3 py-2 text-default">
+                      <span class="block truncate">
+                        {{ item.description || item.name || '—' }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </td>
@@ -212,6 +222,14 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
             </UTooltip>
 
             <div class="min-w-0 flex-1">
+              <div v-if="item.category_name" class="mb-1">
+                <UBadge
+                  :label="item.category_name"
+                  color="neutral"
+                  variant="subtle"
+                  size="xs"
+                />
+              </div>
               <div class="rounded-xl border border-default bg-default px-3 py-2 text-default">
                 <span class="block truncate">
                   {{ item.description || item.name || '—' }}

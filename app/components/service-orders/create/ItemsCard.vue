@@ -15,6 +15,7 @@ interface ProductCatalogItem {
   name: string
   type: 'unit' | 'group'
   category_id?: string | null
+  product_categories?: { id: string; name: string } | null
   unit_sale_price: number | null
   unit_cost_price: number | null
   group_items?: ProductGroupItem[] | null
@@ -136,7 +137,18 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
                         />
                       </div>
                     </UTooltip>
-                    <UInput v-model="item.description" placeholder="Descrição do item" class="min-w-0 flex-1" />
+                    <div class="min-w-0 flex-1">
+                      <div class="flex items-center gap-1.5 mb-1">
+                        <UBadge
+                          v-if="item.category_name"
+                          :label="item.category_name"
+                          color="neutral"
+                          variant="subtle"
+                          size="xs"
+                        />
+                      </div>
+                      <UInput v-model="item.description" placeholder="Descrição do item" class="min-w-0 flex-1" />
+                    </div>
                   </div>
                 </td>
                 <td class="px-4 py-4">
@@ -204,9 +216,19 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
                     />
                   </div>
                 </UTooltip>
-                <p class="min-w-0 flex-1 truncate text-sm font-medium text-highlighted">
-                  {{ item.description || item.name || 'Item sem descrição' }}
-                </p>
+                <div class="min-w-0 flex-1">
+                  <UBadge
+                    v-if="item.category_name"
+                    :label="item.category_name"
+                    color="neutral"
+                    variant="subtle"
+                    size="xs"
+                    class="mb-1"
+                  />
+                  <p class="min-w-0 truncate text-sm font-medium text-highlighted">
+                    {{ item.description || item.name || 'Item sem descrição' }}
+                  </p>
+                </div>
               </div>
               <UButton
                 icon="i-lucide-trash-2"

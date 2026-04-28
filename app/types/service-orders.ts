@@ -50,6 +50,7 @@ export type ServiceOrderDraftItem = {
   source: 'manual' | 'catalog'
   product_id?: string | null
   category_id?: string | null
+  category_name?: string | null
   stored_commission?: number | null
 }
 
@@ -64,6 +65,7 @@ export type ServiceOrderItem = {
   cost_amount?: number | null
   product_id?: string | null
   category_id?: string | null
+  category_name?: string | null
   commission_total?: number | null
   total_commission?: number | null
   commissions?: {

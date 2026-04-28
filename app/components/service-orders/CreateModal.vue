@@ -219,6 +219,7 @@ function mapOrderItemToDraftItem(
     source: item.product_id ? "catalog" : "manual",
     product_id: item.product_id ?? null,
     category_id: item.category_id ?? null,
+    category_name: item.category_name ?? null,
     stored_commission: item.commission_total ?? item.total_commission ?? null,
   });
 }
@@ -382,6 +383,7 @@ const normalizedItems = computed(() =>
         cost_price: costPrice,
         product_id: item.product_id || null,
         category_id: item.category_id || null,
+        category_name: item.category_name || null,
       };
     })
     .filter((item) => item.description && item.quantity > 0),
@@ -656,6 +658,7 @@ interface ProductCatalogItem {
   name: string;
   type: "unit" | "group";
   category_id?: string | null;
+  product_categories?: { id: string; name: string } | null;
   unit_sale_price: number | null;
   unit_cost_price: number | null;
   group_items?: ProductGroupItem[] | null;
@@ -674,6 +677,7 @@ function addProductItem(product: ProductCatalogItem) {
           source: "catalog",
           product_id: product.id,
           category_id: product.category_id ?? null,
+          category_name: product.product_categories?.name ?? null,
         }),
       );
     }
@@ -688,6 +692,7 @@ function addProductItem(product: ProductCatalogItem) {
         source: "catalog",
         product_id: product.id,
         category_id: product.category_id ?? null,
+        category_name: product.product_categories?.name ?? null,
       }),
     );
   }
