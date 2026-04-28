@@ -1,48 +1,50 @@
 <script setup lang="ts">
-import type { ServiceOrderDetailFull } from '~/types/service-orders'
-import { formatCurrency } from '~/utils/service-orders'
-import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
+import type { ServiceOrderDetailFull } from "~/types/service-orders";
+import { formatCurrency } from "~/utils/service-orders";
+import type { CommissionBreakdownLine } from "../CommissionBreakdownPopover.vue";
 
-type OrderItem = ServiceOrderDetailFull['order']['items'][number]
+type OrderItem = ServiceOrderDetailFull["order"]["items"][number];
 
 const props = defineProps<{
-  order: ServiceOrderDetailFull['order']
-  employees: ServiceOrderDetailFull['employees']
-}>()
+  order: ServiceOrderDetailFull["order"];
+  employees: ServiceOrderDetailFull["employees"];
+}>();
 
-const items = computed(() => props.order.items ?? [])
+const items = computed(() => props.order.items ?? []);
 
 function getItemSource(item: OrderItem) {
-  return item.product_id ? 'catalog' : 'manual'
+  return item.product_id ? "catalog" : "manual";
 }
 
 function getItemTotal(item: OrderItem) {
-  return item.total_price ?? item.total_amount ?? item.unit_price * item.quantity
+  return (
+    item.total_price ?? item.total_amount ?? item.unit_price * item.quantity
+  );
 }
 
 function getItemCost(item: OrderItem) {
-  return item.cost_price ?? item.cost_amount ?? 0
+  return item.cost_price ?? item.cost_amount ?? 0;
 }
 
 function getItemCommission(item: OrderItem) {
-  return item.commission_total ?? item.total_commission ?? 0
+  return item.commission_total ?? item.total_commission ?? 0;
 }
 
 function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
   return (item.commissions ?? [])
-    .filter(c => (c.amount ?? 0) > 0)
-    .map(c => {
-      const emp = props.employees.find(e => e.id === c.employee_id)
+    .filter((c) => (c.amount ?? 0) > 0)
+    .map((c) => {
+      const emp = props.employees.find((e) => e.id === c.employee_id);
       const typeLabel =
-        c.commission_type === 'percentage'
-          ? `${c.commission_percentage}% • ${c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'}`
-          : `Valor fixo • ${c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'}`
+        c.commission_type === "percentage"
+          ? `${c.commission_percentage}% • ${c.commission_base === "profit" ? "Lucro" : "Faturamento"}`
+          : `Valor fixo • ${c.commission_base === "profit" ? "Lucro" : "Faturamento"}`;
       return {
-        label: emp?.name ?? 'Funcionário',
+        label: emp?.name ?? "Funcionário",
         sublabel: typeLabel,
         amount: Number(c.amount ?? 0),
-      }
-    })
+      };
+    });
 }
 </script>
 
@@ -51,9 +53,7 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-package" class="size-4 text-primary" />
-        <h3 class="font-semibold text-highlighted">
-          Itens da OS
-        </h3>
+        <h3 class="font-semibold text-highlighted">Itens da OS</h3>
       </div>
     </template>
 
@@ -82,24 +82,12 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
             class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted"
           >
             <tr>
-              <th class="px-4 py-3 font-medium">
-                Descrição
-              </th>
-              <th class="w-24 px-4 py-3 font-medium">
-                Qtd
-              </th>
-              <th class="w-32 px-4 py-3 font-medium">
-                Venda
-              </th>
-              <th class="w-32 px-4 py-3 font-medium">
-                Custo
-              </th>
-              <th class="w-28 px-4 py-3 text-right font-medium">
-                Comissão
-              </th>
-              <th class="w-32 px-4 py-3 text-right font-medium">
-                Total
-              </th>
+              <th class="px-4 py-3 font-medium">Descrição</th>
+              <th class="w-24 px-4 py-3 font-medium">Qtd</th>
+              <th class="w-32 px-4 py-3 font-medium">Venda</th>
+              <th class="w-32 px-4 py-3 font-medium">Custo</th>
+              <th class="w-28 px-4 py-3 text-right font-medium">Comissão</th>
+              <th class="w-32 px-4 py-3 text-right font-medium">Total</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-default">
@@ -145,9 +133,11 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
                         size="xs"
                       />
                     </div>
-                    <div class="rounded-xl border border-default bg-default px-3 py-2 text-default">
+                    <div
+                      class="rounded-xl border border-default bg-default px-3 py-2 text-default"
+                    >
                       <span class="block truncate">
-                        {{ item.description || item.name || '—' }}
+                        {{ item.description || item.name || "—" }}
                       </span>
                     </div>
                   </div>
@@ -194,7 +184,14 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
           :key="`${index}-${item.name ?? item.description ?? 'item-mobile'}`"
           class="rounded-2xl border border-default bg-default p-4 shadow-xs"
         >
-          <div class="flex items-start gap-3">
+          <div class="flex items-start gap-2">
+            <UBadge
+              v-if="item.category_name"
+              :label="item.category_name"
+              color="neutral"
+              variant="subtle"
+              size="xs"
+            />
             <UTooltip
               :text="
                 getItemSource(item) === 'catalog'
@@ -222,17 +219,11 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
             </UTooltip>
 
             <div class="min-w-0 flex-1">
-              <div v-if="item.category_name" class="mb-1">
-                <UBadge
-                  :label="item.category_name"
-                  color="neutral"
-                  variant="subtle"
-                  size="xs"
-                />
-              </div>
-              <div class="rounded-xl border border-default bg-default px-3 py-2 text-default">
+              <div
+                class="rounded-xl border border-default bg-default px-3 py-2 text-default"
+              >
                 <span class="block truncate">
-                  {{ item.description || item.name || '—' }}
+                  {{ item.description || item.name || "—" }}
                 </span>
               </div>
             </div>
@@ -241,19 +232,25 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
           <div class="mt-4 space-y-4">
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <UFormField label="Quantidade">
-                <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default">
+                <div
+                  class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default"
+                >
                   {{ item.quantity }}
                 </div>
               </UFormField>
 
               <UFormField label="Venda">
-                <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default">
+                <div
+                  class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default"
+                >
                   {{ formatCurrency(item.unit_price) }}
                 </div>
               </UFormField>
 
               <UFormField label="Custo">
-                <div class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default">
+                <div
+                  class="rounded-xl border border-default bg-default px-3 py-2 text-sm text-default"
+                >
                   {{ formatCurrency(getItemCost(item)) }}
                 </div>
               </UFormField>
@@ -262,22 +259,24 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
             <div class="rounded-xl bg-elevated/60 px-4 py-3 text-sm">
               <div class="flex items-center justify-between gap-3">
                 <span class="text-muted">Total do item</span>
-                  <ServiceOrdersCommissionBreakdownPopover
-                    :total="getItemCommission(item)"
-                    :lines="getItemCommissionLines(item)"
-                    title="Comissão por funcionário"
-                    empty-message="Nenhum funcionário responsável"
-                    :disabled="!getItemCommissionLines(item).length"
+                <ServiceOrdersCommissionBreakdownPopover
+                  :total="getItemCommission(item)"
+                  :lines="getItemCommissionLines(item)"
+                  title="Comissão por funcionário"
+                  empty-message="Nenhum funcionário responsável"
+                  :disabled="!getItemCommissionLines(item).length"
+                >
+                  <span
+                    class="inline-flex cursor-default items-center gap-1 text-xs font-medium text-info"
                   >
-                    <span class="inline-flex cursor-default items-center gap-1 text-xs font-medium text-info">
-                      Com.: {{ formatCurrency(getItemCommission(item)) }}
-                      <UIcon
-                        v-if="getItemCommissionLines(item).length"
-                        name="i-lucide-info"
-                        class="size-3 text-info/60"
-                      />
-                    </span>
-                  </ServiceOrdersCommissionBreakdownPopover>
+                    Com.: {{ formatCurrency(getItemCommission(item)) }}
+                    <UIcon
+                      v-if="getItemCommissionLines(item).length"
+                      name="i-lucide-info"
+                      class="size-3 text-info/60"
+                    />
+                  </span>
+                </ServiceOrdersCommissionBreakdownPopover>
               </div>
               <p class="mt-1 font-semibold text-highlighted">
                 {{ formatCurrency(getItemTotal(item)) }}

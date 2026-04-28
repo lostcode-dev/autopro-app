@@ -1,64 +1,69 @@
 <script setup lang="ts">
-import { formatCurrency } from '~/utils/service-orders'
-import type { ServiceOrderDraftItem } from '~/types/service-orders'
-import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
+import { formatCurrency } from "~/utils/service-orders";
+import type { ServiceOrderDraftItem } from "~/types/service-orders";
+import type { CommissionBreakdownLine } from "../CommissionBreakdownPopover.vue";
 
 interface ProductGroupItem {
-  description?: string | null
-  quantity: number
-  cost_price: number
-  sale_price: number
+  description?: string | null;
+  quantity: number;
+  cost_price: number;
+  sale_price: number;
 }
 
 interface ProductCatalogItem {
-  id: string
-  name: string
-  type: 'unit' | 'group'
-  category_id?: string | null
-  product_categories?: { id: string; name: string } | null
-  unit_sale_price: number | null
-  unit_cost_price: number | null
-  group_items?: ProductGroupItem[] | null
+  id: string;
+  name: string;
+  type: "unit" | "group";
+  category_id?: string | null;
+  product_categories?: { id: string; name: string } | null;
+  unit_sale_price: number | null;
+  unit_cost_price: number | null;
+  group_items?: ProductGroupItem[] | null;
 }
 
 export type ItemCommissionDisplayDetail = {
-  total: number
-  lines: CommissionBreakdownLine[]
-}
+  total: number;
+  lines: CommissionBreakdownLine[];
+};
 
 const props = defineProps<{
-  items: ServiceOrderDraftItem[]
-  itemCommissionMap: Map<string, number>
-  itemCommissionDetailMap?: Map<string, ItemCommissionDisplayDetail>
-}>()
+  items: ServiceOrderDraftItem[];
+  itemCommissionMap: Map<string, number>;
+  itemCommissionDetailMap?: Map<string, ItemCommissionDisplayDetail>;
+}>();
 
 const emit = defineEmits<{
-  addManual: []
-  addProduct: [product: ProductCatalogItem]
-  remove: [id: string]
-  setQuantity: [item: ServiceOrderDraftItem, value: string | number]
-}>()
+  addManual: [];
+  addProduct: [product: ProductCatalogItem];
+  remove: [id: string];
+  setQuantity: [item: ServiceOrderDraftItem, value: string | number];
+}>();
 
 function toNumber(value: number | string | null | undefined) {
-  const parsed = Number(value ?? 0)
-  return Number.isFinite(parsed) ? parsed : 0
+  const parsed = Number(value ?? 0);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function getItemTotal(item: ServiceOrderDraftItem) {
-  return Math.max(toNumber(item.quantity), 0) * Math.max(toNumber(item.unit_price), 0)
+  return (
+    Math.max(toNumber(item.quantity), 0) *
+    Math.max(toNumber(item.unit_price), 0)
+  );
 }
 
 function getItemCommission(item: ServiceOrderDraftItem) {
-  const computed = (props.itemCommissionMap.get(item.id) ?? 0)
-  if (computed > 0) return computed
-  return item.stored_commission ?? 0
+  const computed = props.itemCommissionMap.get(item.id) ?? 0;
+  if (computed > 0) return computed;
+  return item.stored_commission ?? 0;
 }
 
-function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDisplayDetail {
-  const detail = props.itemCommissionDetailMap?.get(item.id)
-  if (detail) return detail
-  const fallback = getItemCommission(item)
-  return { total: fallback, lines: [] }
+function getItemCommissionDetail(
+  item: ServiceOrderDraftItem,
+): ItemCommissionDisplayDetail {
+  const detail = props.itemCommissionDetailMap?.get(item.id);
+  if (detail) return detail;
+  const fallback = getItemCommission(item);
+  return { total: fallback, lines: [] };
 }
 </script>
 
@@ -68,7 +73,9 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
       <div class="flex gap-3 flex-row items-center justify-between">
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-package" class="size-4 text-primary" />
-          <h3 class="font-semibold text-highlighted">Itens da ordem de serviço</h3>
+          <h3 class="font-semibold text-highlighted">
+            Itens da ordem de serviço
+          </h3>
         </div>
         <div class="flex items-center gap-2">
           <UButton
@@ -84,15 +91,21 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
     </template>
 
     <div class="space-y-5">
-      <div class="rounded-2xl border border-dashed border-primary/30 bg-gradient-to-br from-primary/10 via-elevated to-info/5 p-4">
+      <div
+        class="rounded-2xl border border-dashed border-primary/30 bg-gradient-to-br from-primary/10 via-elevated to-info/5 p-4"
+      >
         <UFormField label="Adicionar Produto/Serviço">
           <template #label>
-            <span class="flex items-center gap-1.5 text-sm font-medium text-highlighted">
+            <span
+              class="flex items-center gap-1.5 text-sm font-medium text-highlighted"
+            >
               <UIcon name="i-lucide-package-plus" class="size-4 text-primary" />
               Adicionar Produto/Serviço
             </span>
           </template>
-          <ServiceOrdersProductSelectInput @select="emit('addProduct', $event)" />
+          <ServiceOrdersProductSelectInput
+            @select="emit('addProduct', $event)"
+          />
         </UFormField>
       </div>
 
@@ -100,22 +113,30 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
         v-if="!items.length"
         class="rounded-2xl border border-default bg-elevated/40 px-6 py-10 text-center"
       >
-        <UIcon name="i-lucide-package-search" class="mx-auto size-10 text-dimmed" />
-        <p class="mt-4 text-sm font-medium text-highlighted">Nenhum item adicionado ainda</p>
+        <UIcon
+          name="i-lucide-package-search"
+          class="mx-auto size-10 text-dimmed"
+        />
+        <p class="mt-4 text-sm font-medium text-highlighted">
+          Nenhum item adicionado ainda
+        </p>
         <p class="mt-1 text-sm text-muted">
-          Comece por um produto do catálogo ou crie um item manual para já sair com o valor previsto da OS.
+          Comece por um produto do catálogo ou crie um item manual para já sair
+          com o valor previsto da OS.
         </p>
       </div>
 
       <div v-else class="space-y-4">
         <!-- Desktop table -->
         <div class="hidden overflow-x-auto lg:block">
-          <table class="min-w-full divide-y divide-default overflow-hidden rounded-2xl border border-default bg-default text-sm">
-            <thead class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted">
+          <table
+            class="min-w-full divide-y divide-default overflow-hidden rounded-2xl border border-default bg-default text-sm"
+          >
+            <thead
+              class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted"
+            >
               <tr>
-                <th class="min-w-80 px-4 py-3 font-medium">
-                  Descrição
-                </th>
+                <th class="min-w-80 px-4 py-3 font-medium">Descrição</th>
                 <th class="w-24 px-4 py-3 font-medium">Qtd</th>
                 <th class="w-32 px-4 py-3 font-medium">Venda</th>
                 <th class="w-32 px-4 py-3 font-medium">Custo</th>
@@ -128,28 +149,44 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
               <tr v-for="item in items" :key="item.id" class="align-top">
                 <td class="px-4 py-4">
                   <div class="flex items-center gap-2">
-                    <UTooltip :text="item.source === 'catalog' ? 'Item do catálogo' : 'Item manual'">
+                    <UBadge
+                      v-if="item.category_name"
+                      :label="item.category_name"
+                      color="neutral"
+                      variant="subtle"
+                      size="xs"
+                    />
+                    <UTooltip
+                      :text="
+                        item.source === 'catalog'
+                          ? 'Item do catálogo'
+                          : 'Item manual'
+                      "
+                    >
                       <div
                         class="flex size-6 shrink-0 items-center justify-center rounded-lg"
-                        :class="item.source === 'catalog' ? 'bg-primary/10 text-primary' : 'bg-elevated text-muted'"
+                        :class="
+                          item.source === 'catalog'
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-elevated text-muted'
+                        "
                       >
                         <UIcon
-                          :name="item.source === 'catalog' ? 'i-lucide-package-check' : 'i-lucide-pencil-ruler'"
+                          :name="
+                            item.source === 'catalog'
+                              ? 'i-lucide-package-check'
+                              : 'i-lucide-pencil-ruler'
+                          "
                           class="size-3.5"
                         />
                       </div>
                     </UTooltip>
                     <div class="min-w-0 flex-1">
-                      <div class="flex items-center gap-1.5 mb-1">
-                        <UBadge
-                          v-if="item.category_name"
-                          :label="item.category_name"
-                          color="neutral"
-                          variant="subtle"
-                          size="xs"
-                        />
-                      </div>
-                      <UInput v-model="item.description" placeholder="Descrição do item" class="min-w-0 flex-1 w-full" />
+                      <UInput
+                        v-model="item.description"
+                        placeholder="Descrição do item"
+                        class="min-w-0 flex-1 w-full"
+                      />
                     </div>
                   </div>
                 </td>
@@ -191,7 +228,13 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
                   {{ formatCurrency(getItemTotal(item)) }}
                 </td>
                 <td class="px-4 py-4 text-right">
-                  <UButton icon="i-lucide-trash-2" color="error" variant="ghost" square @click="emit('remove', item.id)" />
+                  <UButton
+                    icon="i-lucide-trash-2"
+                    color="error"
+                    variant="ghost"
+                    square
+                    @click="emit('remove', item.id)"
+                  />
                 </td>
               </tr>
             </tbody>
@@ -207,13 +250,27 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
           >
             <div class="flex items-start justify-between gap-2">
               <div class="flex min-w-0 flex-1 items-center gap-2">
-                <UTooltip :text="item.source === 'catalog' ? 'Item do catálogo' : 'Item manual'">
+                <UTooltip
+                  :text="
+                    item.source === 'catalog'
+                      ? 'Item do catálogo'
+                      : 'Item manual'
+                  "
+                >
                   <div
                     class="flex size-6 shrink-0 items-center justify-center rounded-lg"
-                    :class="item.source === 'catalog' ? 'bg-primary/10 text-primary' : 'bg-elevated text-muted'"
+                    :class="
+                      item.source === 'catalog'
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-elevated text-muted'
+                    "
                   >
                     <UIcon
-                      :name="item.source === 'catalog' ? 'i-lucide-package-check' : 'i-lucide-pencil-ruler'"
+                      :name="
+                        item.source === 'catalog'
+                          ? 'i-lucide-package-check'
+                          : 'i-lucide-pencil-ruler'
+                      "
                       class="size-3.5"
                     />
                   </div>
@@ -227,8 +284,10 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
                     size="xs"
                     class="mb-1"
                   />
-                  <p class="min-w-0 truncate text-sm font-medium text-highlighted">
-                    {{ item.description || item.name || 'Item sem descrição' }}
+                  <p
+                    class="min-w-0 truncate text-sm font-medium text-highlighted"
+                  >
+                    {{ item.description || item.name || "Item sem descrição" }}
                   </p>
                 </div>
               </div>
@@ -244,7 +303,11 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
 
             <div class="mt-3 space-y-3">
               <UFormField label="Descrição">
-                <UInput v-model="item.description" placeholder="Descrição do item" class="w-full" />
+                <UInput
+                  v-model="item.description"
+                  placeholder="Descrição do item"
+                  class="w-full"
+                />
               </UFormField>
 
               <div class="grid grid-cols-3 gap-2">
@@ -276,7 +339,9 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
                     empty-message="Nenhum funcionário responsável"
                     :disabled="!getItemCommissionDetail(item).lines.length"
                   >
-                    <span class="inline-flex cursor-default items-center gap-1 text-xs font-medium text-info">
+                    <span
+                      class="inline-flex cursor-default items-center gap-1 text-xs font-medium text-info"
+                    >
                       Com.: {{ formatCurrency(getItemCommission(item)) }}
                       <UIcon
                         v-if="getItemCommissionDetail(item).lines.length"
@@ -286,7 +351,9 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
                     </span>
                   </ServiceOrdersCommissionBreakdownPopover>
                 </div>
-                <p class="mt-0.5 font-semibold text-highlighted">{{ formatCurrency(getItemTotal(item)) }}</p>
+                <p class="mt-0.5 font-semibold text-highlighted">
+                  {{ formatCurrency(getItemTotal(item)) }}
+                </p>
               </div>
             </div>
           </div>
