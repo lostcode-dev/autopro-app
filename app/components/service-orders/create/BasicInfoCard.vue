@@ -33,6 +33,10 @@ const statusOptions = [
   { label: 'Orçamento', value: 'estimate' },
   { label: 'Aberta', value: 'open' },
   { label: 'Em andamento', value: 'in_progress' },
+  { label: 'Aguard. peça', value: 'waiting_for_part' },
+  { label: 'Concluída', value: 'completed' },
+  { label: 'Entregue', value: 'delivered' },
+  { label: 'Cancelada', value: 'cancelled' }
 ]
 </script>
 
@@ -59,7 +63,7 @@ const statusOptions = [
           </p>
         </UFormField>
 
-        <UFormField label="Status inicial">
+        <UFormField label="Status">
           <USelectMenu
             :model-value="status"
             :items="statusOptions"
