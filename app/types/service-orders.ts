@@ -40,6 +40,19 @@ export type ServiceOrderDetail = {
 
 // ─── Full detail (used in DetailModal) ────────────────────────────────────────
 
+export type ServiceOrderDraftItem = {
+  id: string
+  name: string
+  description: string
+  quantity: number
+  unit_price: number | string
+  cost_price: number | string
+  source: 'manual' | 'catalog'
+  product_id?: string | null
+  category_id?: string | null
+  stored_commission?: number | null
+}
+
 export type ServiceOrderItem = {
   name?: string | null
   description?: string | null

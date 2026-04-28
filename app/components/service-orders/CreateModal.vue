@@ -7,490 +7,302 @@ import {
   STATUS_COLOR,
   STATUS_ICON,
   STATUS_LABEL,
-} from "../../utils/service-orders";
+} from '../../utils/service-orders'
 import type {
+  ServiceOrderDraftItem,
   ServiceOrderItem,
   ServiceOrderRaw,
   ServiceOrderSelectedTax,
-} from "../../types/service-orders";
+} from '../../types/service-orders'
+import type { EmployeeCommissionDisplay } from './create/ResponsiblesCard.vue'
 
 const props = defineProps<{
-  open: boolean;
-  orderToEdit?: ServiceOrderRaw | null;
-}>();
+  open: boolean
+  orderToEdit?: ServiceOrderRaw | null
+}>()
 
 const emit = defineEmits<{
-  "update:open": [v: boolean];
-  created: [];
-  updated: [];
-}>();
+  'update:open': [v: boolean]
+  created: []
+  updated: []
+}>()
 
-interface SelectOption {
-  label: string;
-  value: string;
-}
+interface SelectOption { label: string; value: string }
 
-interface ClientItem {
-  id: string;
-  name: string;
-}
+interface ClientItem { id: string; name: string }
 
 interface VehicleItem {
-  id: string;
-  brand: string | null;
-  model: string | null;
-  license_plate: string | null;
-  client_id?: string | null;
+  id: string
+  brand: string | null
+  model: string | null
+  license_plate: string | null
+  client_id?: string | null
 }
 
 interface EmployeeItem {
-  id: string;
-  name: string;
-  has_commission?: boolean | null;
-  commission_type?: string | null;
-  commission_amount?: number | string | null;
-  commission_base?: string | null;
-  commission_categories?: string[] | null;
-}
-
-interface ProductGroupItem {
-  description?: string | null;
-  quantity: number;
-  cost_price: number;
-  sale_price: number;
-}
-
-interface ProductCatalogItem {
-  id: string;
-  name: string;
-  code: string;
-  type: "unit" | "group";
-  category_id?: string | null;
-  unit_sale_price: number | null;
-  unit_cost_price: number | null;
-  group_items?: ProductGroupItem[] | null;
-}
-
-interface TaxItem {
-  id: string;
-  name: string;
-  type: string;
-  rate: number;
+  id: string
+  name: string
+  has_commission?: boolean | null
+  commission_type?: string | null
+  commission_amount?: number | string | null
+  commission_base?: string | null
+  commission_categories?: string[] | null
 }
 
 interface MasterProductItem {
-  id: string;
-  name: string;
-  description: string | null;
-  notes: string | null;
-}
-
-interface ServiceOrderDraftItem {
   id: string
   name: string
-  description: string
-  quantity: number
-  unit_price: number | string
-  cost_price: number | string
-  source: "manual" | "catalog"
-  product_id?: string | null
-  category_id?: string | null
-  stored_commission?: number | null
+  description: string | null
+  notes: string | null
 }
 
-interface MasterProductEditor {
-  id: string;
-  name: string;
-  description: string;
-  notes: string;
-}
+interface TaxItem { id: string; name: string; type: string; rate: number }
 
 interface FormData {
-  number: string;
-  status: string;
-  client_id: string;
-  vehicle_id: string;
-  master_product_id: string;
-  responsible_employees: string[];
-  entry_date: string | undefined;
-  expected_date: string | undefined;
-  reported_defect: string;
-  diagnosis: string;
-  notes: string;
-  items: ServiceOrderDraftItem[];
-  discount: number | string;
-  apply_taxes: boolean;
-  selected_tax_ids: string[];
-  create_appointment: boolean;
-  appointment_date: string | undefined;
-  appointment_time: string;
-  appointment_priority: string;
-  appointment_notes: string;
+  number: string
+  status: string
+  client_id: string
+  vehicle_id: string
+  master_product_id: string
+  responsible_employees: string[]
+  entry_date: string | undefined
+  expected_date: string | undefined
+  reported_defect: string
+  diagnosis: string
+  notes: string
+  items: ServiceOrderDraftItem[]
+  discount: number | string
+  apply_taxes: boolean
+  selected_tax_ids: string[]
+  create_appointment: boolean
+  appointment_date: string | undefined
+  appointment_time: string
+  appointment_priority: string
+  appointment_notes: string
 }
 
-type CommissionResult = {
-  value: number;
-  hasMatchingItems: boolean;
-};
+type CommissionResult = { value: number; hasMatchingItems: boolean }
 
-const APPOINTMENT_NO_PRIORITY = "none";
+const APPOINTMENT_NO_PRIORITY = 'none'
 
-const statusOptions = [
-  { label: "Orçamento", value: "estimate" },
-  { label: "Aberta", value: "open" },
-  { label: "Em andamento", value: "in_progress" },
-];
+const appointmentPriorityMeta: Record<string, { label: string; icon: string; color: 'neutral' | 'info' | 'warning' }> = {
+  [APPOINTMENT_NO_PRIORITY]: { label: 'Sem prioridade', icon: 'i-lucide-minus', color: 'neutral' },
+  low: { label: 'Baixa', icon: 'i-lucide-arrow-down', color: 'neutral' },
+  medium: { label: 'Média', icon: 'i-lucide-equal', color: 'info' },
+  high: { label: 'Alta', icon: 'i-lucide-arrow-up', color: 'warning' },
+}
 
-const appointmentPriorityOptions = [
-  { label: "Sem prioridade", value: APPOINTMENT_NO_PRIORITY },
-  { label: "Baixa", value: "low" },
-  { label: "Média", value: "medium" },
-  { label: "Alta", value: "high" },
-];
+const toast = useToast()
 
-const appointmentPriorityMeta: Record<
-  string,
-  { label: string; icon: string; color: "neutral" | "info" | "warning" }
-> = {
-  [APPOINTMENT_NO_PRIORITY]: {
-    label: "Sem prioridade",
-    icon: "i-lucide-minus",
-    color: "neutral",
-  },
-  low: { label: "Baixa", icon: "i-lucide-arrow-down", color: "neutral" },
-  medium: { label: "Média", icon: "i-lucide-equal", color: "info" },
-  high: { label: "Alta", icon: "i-lucide-arrow-up", color: "warning" },
-};
+const clientOptions = ref<SelectOption[]>([])
+const vehicleCatalog = ref<VehicleItem[]>([])
+const employeeCatalog = ref<EmployeeItem[]>([])
+const masterProducts = ref<MasterProductItem[]>([])
+const taxesCatalog = ref<TaxItem[]>([])
 
-const toast = useToast();
+const isLoadingOptions = ref(false)
+const isLoadingNextNumber = ref(false)
+const optionsLoaded = ref(false)
+const itemCounter = ref(0)
+let nextNumberRequestId = 0
 
-const clientOptions = ref<SelectOption[]>([]);
-const vehicleCatalog = ref<VehicleItem[]>([]);
-const employeeCatalog = ref<EmployeeItem[]>([]);
-const masterProducts = ref<MasterProductItem[]>([]);
-const taxesCatalog = ref<TaxItem[]>([]);
+// master product modals state
+const masterProductEditorOpen = ref(false)
+const masterProductEditorMode = ref<'create' | 'edit'>('create')
+const masterProductEditorProduct = ref<MasterProductItem | null>(null)
+const masterProductManagerOpen = ref(false)
 
-const isLoadingOptions = ref(false);
-const isLoadingNextNumber = ref(false);
-const optionsLoaded = ref(false);
-const itemCounter = ref(0);
-let nextNumberRequestId = 0;
-
-const showMasterProductEditor = ref(false);
-const showMasterProductManager = ref(false);
-const masterProductMode = ref<"create" | "edit">("create");
-const masterProductSearch = ref("");
-const isSavingMasterProduct = ref(false);
-const isDeletingMasterProduct = ref(false);
-const masterProductPendingDelete = ref<MasterProductItem | null>(null);
-
-const masterProductEditor = reactive<MasterProductEditor>({
-  id: "",
-  name: "",
-  description: "",
-  notes: "",
-});
-
-const isEditMode = computed(() => !!props.orderToEdit?.id);
-
-const modalEyebrow = computed(() =>
-  isEditMode.value ? "Editar Ordem de Serviço" : "Nova Ordem de Serviço",
-);
-
-const submitButtonLabel = computed(() =>
-  isEditMode.value ? "Salvar alterações" : "Criar OS",
-);
+const isEditMode = computed(() => !!props.orderToEdit?.id)
 
 const paymentBadgeStatus = computed(() =>
-  isEditMode.value
-    ? (props.orderToEdit?.payment_status ?? "pending")
-    : "pending",
-);
+  isEditMode.value ? (props.orderToEdit?.payment_status ?? 'pending') : 'pending',
+)
+const paymentBadgeLabel = computed(() => PAYMENT_STATUS_LABEL[paymentBadgeStatus.value] ?? 'Pagamento pendente')
+const paymentBadgeColor = computed(() => PAYMENT_STATUS_COLOR[paymentBadgeStatus.value] ?? 'neutral')
+const paymentBadgeIcon = computed(() => PAYMENT_STATUS_ICON[paymentBadgeStatus.value] ?? 'i-lucide-credit-card')
 
-const paymentBadgeLabel = computed(
-  () => PAYMENT_STATUS_LABEL[paymentBadgeStatus.value] ?? "Pagamento pendente",
-);
-
-const paymentBadgeColor = computed(
-  () => PAYMENT_STATUS_COLOR[paymentBadgeStatus.value] ?? "neutral",
-);
-
-const paymentBadgeIcon = computed(
-  () => PAYMENT_STATUS_ICON[paymentBadgeStatus.value] ?? "i-lucide-credit-card",
-);
+const appointmentPriorityBadge = computed(
+  () => appointmentPriorityMeta[form.appointment_priority] ?? appointmentPriorityMeta[APPOINTMENT_NO_PRIORITY]!,
+)
 
 const form = reactive<FormData>({
-  number: "",
-  status: "estimate",
-  client_id: "",
-  vehicle_id: "",
-  master_product_id: "",
+  number: '',
+  status: 'estimate',
+  client_id: '',
+  vehicle_id: '',
+  master_product_id: '',
   responsible_employees: [],
   entry_date: new Date().toISOString().substring(0, 10),
-  expected_date: "",
-  reported_defect: "",
-  diagnosis: "",
-  notes: "",
+  expected_date: '',
+  reported_defect: '',
+  diagnosis: '',
+  notes: '',
   items: [],
-  discount: "",
+  discount: '',
   apply_taxes: false,
   selected_tax_ids: [],
   create_appointment: false,
-  appointment_date: "",
-  appointment_time: "08:00",
+  appointment_date: '',
+  appointment_time: '08:00',
   appointment_priority: APPOINTMENT_NO_PRIORITY,
-  appointment_notes: "",
-});
+  appointment_notes: '',
+})
 
 function toNumber(value: number | string | null | undefined) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 function roundCurrency(value: number) {
-  return Number(value.toFixed(2));
+  return Number(value.toFixed(2))
 }
 
 function nextItemId() {
-  itemCounter.value += 1;
-  return `draft-item-${itemCounter.value}`;
+  itemCounter.value += 1
+  return `draft-item-${itemCounter.value}`
 }
 
-function createDraftItem(
-  overrides: Partial<ServiceOrderDraftItem> = {},
-): ServiceOrderDraftItem {
+function createDraftItem(overrides: Partial<ServiceOrderDraftItem> = {}): ServiceOrderDraftItem {
   return {
     id: nextItemId(),
-    name: "",
-    description: "",
+    name: '',
+    description: '',
     quantity: 1,
-    unit_price: "",
-    cost_price: "",
-    source: "manual",
+    unit_price: '',
+    cost_price: '',
+    source: 'manual',
     product_id: null,
     category_id: null,
     stored_commission: null,
     ...overrides,
-  };
+  }
 }
 
-function mapOrderItemToDraftItem(item: ServiceOrderItem) {
+function mapOrderItemToDraftItem(item: ServiceOrderItem): ServiceOrderDraftItem {
   return createDraftItem({
-    name: item.name ?? item.description ?? "",
-    description: item.description ?? item.name ?? "",
+    name: item.name ?? item.description ?? '',
+    description: item.description ?? item.name ?? '',
     quantity: toNumber(item.quantity) || 1,
     unit_price: toNumber(item.unit_price),
     cost_price: toNumber(item.cost_price ?? item.cost_amount),
-    source: item.product_id ? "catalog" : "manual",
+    source: item.product_id ? 'catalog' : 'manual',
     product_id: item.product_id ?? null,
     category_id: item.category_id ?? null,
     stored_commission: item.commission_total ?? item.total_commission ?? null,
-  });
+  })
 }
 
 function populateFormFromOrder(order: ServiceOrderRaw) {
-  const selectedTaxes = (order.selected_taxes ??
-    []) as ServiceOrderSelectedTax[];
+  const selectedTaxes = (order.selected_taxes ?? []) as ServiceOrderSelectedTax[]
 
-  form.number = order.number ?? "";
-  form.status = order.status || "estimate";
-  form.client_id = order.client_id ?? "";
-  form.vehicle_id = order.vehicle_id ?? "";
-  form.master_product_id = order.master_product_id ?? "";
+  form.number = order.number ?? ''
+  form.status = order.status || 'estimate'
+  form.client_id = order.client_id ?? ''
+  form.vehicle_id = order.vehicle_id ?? ''
+  form.master_product_id = order.master_product_id ?? ''
   form.responsible_employees = (order.responsible_employees ?? [])
-    .map((responsible: { employee_id: string }) => responsible.employee_id)
-    .filter(Boolean);
-  form.entry_date =
-    order.entry_date ?? new Date().toISOString().substring(0, 10);
-  form.expected_date = order.expected_date ?? "";
-  form.reported_defect = order.reported_defect ?? "";
-  form.diagnosis = order.diagnosis ?? "";
-  form.notes = order.notes ?? "";
-  form.items = (order.items ?? []).map(mapOrderItemToDraftItem);
-  form.discount = order.discount ?? "";
-  form.apply_taxes = Boolean(order.apply_taxes);
-  form.selected_tax_ids = selectedTaxes
-    .map((tax) => tax.tax_id ?? "")
-    .filter(Boolean);
-  form.create_appointment = false;
-  form.appointment_date = "";
-  form.appointment_time = "08:00";
-  form.appointment_priority = APPOINTMENT_NO_PRIORITY;
-  form.appointment_notes = "";
-}
-
-function getProductUnitSale(product: ProductCatalogItem) {
-  if (product.type === "group") {
-    return (product.group_items ?? []).reduce(
-      (total, item) =>
-        total + toNumber(item.sale_price) * toNumber(item.quantity),
-      0,
-    );
-  }
-
-  return toNumber(product.unit_sale_price);
-}
-
-function getProductUnitCost(product: ProductCatalogItem) {
-  if (product.type === "group") {
-    return (product.group_items ?? []).reduce(
-      (total, item) =>
-        total + toNumber(item.cost_price) * toNumber(item.quantity),
-      0,
-    );
-  }
-
-  return toNumber(product.unit_cost_price);
+    .map((r: { employee_id: string }) => r.employee_id)
+    .filter(Boolean)
+  form.entry_date = order.entry_date ?? new Date().toISOString().substring(0, 10)
+  form.expected_date = order.expected_date ?? ''
+  form.reported_defect = order.reported_defect ?? ''
+  form.diagnosis = order.diagnosis ?? ''
+  form.notes = order.notes ?? ''
+  form.items = (order.items ?? []).map(mapOrderItemToDraftItem)
+  form.discount = order.discount ?? ''
+  form.apply_taxes = Boolean(order.apply_taxes)
+  form.selected_tax_ids = selectedTaxes.map(t => t.tax_id ?? '').filter(Boolean)
+  form.create_appointment = false
+  form.appointment_date = ''
+  form.appointment_time = '08:00'
+  form.appointment_priority = APPOINTMENT_NO_PRIORITY
+  form.appointment_notes = ''
 }
 
 function getEmployeeById(employeeId: string) {
-  return (
-    employeeCatalog.value.find((employee) => employee.id === employeeId) ?? null
-  );
+  return employeeCatalog.value.find(e => e.id === employeeId) ?? null
 }
 
 async function loadMasterProducts(force = false) {
-  if (masterProducts.value.length && !force) return;
-
-  const res = await $fetch<{ items: MasterProductItem[] }>(
-    "/api/master-products",
-    {
-      query: { page_size: 500 },
-    },
-  );
-
-  masterProducts.value = res.items ?? [];
+  if (masterProducts.value.length && !force) return
+  const res = await $fetch<{ items: MasterProductItem[] }>('/api/master-products', { query: { page_size: 500 } })
+  masterProducts.value = res.items ?? []
 }
 
 async function loadNextNumber() {
-  const requestId = ++nextNumberRequestId;
-  isLoadingNextNumber.value = true;
-
+  const requestId = ++nextNumberRequestId
+  isLoadingNextNumber.value = true
   try {
-    const res = await $fetch<{ number: string }>(
-      "/api/service-orders/next-number",
-    );
-
-    if (requestId !== nextNumberRequestId || !props.open) return;
-    if (!form.number.trim()) {
-      form.number = res.number ?? "";
-    }
+    const res = await $fetch<{ number: string }>('/api/service-orders/next-number')
+    if (requestId !== nextNumberRequestId || !props.open) return
+    if (!form.number.trim()) form.number = res.number ?? ''
   } catch {
     if (requestId === nextNumberRequestId && props.open) {
-      toast.add({
-        title: "Não foi possível sugerir o número da OS",
-        color: "warning",
-      });
+      toast.add({ title: 'Não foi possível sugerir o número da OS', color: 'warning' })
     }
   } finally {
-    if (requestId === nextNumberRequestId) {
-      isLoadingNextNumber.value = false;
-    }
+    if (requestId === nextNumberRequestId) isLoadingNextNumber.value = false
   }
 }
 
 async function loadOptions() {
-  if (optionsLoaded.value || isLoadingOptions.value) return;
-  isLoadingOptions.value = true;
-
+  if (optionsLoaded.value || isLoadingOptions.value) return
+  isLoadingOptions.value = true
   try {
-    const [
-      clientsRes,
-      vehiclesRes,
-      employeesRes,
-      masterProductsRes,
-      taxesRes,
-    ] = await Promise.all([
-      $fetch<{ items: ClientItem[] }>("/api/clients", {
-        query: { page_size: 500 },
-      }),
-      $fetch<{ items: VehicleItem[] }>("/api/vehicles", {
-        query: { page_size: 500 },
-      }),
-      $fetch<{ items: EmployeeItem[] }>("/api/employees"),
-      $fetch<{ items: MasterProductItem[] }>("/api/master-products", {
-        query: { page_size: 500 },
-      }),
-      $fetch<{ items: TaxItem[] }>("/api/taxes", {
-        query: { page_size: 500, sort_by: "name", sort_order: "asc" },
-      }),
-    ]);
-
-    clientOptions.value = (clientsRes.items ?? []).map((client) => ({
-      label: client.name,
-      value: client.id,
-    }));
-    vehicleCatalog.value = vehiclesRes.items ?? [];
-    employeeCatalog.value = employeesRes.items ?? [];
-    masterProducts.value = masterProductsRes.items ?? [];
-    taxesCatalog.value = taxesRes.items ?? [];
-    optionsLoaded.value = true;
+    const [clientsRes, vehiclesRes, employeesRes, masterProductsRes, taxesRes] = await Promise.all([
+      $fetch<{ items: ClientItem[] }>('/api/clients', { query: { page_size: 500 } }),
+      $fetch<{ items: VehicleItem[] }>('/api/vehicles', { query: { page_size: 500 } }),
+      $fetch<{ items: EmployeeItem[] }>('/api/employees'),
+      $fetch<{ items: MasterProductItem[] }>('/api/master-products', { query: { page_size: 500 } }),
+      $fetch<{ items: TaxItem[] }>('/api/taxes', { query: { page_size: 500, sort_by: 'name', sort_order: 'asc' } }),
+    ])
+    clientOptions.value = (clientsRes.items ?? []).map(c => ({ label: c.name, value: c.id }))
+    vehicleCatalog.value = vehiclesRes.items ?? []
+    employeeCatalog.value = employeesRes.items ?? []
+    masterProducts.value = masterProductsRes.items ?? []
+    taxesCatalog.value = taxesRes.items ?? []
+    optionsLoaded.value = true
   } catch {
-    toast.add({ title: "Erro ao carregar opções", color: "error" });
+    toast.add({ title: 'Erro ao carregar opções', color: 'error' })
   } finally {
-    isLoadingOptions.value = false;
+    isLoadingOptions.value = false
   }
 }
 
+// ─── Computed options ─────────────────────────────────────────────────────────
+
 const vehicleOptions = computed<SelectOption[]>(() => {
   const filtered = form.client_id
-    ? vehicleCatalog.value.filter(
-        (vehicle) => !vehicle.client_id || vehicle.client_id === form.client_id,
-      )
-    : vehicleCatalog.value;
-
-  return filtered.map((vehicle) => ({
-    label:
-      [vehicle.brand, vehicle.model, vehicle.license_plate]
-        .filter(Boolean)
-        .join(" - ") || "—",
-    value: vehicle.id,
-  }));
-});
+    ? vehicleCatalog.value.filter(v => !v.client_id || v.client_id === form.client_id)
+    : vehicleCatalog.value
+  return filtered.map(v => ({
+    label: [v.brand, v.model, v.license_plate].filter(Boolean).join(' - ') || '—',
+    value: v.id,
+  }))
+})
 
 const employeeSelectOptions = computed<SelectOption[]>(() =>
-  employeeCatalog.value.map((employee) => ({
-    label: employee.name,
-    value: employee.id,
-  })),
-);
-
-function getResponsibleSelectOptions(index: number) {
-  const selectedIds = new Set(
-    form.responsible_employees.filter(
-      (selectedId: string, selectedIndex: number) =>
-        selectedIndex !== index && !!selectedId,
-    ),
-  );
-
-  return employeeSelectOptions.value.filter(
-    (option: SelectOption) => !selectedIds.has(option.value),
-  );
-}
+  employeeCatalog.value.map(e => ({ label: e.name, value: e.id })),
+)
 
 const masterProductSelectOptions = computed<SelectOption[]>(() =>
-  masterProducts.value.map((product) => ({
-    label: product.name,
-    value: product.id,
-  })),
-);
+  masterProducts.value.map(p => ({ label: p.name, value: p.id })),
+)
 
 const selectedMasterProduct = computed(
-  () =>
-    masterProducts.value.find(
-      (product) => product.id === form.master_product_id,
-    ) ?? null,
-);
+  () => masterProducts.value.find(p => p.id === form.master_product_id) ?? null,
+)
+
+// ─── Normalized items + totals ────────────────────────────────────────────────
 
 const normalizedItems = computed(() =>
   form.items
-    .map((item) => {
-      const quantity = Math.max(toNumber(item.quantity), 0);
-      const unitPrice = Math.max(toNumber(item.unit_price), 0);
-      const costPrice = Math.max(toNumber(item.cost_price), 0);
-      const description = item.description.trim() || item.name.trim();
-      const name = item.name.trim() || description;
-
+    .map(item => {
+      const quantity = Math.max(toNumber(item.quantity), 0)
+      const unitPrice = Math.max(toNumber(item.unit_price), 0)
+      const costPrice = Math.max(toNumber(item.cost_price), 0)
+      const description = item.description.trim() || item.name.trim()
+      const name = item.name.trim() || description
       return {
         id: item.id,
         name,
@@ -501,134 +313,112 @@ const normalizedItems = computed(() =>
         cost_price: costPrice,
         product_id: item.product_id || null,
         category_id: item.category_id || null,
-      };
+      }
     })
-    .filter((item) => item.description && item.quantity > 0),
-);
+    .filter(item => item.description && item.quantity > 0),
+)
 
 const subtotal = computed(() =>
   normalizedItems.value.reduce((total, item) => total + item.total_price, 0),
-);
+)
 
 const totalCost = computed(() =>
-  normalizedItems.value.reduce(
-    (total, item) => total + item.cost_price * item.quantity,
-    0,
-  ),
-);
+  normalizedItems.value.reduce((total, item) => total + item.cost_price * item.quantity, 0),
+)
 
-const discountValue = computed(() => Math.max(toNumber(form.discount), 0));
+const discountValue = computed(() => Math.max(toNumber(form.discount), 0))
 
-const totalAmount = computed(() =>
-  Math.max(subtotal.value - discountValue.value, 0),
-);
+const totalAmount = computed(() => Math.max(subtotal.value - discountValue.value, 0))
 
 const selectedTaxes = computed(() => {
-  if (!form.apply_taxes) return [];
-
+  if (!form.apply_taxes) return []
   return taxesCatalog.value
-    .filter((tax) => form.selected_tax_ids.includes(tax.id))
-    .map((tax) => ({
+    .filter(tax => form.selected_tax_ids.includes(tax.id))
+    .map(tax => ({
       tax_id: tax.id,
       name: tax.name,
       type: tax.type,
       rate: toNumber(tax.rate),
       calculated_amount: (totalAmount.value * toNumber(tax.rate)) / 100,
-    }));
-});
+    }))
+})
 
 const totalTaxesAmount = computed(() =>
   selectedTaxes.value.reduce((total, tax) => total + tax.calculated_amount, 0),
-);
+)
+
+// ─── Commission calculation ───────────────────────────────────────────────────
 
 type ItemCommissionEntry = { total: number; commissions: { employee_id: string; amount: number }[] }
 
 const itemCommissionDetail = computed(() => {
-  const detail = new Map<string, ItemCommissionEntry>();
-  const items = normalizedItems.value;
-  const allItemsSale = subtotal.value;
+  const detail = new Map<string, ItemCommissionEntry>()
+  const items = normalizedItems.value
+  const allItemsSale = subtotal.value
 
-  items.forEach((item) => detail.set(item.id, { total: 0, commissions: [] }));
+  items.forEach(item => detail.set(item.id, { total: 0, commissions: [] }))
 
   form.responsible_employees
-    .map((employeeId) => getEmployeeById(employeeId))
-    .filter((employee): employee is EmployeeItem => !!employee?.id)
-    .forEach((employee) => {
-      if (!employee.has_commission) return;
+    .map(id => getEmployeeById(id))
+    .filter((emp): emp is EmployeeItem => !!emp?.id)
+    .forEach(employee => {
+      if (!employee.has_commission) return
 
-      const commissionCategories = employee.commission_categories ?? [];
+      const commissionCategories = employee.commission_categories ?? []
       const eligibleItems = commissionCategories.length
-        ? items.filter(
-            (item) =>
-              !item.category_id ||
-              commissionCategories.includes(item.category_id),
-          )
-        : items;
+        ? items.filter(item => !item.category_id || commissionCategories.includes(item.category_id))
+        : items
 
-      if (!eligibleItems.length) return;
+      if (!eligibleItems.length) return
 
-      const commissionAmount = toNumber(employee.commission_amount);
-      const eligibleSale = eligibleItems.reduce(
-        (total, item) => total + item.total_price,
-        0,
-      );
-      const eligibleRatio = allItemsSale > 0 ? eligibleSale / allItemsSale : 0;
-      const eligibleDiscount = discountValue.value * eligibleRatio;
-      const eligibleTaxes = totalTaxesAmount.value * eligibleRatio;
+      const commissionAmount = toNumber(employee.commission_amount)
+      const eligibleSale = eligibleItems.reduce((total, item) => total + item.total_price, 0)
+      const eligibleRatio = allItemsSale > 0 ? eligibleSale / allItemsSale : 0
+      const eligibleDiscount = discountValue.value * eligibleRatio
+      const eligibleTaxes = totalTaxesAmount.value * eligibleRatio
 
-      if (employee.commission_type === "percentage") {
-        eligibleItems.forEach((item) => {
-          const fraction =
-            eligibleSale > 0 ? item.total_price / eligibleSale : 0;
-          const itemDiscount = eligibleDiscount * fraction;
-          const itemTaxes = eligibleTaxes * fraction;
-          let itemBase = item.total_price - itemDiscount;
+      if (employee.commission_type === 'percentage') {
+        eligibleItems.forEach(item => {
+          const fraction = eligibleSale > 0 ? item.total_price / eligibleSale : 0
+          const itemDiscount = eligibleDiscount * fraction
+          const itemTaxes = eligibleTaxes * fraction
+          let itemBase = item.total_price - itemDiscount
 
-          if (employee.commission_base === "profit") {
-            itemBase = Math.max(
-              0,
-              itemBase - item.cost_price * item.quantity - itemTaxes,
-            );
+          if (employee.commission_base === 'profit') {
+            itemBase = Math.max(0, itemBase - item.cost_price * item.quantity - itemTaxes)
           }
 
-          const amount = roundCurrency((itemBase * commissionAmount) / 100);
-          const entry = detail.get(item.id)!;
-          entry.total = roundCurrency(entry.total + amount);
-          if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount });
-        });
-        return;
+          const amount = roundCurrency((itemBase * commissionAmount) / 100)
+          const entry = detail.get(item.id)!
+          entry.total = roundCurrency(entry.total + amount)
+          if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount })
+        })
+        return
       }
 
-      const perItemValue = roundCurrency(
-        commissionAmount / eligibleItems.length,
-      );
-      const distributedTotal = roundCurrency(
-        perItemValue * eligibleItems.length,
-      );
-      const remainder = roundCurrency(commissionAmount - distributedTotal);
+      const perItemValue = roundCurrency(commissionAmount / eligibleItems.length)
+      const distributedTotal = roundCurrency(perItemValue * eligibleItems.length)
+      const remainder = roundCurrency(commissionAmount - distributedTotal)
 
       eligibleItems.forEach((item, index) => {
-        const amount =
-          index === 0 ? roundCurrency(perItemValue + remainder) : perItemValue;
-        const entry = detail.get(item.id)!;
-        entry.total = roundCurrency(entry.total + amount);
-        if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount });
-      });
-    });
+        const amount = index === 0 ? roundCurrency(perItemValue + remainder) : perItemValue
+        const entry = detail.get(item.id)!
+        entry.total = roundCurrency(entry.total + amount)
+        if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount })
+      })
+    })
 
-  return detail;
-});
+  return detail
+})
 
 const itemCommissionMap = computed(() => {
-  const map = new Map<string, number>();
-  for (const [itemId, { total }] of itemCommissionDetail.value) {
-    map.set(itemId, total);
-  }
-  return map;
-});
+  const map = new Map<string, number>()
+  for (const [itemId, { total }] of itemCommissionDetail.value) map.set(itemId, total)
+  return map
+})
 
 const normalizedItemsWithCommission = computed(() =>
-  normalizedItems.value.map((item) => {
+  normalizedItems.value.map(item => {
     const { id: _id, ...itemWithoutId } = item
     const detail = itemCommissionDetail.value.get(item.id)
     const commissionTotal = detail?.total ?? 0
@@ -640,72 +430,47 @@ const normalizedItemsWithCommission = computed(() =>
       cost_amount: item.cost_price,
       commission_total: commissionTotal,
       total_commission: commissionTotal,
-      commissions: detail?.commissions ?? []
+      commissions: detail?.commissions ?? [],
     }
-  })
+  }),
 )
 
-function getItemCommission(itemId: string) {
-  const computed = itemCommissionMap.value.get(itemId) ?? 0
-  if (computed > 0) return computed
-  const draftItem = form.items.find(i => i.id === itemId)
-  return draftItem?.stored_commission ?? 0
-}
+function computeResponsibleCommission(employee: EmployeeItem | null): CommissionResult {
+  if (!employee?.has_commission) return { value: 0, hasMatchingItems: true }
 
-function computeResponsibleCommission(
-  employee: EmployeeItem | null,
-): CommissionResult {
-  if (!employee?.has_commission) {
-    return { value: 0, hasMatchingItems: true };
-  }
-
-  const commissionCategories = employee.commission_categories ?? [];
-  let baseAmount = totalAmount.value;
-  let costAmount = totalCost.value;
-  let hasMatchingItems = true;
+  const commissionCategories = employee.commission_categories ?? []
+  let baseAmount = totalAmount.value
+  let costAmount = totalCost.value
+  let hasMatchingItems = true
 
   if (commissionCategories.length > 0) {
-    let matchingSale = 0;
-    let matchingCost = 0;
-
-    normalizedItems.value.forEach((item) => {
+    let matchingSale = 0
+    let matchingCost = 0
+    normalizedItems.value.forEach(item => {
       if (!item.category_id || commissionCategories.includes(item.category_id)) {
-        matchingSale += item.total_price;
-        matchingCost += item.cost_price * item.quantity;
+        matchingSale += item.total_price
+        matchingCost += item.cost_price * item.quantity
       }
-    });
-
-    const ratio = subtotal.value > 0 ? matchingSale / subtotal.value : 0;
-    const proportionalDiscount = discountValue.value * ratio;
-    const proportionalTaxes = totalTaxesAmount.value * ratio;
-
-    baseAmount = Math.max(matchingSale - proportionalDiscount, 0);
-    costAmount = matchingCost + proportionalTaxes;
-    hasMatchingItems = matchingSale > 0;
+    })
+    const ratio = subtotal.value > 0 ? matchingSale / subtotal.value : 0
+    baseAmount = Math.max(matchingSale - discountValue.value * ratio, 0)
+    costAmount = matchingCost + totalTaxesAmount.value * ratio
+    hasMatchingItems = matchingSale > 0
   } else {
-    costAmount = totalCost.value + totalTaxesAmount.value;
+    costAmount = totalCost.value + totalTaxesAmount.value
   }
 
-  if (employee.commission_base === "profit") {
-    baseAmount = Math.max(baseAmount - costAmount, 0);
-  }
+  if (employee.commission_base === 'profit') baseAmount = Math.max(baseAmount - costAmount, 0)
 
-  const commissionAmount = toNumber(employee.commission_amount);
-  let value = 0;
-
-  if (employee.commission_type === "percentage") {
-    value = (baseAmount * commissionAmount) / 100;
+  const commissionAmount = toNumber(employee.commission_amount)
+  let value = 0
+  if (employee.commission_type === 'percentage') {
+    value = (baseAmount * commissionAmount) / 100
   } else {
-    value =
-      commissionCategories.length > 0 && !hasMatchingItems
-        ? 0
-        : commissionAmount;
+    value = commissionCategories.length > 0 && !hasMatchingItems ? 0 : commissionAmount
   }
 
-  return {
-    value: Number(value.toFixed(2)),
-    hasMatchingItems,
-  };
+  return { value: Number(value.toFixed(2)), hasMatchingItems }
 }
 
 const storedCommissionByEmployee = computed(() => {
@@ -731,437 +496,264 @@ const totalCommissionAmount = computed(() =>
     const fresh = computeResponsibleCommission(employee).value
     if (fresh > 0) return total + fresh
     return total + getStoredCommissionForEmployee(employeeId)
-  }, 0)
+  }, 0),
 )
 
 const estimatedProfit = computed(
-  () =>
-    totalAmount.value -
-    totalCost.value -
-    totalTaxesAmount.value -
-    totalCommissionAmount.value,
-);
+  () => totalAmount.value - totalCost.value - totalTaxesAmount.value - totalCommissionAmount.value,
+)
 
-const appointmentPriorityBadge = computed(
-  () =>
-    appointmentPriorityMeta[form.appointment_priority] ??
-    appointmentPriorityMeta[APPOINTMENT_NO_PRIORITY],
-);
+// ─── Employee commission display (for ResponsiblesCard) ───────────────────────
 
-const filteredMasterProducts = computed(() => {
-  const term = masterProductSearch.value.trim().toLowerCase();
-  if (!term) return masterProducts.value;
+const employeeCommissionsDisplay = computed<Record<string, EmployeeCommissionDisplay>>(() => {
+  const result: Record<string, EmployeeCommissionDisplay> = {}
+  for (const employeeId of form.responsible_employees) {
+    if (!employeeId) continue
+    const employee = getEmployeeById(employeeId)
+    const fresh = computeResponsibleCommission(employee)
+    const stored = getStoredCommissionForEmployee(employeeId)
+    const commissionValue = fresh.value > 0 ? fresh.value : stored
 
-  return masterProducts.value.filter((product) =>
-    [product.name, product.description ?? "", product.notes ?? ""]
-      .join(" ")
-      .toLowerCase()
-      .includes(term),
-  );
-});
-
-const isMasterProductDeleteModalOpen = computed({
-  get: () => !!masterProductPendingDelete.value,
-  set: (value: boolean) => {
-    if (!value && !isDeletingMasterProduct.value) {
-      masterProductPendingDelete.value = null;
+    let rateLabel: string | null = null
+    if (employee?.has_commission && employee.commission_amount != null) {
+      rateLabel = employee.commission_type === 'percentage'
+        ? `${toNumber(employee.commission_amount)}%`
+        : formatCurrency(employee.commission_amount)
     }
-  },
-});
 
-function getItemTotal(item: ServiceOrderDraftItem) {
-  return (
-    Math.max(toNumber(item.quantity), 0) *
-    Math.max(toNumber(item.unit_price), 0)
-  );
-}
+    const baseLabel = employee ? (employee.commission_base === 'profit' ? 'Base: lucro' : 'Base: faturamento') : null
 
-function setItemQuantity(item: ServiceOrderDraftItem, value: string | number) {
-  const nextValue = Number(value);
-  item.quantity = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 0;
-}
+    let note: EmployeeCommissionDisplay['note'] = null
+    if (employee && !employee.has_commission) {
+      note = { label: 'Sem comissão', color: 'neutral', icon: 'i-lucide-circle-off' }
+    } else if (employee?.commission_categories?.length && !fresh.hasMatchingItems) {
+      note = { label: 'Sem itens nas categorias', color: 'warning', icon: 'i-lucide-triangle-alert' }
+    }
+
+    result[employeeId] = {
+      commissionLabel: formatCurrency(commissionValue),
+      rateLabel,
+      baseLabel,
+      note,
+      hasInfo: !!employee || stored > 0,
+    }
+  }
+  return result
+})
+
+// ─── Item actions ─────────────────────────────────────────────────────────────
 
 function addManualItem() {
-  form.items.push(createDraftItem());
+  form.items.push(createDraftItem())
+}
+
+interface ProductGroupItem { description?: string | null; quantity: number; cost_price: number; sale_price: number }
+interface ProductCatalogItem {
+  id: string; name: string; type: 'unit' | 'group'; category_id?: string | null
+  unit_sale_price: number | null; unit_cost_price: number | null
+  group_items?: ProductGroupItem[] | null
 }
 
 function addProductItem(product: ProductCatalogItem) {
   if (product.type === 'group' && product.group_items?.length) {
     for (const groupItem of product.group_items) {
-      form.items.push(
-        createDraftItem({
-          name: groupItem.description || product.name,
-          description: groupItem.description || product.name,
-          quantity: toNumber(groupItem.quantity) || 1,
-          unit_price: toNumber(groupItem.sale_price),
-          cost_price: toNumber(groupItem.cost_price),
-          source: 'catalog',
-          product_id: product.id,
-          category_id: product.category_id ?? null
-        })
-      )
-    }
-  } else {
-    form.items.push(
-      createDraftItem({
-        name: product.name,
-        description: product.name,
-        quantity: 1,
-        unit_price: getProductUnitSale(product),
-        cost_price: getProductUnitCost(product),
+      form.items.push(createDraftItem({
+        name: groupItem.description || product.name,
+        description: groupItem.description || product.name,
+        quantity: toNumber(groupItem.quantity) || 1,
+        unit_price: toNumber(groupItem.sale_price),
+        cost_price: toNumber(groupItem.cost_price),
         source: 'catalog',
         product_id: product.id,
-        category_id: product.category_id ?? null
-      })
-    )
+        category_id: product.category_id ?? null,
+      }))
+    }
+  } else {
+    form.items.push(createDraftItem({
+      name: product.name,
+      description: product.name,
+      quantity: 1,
+      unit_price: toNumber(product.unit_sale_price),
+      cost_price: toNumber(product.unit_cost_price),
+      source: 'catalog',
+      product_id: product.id,
+      category_id: product.category_id ?? null,
+    }))
   }
 }
 
 function removeItem(itemId: string) {
-  form.items = form.items.filter((item) => item.id !== itemId);
+  form.items = form.items.filter(item => item.id !== itemId)
 }
+
+function setItemQuantity(item: ServiceOrderDraftItem, value: string | number) {
+  const nextValue = Number(value)
+  item.quantity = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 0
+}
+
+// ─── Responsible actions ──────────────────────────────────────────────────────
 
 function addResponsible() {
   if (
-    employeeCatalog.value.length > 0 &&
-    form.responsible_employees.filter(Boolean).length >=
-      employeeCatalog.value.length
+    employeeCatalog.value.length > 0
+    && form.responsible_employees.filter(Boolean).length >= employeeCatalog.value.length
   ) {
-    toast.add({
-      title: "Todos os responsáveis já foram adicionados",
-      color: "warning",
-    });
-    return;
+    toast.add({ title: 'Todos os responsáveis já foram adicionados', color: 'warning' })
+    return
   }
-
-  form.responsible_employees.push("");
+  form.responsible_employees.push('')
 }
 
 function updateResponsible(index: number, employeeId: string) {
-  if (
-    employeeId &&
-    form.responsible_employees.some(
-      (selectedId: string, selectedIndex: number) =>
-        selectedIndex !== index && selectedId === employeeId,
-    )
-  ) {
-    toast.add({
-      title: "Responsável já selecionado",
-      description: "Escolha outro funcionário para esta OS.",
-      color: "warning",
-    });
-    return;
+  if (employeeId && form.responsible_employees.some((id, i) => i !== index && id === employeeId)) {
+    toast.add({ title: 'Responsável já selecionado', description: 'Escolha outro funcionário para esta OS.', color: 'warning' })
+    return
   }
-
-  form.responsible_employees[index] = employeeId;
-}
-
-function getResponsibleCommissionLabel(employeeId: string) {
-  const fresh = computeResponsibleCommission(getEmployeeById(employeeId)).value
-  if (fresh > 0) return formatCurrency(fresh)
-  return formatCurrency(getStoredCommissionForEmployee(employeeId))
-}
-
-function getResponsibleRateLabel(employeeId: string) {
-  const employee = getEmployeeById(employeeId);
-  if (!employee?.has_commission) return null;
-
-  return employee.commission_type === "percentage"
-    ? `${toNumber(employee.commission_amount)}%`
-    : formatCurrency(employee.commission_amount);
-}
-
-function getResponsibleBaseLabel(employeeId: string) {
-  const employee = getEmployeeById(employeeId);
-  if (!employee) return null;
-
-  return employee.commission_base === "profit"
-    ? "Base: lucro"
-    : "Base: faturamento";
-}
-
-function getResponsibleCommissionNote(employeeId: string) {
-  const employee = getEmployeeById(employeeId);
-  if (!employee) return null;
-  if (!employee.has_commission) {
-    return {
-      label: "Sem comissão",
-      color: "neutral" as const,
-      icon: "i-lucide-circle-off",
-    };
-  }
-
-  const commission = computeResponsibleCommission(employee);
-  if (employee.commission_categories?.length && !commission.hasMatchingItems) {
-    return {
-      label: "Sem itens nas categorias",
-      color: "warning" as const,
-      icon: "i-lucide-triangle-alert",
-    };
-  }
-
-  return null;
+  form.responsible_employees[index] = employeeId
 }
 
 function removeResponsible(index: number) {
-  form.responsible_employees.splice(index, 1);
+  form.responsible_employees.splice(index, 1)
 }
 
-function toggleTax(taxId: string) {
-  if (form.selected_tax_ids.includes(taxId)) {
-    form.selected_tax_ids = form.selected_tax_ids.filter((id) => id !== taxId);
-    return;
-  }
+// ─── Master product handlers ──────────────────────────────────────────────────
 
-  form.selected_tax_ids.push(taxId);
+function openMasterProductCreate() {
+  masterProductEditorMode.value = 'create'
+  masterProductEditorProduct.value = null
+  masterProductManagerOpen.value = false
+  masterProductEditorOpen.value = true
 }
 
-function resetMasterProductEditor(product?: MasterProductItem | null) {
-  masterProductEditor.id = product?.id ?? "";
-  masterProductEditor.name = product?.name ?? "";
-  masterProductEditor.description = product?.description ?? "";
-  masterProductEditor.notes = product?.notes ?? "";
+function openMasterProductEdit(product: MasterProductItem) {
+  masterProductEditorMode.value = 'edit'
+  masterProductEditorProduct.value = product
+  masterProductManagerOpen.value = false
+  masterProductEditorOpen.value = true
 }
 
-async function openCreateMasterProduct() {
-  masterProductMode.value = "create";
-  resetMasterProductEditor(null);
-  showMasterProductManager.value = false;
-  await nextTick();
-  showMasterProductEditor.value = true;
-}
-
-async function openEditMasterProduct(product: MasterProductItem) {
-  masterProductMode.value = "edit";
-  resetMasterProductEditor(product);
-  showMasterProductManager.value = false;
-  await nextTick();
-  showMasterProductEditor.value = true;
-}
-
-async function saveMasterProduct() {
-  if (isSavingMasterProduct.value) return;
-  if (!masterProductEditor.name.trim()) {
-    toast.add({
-      title: "Nome do produto master é obrigatório",
-      color: "warning",
-    });
-    return;
-  }
-
-  isSavingMasterProduct.value = true;
-  try {
-    const body = {
-      name: masterProductEditor.name.trim(),
-      description: masterProductEditor.description.trim() || null,
-      notes: masterProductEditor.notes.trim() || null,
-    };
-
-    const response =
-      masterProductMode.value === "create"
-        ? await $fetch<{ item: MasterProductItem }>("/api/master-products", {
-            method: "POST",
-            body,
-          })
-        : await $fetch<{ item: MasterProductItem }>(
-            `/api/master-products/${masterProductEditor.id}`,
-            {
-              method: "PUT",
-              body,
-            },
-          );
-
-    await loadMasterProducts(true);
-    form.master_product_id = response.item.id;
-    showMasterProductEditor.value = false;
-    toast.add({
-      title:
-        masterProductMode.value === "create"
-          ? "Produto master criado"
-          : "Produto master atualizado",
-      color: "success",
-    });
-  } catch (error: unknown) {
-    const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
-    toast.add({
-      title: "Erro ao salvar produto master",
-      description:
-        err?.data?.statusMessage || err?.statusMessage || "Tente novamente.",
-      color: "error",
-    });
-  } finally {
-    isSavingMasterProduct.value = false;
+async function onMasterProductSaved(product: MasterProductItem) {
+  await loadMasterProducts(true)
+  if (masterProductEditorMode.value === 'create') {
+    form.master_product_id = product.id
   }
 }
 
-async function confirmDeleteMasterProduct() {
-  if (!masterProductPendingDelete.value || isDeletingMasterProduct.value)
-    return;
-  isDeletingMasterProduct.value = true;
-
-  try {
-    await $fetch(
-      `/api/master-products/${masterProductPendingDelete.value.id}`,
-      { method: "DELETE" },
-    );
-    if (form.master_product_id === masterProductPendingDelete.value.id) {
-      form.master_product_id = "";
-    }
-    await loadMasterProducts(true);
-    toast.add({ title: "Produto master removido", color: "success" });
-    masterProductPendingDelete.value = null;
-  } catch (error: unknown) {
-    const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
-    toast.add({
-      title: "Erro ao remover produto master",
-      description:
-        err?.data?.statusMessage || err?.statusMessage || "Tente novamente.",
-      color: "error",
-    });
-  } finally {
-    isDeletingMasterProduct.value = false;
-  }
+async function onMasterProductDeleted(id: string) {
+  await loadMasterProducts(true)
+  if (form.master_product_id === id) form.master_product_id = ''
 }
 
-function resetForm() {
-  itemCounter.value = 0;
-  masterProductSearch.value = "";
-  form.number = "";
-  form.status = "estimate";
-  form.client_id = "";
-  form.vehicle_id = "";
-  form.master_product_id = "";
-  form.responsible_employees = [];
-  form.entry_date = new Date().toISOString().substring(0, 10);
-  form.expected_date = "";
-  form.reported_defect = "";
-  form.diagnosis = "";
-  form.notes = "";
-  form.items = [];
-  form.discount = "";
-  form.apply_taxes = false;
-  form.selected_tax_ids = [];
-  form.create_appointment = false;
-  form.appointment_date = "";
-  form.appointment_time = "08:00";
-  form.appointment_priority = APPOINTMENT_NO_PRIORITY;
-  form.appointment_notes = "";
-}
+// ─── Watchers ─────────────────────────────────────────────────────────────────
 
 watch(
   () => props.open,
   (opened) => {
     if (opened) {
-      resetForm();
-      loadOptions();
+      resetForm()
+      loadOptions()
       if (isEditMode.value && props.orderToEdit) {
-        populateFormFromOrder(props.orderToEdit);
+        populateFormFromOrder(props.orderToEdit)
       } else {
-        loadNextNumber();
+        loadNextNumber()
       }
     } else {
-      nextNumberRequestId += 1;
-      isLoadingNextNumber.value = false;
+      nextNumberRequestId += 1
+      isLoadingNextNumber.value = false
     }
   },
-);
+)
 
 watch(
   () => form.client_id,
   (clientId) => {
-    if (!form.vehicle_id) return;
+    if (!form.vehicle_id) return
     const matchesVehicle = vehicleCatalog.value.some(
-      (vehicle) =>
-        vehicle.id === form.vehicle_id &&
-        (!clientId || !vehicle.client_id || vehicle.client_id === clientId),
-    );
-
-    if (!matchesVehicle) {
-      form.vehicle_id = "";
-    }
+      v => v.id === form.vehicle_id && (!clientId || !v.client_id || v.client_id === clientId),
+    )
+    if (!matchesVehicle) form.vehicle_id = ''
   },
-);
+)
 
 watch(
   () => form.create_appointment,
   (enabled) => {
-    if (!enabled) return;
-    if (!form.appointment_date) form.appointment_date = form.entry_date;
-    if (!form.appointment_time) form.appointment_time = "08:00";
+    if (!enabled) return
+    if (!form.appointment_date) form.appointment_date = form.entry_date
+    if (!form.appointment_time) form.appointment_time = '08:00'
   },
-);
+)
 
-const isSaving = ref(false);
+// ─── Form reset ───────────────────────────────────────────────────────────────
+
+function resetForm() {
+  itemCounter.value = 0
+  form.number = ''
+  form.status = 'estimate'
+  form.client_id = ''
+  form.vehicle_id = ''
+  form.master_product_id = ''
+  form.responsible_employees = []
+  form.entry_date = new Date().toISOString().substring(0, 10)
+  form.expected_date = ''
+  form.reported_defect = ''
+  form.diagnosis = ''
+  form.notes = ''
+  form.items = []
+  form.discount = ''
+  form.apply_taxes = false
+  form.selected_tax_ids = []
+  form.create_appointment = false
+  form.appointment_date = ''
+  form.appointment_time = '08:00'
+  form.appointment_priority = APPOINTMENT_NO_PRIORITY
+  form.appointment_notes = ''
+}
+
+// ─── Submit ───────────────────────────────────────────────────────────────────
+
+const isSaving = ref(false)
 
 async function submit() {
-  if (isSaving.value) return;
+  if (isSaving.value) return
 
   if (!isEditMode.value && form.create_appointment) {
     if (!form.client_id) {
-      toast.add({
-        title: "Selecione um cliente para agendar",
-        color: "warning",
-      });
-      return;
+      toast.add({ title: 'Selecione um cliente para agendar', color: 'warning' })
+      return
     }
     if (!form.vehicle_id) {
-      toast.add({
-        title: "Selecione um veículo para agendar",
-        color: "warning",
-      });
-      return;
+      toast.add({ title: 'Selecione um veículo para agendar', color: 'warning' })
+      return
     }
     if (!form.appointment_date) {
-      toast.add({
-        title: "Data do agendamento é obrigatória",
-        color: "warning",
-      });
-      return;
+      toast.add({ title: 'Data do agendamento é obrigatória', color: 'warning' })
+      return
     }
     if (!form.appointment_time) {
-      toast.add({
-        title: "Horário do agendamento é obrigatório",
-        color: "warning",
-      });
-      return;
+      toast.add({ title: 'Horário do agendamento é obrigatório', color: 'warning' })
+      return
     }
   }
 
-  isSaving.value = true;
-
+  isSaving.value = true
   try {
-    interface CreateResponse {
-      duplicateNumber?: boolean;
-      suggestedNumber?: string;
-    }
+    interface CreateResponse { duplicateNumber?: boolean; suggestedNumber?: string }
 
-    const res = await $fetch<CreateResponse>("/api/service-orders", {
-      method: "POST",
+    const res = await $fetch<CreateResponse>('/api/service-orders', {
+      method: 'POST',
       body: {
         orderId: isEditMode.value ? props.orderToEdit?.id : undefined,
         orderData: {
           number: form.number || undefined,
           status: form.status,
-          payment_status: isEditMode.value
-            ? (props.orderToEdit?.payment_status ?? "pending")
-            : "pending",
+          payment_status: isEditMode.value ? (props.orderToEdit?.payment_status ?? 'pending') : 'pending',
           client_id: form.client_id || null,
           vehicle_id: form.vehicle_id || null,
           master_product_id: form.master_product_id || null,
-          appointment_id: isEditMode.value
-            ? (props.orderToEdit?.appointment_id ?? null)
-            : null,
-          responsible_employees: form.responsible_employees
-            .filter(Boolean)
-            .map((id) => ({ employee_id: id })),
-          entry_date:
-            form.entry_date || new Date().toISOString().substring(0, 10),
+          appointment_id: isEditMode.value ? (props.orderToEdit?.appointment_id ?? null) : null,
+          responsible_employees: form.responsible_employees.filter(Boolean).map(id => ({ employee_id: id })),
+          entry_date: form.entry_date || new Date().toISOString().substring(0, 10),
           expected_date: form.expected_date || null,
           reported_defect: form.reported_defect || null,
           diagnosis: form.diagnosis || null,
@@ -1175,57 +767,37 @@ async function submit() {
           discount: discountValue.value,
           commission_amount: totalCommissionAmount.value,
         },
-        appointmentData:
-          !isEditMode.value && form.create_appointment
-            ? {
-                appointment_date: form.appointment_date,
-                time: form.appointment_time,
-                service_type: form.reported_defect || "Serviço da OS",
-                priority:
-                  form.appointment_priority !== APPOINTMENT_NO_PRIORITY
-                    ? form.appointment_priority
-                    : null,
-                notes: form.appointment_notes || null,
-              }
-            : null,
+        appointmentData: !isEditMode.value && form.create_appointment
+          ? {
+              appointment_date: form.appointment_date,
+              time: form.appointment_time,
+              service_type: form.reported_defect || 'Serviço da OS',
+              priority: form.appointment_priority !== APPOINTMENT_NO_PRIORITY ? form.appointment_priority : null,
+              notes: form.appointment_notes || null,
+            }
+          : null,
       },
-    });
+    })
 
     if (res?.duplicateNumber) {
-      toast.add({
-        title: "Número já existe",
-        description: `Sugestão: ${res.suggestedNumber}`,
-        color: "warning",
-      });
-      form.number = res.suggestedNumber ?? "";
-      return;
+      toast.add({ title: 'Número já existe', description: `Sugestão: ${res.suggestedNumber}`, color: 'warning' })
+      form.number = res.suggestedNumber ?? ''
+      return
     }
 
-    toast.add({
-      title: isEditMode.value
-        ? "OS atualizada com sucesso"
-        : "OS criada com sucesso",
-      color: "success",
-    });
-    emit("update:open", false);
-    if (isEditMode.value) {
-      emit("updated");
-    } else {
-      emit("created");
-    }
+    toast.add({ title: isEditMode.value ? 'OS atualizada com sucesso' : 'OS criada com sucesso', color: 'success' })
+    emit('update:open', false)
+    if (isEditMode.value) emit('updated')
+    else emit('created')
   } catch (error: unknown) {
-    const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
     toast.add({
-      title: isEditMode.value ? "Erro ao atualizar OS" : "Erro ao criar OS",
-      description:
-        err?.data?.statusMessage || err?.statusMessage || "Tente novamente.",
-      color: "error",
-    });
+      title: isEditMode.value ? 'Erro ao atualizar OS' : 'Erro ao criar OS',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
+      color: 'error',
+    })
   } finally {
-    isSaving.value = false;
+    isSaving.value = false
   }
 }
 </script>
@@ -1235,35 +807,26 @@ async function submit() {
     :open="open"
     :ui="{
       overlay: 'bg-default/90 backdrop-blur-sm',
-      content:
-        'max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden sm:max-h-[100dvh] max-h-[100dvh] ',
+      content: 'max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden sm:max-h-[100dvh] max-h-[100dvh]',
       header: 'p-0 shrink-0 border-b border-default',
       body: 'flex-1 min-h-0 overflow-y-auto p-0',
-      footer:
-        'p-0 shrink-0 border-t border-default bg-default/95 backdrop-blur',
+      footer: 'p-0 shrink-0 border-t border-default bg-default/95 backdrop-blur',
     }"
     @update:open="emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex justify-between gap-4 p-4 lg:px-6 lg:py-5 w-full">
+      <div class="flex w-full justify-between gap-4 p-4 lg:px-6 lg:py-5">
         <div class="min-w-0 flex-1 space-y-4">
-          <div
-            class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"
-          >
+          <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
             <div class="space-y-1.5">
-              <p
-                class="font-semibold uppercase tracking-[0.22em] text-primary/80"
-              >
-                {{ modalEyebrow }}
+              <p class="font-semibold uppercase tracking-[0.22em] text-primary/80">
+                {{ isEditMode ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço' }}
               </p>
             </div>
-
             <div class="flex flex-wrap items-center gap-2">
               <UBadge
                 :label="STATUS_LABEL[form.status] ?? 'Status'"
-                :leading-icon="
-                  STATUS_ICON[form.status] ?? 'i-lucide-circle-dot'
-                "
+                :leading-icon="STATUS_ICON[form.status] ?? 'i-lucide-circle-dot'"
                 :color="STATUS_COLOR[form.status] ?? 'neutral'"
                 variant="subtle"
                 class="px-3 py-1"
@@ -1294,13 +857,7 @@ async function submit() {
             </div>
           </div>
         </div>
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          square
-          @click="emit('update:open', false)"
-        />
+        <UButton icon="i-lucide-x" color="neutral" variant="ghost" square @click="emit('update:open', false)" />
       </div>
     </template>
 
@@ -1318,911 +875,82 @@ async function submit() {
       <form v-else class="space-y-6 p-4 lg:p-6" @submit.prevent="submit">
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <div class="space-y-6">
-            <UCard variant="subtle">
-              <template #header>
-                <div class="flex items-center gap-2">
-                  <UIcon
-                    name="i-lucide-clipboard-list"
-                    class="size-4 text-primary"
-                  />
-                  <h3 class="font-semibold text-highlighted">
-                    Informações básicas
-                  </h3>
-                </div>
-              </template>
+            <ServiceOrdersCreateBasicInfoCard
+              v-model:number="form.number"
+              v-model:status="form.status"
+              v-model:client-id="form.client_id"
+              v-model:vehicle-id="form.vehicle_id"
+              v-model:master-product-id="form.master_product_id"
+              v-model:entry-date="form.entry_date"
+              v-model:expected-date="form.expected_date"
+              :client-options="clientOptions"
+              :vehicle-options="vehicleOptions"
+              :master-product-options="masterProductSelectOptions"
+              :selected-master-product="selectedMasterProduct"
+              :is-loading-next-number="isLoadingNextNumber"
+              @open-master-product-editor="openMasterProductCreate"
+              @open-master-product-manager="masterProductManagerOpen = true"
+            />
 
-              <div class="space-y-4">
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <UFormField label="Número da OS">
-                    <UInput
-                      v-model="form.number"
-                      :placeholder="
-                        isLoadingNextNumber
-                          ? 'Gerando número...'
-                          : 'Auto (ex: OS4001)'
-                      "
-                      class="w-full"
-                    />
-                    <p
-                      v-if="isLoadingNextNumber"
-                      class="mt-2 text-xs text-muted"
-                    >
-                      Buscando o próximo número disponível...
-                    </p>
-                  </UFormField>
-
-                  <UFormField label="Status inicial">
-                    <USelectMenu
-                      v-model="form.status"
-                      :items="statusOptions"
-                      value-key="value"
-                      class="w-full"
-                      :search-input="false"
-                    />
-                  </UFormField>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <UFormField label="Data de entrada">
-                    <UiDatePicker
-                      v-model="form.entry_date"
-                      placeholder="Selecione a data"
-                      class="w-full"
-                    />
-                  </UFormField>
-
-                  <UFormField label="Data prevista">
-                    <UiDatePicker
-                      v-model="form.expected_date"
-                      placeholder="Selecione a data"
-                      class="w-full"
-                    />
-                  </UFormField>
-
-                  <UFormField label="Cliente">
-                    <USelectMenu
-                      v-model="form.client_id"
-                      :items="[
-                        { label: 'Sem cliente', value: '' },
-                        ...clientOptions,
-                      ]"
-                      value-key="value"
-                      class="w-full"
-                      searchable
-                    />
-                  </UFormField>
-
-                  <UFormField label="Veículo">
-                    <USelectMenu
-                      v-model="form.vehicle_id"
-                      :items="[
-                        { label: 'Sem veículo', value: '' },
-                        ...vehicleOptions,
-                      ]"
-                      value-key="value"
-                      class="w-full"
-                      searchable
-                      :disabled="!!form.client_id && !vehicleOptions.length"
-                    />
-                  </UFormField>
-
-                  <UFormField label="Produto master">
-                    <div class="space-y-3">
-                      <div class="flex items-start gap-2">
-                        <USelectMenu
-                          v-model="form.master_product_id"
-                          :items="[
-                            { label: 'Sem produto master', value: '' },
-                            ...masterProductSelectOptions,
-                          ]"
-                          value-key="value"
-                          class="min-w-0 flex-1"
-                          searchable
-                        />
-
-                        <div class="flex shrink-0 items-center gap-2">
-                          <UTooltip text="Novo produto master">
-                            <UButton
-                              icon="i-lucide-plus"
-                              color="neutral"
-                              variant="outline"
-                              size="sm"
-                              @click="openCreateMasterProduct"
-                            />
-                          </UTooltip>
-
-                          <UTooltip text="Gerenciar produtos master">
-                            <UButton
-                              icon="i-lucide-settings-2"
-                              color="neutral"
-                              variant="outline"
-                              size="sm"
-                              @click="showMasterProductManager = true"
-                            />
-                          </UTooltip>
-                        </div>
-                      </div>
-
-                      <div
-                        v-if="selectedMasterProduct"
-                        class="rounded-xl border border-default bg-elevated/50 p-3"
-                      >
-                        <div class="flex items-start gap-3">
-                          <UIcon
-                            name="i-lucide-box"
-                            class="mt-0.5 size-4 text-primary"
-                          />
-                          <div class="min-w-0 flex-1">
-                            <p
-                              class="truncate text-sm font-semibold text-highlighted"
-                            >
-                              {{ selectedMasterProduct.name }}
-                            </p>
-                            <p
-                              v-if="selectedMasterProduct.description"
-                              class="mt-1 text-sm text-muted"
-                            >
-                              {{ selectedMasterProduct.description }}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </UFormField>
-                </div>
-              </div>
-            </UCard>
-
-            <UCard variant="subtle">
-              <template #header>
-                <div class="flex items-center justify-between gap-3">
-                  <div class="flex items-center gap-2">
-                    <UIcon
-                      name="i-lucide-user-round-cog"
-                      class="size-4 text-primary"
-                    />
-                    <h3 class="font-semibold text-highlighted">
-                      Responsáveis e comissão
-                    </h3>
-                  </div>
-
-                  <UButton
-                    label="Adicionar"
-                    icon="i-lucide-user-plus"
-                    color="neutral"
-                    variant="outline"
-                    size="sm"
-                    @click="addResponsible"
-                  />
-                </div>
-              </template>
-
-              <div class="space-y-4">
-                <div
-                  v-if="!form.responsible_employees.length"
-                  class="rounded-xl border border-dashed border-default bg-elevated/40 px-4 py-8 text-center"
-                >
-                  <UIcon
-                    name="i-lucide-users-round"
-                    class="mx-auto size-8 text-dimmed"
-                  />
-                  <p class="mt-3 text-sm font-medium text-highlighted">
-                    Nenhum responsável adicionado
-                  </p>
-                  <p class="mt-1 text-sm text-muted">
-                    Adicione responsáveis para já visualizar a previsão de
-                    comissão da OS.
-                  </p>
-                </div>
-
-                <div
-                  v-for="(employeeId, index) in form.responsible_employees"
-                  :key="`${index}-${employeeId}`"
-                  class="rounded-xl border border-default bg-default p-4 shadow-xs"
-                >
-                  <div class="flex flex-col gap-3 lg:flex-row lg:items-star">
-                    <div class="min-w-0 flex-1">
-                      <UFormField>
-                        <USelectMenu
-                          :model-value="employeeId"
-                          :items="getResponsibleSelectOptions(index)"
-                          value-key="value"
-                          class="w-full"
-                          searchable
-                          placeholder="Selecione o funcionário"
-                          @update:model-value="
-                            (value) =>
-                              updateResponsible(index, String(value || ''))
-                          "
-                        />
-                      </UFormField>
-
-                      <div
-                        v-if="getEmployeeById(employeeId) || getStoredCommissionForEmployee(employeeId) > 0"
-                        class="mt-2 flex flex-wrap items-center gap-2 rounded-xl bg-elevated/60 px-3 py-2 text-sm lg:flex-nowrap"
-                      >
-                        <UBadge
-                          color="primary"
-                          variant="soft"
-                          leading-icon="i-lucide-wallet-cards"
-                          :label="`Comissão: ${getResponsibleCommissionLabel(employeeId)}`"
-                        />
-                        <UBadge
-                          v-if="getResponsibleRateLabel(employeeId)"
-                          color="success"
-                          variant="subtle"
-                          leading-icon="i-lucide-badge-percent"
-                          :label="getResponsibleRateLabel(employeeId)"
-                        />
-                        <UBadge
-                          v-if="getResponsibleBaseLabel(employeeId)"
-                          color="neutral"
-                          variant="outline"
-                          leading-icon="i-lucide-scale"
-                          :label="getResponsibleBaseLabel(employeeId)"
-                        />
-                        <UTooltip
-                          v-if="getResponsibleCommissionNote(employeeId)"
-                          :text="
-                            getResponsibleCommissionNote(employeeId)?.label
-                          "
-                        >
-                          <UButton
-                            :color="
-                              getResponsibleCommissionNote(employeeId)?.color ??
-                              'neutral'
-                            "
-                            variant="ghost"
-                            :icon="
-                              getResponsibleCommissionNote(employeeId)?.icon
-                            "
-                            size="xs"
-                            square
-                          />
-                        </UTooltip>
-                      </div>
-                    </div>
-
-                    <UButton
-                      icon="i-lucide-trash-2"
-                      color="error"
-                      variant="ghost"
-                      square
-                      @click="removeResponsible(index)"
-                    />
-                  </div>
-                </div>
-
-                <div
-                  v-if="form.responsible_employees.length"
-                  class="rounded-xl border border-success/20 bg-success/10 p-4"
-                >
-                  <p class="text-xs uppercase tracking-wide text-success/80">
-                    Total de comissão estimada
-                  </p>
-                  <p class="mt-1 text-lg font-semibold text-success">
-                    {{ formatCurrency(totalCommissionAmount) }}
-                  </p>
-                </div>
-              </div>
-            </UCard>
+            <ServiceOrdersCreateResponsiblesCard
+              :model-value="form.responsible_employees"
+              :employee-options="employeeSelectOptions"
+              :employee-commissions="employeeCommissionsDisplay"
+              :total-commission-amount="totalCommissionAmount"
+              @add="addResponsible"
+              @remove="removeResponsible"
+              @update="updateResponsible"
+            />
           </div>
 
           <div class="space-y-6">
-            <UCard variant="subtle">
-              <template #header>
-                <div class="flex items-center gap-2">
-                  <UIcon name="i-lucide-wrench" class="size-4 text-primary" />
-                  <h3 class="font-semibold text-highlighted">
-                    Atendimento inicial
-                  </h3>
-                </div>
-              </template>
+            <ServiceOrdersCreateServiceCard
+              v-model:reported-defect="form.reported_defect"
+              v-model:diagnosis="form.diagnosis"
+              v-model:notes="form.notes"
+            />
 
-              <div class="space-y-4">
-                <UFormField label="Defeito relatado">
-                  <UTextarea
-                    v-model="form.reported_defect"
-                    placeholder="Descreva o defeito relatado pelo cliente..."
-                    :rows="5"
-                    class="w-full"
-                  />
-                </UFormField>
-
-                <UFormField label="Diagnóstico">
-                  <UTextarea
-                    v-model="form.diagnosis"
-                    placeholder="Diagnóstico técnico inicial..."
-                    :rows="5"
-                    class="w-full"
-                  />
-                </UFormField>
-
-                <UFormField label="Observações internas">
-                  <UTextarea
-                    v-model="form.notes"
-                    placeholder="Informações adicionais para a equipe..."
-                    :rows="4"
-                    class="w-full"
-                  />
-                </UFormField>
-              </div>
-            </UCard>
-
-            <UCard variant="subtle">
-              <template #header>
-                <div class="flex items-center gap-2">
-                  <UIcon
-                    name="i-lucide-settings-2"
-                    class="size-4 text-primary/70"
-                  />
-                  <h3 class="font-semibold text-highlighted">Configurações</h3>
-                </div>
-              </template>
-
-              <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div
-                  v-if="!isEditMode"
-                  class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4"
-                >
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 flex-1 pr-2">
-                      <p
-                        class="flex items-center gap-2 text-sm font-medium text-highlighted"
-                      >
-                        <UIcon
-                          name="i-lucide-percent"
-                          class="size-4 text-primary"
-                        />
-                        Impostos
-                      </p>
-                      <p class="text-xs text-muted">
-                        Entram como custo interno da OS.
-                      </p>
-                    </div>
-                    <USwitch v-model="form.apply_taxes" />
-                  </div>
-
-                  <div v-if="form.apply_taxes" class="space-y-3">
-                    <div
-                      v-if="!taxesCatalog.length"
-                      class="rounded-xl border border-dashed border-default bg-default/70 px-4 py-5 text-center"
-                    >
-                      <UIcon
-                        name="i-lucide-percent-diamond"
-                        class="mx-auto size-6 text-dimmed"
-                      />
-                      <p class="mt-2 text-sm font-medium text-highlighted">
-                        Nenhum imposto cadastrado
-                      </p>
-                    </div>
-
-                    <button
-                      v-for="tax in taxesCatalog"
-                      :key="tax.id"
-                      type="button"
-                      class="flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition"
-                      :class="
-                        form.selected_tax_ids.includes(tax.id)
-                          ? 'border-primary/40 bg-primary/8'
-                          : 'border-default bg-default hover:bg-elevated/50'
-                      "
-                      @click="toggleTax(tax.id)"
-                    >
-                      <div class="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          class="mt-0.5 size-4"
-                          :checked="form.selected_tax_ids.includes(tax.id)"
-                          @click.stop="toggleTax(tax.id)"
-                        />
-                        <div>
-                          <p class="font-medium text-highlighted">
-                            {{ tax.name }}
-                          </p>
-                          <p class="text-xs uppercase tracking-wide text-muted">
-                            {{ tax.type }}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div class="text-right">
-                        <p class="font-semibold text-highlighted">
-                          {{
-                            toNumber(tax.rate).toLocaleString("pt-BR", {
-                              maximumFractionDigits: 2,
-                            })
-                          }}%
-                        </p>
-                        <p
-                          v-if="form.selected_tax_ids.includes(tax.id)"
-                          class="text-xs text-warning"
-                        >
-                          {{
-                            formatCurrency(
-                              selectedTaxes.find(
-                                (item) => item.tax_id === tax.id,
-                              )?.calculated_amount,
-                            )
-                          }}
-                        </p>
-                      </div>
-                    </button>
-
-                    <div
-                      class="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3"
-                    >
-                      <p
-                        class="text-xs uppercase tracking-wide text-warning/80"
-                      >
-                        Total de impostos
-                      </p>
-                      <p class="mt-1 text-base font-semibold text-warning">
-                        {{ formatCurrency(totalTaxesAmount) }}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div
-                  class="space-y-4 rounded-2xl border border-default bg-elevated/30 p-4"
-                >
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0 flex-1 pr-2">
-                      <p
-                        class="flex items-center gap-2 text-sm font-medium text-highlighted"
-                      >
-                        <UIcon
-                          name="i-lucide-calendar-clock"
-                          class="size-4 text-primary/70"
-                        />
-                        Agendamento
-                      </p>
-                      <p class="text-xs text-muted">
-                        Cria agenda automaticamente ao salvar.
-                      </p>
-                    </div>
-                    <USwitch v-model="form.create_appointment" />
-                  </div>
-
-                  <div
-                    v-if="form.create_appointment"
-                    class="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4"
-                  >
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                      <UFormField label="Data" required>
-                        <UiDatePicker
-                          v-model="form.appointment_date"
-                          placeholder="Selecione a data"
-                          class="w-full"
-                        />
-                      </UFormField>
-
-                      <UFormField label="Horário" required>
-                        <UInput
-                          v-model="form.appointment_time"
-                          type="time"
-                          class="w-full"
-                        />
-                      </UFormField>
-                    </div>
-
-                    <div
-                      class="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto]"
-                    >
-                      <UFormField label="Prioridade">
-                        <USelectMenu
-                          v-model="form.appointment_priority"
-                          :items="appointmentPriorityOptions"
-                          value-key="value"
-                          class="w-full"
-                          :search-input="false"
-                        />
-                      </UFormField>
-
-                      <div class="flex items-end">
-                        <UBadge
-                          :color="appointmentPriorityBadge.color"
-                          variant="subtle"
-                          :leading-icon="appointmentPriorityBadge.icon"
-                          :label="appointmentPriorityBadge.label"
-                          class="mb-0.5"
-                        />
-                      </div>
-                    </div>
-
-                    <UFormField label="Observações">
-                      <UTextarea
-                        v-model="form.appointment_notes"
-                        :rows="2"
-                        placeholder="Detalhes adicionais para a agenda..."
-                        class="w-full"
-                      />
-                    </UFormField>
-                  </div>
-                </div>
-              </div>
-            </UCard>
+            <ServiceOrdersCreateSettingsCard
+              v-model:apply-taxes="form.apply_taxes"
+              v-model:selected-tax-ids="form.selected_tax_ids"
+              v-model:create-appointment="form.create_appointment"
+              v-model:appointment-date="form.appointment_date"
+              v-model:appointment-time="form.appointment_time"
+              v-model:appointment-priority="form.appointment_priority"
+              v-model:appointment-notes="form.appointment_notes"
+              :taxes-catalog="taxesCatalog"
+              :selected-taxes="selectedTaxes"
+              :total-taxes-amount="totalTaxesAmount"
+              :is-edit-mode="isEditMode"
+            />
           </div>
         </div>
 
-        <div
-          class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]"
-        >
-          <UCard variant="subtle">
-            <template #header>
-              <div
-                class="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between"
-              >
-                <div class="flex items-center gap-2">
-                  <UIcon name="i-lucide-package" class="size-4 text-primary" />
-                  <h3 class="font-semibold text-highlighted">
-                    Itens da ordem de serviço
-                  </h3>
-                </div>
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
+          <ServiceOrdersCreateItemsCard
+            :items="form.items"
+            :item-commission-map="itemCommissionMap"
+            @add-manual="addManualItem"
+            @add-product="addProductItem"
+            @remove="removeItem"
+            @set-quantity="setItemQuantity"
+          />
 
-                <div class="flex items-center gap-2">
-                  <UButton
-                    label="Adicionar manual"
-                    color="neutral"
-                    variant="outline"
-                    size="sm"
-                    icon="i-lucide-square-pen"
-                    @click="addManualItem"
-                  />
-                </div>
-              </div>
-            </template>
-
-            <div class="space-y-5">
-              <div
-                class="rounded-2xl border border-dashed border-primary/30 bg-gradient-to-br from-primary/10 via-elevated to-info/5 p-4"
-              >
-                <UFormField label="Adicionar Produto/Serviço">
-                  <template #label>
-                    <span class="flex items-center gap-1.5 text-sm font-medium text-highlighted">
-                      <UIcon name="i-lucide-package-plus" class="size-4 text-primary" />
-                      Adicionar Produto/Serviço
-                    </span>
-                  </template>
-                  <ServiceOrdersProductSelectInput
-                    @select="addProductItem"
-                  />
-                </UFormField>
-              </div>
-
-              <div
-                v-if="!form.items.length"
-                class="rounded-2xl border border-default bg-elevated/40 px-6 py-10 text-center"
-              >
-                <UIcon
-                  name="i-lucide-package-search"
-                  class="mx-auto size-10 text-dimmed"
-                />
-                <p class="mt-4 text-sm font-medium text-highlighted">
-                  Nenhum item adicionado ainda
-                </p>
-                <p class="mt-1 text-sm text-muted">
-                  Comece por um produto do catálogo ou crie um item manual para
-                  já sair com o valor previsto da OS.
-                </p>
-              </div>
-
-              <div v-else class="space-y-4">
-                <div class="hidden overflow-x-auto lg:block">
-                  <table
-                    class="min-w-full divide-y divide-default overflow-hidden rounded-2xl border border-default bg-default text-sm"
-                  >
-                    <thead
-                      class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted"
-                    >
-                      <tr>
-                        <th class="px-4 py-3 font-medium">Descrição</th>
-                        <th class="px-4 py-3 font-medium w-24">Qtd</th>
-                        <th class="px-4 py-3 font-medium w-32">Venda</th>
-                        <th class="px-4 py-3 font-medium w-32">Custo</th>
-                        <th class="px-4 py-3 font-medium w-28 text-right">
-                          Comissão
-                        </th>
-                        <th class="px-4 py-3 font-medium w-32 text-right">
-                          Total
-                        </th>
-                        <th class="px-4 py-3 font-medium w-20 text-right">
-                          Ações
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-default">
-                      <tr
-                        v-for="item in form.items"
-                        :key="item.id"
-                        class="align-top"
-                      >
-                        <td class="px-4 py-4">
-                          <div class="flex items-center gap-2">
-                            <UTooltip
-                              :text="
-                                item.source === 'catalog'
-                                  ? 'Item do catálogo'
-                                  : 'Item manual'
-                              "
-                            >
-                              <div
-                                class="flex size-6 shrink-0 items-center justify-center rounded-lg"
-                                :class="
-                                  item.source === 'catalog'
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'bg-elevated text-muted'
-                                "
-                              >
-                                <UIcon
-                                  :name="
-                                    item.source === 'catalog'
-                                      ? 'i-lucide-package-check'
-                                      : 'i-lucide-pencil-ruler'
-                                  "
-                                  class="size-3.5"
-                                />
-                              </div>
-                            </UTooltip>
-
-                            <UInput
-                              v-model="item.description"
-                              placeholder="Descrição do item"
-                              class="min-w-0 flex-1"
-                            />
-                          </div>
-                        </td>
-                        <td class="px-4 py-4">
-                          <UInput
-                            :model-value="String(item.quantity)"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            class="w-full"
-                            @update:model-value="
-                              (value) => setItemQuantity(item, value)
-                            "
-                          />
-                        </td>
-                        <td class="px-4 py-4">
-                          <UiCurrencyInput v-model="item.unit_price" />
-                        </td>
-                        <td class="px-4 py-4">
-                          <UiCurrencyInput v-model="item.cost_price" />
-                        </td>
-                        <td class="px-4 py-4 text-right font-semibold text-info">
-                          {{ formatCurrency(getItemCommission(item.id)) }}
-                        </td>
-                        <td
-                          class="px-4 py-4 text-right font-semibold text-highlighted"
-                        >
-                          {{ formatCurrency(getItemTotal(item)) }}
-                        </td>
-                        <td class="px-4 py-4 text-right">
-                          <UButton
-                            icon="i-lucide-trash-2"
-                            color="error"
-                            variant="ghost"
-                            square
-                            @click="removeItem(item.id)"
-                          />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="space-y-2 lg:hidden">
-                  <div
-                    v-for="item in form.items"
-                    :key="item.id"
-                    class="rounded-2xl border border-default bg-default p-3 shadow-xs"
-                  >
-                    <div class="flex items-start justify-between gap-2">
-                      <div class="flex min-w-0 flex-1 items-center gap-2">
-                        <UTooltip
-                          :text="
-                            item.source === 'catalog'
-                              ? 'Item do catálogo'
-                              : 'Item manual'
-                          "
-                        >
-                          <div
-                            class="flex size-6 shrink-0 items-center justify-center rounded-lg"
-                            :class="
-                              item.source === 'catalog'
-                                ? 'bg-primary/10 text-primary'
-                                : 'bg-elevated text-muted'
-                            "
-                          >
-                            <UIcon
-                              :name="
-                                item.source === 'catalog'
-                                  ? 'i-lucide-package-check'
-                                  : 'i-lucide-pencil-ruler'
-                              "
-                              class="size-3.5"
-                            />
-                          </div>
-                        </UTooltip>
-                        <p class="min-w-0 flex-1 truncate text-sm font-medium text-highlighted">
-                          {{ item.description || item.name || 'Item sem descrição' }}
-                        </p>
-                      </div>
-                      <UButton
-                        icon="i-lucide-trash-2"
-                        color="error"
-                        variant="ghost"
-                        square
-                        size="xs"
-                        @click="removeItem(item.id)"
-                      />
-                    </div>
-
-                    <div class="mt-3 space-y-3">
-                      <UFormField label="Descrição">
-                        <UInput
-                          v-model="item.description"
-                          placeholder="Descrição do item"
-                          class="w-full"
-                        />
-                      </UFormField>
-
-                      <div class="grid grid-cols-3 gap-2">
-                        <UFormField label="Quantidade">
-                          <UInput
-                            :model-value="String(item.quantity)"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            class="w-full"
-                            @update:model-value="
-                              (value) => setItemQuantity(item, value)
-                            "
-                          />
-                        </UFormField>
-
-                        <UFormField label="Venda">
-                          <UiCurrencyInput v-model="item.unit_price" />
-                        </UFormField>
-
-                        <UFormField label="Custo">
-                          <UiCurrencyInput v-model="item.cost_price" />
-                        </UFormField>
-                      </div>
-
-                      <div class="rounded-xl bg-elevated/60 px-3 py-2 text-sm">
-                        <div class="flex items-center justify-between gap-2">
-                          <span class="text-muted">Total</span>
-                          <span class="text-xs font-medium text-info">
-                            Com.: {{ formatCurrency(getItemCommission(item.id)) }}
-                          </span>
-                        </div>
-                        <p class="mt-0.5 font-semibold text-highlighted">
-                          {{ formatCurrency(getItemTotal(item)) }}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </UCard>
-
-          <div class="space-y-6">
-            <UCard variant="subtle">
-              <template #header>
-                <div class="flex items-center gap-2">
-                  <UIcon
-                    name="i-lucide-calculator"
-                    class="size-4 text-primary"
-                  />
-                  <h3 class="font-semibold text-highlighted">
-                    Resumo financeiro
-                  </h3>
-                </div>
-              </template>
-
-              <div class="space-y-4">
-                <div class="rounded-2xl bg-primary/8 p-4 text-center">
-                  <p class="flex items-center justify-center gap-1.5 text-sm text-muted">
-                    <UIcon
-                      name="i-lucide-circle-dollar-sign"
-                      class="size-4 text-primary"
-                    />
-                    Valor previsto para o cliente
-                  </p>
-                  <p class="mt-1 text-3xl font-bold text-highlighted">
-                    {{ formatCurrency(totalAmount) }}
-                  </p>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 text-center">
-                  <div class="rounded-xl bg-elevated/70 p-3">
-                    <p
-                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
-                    >
-                      <UIcon name="i-lucide-receipt" class="size-3.5" />
-                      Subtotal
-                    </p>
-                    <p class="mt-1 font-semibold text-highlighted">
-                      {{ formatCurrency(subtotal) }}
-                    </p>
-                  </div>
-                  <div class="rounded-xl bg-elevated/70 p-3">
-                    <p
-                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
-                    >
-                      <UIcon
-                        name="i-lucide-badge-dollar-sign"
-                        class="size-3.5"
-                      />
-                      Custo
-                    </p>
-                    <p class="mt-1 font-semibold text-error">
-                      {{ formatCurrency(totalCost) }}
-                    </p>
-                  </div>
-                  <div class="rounded-xl bg-elevated/70 p-3">
-                    <p
-                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
-                    >
-                      <UIcon name="i-lucide-percent" class="size-3.5" />
-                      Impostos
-                    </p>
-                    <p class="mt-1 font-semibold text-warning">
-                      {{ formatCurrency(totalTaxesAmount) }}
-                    </p>
-                  </div>
-                  <div class="rounded-xl bg-elevated/70 p-3">
-                    <p
-                      class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted"
-                    >
-                      <UIcon name="i-lucide-wallet-cards" class="size-3.5" />
-                      Comissão
-                    </p>
-                    <p class="mt-1 font-semibold text-info">
-                      {{ formatCurrency(totalCommissionAmount) }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
-                  <UFormField>
-                    <template #label>
-                      <span class="flex items-center gap-1.5">
-                        <UIcon
-                          name="i-lucide-badge-percent"
-                          class="size-4 text-warning"
-                        />
-                        <span>Desconto</span>
-                      </span>
-                    </template>
-                    <UiCurrencyInput v-model="form.discount" />
-                  </UFormField>
-
-                  <UFormField label="Margem estimada">
-                    <UInput
-                      :model-value="formatCurrency(estimatedProfit)"
-                      icon="i-lucide-chart-column-big"
-                      :color="estimatedProfit >= 0 ? 'success' : 'error'"
-                      class="w-full"
-                      disabled
-                    />
-                  </UFormField>
-                </div>
-              </div>
-            </UCard>
-          </div>
+          <ServiceOrdersCreateFinancialSummaryCard
+            v-model:discount="form.discount"
+            :subtotal="subtotal"
+            :total-cost="totalCost"
+            :total-taxes-amount="totalTaxesAmount"
+            :total-commission-amount="totalCommissionAmount"
+            :total-amount="totalAmount"
+            :estimated-profit="estimatedProfit"
+          />
         </div>
       </form>
     </template>
 
     <template #footer>
-      <div
-        class="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-end lg:px-6"
-      >
+      <div class="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-end lg:px-6">
         <div class="flex items-center justify-end gap-3">
           <UButton
             label="Cancelar"
@@ -2232,7 +960,7 @@ async function submit() {
             @click="emit('update:open', false)"
           />
           <UButton
-            :label="submitButtonLabel"
+            :label="isEditMode ? 'Salvar alterações' : 'Criar OS'"
             :icon="isEditMode ? 'i-lucide-save' : 'i-lucide-plus'"
             :loading="isSaving"
             @click="submit"
@@ -2242,162 +970,20 @@ async function submit() {
     </template>
   </UModal>
 
-  <UModal
-    :open="showMasterProductEditor"
-    :title="
-      masterProductMode === 'create'
-        ? 'Novo produto master'
-        : 'Editar produto master'
-    "
-    :ui="{ body: 'overflow-y-auto max-h-[75vh]' }"
-    @update:open="showMasterProductEditor = $event"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <UFormField label="Nome" required>
-          <UInput v-model="masterProductEditor.name" class="w-full" />
-        </UFormField>
+  <ServiceOrdersCreateMasterProductEditor
+    v-model:open="masterProductEditorOpen"
+    :mode="masterProductEditorMode"
+    :edit-product="masterProductEditorProduct"
+    @saved="onMasterProductSaved"
+  />
 
-        <UFormField label="Descrição">
-          <UTextarea
-            v-model="masterProductEditor.description"
-            :rows="3"
-            class="w-full"
-          />
-        </UFormField>
-
-        <UFormField label="Observações">
-          <UTextarea
-            v-model="masterProductEditor.notes"
-            :rows="3"
-            class="w-full"
-          />
-        </UFormField>
-      </div>
-    </template>
-
-    <template #footer>
-      <div class="flex justify-end gap-2">
-        <UButton
-          label="Cancelar"
-          icon="i-lucide-x"
-          color="neutral"
-          variant="ghost"
-          @click="showMasterProductEditor = false"
-        />
-        <UButton
-          :label="masterProductMode === 'create' ? 'Criar' : 'Salvar'"
-          icon="i-lucide-save"
-          :loading="isSavingMasterProduct"
-          @click="saveMasterProduct"
-        />
-      </div>
-    </template>
-  </UModal>
-
-  <UModal
-    :open="showMasterProductManager"
-    title="Gerenciar produtos master"
-    :ui="{ body: 'overflow-y-auto max-h-[75vh]' }"
-    @update:open="showMasterProductManager = $event"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <div class="flex flex-col gap-3 sm:flex-row">
-          <UInput
-            v-model="masterProductSearch"
-            icon="i-lucide-search"
-            placeholder="Buscar produto master..."
-            class="w-full"
-          />
-          <UButton
-            label="Novo"
-            icon="i-lucide-plus"
-            color="neutral"
-            variant="outline"
-            @click="openCreateMasterProduct"
-          />
-        </div>
-
-        <div
-          v-if="!filteredMasterProducts.length"
-          class="rounded-xl border border-dashed border-default bg-elevated/40 px-4 py-8 text-center"
-        >
-          <UIcon name="i-lucide-box" class="mx-auto size-8 text-dimmed" />
-          <p class="mt-3 text-sm font-medium text-highlighted">
-            Nenhum produto master encontrado
-          </p>
-        </div>
-
-        <div v-else class="space-y-3">
-          <div
-            v-for="product in filteredMasterProducts"
-            :key="product.id"
-            class="rounded-xl border border-default bg-default p-4 shadow-xs"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0 flex-1">
-                <p class="truncate font-semibold text-highlighted">
-                  {{ product.name }}
-                </p>
-                <p v-if="product.description" class="mt-1 text-sm text-muted">
-                  {{ product.description }}
-                </p>
-                <p v-if="product.notes" class="mt-2 text-xs text-dimmed">
-                  {{ product.notes }}
-                </p>
-              </div>
-
-              <div class="flex items-center gap-1">
-                <UButton
-                  icon="i-lucide-check"
-                  color="success"
-                  variant="ghost"
-                  square
-                  @click="
-                    form.master_product_id = product.id;
-                    showMasterProductManager = false;
-                  "
-                />
-                <UButton
-                  icon="i-lucide-pencil"
-                  color="neutral"
-                  variant="ghost"
-                  square
-                  @click="openEditMasterProduct(product)"
-                />
-                <UButton
-                  icon="i-lucide-trash-2"
-                  color="error"
-                  variant="ghost"
-                  square
-                  @click="masterProductPendingDelete = product"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </template>
-
-  </UModal>
-
-  <AppConfirmModal
-    v-model:open="isMasterProductDeleteModalOpen"
-    title="Excluir produto master"
-    confirm-label="Excluir"
-    confirm-color="error"
-    :loading="isDeletingMasterProduct"
-    @confirm="confirmDeleteMasterProduct"
-  >
-    <template #description>
-      <p class="text-sm text-muted">
-        Tem certeza que deseja excluir o produto master
-        <strong class="text-highlighted">{{
-          masterProductPendingDelete?.name ?? ""
-        }}</strong
-        >?
-      </p>
-    </template>
-  </AppConfirmModal>
+  <ServiceOrdersCreateMasterProductManager
+    v-model:open="masterProductManagerOpen"
+    :products="masterProducts"
+    :selected-master-product-id="form.master_product_id"
+    @select="id => { form.master_product_id = id }"
+    @open-create="openMasterProductCreate"
+    @open-edit="openMasterProductEdit"
+    @deleted="onMasterProductDeleted"
+  />
 </template>
