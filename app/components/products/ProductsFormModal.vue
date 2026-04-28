@@ -15,6 +15,8 @@ const emit = defineEmits<{
 
 const toast = useToast()
 const isSaving = ref(false)
+const isLoadingNextCode = ref(false)
+let nextCodeRequestId = 0
 
 const productTypeOptions = [
   { label: 'Unitário', value: 'unit' },
@@ -115,10 +117,39 @@ function createEmptyGroupItem(): GroupItem {
   }
 }
 
+async function loadNextCode() {
+  const requestId = ++nextCodeRequestId
+  isLoadingNextCode.value = true
+
+  try {
+    const res = await $fetch<{ code: string }>('/api/products/next-code')
+    if (requestId !== nextCodeRequestId || !props.open)
+      return
+
+    if (form.code.trim())
+      return
+
+    form.code = res.code || generateCode('P')
+  } catch {
+    if (requestId === nextCodeRequestId && props.open) {
+      if (!form.code.trim())
+        form.code = generateCode('P')
+      toast.add({
+        title: 'Não foi possível sugerir o próximo código',
+        description: 'Um código temporário foi preenchido e pode ser editado.',
+        color: 'warning'
+      })
+    }
+  } finally {
+    if (requestId === nextCodeRequestId)
+      isLoadingNextCode.value = false
+  }
+}
+
 function resetForm() {
   Object.assign(form, {
     name: '',
-    code: generateCode('P'),
+    code: '',
     type: 'unit',
     category_id: '',
     track_inventory: true,
@@ -130,10 +161,10 @@ function resetForm() {
   groupItems.value = []
 }
 
-function populateFromProduct(source: ProductItem, clone = false) {
+async function populateFromProduct(source: ProductItem, clone = false) {
   Object.assign(form, {
     name: clone ? `${source.name} (Cópia)` : (source.name ?? ''),
-    code: clone ? generateCode('P') : (source.code ?? ''),
+    code: clone ? '' : (source.code ?? ''),
     type: source.type ?? 'unit',
     category_id: source.category_id ?? '',
     track_inventory: source.track_inventory ?? false,
@@ -143,6 +174,9 @@ function populateFromProduct(source: ProductItem, clone = false) {
     notes: source.notes ?? ''
   })
   groupItems.value = source.group_items ? [...source.group_items] : []
+
+  if (clone)
+    await loadNextCode()
 }
 
 watch(
@@ -163,16 +197,20 @@ watch(
 
 watch(
   () => props.open,
-  (isOpen) => {
-    if (!isOpen)
+  async (isOpen) => {
+    if (!isOpen) {
+      nextCodeRequestId += 1
+      isLoadingNextCode.value = false
       return
+    }
 
     if (props.product) {
-      populateFromProduct(props.product)
+      await populateFromProduct(props.product)
     } else if (props.cloneFrom) {
-      populateFromProduct(props.cloneFrom, true)
+      await populateFromProduct(props.cloneFrom, true)
     } else {
       resetForm()
+      await loadNextCode()
     }
   }
 )
@@ -335,10 +373,15 @@ async function save() {
                   />
                 </UFormField>
 
-                <UFormField label="Código" required>
+                <UFormField
+                  label="Código"
+                  description="Sugerido automaticamente em sequência, mas pode ser alterado."
+                  required
+                >
                   <UInput
                     v-model="form.code"
                     icon="i-lucide-scan-barcode"
+                    :trailing-icon="isLoadingNextCode ? 'i-lucide-loader-circle' : undefined"
                     class="w-full"
                     placeholder="SKU ou código interno"
                   />
