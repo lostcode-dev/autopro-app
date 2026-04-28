@@ -7,12 +7,13 @@
 -- =============================================================================
 
 ALTER TABLE public.products
-  ADD COLUMN code_number integer;
+  ADD COLUMN IF NOT EXISTS code_number integer;
 
 WITH normalized AS (
   SELECT
     id,
     organization_id,
+    created_at,
     CASE
       WHEN btrim(code) ~ '^\d+$' THEN btrim(code)::integer
       ELSE NULL
