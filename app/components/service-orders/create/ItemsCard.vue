@@ -149,7 +149,7 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
                           size="xs"
                         />
                       </div>
-                      <UInput v-model="item.description" placeholder="Descrição do item" class="min-w-0 flex-1" />
+                      <UInput v-model="item.description" placeholder="Descrição do item" class="min-w-0 flex-1 w-full" />
                     </div>
                   </div>
                 </td>
