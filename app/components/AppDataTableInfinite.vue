@@ -73,6 +73,7 @@ const emit = defineEmits<{
   'update:sorting': [value: SortingState]
   'update:rowSelection': [value: RowSelectionState]
   'search-change': [value: string]
+  'search-submit': [value: string]
   'sorting-change': [value: SortingState]
   'row-selection-change': [value: RowSelectionState]
 }>()
@@ -100,6 +101,14 @@ const currentSearchTerm = computed({
 })
 
 // ─── Column utilities ─────────────────────────────────────────────────────────
+
+function submitSearch() {
+  const value = currentSearchTerm.value
+  internalSearchTerm.value = value
+  emit('update:searchTerm', value)
+  emit('search-change', value)
+  emit('search-submit', value)
+}
 
 function joinClasses(...values: Array<string | undefined | false>) {
   return values.filter(Boolean).join(' ')
@@ -346,6 +355,7 @@ function getTdClass(cell: ReturnType<typeof rows.value[0]['getVisibleCells']>[0]
           :placeholder="searchPlaceholder"
           icon="i-lucide-search"
           class="w-full sm:w-80"
+          @keydown.enter.prevent="submitSearch"
         />
         <slot name="filters" />
         <div

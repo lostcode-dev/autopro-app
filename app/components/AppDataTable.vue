@@ -78,6 +78,7 @@ const emit = defineEmits<{
   'update:rowSelection': [value: RowSelectionState]
   'display-mode-change': [value: DisplayMode]
   'search-change': [value: string]
+  'search-submit': [value: string]
   'page-change': [value: number]
   'page-size-change': [value: number]
   'sorting-change': [value: SortingState]
@@ -125,6 +126,14 @@ const currentSearchTerm = computed({
     emit('search-change', value)
   }
 })
+
+function submitSearch() {
+  const value = currentSearchTerm.value
+  internalSearchTerm.value = value
+  emit('update:searchTerm', value)
+  emit('search-change', value)
+  emit('search-submit', value)
+}
 
 const currentPage = computed({
   get: () => props.page,
@@ -471,6 +480,7 @@ const emptyHeaderTableClass = 'shrink-0'
           :placeholder="searchPlaceholder"
           icon="i-lucide-search"
           class="w-full sm:w-80"
+          @keydown.enter.prevent="submitSearch"
         />
 
         <slot name="filters" />
