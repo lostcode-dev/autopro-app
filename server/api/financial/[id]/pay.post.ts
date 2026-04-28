@@ -23,11 +23,11 @@ export default defineEventHandler(async (event) => {
     .maybeSingle()
 
   if (!existing) throw createError({ statusCode: 404, statusMessage: 'Lançamento não encontrado' })
-  if (existing.status === 'pago') throw createError({ statusCode: 400, statusMessage: 'Lançamento já está marcado como pago' })
+  if (existing.status === 'paid') throw createError({ statusCode: 400, statusMessage: 'Lançamento já está marcado como pago' })
 
   const { data: item, error } = await supabase
     .from('financial_transactions')
-    .update({ status: 'pago', updated_by: authUser.email })
+    .update({ status: 'paid', updated_by: authUser.email })
     .eq('id', id!)
     .eq('organization_id', organizationId)
     .select()
