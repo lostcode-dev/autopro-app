@@ -119,7 +119,7 @@ const statusOptions = [
           />
         </UFormField>
 
-        <UFormField label="Produto master">
+        <UFormField label="Produto master" class="col-span-2">
           <div class="space-y-3">
             <div class="flex items-start gap-2">
               <ServiceOrdersMasterProductSelectInput
