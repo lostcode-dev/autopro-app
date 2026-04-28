@@ -1113,7 +1113,7 @@ async function submit() {
         </div>
 
         <div
-          class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]"
+          class="grid grid-cols-1 gap-6"
         >
           <ServiceOrdersCreateItemsCard
             :items="form.items"

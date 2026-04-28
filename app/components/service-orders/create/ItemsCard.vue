@@ -65,7 +65,7 @@ function getItemCommissionDetail(item: ServiceOrderDraftItem): ItemCommissionDis
 <template>
   <UCard variant="subtle">
     <template #header>
-      <div class="flex flex-col gap-3 2xl:flex-row 2xl:items-center 2xl:justify-between">
+      <div class="flex gap-3 flex-row items-center justify-between">
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-package" class="size-4 text-primary" />
           <h3 class="font-semibold text-highlighted">Itens da ordem de serviço</h3>
