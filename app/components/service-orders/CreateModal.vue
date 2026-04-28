@@ -7,265 +7,329 @@ import {
   STATUS_COLOR,
   STATUS_ICON,
   STATUS_LABEL,
-} from '../../utils/service-orders'
+  type ServiceOrderCommissionEstimate,
+  type ServiceOrderItemCommissionEntry,
+  computeServiceOrderCommissionBreakdown,
+} from "../../utils/service-orders";
 import type {
   ServiceOrderDraftItem,
+  ServiceOrderEmployee,
   ServiceOrderItem,
   ServiceOrderRaw,
   ServiceOrderSelectedTax,
-} from '../../types/service-orders'
-import type { EmployeeCommissionDisplay } from './create/ResponsiblesCard.vue'
+} from "../../types/service-orders";
+import type { EmployeeCommissionDisplay } from "./create/ResponsiblesCard.vue";
 
 const props = defineProps<{
-  open: boolean
-  orderToEdit?: ServiceOrderRaw | null
-}>()
+  open: boolean;
+  orderToEdit?: ServiceOrderRaw | null;
+}>();
 
 const emit = defineEmits<{
-  'update:open': [v: boolean]
-  created: []
-  updated: []
-}>()
+  "update:open": [v: boolean];
+  created: [];
+  updated: [];
+}>();
 
-interface SelectOption { label: string; value: string }
+interface SelectOption {
+  label: string;
+  value: string;
+}
 
-interface ClientItem { id: string; name: string }
+interface ClientItem {
+  id: string;
+  name: string;
+}
 
 interface VehicleItem {
-  id: string
-  brand: string | null
-  model: string | null
-  license_plate: string | null
-  client_id?: string | null
+  id: string;
+  brand: string | null;
+  model: string | null;
+  license_plate: string | null;
+  client_id?: string | null;
 }
 
 interface EmployeeItem {
-  id: string
-  name: string
-  has_commission?: boolean | null
-  commission_type?: string | null
-  commission_amount?: number | string | null
-  commission_base?: string | null
-  commission_categories?: string[] | null
+  id: string;
+  name: string;
+  has_commission?: boolean | null;
+  commission_type?: string | null;
+  commission_amount?: number | string | null;
+  commission_base?: string | null;
+  commission_categories?: string[] | null;
 }
 
 interface MasterProductItem {
-  id: string
-  name: string
-  description: string | null
-  notes: string | null
+  id: string;
+  name: string;
+  description: string | null;
+  notes: string | null;
 }
 
-interface TaxItem { id: string; name: string; type: string; rate: number }
+interface TaxItem {
+  id: string;
+  name: string;
+  type: string;
+  rate: number;
+}
 
 interface FormData {
-  number: string
-  status: string
-  client_id: string
-  vehicle_id: string
-  master_product_id: string
-  responsible_employees: string[]
-  entry_date: string | undefined
-  expected_date: string | undefined
-  reported_defect: string
-  diagnosis: string
-  notes: string
-  items: ServiceOrderDraftItem[]
-  discount: number | string
-  apply_taxes: boolean
-  selected_tax_ids: string[]
-  create_appointment: boolean
-  appointment_date: string | undefined
-  appointment_time: string
-  appointment_priority: string
-  appointment_notes: string
+  number: string;
+  status: string;
+  client_id: string;
+  vehicle_id: string;
+  master_product_id: string;
+  responsible_employees: string[];
+  entry_date: string | undefined;
+  expected_date: string | undefined;
+  reported_defect: string;
+  diagnosis: string;
+  notes: string;
+  items: ServiceOrderDraftItem[];
+  discount: number | string;
+  apply_taxes: boolean;
+  selected_tax_ids: string[];
+  create_appointment: boolean;
+  appointment_date: string | undefined;
+  appointment_time: string;
+  appointment_priority: string;
+  appointment_notes: string;
 }
 
-type CommissionResult = { value: number; hasMatchingItems: boolean }
+const APPOINTMENT_NO_PRIORITY = "none";
 
-const APPOINTMENT_NO_PRIORITY = 'none'
+const appointmentPriorityMeta: Record<
+  string,
+  { label: string; icon: string; color: "neutral" | "info" | "warning" }
+> = {
+  [APPOINTMENT_NO_PRIORITY]: {
+    label: "Sem prioridade",
+    icon: "i-lucide-minus",
+    color: "neutral",
+  },
+  low: { label: "Baixa", icon: "i-lucide-arrow-down", color: "neutral" },
+  medium: { label: "Média", icon: "i-lucide-equal", color: "info" },
+  high: { label: "Alta", icon: "i-lucide-arrow-up", color: "warning" },
+};
 
-const appointmentPriorityMeta: Record<string, { label: string; icon: string; color: 'neutral' | 'info' | 'warning' }> = {
-  [APPOINTMENT_NO_PRIORITY]: { label: 'Sem prioridade', icon: 'i-lucide-minus', color: 'neutral' },
-  low: { label: 'Baixa', icon: 'i-lucide-arrow-down', color: 'neutral' },
-  medium: { label: 'Média', icon: 'i-lucide-equal', color: 'info' },
-  high: { label: 'Alta', icon: 'i-lucide-arrow-up', color: 'warning' },
-}
+const toast = useToast();
 
-const toast = useToast()
+const clientOptions = ref<SelectOption[]>([]);
+const vehicleCatalog = ref<VehicleItem[]>([]);
+const employeeCatalog = ref<EmployeeItem[]>([]);
+const masterProducts = ref<MasterProductItem[]>([]);
+const taxesCatalog = ref<TaxItem[]>([]);
 
-const clientOptions = ref<SelectOption[]>([])
-const vehicleCatalog = ref<VehicleItem[]>([])
-const employeeCatalog = ref<EmployeeItem[]>([])
-const masterProducts = ref<MasterProductItem[]>([])
-const taxesCatalog = ref<TaxItem[]>([])
-
-const isLoadingOptions = ref(false)
-const isLoadingNextNumber = ref(false)
-const optionsLoaded = ref(false)
-const itemCounter = ref(0)
-let nextNumberRequestId = 0
+const isLoadingOptions = ref(false);
+const isLoadingNextNumber = ref(false);
+const optionsLoaded = ref(false);
+const itemCounter = ref(0);
+let nextNumberRequestId = 0;
 
 // master product modals state
-const masterProductEditorOpen = ref(false)
-const masterProductEditorMode = ref<'create' | 'edit'>('create')
-const masterProductEditorProduct = ref<MasterProductItem | null>(null)
-const masterProductManagerOpen = ref(false)
+const masterProductEditorOpen = ref(false);
+const masterProductEditorMode = ref<"create" | "edit">("create");
+const masterProductEditorProduct = ref<MasterProductItem | null>(null);
+const masterProductManagerOpen = ref(false);
 
-const isEditMode = computed(() => !!props.orderToEdit?.id)
+const isEditMode = computed(() => !!props.orderToEdit?.id);
 
 const paymentBadgeStatus = computed(() =>
-  isEditMode.value ? (props.orderToEdit?.payment_status ?? 'pending') : 'pending',
-)
-const paymentBadgeLabel = computed(() => PAYMENT_STATUS_LABEL[paymentBadgeStatus.value] ?? 'Pagamento pendente')
-const paymentBadgeColor = computed(() => PAYMENT_STATUS_COLOR[paymentBadgeStatus.value] ?? 'neutral')
-const paymentBadgeIcon = computed(() => PAYMENT_STATUS_ICON[paymentBadgeStatus.value] ?? 'i-lucide-credit-card')
+  isEditMode.value
+    ? (props.orderToEdit?.payment_status ?? "pending")
+    : "pending",
+);
+const paymentBadgeLabel = computed(
+  () => PAYMENT_STATUS_LABEL[paymentBadgeStatus.value] ?? "Pagamento pendente",
+);
+const paymentBadgeColor = computed(
+  () => PAYMENT_STATUS_COLOR[paymentBadgeStatus.value] ?? "neutral",
+);
+const paymentBadgeIcon = computed(
+  () => PAYMENT_STATUS_ICON[paymentBadgeStatus.value] ?? "i-lucide-credit-card",
+);
 
 const appointmentPriorityBadge = computed(
-  () => appointmentPriorityMeta[form.appointment_priority] ?? appointmentPriorityMeta[APPOINTMENT_NO_PRIORITY]!,
-)
+  () =>
+    appointmentPriorityMeta[form.appointment_priority] ??
+    appointmentPriorityMeta[APPOINTMENT_NO_PRIORITY]!,
+);
 
 const form = reactive<FormData>({
-  number: '',
-  status: 'estimate',
-  client_id: '',
-  vehicle_id: '',
-  master_product_id: '',
+  number: "",
+  status: "estimate",
+  client_id: "",
+  vehicle_id: "",
+  master_product_id: "",
   responsible_employees: [],
   entry_date: new Date().toISOString().substring(0, 10),
-  expected_date: '',
-  reported_defect: '',
-  diagnosis: '',
-  notes: '',
+  expected_date: "",
+  reported_defect: "",
+  diagnosis: "",
+  notes: "",
   items: [],
-  discount: '',
+  discount: "",
   apply_taxes: false,
   selected_tax_ids: [],
   create_appointment: false,
-  appointment_date: '',
-  appointment_time: '08:00',
+  appointment_date: "",
+  appointment_time: "08:00",
   appointment_priority: APPOINTMENT_NO_PRIORITY,
-  appointment_notes: '',
-})
+  appointment_notes: "",
+});
 
 function toNumber(value: number | string | null | undefined) {
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function roundCurrency(value: number) {
-  return Number(value.toFixed(2))
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function nextItemId() {
-  itemCounter.value += 1
-  return `draft-item-${itemCounter.value}`
+  itemCounter.value += 1;
+  return `draft-item-${itemCounter.value}`;
 }
 
-function createDraftItem(overrides: Partial<ServiceOrderDraftItem> = {}): ServiceOrderDraftItem {
+function createDraftItem(
+  overrides: Partial<ServiceOrderDraftItem> = {},
+): ServiceOrderDraftItem {
   return {
     id: nextItemId(),
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     quantity: 1,
-    unit_price: '',
-    cost_price: '',
-    source: 'manual',
+    unit_price: "",
+    cost_price: "",
+    source: "manual",
     product_id: null,
     category_id: null,
     stored_commission: null,
     ...overrides,
-  }
+  };
 }
 
-function mapOrderItemToDraftItem(item: ServiceOrderItem): ServiceOrderDraftItem {
+function mapOrderItemToDraftItem(
+  item: ServiceOrderItem,
+): ServiceOrderDraftItem {
   return createDraftItem({
-    name: item.name ?? item.description ?? '',
-    description: item.description ?? item.name ?? '',
+    name: item.name ?? item.description ?? "",
+    description: item.description ?? item.name ?? "",
     quantity: toNumber(item.quantity) || 1,
     unit_price: toNumber(item.unit_price),
     cost_price: toNumber(item.cost_price ?? item.cost_amount),
-    source: item.product_id ? 'catalog' : 'manual',
+    source: item.product_id ? "catalog" : "manual",
     product_id: item.product_id ?? null,
     category_id: item.category_id ?? null,
     stored_commission: item.commission_total ?? item.total_commission ?? null,
-  })
+  });
 }
 
 function populateFormFromOrder(order: ServiceOrderRaw) {
-  const selectedTaxes = (order.selected_taxes ?? []) as ServiceOrderSelectedTax[]
+  const selectedTaxes = (order.selected_taxes ??
+    []) as ServiceOrderSelectedTax[];
 
-  form.number = order.number ?? ''
-  form.status = order.status || 'estimate'
-  form.client_id = order.client_id ?? ''
-  form.vehicle_id = order.vehicle_id ?? ''
-  form.master_product_id = order.master_product_id ?? ''
+  form.number = order.number ?? "";
+  form.status = order.status || "estimate";
+  form.client_id = order.client_id ?? "";
+  form.vehicle_id = order.vehicle_id ?? "";
+  form.master_product_id = order.master_product_id ?? "";
   form.responsible_employees = (order.responsible_employees ?? [])
     .map((r: { employee_id: string }) => r.employee_id)
-    .filter(Boolean)
-  form.entry_date = order.entry_date ?? new Date().toISOString().substring(0, 10)
-  form.expected_date = order.expected_date ?? ''
-  form.reported_defect = order.reported_defect ?? ''
-  form.diagnosis = order.diagnosis ?? ''
-  form.notes = order.notes ?? ''
-  form.items = (order.items ?? []).map(mapOrderItemToDraftItem)
-  form.discount = order.discount ?? ''
-  form.apply_taxes = Boolean(order.apply_taxes)
-  form.selected_tax_ids = selectedTaxes.map(t => t.tax_id ?? '').filter(Boolean)
-  form.create_appointment = false
-  form.appointment_date = ''
-  form.appointment_time = '08:00'
-  form.appointment_priority = APPOINTMENT_NO_PRIORITY
-  form.appointment_notes = ''
+    .filter(Boolean);
+  form.entry_date =
+    order.entry_date ?? new Date().toISOString().substring(0, 10);
+  form.expected_date = order.expected_date ?? "";
+  form.reported_defect = order.reported_defect ?? "";
+  form.diagnosis = order.diagnosis ?? "";
+  form.notes = order.notes ?? "";
+  form.items = (order.items ?? []).map(mapOrderItemToDraftItem);
+  form.discount = order.discount ?? "";
+  form.apply_taxes = Boolean(order.apply_taxes);
+  form.selected_tax_ids = selectedTaxes
+    .map((t) => t.tax_id ?? "")
+    .filter(Boolean);
+  form.create_appointment = false;
+  form.appointment_date = "";
+  form.appointment_time = "08:00";
+  form.appointment_priority = APPOINTMENT_NO_PRIORITY;
+  form.appointment_notes = "";
 }
 
 function getEmployeeById(employeeId: string) {
-  return employeeCatalog.value.find(e => e.id === employeeId) ?? null
+  return employeeCatalog.value.find((e) => e.id === employeeId) ?? null;
+}
+
+function toCommissionEmployee(employee: EmployeeItem): ServiceOrderEmployee {
+  return {
+    ...employee,
+    commission_amount:
+      employee.commission_amount == null
+        ? null
+        : toNumber(employee.commission_amount),
+  };
 }
 
 async function loadMasterProducts(force = false) {
-  if (masterProducts.value.length && !force) return
-  const res = await $fetch<{ items: MasterProductItem[] }>('/api/master-products', { query: { page_size: 500 } })
-  masterProducts.value = res.items ?? []
+  if (masterProducts.value.length && !force) return;
+  const res = await $fetch<{ items: MasterProductItem[] }>(
+    "/api/master-products",
+    { query: { page_size: 500 } },
+  );
+  masterProducts.value = res.items ?? [];
 }
 
 async function loadNextNumber() {
-  const requestId = ++nextNumberRequestId
-  isLoadingNextNumber.value = true
+  const requestId = ++nextNumberRequestId;
+  isLoadingNextNumber.value = true;
   try {
-    const res = await $fetch<{ number: string }>('/api/service-orders/next-number')
-    if (requestId !== nextNumberRequestId || !props.open) return
-    if (!form.number.trim()) form.number = res.number ?? ''
+    const res = await $fetch<{ number: string }>(
+      "/api/service-orders/next-number",
+    );
+    if (requestId !== nextNumberRequestId || !props.open) return;
+    if (!form.number.trim()) form.number = res.number ?? "";
   } catch {
     if (requestId === nextNumberRequestId && props.open) {
-      toast.add({ title: 'Não foi possível sugerir o número da OS', color: 'warning' })
+      toast.add({
+        title: "Não foi possível sugerir o número da OS",
+        color: "warning",
+      });
     }
   } finally {
-    if (requestId === nextNumberRequestId) isLoadingNextNumber.value = false
+    if (requestId === nextNumberRequestId) isLoadingNextNumber.value = false;
   }
 }
 
 async function loadOptions() {
-  if (optionsLoaded.value || isLoadingOptions.value) return
-  isLoadingOptions.value = true
+  if (optionsLoaded.value || isLoadingOptions.value) return;
+  isLoadingOptions.value = true;
   try {
-    const [clientsRes, vehiclesRes, employeesRes, masterProductsRes, taxesRes] = await Promise.all([
-      $fetch<{ items: ClientItem[] }>('/api/clients', { query: { page_size: 500 } }),
-      $fetch<{ items: VehicleItem[] }>('/api/vehicles', { query: { page_size: 500 } }),
-      $fetch<{ items: EmployeeItem[] }>('/api/employees'),
-      $fetch<{ items: MasterProductItem[] }>('/api/master-products', { query: { page_size: 500 } }),
-      $fetch<{ items: TaxItem[] }>('/api/taxes', { query: { page_size: 500, sort_by: 'name', sort_order: 'asc' } }),
-    ])
-    clientOptions.value = (clientsRes.items ?? []).map(c => ({ label: c.name, value: c.id }))
-    vehicleCatalog.value = vehiclesRes.items ?? []
-    employeeCatalog.value = employeesRes.items ?? []
-    masterProducts.value = masterProductsRes.items ?? []
-    taxesCatalog.value = taxesRes.items ?? []
-    optionsLoaded.value = true
+    const [clientsRes, vehiclesRes, employeesRes, masterProductsRes, taxesRes] =
+      await Promise.all([
+        $fetch<{ items: ClientItem[] }>("/api/clients", {
+          query: { page_size: 500 },
+        }),
+        $fetch<{ items: VehicleItem[] }>("/api/vehicles", {
+          query: { page_size: 500 },
+        }),
+        $fetch<{ items: EmployeeItem[] }>("/api/employees"),
+        $fetch<{ items: MasterProductItem[] }>("/api/master-products", {
+          query: { page_size: 500 },
+        }),
+        $fetch<{ items: TaxItem[] }>("/api/taxes", {
+          query: { page_size: 500, sort_by: "name", sort_order: "asc" },
+        }),
+      ]);
+    clientOptions.value = (clientsRes.items ?? []).map((c) => ({
+      label: c.name,
+      value: c.id,
+    }));
+    vehicleCatalog.value = vehiclesRes.items ?? [];
+    employeeCatalog.value = employeesRes.items ?? [];
+    masterProducts.value = masterProductsRes.items ?? [];
+    taxesCatalog.value = taxesRes.items ?? [];
+    optionsLoaded.value = true;
   } catch {
-    toast.add({ title: 'Erro ao carregar opções', color: 'error' })
+    toast.add({ title: "Erro ao carregar opções", color: "error" });
   } finally {
-    isLoadingOptions.value = false
+    isLoadingOptions.value = false;
   }
 }
 
@@ -273,36 +337,40 @@ async function loadOptions() {
 
 const vehicleOptions = computed<SelectOption[]>(() => {
   const filtered = form.client_id
-    ? vehicleCatalog.value.filter(v => !v.client_id || v.client_id === form.client_id)
-    : vehicleCatalog.value
-  return filtered.map(v => ({
-    label: [v.brand, v.model, v.license_plate].filter(Boolean).join(' - ') || '—',
+    ? vehicleCatalog.value.filter(
+        (v) => !v.client_id || v.client_id === form.client_id,
+      )
+    : vehicleCatalog.value;
+  return filtered.map((v) => ({
+    label:
+      [v.brand, v.model, v.license_plate].filter(Boolean).join(" - ") || "—",
     value: v.id,
-  }))
-})
+  }));
+});
 
 const employeeSelectOptions = computed<SelectOption[]>(() =>
-  employeeCatalog.value.map(e => ({ label: e.name, value: e.id })),
-)
+  employeeCatalog.value.map((e) => ({ label: e.name, value: e.id })),
+);
 
 const masterProductSelectOptions = computed<SelectOption[]>(() =>
-  masterProducts.value.map(p => ({ label: p.name, value: p.id })),
-)
+  masterProducts.value.map((p) => ({ label: p.name, value: p.id })),
+);
 
 const selectedMasterProduct = computed(
-  () => masterProducts.value.find(p => p.id === form.master_product_id) ?? null,
-)
+  () =>
+    masterProducts.value.find((p) => p.id === form.master_product_id) ?? null,
+);
 
 // ─── Normalized items + totals ────────────────────────────────────────────────
 
 const normalizedItems = computed(() =>
   form.items
-    .map(item => {
-      const quantity = Math.max(toNumber(item.quantity), 0)
-      const unitPrice = Math.max(toNumber(item.unit_price), 0)
-      const costPrice = Math.max(toNumber(item.cost_price), 0)
-      const description = item.description.trim() || item.name.trim()
-      const name = item.name.trim() || description
+    .map((item) => {
+      const quantity = Math.max(toNumber(item.quantity), 0);
+      const unitPrice = Math.max(toNumber(item.unit_price), 0);
+      const costPrice = Math.max(toNumber(item.cost_price), 0);
+      const description = item.description.trim() || item.name.trim();
+      const name = item.name.trim() || description;
       return {
         id: item.id,
         name,
@@ -313,115 +381,100 @@ const normalizedItems = computed(() =>
         cost_price: costPrice,
         product_id: item.product_id || null,
         category_id: item.category_id || null,
-      }
+      };
     })
-    .filter(item => item.description && item.quantity > 0),
-)
+    .filter((item) => item.description && item.quantity > 0),
+);
 
 const subtotal = computed(() =>
   normalizedItems.value.reduce((total, item) => total + item.total_price, 0),
-)
+);
 
 const totalCost = computed(() =>
-  normalizedItems.value.reduce((total, item) => total + item.cost_price * item.quantity, 0),
-)
+  normalizedItems.value.reduce(
+    (total, item) => total + item.cost_price * item.quantity,
+    0,
+  ),
+);
 
-const discountValue = computed(() => Math.max(toNumber(form.discount), 0))
+const discountValue = computed(() => Math.max(toNumber(form.discount), 0));
 
-const totalAmount = computed(() => Math.max(subtotal.value - discountValue.value, 0))
+const totalAmount = computed(() =>
+  Math.max(subtotal.value - discountValue.value, 0),
+);
 
 const selectedTaxes = computed(() => {
-  if (!form.apply_taxes) return []
+  if (!form.apply_taxes) return [];
   return taxesCatalog.value
-    .filter(tax => form.selected_tax_ids.includes(tax.id))
-    .map(tax => ({
+    .filter((tax) => form.selected_tax_ids.includes(tax.id))
+    .map((tax) => ({
       tax_id: tax.id,
       name: tax.name,
       type: tax.type,
       rate: toNumber(tax.rate),
       calculated_amount: (totalAmount.value * toNumber(tax.rate)) / 100,
-    }))
-})
+    }));
+});
 
 const totalTaxesAmount = computed(() =>
   selectedTaxes.value.reduce((total, tax) => total + tax.calculated_amount, 0),
-)
+);
 
 // ─── Commission calculation ───────────────────────────────────────────────────
 
-type ItemCommissionEntry = { total: number; commissions: { employee_id: string; amount: number }[] }
+const commissionOrderInput = computed(
+  () =>
+    ({
+      items: normalizedItems.value,
+      responsible_employees: form.responsible_employees
+        .filter(Boolean)
+        .map((employeeId) => ({ employee_id: employeeId })),
+      total_amount: totalAmount.value,
+      total_cost_amount: totalCost.value,
+      total_taxes_amount: totalTaxesAmount.value,
+      discount: discountValue.value,
+    }) as ServiceOrderRaw,
+);
+
+const commissionEmployees = computed<ServiceOrderEmployee[]>(() =>
+  employeeCatalog.value.map(toCommissionEmployee),
+);
+
+const commissionBreakdown = computed(() =>
+  computeServiceOrderCommissionBreakdown(
+    commissionOrderInput.value,
+    commissionEmployees.value,
+  ),
+);
 
 const itemCommissionDetail = computed(() => {
-  const detail = new Map<string, ItemCommissionEntry>()
-  const items = normalizedItems.value
-  const allItemsSale = subtotal.value
+  const detail = new Map<string, ServiceOrderItemCommissionEntry>();
 
-  items.forEach(item => detail.set(item.id, { total: 0, commissions: [] }))
+  normalizedItems.value.forEach((item, index) => {
+    detail.set(
+      item.id,
+      commissionBreakdown.value.byItemIndex.get(index) ?? {
+        total: 0,
+        commissions: [],
+      },
+    );
+  });
 
-  form.responsible_employees
-    .map(id => getEmployeeById(id))
-    .filter((emp): emp is EmployeeItem => !!emp?.id)
-    .forEach(employee => {
-      if (!employee.has_commission) return
-
-      const commissionCategories = employee.commission_categories ?? []
-      const eligibleItems = commissionCategories.length
-        ? items.filter(item => !item.category_id || commissionCategories.includes(item.category_id))
-        : items
-
-      if (!eligibleItems.length) return
-
-      const commissionAmount = toNumber(employee.commission_amount)
-      const eligibleSale = eligibleItems.reduce((total, item) => total + item.total_price, 0)
-      const eligibleRatio = allItemsSale > 0 ? eligibleSale / allItemsSale : 0
-      const eligibleDiscount = discountValue.value * eligibleRatio
-      const eligibleTaxes = totalTaxesAmount.value * eligibleRatio
-
-      if (employee.commission_type === 'percentage') {
-        eligibleItems.forEach(item => {
-          const fraction = eligibleSale > 0 ? item.total_price / eligibleSale : 0
-          const itemDiscount = eligibleDiscount * fraction
-          const itemTaxes = eligibleTaxes * fraction
-          let itemBase = item.total_price - itemDiscount
-
-          if (employee.commission_base === 'profit') {
-            itemBase = Math.max(0, itemBase - item.cost_price * item.quantity - itemTaxes)
-          }
-
-          const amount = roundCurrency((itemBase * commissionAmount) / 100)
-          const entry = detail.get(item.id)!
-          entry.total = roundCurrency(entry.total + amount)
-          if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount })
-        })
-        return
-      }
-
-      const perItemValue = roundCurrency(commissionAmount / eligibleItems.length)
-      const distributedTotal = roundCurrency(perItemValue * eligibleItems.length)
-      const remainder = roundCurrency(commissionAmount - distributedTotal)
-
-      eligibleItems.forEach((item, index) => {
-        const amount = index === 0 ? roundCurrency(perItemValue + remainder) : perItemValue
-        const entry = detail.get(item.id)!
-        entry.total = roundCurrency(entry.total + amount)
-        if (amount > 0) entry.commissions.push({ employee_id: employee.id, amount })
-      })
-    })
-
-  return detail
-})
+  return detail;
+});
 
 const itemCommissionMap = computed(() => {
-  const map = new Map<string, number>()
-  for (const [itemId, { total }] of itemCommissionDetail.value) map.set(itemId, total)
-  return map
-})
+  const map = new Map<string, number>();
+  for (const [itemId, { total }] of itemCommissionDetail.value)
+    map.set(itemId, total);
+  return map;
+});
 
 const normalizedItemsWithCommission = computed(() =>
-  normalizedItems.value.map(item => {
-    const { id: _id, ...itemWithoutId } = item
-    const detail = itemCommissionDetail.value.get(item.id)
-    const commissionTotal = detail?.total ?? 0
+  normalizedItems.value.map((item) => {
+    const { id: _id, ...itemWithoutId } = item;
+    const detail = itemCommissionDetail.value.get(item.id);
+    const commissionTotal = detail?.total ?? 0;
     return {
       ...itemWithoutId,
       total_price: item.total_price,
@@ -431,103 +484,103 @@ const normalizedItemsWithCommission = computed(() =>
       commission_total: commissionTotal,
       total_commission: commissionTotal,
       commissions: detail?.commissions ?? [],
-    }
+    };
   }),
-)
+);
 
-function computeResponsibleCommission(employee: EmployeeItem | null): CommissionResult {
-  if (!employee?.has_commission) return { value: 0, hasMatchingItems: true }
+function computeResponsibleCommission(
+  employee: EmployeeItem | null,
+): ServiceOrderCommissionEstimate {
+  if (!employee?.id) return { value: 0, hasMatchingItems: true };
 
-  const commissionCategories = employee.commission_categories ?? []
-  let baseAmount = totalAmount.value
-  let costAmount = totalCost.value
-  let hasMatchingItems = true
-
-  if (commissionCategories.length > 0) {
-    let matchingSale = 0
-    let matchingCost = 0
-    normalizedItems.value.forEach(item => {
-      if (!item.category_id || commissionCategories.includes(item.category_id)) {
-        matchingSale += item.total_price
-        matchingCost += item.cost_price * item.quantity
-      }
-    })
-    const ratio = subtotal.value > 0 ? matchingSale / subtotal.value : 0
-    baseAmount = Math.max(matchingSale - discountValue.value * ratio, 0)
-    costAmount = matchingCost + totalTaxesAmount.value * ratio
-    hasMatchingItems = matchingSale > 0
-  } else {
-    costAmount = totalCost.value + totalTaxesAmount.value
-  }
-
-  if (employee.commission_base === 'profit') baseAmount = Math.max(baseAmount - costAmount, 0)
-
-  const commissionAmount = toNumber(employee.commission_amount)
-  let value = 0
-  if (employee.commission_type === 'percentage') {
-    value = (baseAmount * commissionAmount) / 100
-  } else {
-    value = commissionCategories.length > 0 && !hasMatchingItems ? 0 : commissionAmount
-  }
-
-  return { value: Number(value.toFixed(2)), hasMatchingItems }
+  return (
+    commissionBreakdown.value.byEmployeeId.get(employee.id) ?? {
+      value: 0,
+      hasMatchingItems: Boolean(employee.has_commission),
+    }
+  );
 }
 
 const storedCommissionByEmployee = computed(() => {
-  if (!props.orderToEdit?.items) return new Map<string, number>()
-  const map = new Map<string, number>()
+  if (!props.orderToEdit?.items) return new Map<string, number>();
+  const map = new Map<string, number>();
   for (const item of props.orderToEdit.items) {
     for (const c of item.commissions ?? []) {
       if (c.employee_id) {
-        map.set(c.employee_id, (map.get(c.employee_id) ?? 0) + Number(c.amount ?? 0))
+        map.set(
+          c.employee_id,
+          (map.get(c.employee_id) ?? 0) + Number(c.amount ?? 0),
+        );
       }
     }
   }
-  return map
-})
+  return map;
+});
 
 function getStoredCommissionForEmployee(employeeId: string) {
-  return storedCommissionByEmployee.value.get(employeeId) ?? 0
+  return storedCommissionByEmployee.value.get(employeeId) ?? 0;
 }
 
 const totalCommissionAmount = computed(() =>
   form.responsible_employees.reduce((total, employeeId) => {
-    const employee = getEmployeeById(employeeId)
-    const fresh = computeResponsibleCommission(employee).value
-    if (fresh > 0) return total + fresh
-    return total + getStoredCommissionForEmployee(employeeId)
+    const employee = getEmployeeById(employeeId);
+    const fresh = computeResponsibleCommission(employee).value;
+    if (fresh > 0) return total + fresh;
+    return total + getStoredCommissionForEmployee(employeeId);
   }, 0),
-)
+);
 
 const estimatedProfit = computed(
-  () => totalAmount.value - totalCost.value - totalTaxesAmount.value - totalCommissionAmount.value,
-)
+  () =>
+    totalAmount.value -
+    totalCost.value -
+    totalTaxesAmount.value -
+    totalCommissionAmount.value,
+);
 
 // ─── Employee commission display (for ResponsiblesCard) ───────────────────────
 
-const employeeCommissionsDisplay = computed<Record<string, EmployeeCommissionDisplay>>(() => {
-  const result: Record<string, EmployeeCommissionDisplay> = {}
+const employeeCommissionsDisplay = computed<
+  Record<string, EmployeeCommissionDisplay>
+>(() => {
+  const result: Record<string, EmployeeCommissionDisplay> = {};
   for (const employeeId of form.responsible_employees) {
-    if (!employeeId) continue
-    const employee = getEmployeeById(employeeId)
-    const fresh = computeResponsibleCommission(employee)
-    const stored = getStoredCommissionForEmployee(employeeId)
-    const commissionValue = fresh.value > 0 ? fresh.value : stored
+    if (!employeeId) continue;
+    const employee = getEmployeeById(employeeId);
+    const fresh = computeResponsibleCommission(employee);
+    const stored = getStoredCommissionForEmployee(employeeId);
+    const commissionValue = fresh.value > 0 ? fresh.value : stored;
 
-    let rateLabel: string | null = null
+    let rateLabel: string | null = null;
     if (employee?.has_commission && employee.commission_amount != null) {
-      rateLabel = employee.commission_type === 'percentage'
-        ? `${toNumber(employee.commission_amount)}%`
-        : formatCurrency(employee.commission_amount)
+      rateLabel =
+        employee.commission_type === "percentage"
+          ? `${toNumber(employee.commission_amount)}%`
+          : formatCurrency(employee.commission_amount);
     }
 
-    const baseLabel = employee ? (employee.commission_base === 'profit' ? 'Base: lucro' : 'Base: faturamento') : null
+    const baseLabel = employee
+      ? employee.commission_base === "profit"
+        ? "Base: lucro"
+        : "Base: faturamento"
+      : null;
 
-    let note: EmployeeCommissionDisplay['note'] = null
+    let note: EmployeeCommissionDisplay["note"] = null;
     if (employee && !employee.has_commission) {
-      note = { label: 'Sem comissão', color: 'neutral', icon: 'i-lucide-circle-off' }
-    } else if (employee?.commission_categories?.length && !fresh.hasMatchingItems) {
-      note = { label: 'Sem itens nas categorias', color: 'warning', icon: 'i-lucide-triangle-alert' }
+      note = {
+        label: "Sem comissão",
+        color: "neutral",
+        icon: "i-lucide-circle-off",
+      };
+    } else if (
+      employee?.commission_categories?.length &&
+      !fresh.hasMatchingItems
+    ) {
+      note = {
+        label: "Sem itens nas categorias",
+        color: "warning",
+        icon: "i-lucide-triangle-alert",
+      };
     }
 
     result[employeeId] = {
@@ -536,112 +589,136 @@ const employeeCommissionsDisplay = computed<Record<string, EmployeeCommissionDis
       baseLabel,
       note,
       hasInfo: !!employee || stored > 0,
-    }
+    };
   }
-  return result
-})
+  return result;
+});
 
 // ─── Item actions ─────────────────────────────────────────────────────────────
 
 function addManualItem() {
-  form.items.push(createDraftItem())
+  form.items.push(createDraftItem());
 }
 
-interface ProductGroupItem { description?: string | null; quantity: number; cost_price: number; sale_price: number }
+interface ProductGroupItem {
+  description?: string | null;
+  quantity: number;
+  cost_price: number;
+  sale_price: number;
+}
 interface ProductCatalogItem {
-  id: string; name: string; type: 'unit' | 'group'; category_id?: string | null
-  unit_sale_price: number | null; unit_cost_price: number | null
-  group_items?: ProductGroupItem[] | null
+  id: string;
+  name: string;
+  type: "unit" | "group";
+  category_id?: string | null;
+  unit_sale_price: number | null;
+  unit_cost_price: number | null;
+  group_items?: ProductGroupItem[] | null;
 }
 
 function addProductItem(product: ProductCatalogItem) {
-  if (product.type === 'group' && product.group_items?.length) {
+  if (product.type === "group" && product.group_items?.length) {
     for (const groupItem of product.group_items) {
-      form.items.push(createDraftItem({
-        name: groupItem.description || product.name,
-        description: groupItem.description || product.name,
-        quantity: toNumber(groupItem.quantity) || 1,
-        unit_price: toNumber(groupItem.sale_price),
-        cost_price: toNumber(groupItem.cost_price),
-        source: 'catalog',
-        product_id: product.id,
-        category_id: product.category_id ?? null,
-      }))
+      form.items.push(
+        createDraftItem({
+          name: groupItem.description || product.name,
+          description: groupItem.description || product.name,
+          quantity: toNumber(groupItem.quantity) || 1,
+          unit_price: toNumber(groupItem.sale_price),
+          cost_price: toNumber(groupItem.cost_price),
+          source: "catalog",
+          product_id: product.id,
+          category_id: product.category_id ?? null,
+        }),
+      );
     }
   } else {
-    form.items.push(createDraftItem({
-      name: product.name,
-      description: product.name,
-      quantity: 1,
-      unit_price: toNumber(product.unit_sale_price),
-      cost_price: toNumber(product.unit_cost_price),
-      source: 'catalog',
-      product_id: product.id,
-      category_id: product.category_id ?? null,
-    }))
+    form.items.push(
+      createDraftItem({
+        name: product.name,
+        description: product.name,
+        quantity: 1,
+        unit_price: toNumber(product.unit_sale_price),
+        cost_price: toNumber(product.unit_cost_price),
+        source: "catalog",
+        product_id: product.id,
+        category_id: product.category_id ?? null,
+      }),
+    );
   }
 }
 
 function removeItem(itemId: string) {
-  form.items = form.items.filter(item => item.id !== itemId)
+  form.items = form.items.filter((item) => item.id !== itemId);
 }
 
 function setItemQuantity(item: ServiceOrderDraftItem, value: string | number) {
-  const nextValue = Number(value)
-  item.quantity = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 0
+  const nextValue = Number(value);
+  item.quantity = Number.isFinite(nextValue) && nextValue > 0 ? nextValue : 0;
 }
 
 // ─── Responsible actions ──────────────────────────────────────────────────────
 
 function addResponsible() {
   if (
-    employeeCatalog.value.length > 0
-    && form.responsible_employees.filter(Boolean).length >= employeeCatalog.value.length
+    employeeCatalog.value.length > 0 &&
+    form.responsible_employees.filter(Boolean).length >=
+      employeeCatalog.value.length
   ) {
-    toast.add({ title: 'Todos os responsáveis já foram adicionados', color: 'warning' })
-    return
+    toast.add({
+      title: "Todos os responsáveis já foram adicionados",
+      color: "warning",
+    });
+    return;
   }
-  form.responsible_employees.push('')
+  form.responsible_employees.push("");
 }
 
 function updateResponsible(index: number, employeeId: string) {
-  if (employeeId && form.responsible_employees.some((id, i) => i !== index && id === employeeId)) {
-    toast.add({ title: 'Responsável já selecionado', description: 'Escolha outro funcionário para esta OS.', color: 'warning' })
-    return
+  if (
+    employeeId &&
+    form.responsible_employees.some((id, i) => i !== index && id === employeeId)
+  ) {
+    toast.add({
+      title: "Responsável já selecionado",
+      description: "Escolha outro funcionário para esta OS.",
+      color: "warning",
+    });
+    return;
   }
-  form.responsible_employees[index] = employeeId
+  form.responsible_employees[index] = employeeId;
 }
 
 function removeResponsible(index: number) {
-  form.responsible_employees.splice(index, 1)
+  form.responsible_employees.splice(index, 1);
 }
 
 // ─── Master product handlers ──────────────────────────────────────────────────
 
 function openMasterProductCreate() {
-  masterProductEditorMode.value = 'create'
-  masterProductEditorProduct.value = null
-  masterProductManagerOpen.value = false
-  masterProductEditorOpen.value = true
+  masterProductEditorMode.value = "create";
+  masterProductEditorProduct.value = null;
+  masterProductManagerOpen.value = false;
+  masterProductEditorOpen.value = true;
 }
 
 function openMasterProductEdit(product: MasterProductItem) {
-  masterProductEditorMode.value = 'edit'
-  masterProductEditorProduct.value = product
-  masterProductManagerOpen.value = false
-  masterProductEditorOpen.value = true
+  masterProductEditorMode.value = "edit";
+  masterProductEditorProduct.value = product;
+  masterProductManagerOpen.value = false;
+  masterProductEditorOpen.value = true;
 }
 
 async function onMasterProductSaved(product: MasterProductItem) {
-  await loadMasterProducts(true)
-  if (masterProductEditorMode.value === 'create') {
-    form.master_product_id = product.id
+  await loadMasterProducts(true);
+  if (masterProductEditorMode.value === "create") {
+    form.master_product_id = product.id;
   }
 }
 
 async function onMasterProductDeleted(id: string) {
-  await loadMasterProducts(true)
-  if (form.master_product_id === id) form.master_product_id = ''
+  await loadMasterProducts(true);
+  if (form.master_product_id === id) form.master_product_id = "";
 }
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
@@ -650,110 +727,134 @@ watch(
   () => props.open,
   (opened) => {
     if (opened) {
-      resetForm()
-      loadOptions()
+      resetForm();
+      loadOptions();
       if (isEditMode.value && props.orderToEdit) {
-        populateFormFromOrder(props.orderToEdit)
+        populateFormFromOrder(props.orderToEdit);
       } else {
-        loadNextNumber()
+        loadNextNumber();
       }
     } else {
-      nextNumberRequestId += 1
-      isLoadingNextNumber.value = false
+      nextNumberRequestId += 1;
+      isLoadingNextNumber.value = false;
     }
   },
-)
+);
 
 watch(
   () => form.client_id,
   (clientId) => {
-    if (!form.vehicle_id) return
+    if (!form.vehicle_id) return;
     const matchesVehicle = vehicleCatalog.value.some(
-      v => v.id === form.vehicle_id && (!clientId || !v.client_id || v.client_id === clientId),
-    )
-    if (!matchesVehicle) form.vehicle_id = ''
+      (v) =>
+        v.id === form.vehicle_id &&
+        (!clientId || !v.client_id || v.client_id === clientId),
+    );
+    if (!matchesVehicle) form.vehicle_id = "";
   },
-)
+);
 
 watch(
   () => form.create_appointment,
   (enabled) => {
-    if (!enabled) return
-    if (!form.appointment_date) form.appointment_date = form.entry_date
-    if (!form.appointment_time) form.appointment_time = '08:00'
+    if (!enabled) return;
+    if (!form.appointment_date) form.appointment_date = form.entry_date;
+    if (!form.appointment_time) form.appointment_time = "08:00";
   },
-)
+);
 
 // ─── Form reset ───────────────────────────────────────────────────────────────
 
 function resetForm() {
-  itemCounter.value = 0
-  form.number = ''
-  form.status = 'estimate'
-  form.client_id = ''
-  form.vehicle_id = ''
-  form.master_product_id = ''
-  form.responsible_employees = []
-  form.entry_date = new Date().toISOString().substring(0, 10)
-  form.expected_date = ''
-  form.reported_defect = ''
-  form.diagnosis = ''
-  form.notes = ''
-  form.items = []
-  form.discount = ''
-  form.apply_taxes = false
-  form.selected_tax_ids = []
-  form.create_appointment = false
-  form.appointment_date = ''
-  form.appointment_time = '08:00'
-  form.appointment_priority = APPOINTMENT_NO_PRIORITY
-  form.appointment_notes = ''
+  itemCounter.value = 0;
+  form.number = "";
+  form.status = "estimate";
+  form.client_id = "";
+  form.vehicle_id = "";
+  form.master_product_id = "";
+  form.responsible_employees = [];
+  form.entry_date = new Date().toISOString().substring(0, 10);
+  form.expected_date = "";
+  form.reported_defect = "";
+  form.diagnosis = "";
+  form.notes = "";
+  form.items = [];
+  form.discount = "";
+  form.apply_taxes = false;
+  form.selected_tax_ids = [];
+  form.create_appointment = false;
+  form.appointment_date = "";
+  form.appointment_time = "08:00";
+  form.appointment_priority = APPOINTMENT_NO_PRIORITY;
+  form.appointment_notes = "";
 }
 
 // ─── Submit ───────────────────────────────────────────────────────────────────
 
-const isSaving = ref(false)
+const isSaving = ref(false);
 
 async function submit() {
-  if (isSaving.value) return
+  if (isSaving.value) return;
 
   if (!isEditMode.value && form.create_appointment) {
     if (!form.client_id) {
-      toast.add({ title: 'Selecione um cliente para agendar', color: 'warning' })
-      return
+      toast.add({
+        title: "Selecione um cliente para agendar",
+        color: "warning",
+      });
+      return;
     }
     if (!form.vehicle_id) {
-      toast.add({ title: 'Selecione um veículo para agendar', color: 'warning' })
-      return
+      toast.add({
+        title: "Selecione um veículo para agendar",
+        color: "warning",
+      });
+      return;
     }
     if (!form.appointment_date) {
-      toast.add({ title: 'Data do agendamento é obrigatória', color: 'warning' })
-      return
+      toast.add({
+        title: "Data do agendamento é obrigatória",
+        color: "warning",
+      });
+      return;
     }
     if (!form.appointment_time) {
-      toast.add({ title: 'Horário do agendamento é obrigatório', color: 'warning' })
-      return
+      toast.add({
+        title: "Horário do agendamento é obrigatório",
+        color: "warning",
+      });
+      return;
     }
   }
 
-  isSaving.value = true
+  isSaving.value = true;
   try {
-    interface CreateResponse { duplicateNumber?: boolean; suggestedNumber?: string }
+    interface CreateResponse {
+      duplicateNumber?: boolean;
+      suggestedNumber?: string;
+    }
 
-    const res = await $fetch<CreateResponse>('/api/service-orders', {
-      method: 'POST',
+    const res = await $fetch<CreateResponse>("/api/service-orders", {
+      method: "POST",
       body: {
         orderId: isEditMode.value ? props.orderToEdit?.id : undefined,
         orderData: {
           number: form.number || undefined,
           status: form.status,
-          payment_status: isEditMode.value ? (props.orderToEdit?.payment_status ?? 'pending') : 'pending',
+          payment_status: isEditMode.value
+            ? (props.orderToEdit?.payment_status ?? "pending")
+            : "pending",
           client_id: form.client_id || null,
           vehicle_id: form.vehicle_id || null,
           master_product_id: form.master_product_id || null,
-          appointment_id: isEditMode.value ? (props.orderToEdit?.appointment_id ?? null) : null,
-          responsible_employees: form.responsible_employees.filter(Boolean).map(id => ({ employee_id: id })),
-          entry_date: form.entry_date || new Date().toISOString().substring(0, 10),
+          appointment_id: isEditMode.value
+            ? (props.orderToEdit?.appointment_id ?? null)
+            : null,
+          responsible_employees: form.responsible_employees
+            .filter(Boolean)
+            .map((id) => ({ employee_id: id })),
+          entry_date:
+            form.entry_date || new Date().toISOString().substring(0, 10),
           expected_date: form.expected_date || null,
           reported_defect: form.reported_defect || null,
           diagnosis: form.diagnosis || null,
@@ -767,37 +868,54 @@ async function submit() {
           discount: discountValue.value,
           commission_amount: totalCommissionAmount.value,
         },
-        appointmentData: !isEditMode.value && form.create_appointment
-          ? {
-              appointment_date: form.appointment_date,
-              time: form.appointment_time,
-              service_type: form.reported_defect || 'Serviço da OS',
-              priority: form.appointment_priority !== APPOINTMENT_NO_PRIORITY ? form.appointment_priority : null,
-              notes: form.appointment_notes || null,
-            }
-          : null,
+        appointmentData:
+          !isEditMode.value && form.create_appointment
+            ? {
+                appointment_date: form.appointment_date,
+                time: form.appointment_time,
+                service_type: form.reported_defect || "Serviço da OS",
+                priority:
+                  form.appointment_priority !== APPOINTMENT_NO_PRIORITY
+                    ? form.appointment_priority
+                    : null,
+                notes: form.appointment_notes || null,
+              }
+            : null,
       },
-    })
+    });
 
     if (res?.duplicateNumber) {
-      toast.add({ title: 'Número já existe', description: `Sugestão: ${res.suggestedNumber}`, color: 'warning' })
-      form.number = res.suggestedNumber ?? ''
-      return
+      toast.add({
+        title: "Número já existe",
+        description: `Sugestão: ${res.suggestedNumber}`,
+        color: "warning",
+      });
+      form.number = res.suggestedNumber ?? "";
+      return;
     }
 
-    toast.add({ title: isEditMode.value ? 'OS atualizada com sucesso' : 'OS criada com sucesso', color: 'success' })
-    emit('update:open', false)
-    if (isEditMode.value) emit('updated')
-    else emit('created')
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
     toast.add({
-      title: isEditMode.value ? 'Erro ao atualizar OS' : 'Erro ao criar OS',
-      description: err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
-      color: 'error',
-    })
+      title: isEditMode.value
+        ? "OS atualizada com sucesso"
+        : "OS criada com sucesso",
+      color: "success",
+    });
+    emit("update:open", false);
+    if (isEditMode.value) emit("updated");
+    else emit("created");
+  } catch (error: unknown) {
+    const err = error as {
+      data?: { statusMessage?: string };
+      statusMessage?: string;
+    };
+    toast.add({
+      title: isEditMode.value ? "Erro ao atualizar OS" : "Erro ao criar OS",
+      description:
+        err?.data?.statusMessage || err?.statusMessage || "Tente novamente.",
+      color: "error",
+    });
   } finally {
-    isSaving.value = false
+    isSaving.value = false;
   }
 }
 </script>
@@ -807,26 +925,38 @@ async function submit() {
     :open="open"
     :ui="{
       overlay: 'bg-default/90 backdrop-blur-sm',
-      content: 'max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden sm:max-h-[100dvh] max-h-[100dvh]',
+      content:
+        'max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden sm:max-h-[100dvh] max-h-[100dvh]',
       header: 'p-0 shrink-0 border-b border-default',
       body: 'flex-1 min-h-0 overflow-y-auto p-0',
-      footer: 'p-0 shrink-0 border-t border-default bg-default/95 backdrop-blur',
+      footer:
+        'p-0 shrink-0 border-t border-default bg-default/95 backdrop-blur',
     }"
     @update:open="emit('update:open', $event)"
   >
     <template #header>
       <div class="flex w-full justify-between gap-4 p-4 lg:px-6 lg:py-5">
         <div class="min-w-0 flex-1 space-y-4">
-          <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+          <div
+            class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between"
+          >
             <div class="space-y-1.5">
-              <p class="font-semibold uppercase tracking-[0.22em] text-primary/80">
-                {{ isEditMode ? 'Editar Ordem de Serviço' : 'Nova Ordem de Serviço' }}
+              <p
+                class="font-semibold uppercase tracking-[0.22em] text-primary/80"
+              >
+                {{
+                  isEditMode
+                    ? "Editar Ordem de Serviço"
+                    : "Nova Ordem de Serviço"
+                }}
               </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <UBadge
                 :label="STATUS_LABEL[form.status] ?? 'Status'"
-                :leading-icon="STATUS_ICON[form.status] ?? 'i-lucide-circle-dot'"
+                :leading-icon="
+                  STATUS_ICON[form.status] ?? 'i-lucide-circle-dot'
+                "
                 :color="STATUS_COLOR[form.status] ?? 'neutral'"
                 variant="subtle"
                 class="px-3 py-1"
@@ -857,7 +987,13 @@ async function submit() {
             </div>
           </div>
         </div>
-        <UButton icon="i-lucide-x" color="neutral" variant="ghost" square @click="emit('update:open', false)" />
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          square
+          @click="emit('update:open', false)"
+        />
       </div>
     </template>
 
@@ -926,7 +1062,9 @@ async function submit() {
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]">
+        <div
+          class="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.55fr)_360px]"
+        >
           <ServiceOrdersCreateItemsCard
             :items="form.items"
             :item-commission-map="itemCommissionMap"
@@ -950,7 +1088,9 @@ async function submit() {
     </template>
 
     <template #footer>
-      <div class="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-end lg:px-6">
+      <div
+        class="flex flex-col gap-3 p-4 lg:flex-row lg:items-center lg:justify-end lg:px-6"
+      >
         <div class="flex items-center justify-end gap-3">
           <UButton
             label="Cancelar"
@@ -981,7 +1121,11 @@ async function submit() {
     v-model:open="masterProductManagerOpen"
     :products="masterProducts"
     :selected-master-product-id="form.master_product_id"
-    @select="id => { form.master_product_id = id }"
+    @select="
+      (id) => {
+        form.master_product_id = id;
+      }
+    "
     @open-create="openMasterProductCreate"
     @open-edit="openMasterProductEdit"
     @deleted="onMasterProductDeleted"

@@ -22,6 +22,26 @@ function asNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+function roundCurrency(value: number) {
+  return Number(value.toFixed(2))
+}
+
+function getItemQuantity(item: Record<string, unknown>) {
+  return asNumber(item.quantity || 1) || 1
+}
+
+function getItemTotal(item: Record<string, unknown>) {
+  const quantity = getItemQuantity(item)
+  const rawTotal = item.total_price ?? item.total_amount
+  return rawTotal != null
+    ? asNumber(rawTotal)
+    : asNumber(item.unit_price) * quantity
+}
+
+function getItemCost(item: Record<string, unknown>) {
+  return asNumber(item.cost_price ?? item.cost_amount) * getItemQuantity(item)
+}
+
 function isMissingCommissionSnapshotColumn(error: { message?: string } | null | undefined) {
   const message = String(error?.message || '')
   if (!message) return false
@@ -120,6 +140,9 @@ export async function generateServiceOrderCommissions({
     }
   }
 
+  const subtotal = items.reduce((sum, item) => sum + getItemTotal(item), 0)
+  const discountAmount = asNumber(order.discount)
+  const taxesAmount = asNumber(order.total_taxes_amount)
   const createdCommissions: unknown[] = []
   let totalCommission = 0
 
@@ -135,50 +158,47 @@ export async function generateServiceOrderCommissions({
     const commissionCategories = Array.isArray(employee.commission_categories)
       ? employee.commission_categories
       : []
+
+    const eligibleItems = items.filter((item) => {
+      if (commissionCategories.length === 0) return true
+
+      const itemCategoryId = item.category_id
+      return !itemCategoryId || commissionCategories.includes(itemCategoryId)
+    })
+
+    if (eligibleItems.length === 0) continue
+
+    const eligibleItemAmount = eligibleItems.reduce((sum, item) => sum + getItemTotal(item), 0)
+    const eligibleItemCost = eligibleItems.reduce((sum, item) => sum + getItemCost(item), 0)
     let employeeCommissionAmount = 0
-    let eligibleItemAmount = 0
-    let eligibleItemCost = 0
 
-    for (const item of items) {
-      if (commissionCategories.length > 0) {
-        const itemCategoryId = item.category_id
-        // Skip only items that have an explicit category NOT in the employee's categories.
-        // Items without category_id are treated as eligible (matches UI behavior for migrated items).
-        if (itemCategoryId && !commissionCategories.includes(itemCategoryId)) {
-          continue
+    if (commissionType === 'percentage') {
+      const eligibleRatio = subtotal > 0 ? eligibleItemAmount / subtotal : 0
+      const eligibleDiscount = discountAmount * eligibleRatio
+      const eligibleTaxes = taxesAmount * eligibleRatio
+
+      for (const item of eligibleItems) {
+        const itemTotal = getItemTotal(item)
+        const fraction = eligibleItemAmount > 0 ? itemTotal / eligibleItemAmount : 1 / eligibleItems.length
+        const itemDiscount = eligibleDiscount * fraction
+        const itemTaxes = eligibleTaxes * fraction
+        let baseAmount = itemTotal - itemDiscount
+
+        if (commissionBase === 'profit') {
+          baseAmount = Math.max(0, baseAmount - getItemCost(item) - itemTaxes)
         }
+
+        employeeCommissionAmount += roundCurrency((baseAmount * commissionValue) / 100)
       }
-
-      const quantity = asNumber(item.quantity || 1)
-      // total_price/total_amount already include quantity (full line total) — don't multiply again
-      const rawTotal = item.total_price ?? item.total_amount
-      const itemTotal = rawTotal != null
-        ? asNumber(rawTotal)
-        : asNumber(item.unit_price) * quantity
-      // cost_price/cost_amount are per-unit costs — must multiply by quantity
-      const itemCost = asNumber(item.cost_price ?? item.cost_amount) * quantity
-      const itemProfit = itemTotal - itemCost
-
-      eligibleItemAmount += itemTotal
-      eligibleItemCost += itemCost
-
-      let commissionAmount = 0
-      if (commissionType === 'percentage') {
-        const baseAmount = commissionBase === 'profit' ? itemProfit : itemTotal
-        commissionAmount = (baseAmount * commissionValue) / 100
-      } else {
-        commissionAmount = commissionValue * quantity
-      }
-
-      commissionAmount = commissionAmount / responsibleEmployees.length
-      employeeCommissionAmount += commissionAmount
+    } else {
+      employeeCommissionAmount = commissionValue
     }
 
     if (employeeCommissionAmount <= 0) continue
 
-    const roundedAmount = Number(employeeCommissionAmount.toFixed(2))
-    const roundedEligibleItemAmount = Number(eligibleItemAmount.toFixed(2))
-    const roundedEligibleItemCost = Number(eligibleItemCost.toFixed(2))
+    const roundedAmount = roundCurrency(employeeCommissionAmount)
+    const roundedEligibleItemAmount = roundCurrency(eligibleItemAmount)
+    const roundedEligibleItemCost = roundCurrency(eligibleItemCost)
     const basePayload = {
       organization_id: organizationId,
       employee_id: employeeId,
@@ -228,7 +248,7 @@ export async function generateServiceOrderCommissions({
     }
   }
 
-  const roundedTotalCommission = Number(totalCommission.toFixed(2))
+  const roundedTotalCommission = roundCurrency(totalCommission)
 
   await supabase
     .from('service_orders')

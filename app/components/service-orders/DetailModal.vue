@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ServiceOrder, ServiceOrderDetailFull, ServiceOrderRaw } from '~/types/service-orders'
+import { computeServiceOrderCommissionBreakdown } from '~/utils/service-orders'
 
 const props = defineProps<{
   open: boolean
@@ -261,8 +262,7 @@ const orderProxy = computed<ServiceOrder | null>(() => {
 
 const estimatedCommissionAmount = computed(() => {
   if (!detail.value) return 0
-  // Use stored commission_amount from the order record (set when order is saved/generated)
-  return Number(detail.value.order.commission_amount ?? 0)
+  return computeServiceOrderCommissionBreakdown(detail.value.order, detail.value.employees).total
 })
 </script>
 
