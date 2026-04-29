@@ -70,12 +70,19 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 4. Find the user profile by email when it already exists
-  const { data: targetProfile } = await supabase
+  // 4. Find the user profile by email when it already exists.
+  // Using limit(1) + order instead of maybeSingle() to handle the case where
+  // duplicate profiles exist for the same email (orphaned rows from deleted auth users).
+  // We prefer the profile already linked to this organization, otherwise the most recent.
+  const { data: profileRows } = await supabase
     .from('user_profiles')
     .select('id, user_id, organization_id')
     .eq('email', normalizedEmail)
-    .maybeSingle()
+    .order('created_at', { ascending: false })
+
+  const targetProfile = profileRows?.find(p => p.organization_id === organizationId)
+    ?? profileRows?.[0]
+    ?? null
 
   if (targetProfile?.organization_id && targetProfile.organization_id !== organizationId) {
     throw createError({ statusCode: 400, statusMessage: 'Este usuário já está vinculado a outra organização.' })

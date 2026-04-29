@@ -8,7 +8,7 @@ export default defineEventHandler(async (event) => {
   const { data: userProfile, error } = await supabase
     .from('user_profiles')
     .select('*')
-    .eq('email', authUser.email!)
+    .eq('user_id', authUser.id)
     .maybeSingle()
 
   if (error)

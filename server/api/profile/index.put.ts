@@ -20,7 +20,7 @@ export default defineEventHandler(async (event) => {
   const { data: userProfile, error } = await supabase
     .from('user_profiles')
     .update(updates)
-    .eq('email', authUser.email!)
+    .eq('user_id', authUser.id)
     .select()
     .single()
 
