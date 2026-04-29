@@ -101,6 +101,9 @@ export type ServiceOrderCommission = {
   amount: number | null
   status: string | null
   service_order_id: string
+  description: string | null
+  payment_date: string | null
+  reference_date: string | null
 }
 
 export type ServiceOrderEmployee = {

@@ -360,6 +360,14 @@ const estimatedCommissionAmount = computed(() => {
           @paid="loadDetail"
         />
 
+        <!-- Commissions -->
+        <ServiceOrdersDetailOSCommissionsCard
+          :commissions="detail.commissions"
+          :employees="detail.employees"
+          :can-update="canUpdate"
+          @paid="loadDetail"
+        />
+
         <!-- Responsibles -->
         <ServiceOrdersDetailOSResponsiblesCard
           :order="detail.order"

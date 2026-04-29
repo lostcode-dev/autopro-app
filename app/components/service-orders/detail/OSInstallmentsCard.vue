@@ -95,7 +95,7 @@ async function confirmPay() {
           </p>
         </div>
 
-        <div v-if="canUpdate && installment.status !== 'paid'" class="mt-3">
+        <div v-if="canUpdate && installment.status !== 'paid'" class="mt-3 max-w-sm ml-auto">
           <UButton
             size="xs"
             color="success"
@@ -104,7 +104,6 @@ async function confirmPay() {
             label="Pagar"
             :loading="payingId === installment.id"
             :disabled="!!payingId"
-            block
             @click="requestPay(installment.id)"
           />
         </div>
