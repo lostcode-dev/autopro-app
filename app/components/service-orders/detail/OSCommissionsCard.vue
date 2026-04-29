@@ -1,94 +1,67 @@
 <script setup lang="ts">
-import type { ServiceOrderCommission, ServiceOrderEmployee } from '~/types/service-orders'
-import { formatCurrency, formatDate } from '~/utils/service-orders'
+import type {
+  ServiceOrderCommission,
+  ServiceOrderEmployee,
+} from "~/types/service-orders";
+import { formatCurrency, formatDate } from "~/utils/service-orders";
 
 const props = defineProps<{
-  commissions: ServiceOrderCommission[]
-  employees: ServiceOrderEmployee[]
-  canUpdate?: boolean
-}>()
+  commissions: ServiceOrderCommission[];
+  employees: ServiceOrderEmployee[];
+  canUpdate?: boolean;
+}>();
 
-const emit = defineEmits<{ paid: [] }>()
+const emit = defineEmits<{ paid: [] }>();
 
-const toast = useToast()
+const toast = useToast();
 
-const employeeNameById = computed(() =>
-  new Map(props.employees.map(e => [e.id, e.name]))
-)
+const employeeNameById = computed(
+  () => new Map(props.employees.map((e) => [e.id, e.name])),
+);
 
 function getEmployeeName(employeeId: string | null) {
-  if (!employeeId) return 'Funcionário não encontrado'
-  return employeeNameById.value.get(employeeId) ?? 'Funcionário não encontrado'
+  if (!employeeId) return "Funcionário não encontrado";
+  return employeeNameById.value.get(employeeId) ?? "Funcionário não encontrado";
 }
 
 function isPending(commission: ServiceOrderCommission) {
-  const s = commission.status ?? ''
-  return s !== 'pago' && s !== 'paid'
+  const s = commission.status ?? "";
+  return s !== "pago" && s !== "paid";
 }
 
-const pendingCommissions = computed(() => props.commissions.filter(isPending))
+const pendingCommissions = computed(() => props.commissions.filter(isPending));
 
 // ─── Pay single ────────────────────────────────────────────────────────────────
 
-const confirmingId = ref<string | null>(null)
-const payingId = ref<string | null>(null)
+const confirmingId = ref<string | null>(null);
+const payingId = ref<string | null>(null);
 
 function requestPay(id: string) {
-  confirmingId.value = id
+  confirmingId.value = id;
 }
 
 async function confirmPaySingle() {
-  if (!confirmingId.value) return
-  const id = confirmingId.value
-  payingId.value = id
-  confirmingId.value = null
+  if (!confirmingId.value) return;
+  const id = confirmingId.value;
+  payingId.value = id;
+  confirmingId.value = null;
 
   try {
-    await $fetch('/api/financial/pay-commissions-bulk', {
-      method: 'POST',
-      body: { registroIds: [id] }
-    })
-    toast.add({ title: 'Comissão paga com sucesso', color: 'success' })
-    emit('paid')
+    await $fetch("/api/financial/pay-commissions-bulk", {
+      method: "POST",
+      body: { registroIds: [id] },
+    });
+    toast.add({ title: "Comissão paga com sucesso", color: "success" });
+    emit("paid");
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string } }
+    const err = error as { data?: { statusMessage?: string } };
     toast.add({
-      title: 'Erro ao pagar comissão',
-      description: err?.data?.statusMessage || 'Tente novamente.',
-      color: 'error'
-    })
+      title: "Erro ao pagar comissão",
+      description: err?.data?.statusMessage || "Tente novamente.",
+      color: "error",
+    });
   } finally {
-    payingId.value = null
-  }
-}
-
-// ─── Pay all pending ───────────────────────────────────────────────────────────
-
-const showPayAllConfirm = ref(false)
-const isPayingAll = ref(false)
-
-async function confirmPayAll() {
-  const ids = pendingCommissions.value.map(c => c.id)
-  if (!ids.length) return
-  isPayingAll.value = true
-  showPayAllConfirm.value = false
-
-  try {
-    await $fetch('/api/financial/pay-commissions-bulk', {
-      method: 'POST',
-      body: { registroIds: ids }
-    })
-    toast.add({ title: 'Comissões pagas com sucesso', color: 'success' })
-    emit('paid')
-  } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string } }
-    toast.add({
-      title: 'Erro ao pagar comissões',
-      description: err?.data?.statusMessage || 'Tente novamente.',
-      color: 'error'
-    })
-  } finally {
-    isPayingAll.value = false
+    payingId.value = null;
   }
 }
 </script>
@@ -103,18 +76,6 @@ async function confirmPayAll() {
             Comissões ({{ commissions.length }})
           </h3>
         </div>
-
-        <UButton
-          v-if="canUpdate && pendingCommissions.length > 1"
-          size="xs"
-          color="success"
-          variant="soft"
-          icon="i-lucide-check-check"
-          :label="`Pagar todas (${pendingCommissions.length})`"
-          :loading="isPayingAll"
-          :disabled="!!payingId || isPayingAll"
-          @click="showPayAllConfirm = true"
-        />
       </div>
     </template>
 
@@ -123,9 +84,11 @@ async function confirmPayAll() {
         v-for="commission in commissions"
         :key="commission.id"
         class="flex items-center gap-3 rounded-lg border p-3"
-        :class="!isPending(commission)
-          ? 'border-success/30 bg-success/5'
-          : 'border-default bg-elevated'"
+        :class="
+          !isPending(commission)
+            ? 'border-success/30 bg-success/5'
+            : 'border-default bg-elevated'
+        "
       >
         <!-- Status indicator -->
         <div
@@ -166,23 +129,14 @@ async function confirmPayAll() {
           color="success"
           variant="soft"
           icon="i-lucide-check"
+          label="Pagar"
           :loading="payingId === commission.id"
-          :disabled="!!payingId || isPayingAll"
+          :disabled="!!payingId"
           square
           @click="requestPay(commission.id)"
         />
       </div>
     </div>
-
-    <!-- Summary -->
-    <template v-if="commissions.length" #footer>
-      <div class="flex items-center justify-between text-sm">
-        <span class="text-muted">Total de comissões</span>
-        <span class="font-semibold text-highlighted">
-          {{ formatCurrency(commissions.reduce((s, c) => s + Number(c.amount ?? 0), 0)) }}
-        </span>
-      </div>
-    </template>
   </UCard>
 
   <!-- Confirm single pay -->
@@ -196,26 +150,8 @@ async function confirmPayAll() {
   >
     <template #description>
       <p class="text-sm text-muted">
-        Deseja registrar o pagamento desta comissão?
-        O valor será debitado da conta bancária ativa da organização.
-      </p>
-    </template>
-  </AppConfirmModal>
-
-  <!-- Confirm pay all -->
-  <AppConfirmModal
-    :open="showPayAllConfirm"
-    title="Pagar todas as comissões pendentes"
-    :confirm-label="`Pagar ${pendingCommissions.length} comissões`"
-    confirm-color="success"
-    @update:open="showPayAllConfirm = false"
-    @confirm="confirmPayAll"
-  >
-    <template #description>
-      <p class="text-sm text-muted">
-        Deseja pagar
-        <strong class="text-highlighted">{{ pendingCommissions.length }} comissões pendentes</strong>
-        desta OS? O valor total será debitado da conta bancária ativa.
+        Deseja registrar o pagamento desta comissão? O valor será debitado da
+        conta bancária ativa da organização.
       </p>
     </template>
   </AppConfirmModal>
