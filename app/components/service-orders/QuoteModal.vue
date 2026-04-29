@@ -171,21 +171,32 @@ async function downloadPdf() {
     });
 
     const pdf = await PDFDocument.create();
-    const page = pdf.addPage([595.28, 841.89]);
     const image = await pdf.embedPng(dataUrl);
-    const imageWidth = image.width;
-    const imageHeight = image.height;
-    const margin = 24;
-    const scale = Math.min(
-      (page.getWidth() - margin * 2) / imageWidth,
-      (page.getHeight() - margin * 2) / imageHeight,
-    );
-    const width = imageWidth * scale;
-    const height = imageHeight * scale;
-    const x = (page.getWidth() - width) / 2;
-    const y = page.getHeight() - margin - height;
 
-    page.drawImage(image, { x, y, width, height });
+    const pageWidth = 595.28;
+    const pageHeight = 841.89;
+    const margin = 24;
+    const usableWidth = pageWidth - margin * 2;
+    const usableHeight = pageHeight - margin * 2;
+
+    // Scale image to fit page width exactly; height grows naturally
+    const scale = usableWidth / image.width;
+    const scaledWidth = usableWidth;
+    const scaledHeight = image.height * scale;
+
+    const numPages = Math.ceil(scaledHeight / usableHeight);
+
+    for (let i = 0; i < numPages; i++) {
+      const page = pdf.addPage([pageWidth, pageHeight]);
+      // Shift image upward so each page reveals the next vertical slice
+      const imageY = pageHeight - margin - scaledHeight + i * usableHeight;
+      page.drawImage(image, {
+        x: margin,
+        y: imageY,
+        width: scaledWidth,
+        height: scaledHeight,
+      });
+    }
 
     const bytes = await pdf.save();
     const blob = new Blob([bytes], { type: "application/pdf" });
