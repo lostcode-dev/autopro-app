@@ -4,16 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import {
-  formatCurrency,
-  formatOptionalDate,
-  formatStatusLabel,
-  normalizeReportStatus,
-  parseDateEnd,
-  parseDateStart,
-  sortFactor,
-  toNumber
-} from '../../utils/report-helpers'
+import { parseDateRange, formatCurrency, formatOptionalDate, formatStatusLabel, normalizeReportStatus, sortFactor, toNumber } from '../../utils/report-helpers'
 
 interface EmployeeRecord {
   id: string
@@ -69,8 +60,7 @@ export default defineEventHandler(async (event) => {
 
   const body = (await readBody(event)) || {}
 
-  const dateFrom = parseDateStart(body?.dateFrom)
-  const dateTo = parseDateEnd(body?.dateTo)
+  const { dateFrom, dateTo } = parseDateRange(body?.dateFrom, body?.dateTo)
   const employeeIds = Array.isArray(body?.employeeIds)
     ? body.employeeIds.map((value: unknown) => String(value)).filter(Boolean)
     : []

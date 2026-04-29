@@ -23,6 +23,19 @@ export function parseDateEnd(value?: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+/**
+ * Parses a date range from `from`/`to` strings.
+ * When `to` is absent but `from` is provided (single-day selection),
+ * defaults `to` to end-of-day of the same date as `from`.
+ */
+export function parseDateRange(from?: string, to?: string): { dateFrom: Date | null, dateTo: Date | null } {
+  const effectiveTo = (from && !to) ? from : to
+  return {
+    dateFrom: parseDateStart(from),
+    dateTo: parseDateEnd(effectiveTo)
+  }
+}
+
 export function startOfDay(date: Date): Date {
   const d = new Date(date)
   d.setHours(0, 0, 0, 0)

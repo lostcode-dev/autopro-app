@@ -4,7 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { parseDateStart, parseDateEnd, toNumber, roundMoney, formatCurrency, formatOptionalDate, normalizeReportStatus } from '../../utils/report-helpers'
+import { parseDateRange, toNumber, roundMoney, formatCurrency, formatOptionalDate, normalizeReportStatus } from '../../utils/report-helpers'
 
 function normalizeNumber(value: unknown) {
   const parsed = Number(value)

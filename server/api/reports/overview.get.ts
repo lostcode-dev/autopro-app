@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { parseDateStart, parseDateEnd, toNumber, formatDateKey, formatDayLabel, normalizeReportStatus } from '../../utils/report-helpers'
+import { parseDateRange, toNumber, formatDateKey, formatDayLabel, normalizeReportStatus } from '../../utils/report-helpers'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -18,8 +18,9 @@ export default defineEventHandler(async (event) => {
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
   const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
 
-  const dateFrom = parseDateStart(String(query.dateFrom || defaultFrom))!
-  const dateTo = parseDateEnd(String(query.dateTo || defaultTo))!
+  const fromStr = String(query.dateFrom || defaultFrom)
+  const toStr = String(query.dateTo || (query.dateFrom ? query.dateFrom : defaultTo))
+  const { dateFrom, dateTo } = parseDateRange(fromStr, toStr) as { dateFrom: Date, dateTo: Date }
 
   const [orders, clients, transactions] = await Promise.all([
     fetchAllOrganizationRows(supabase, {
