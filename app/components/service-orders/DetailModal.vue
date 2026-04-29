@@ -353,7 +353,12 @@ const estimatedCommissionAmount = computed(() => {
         />
 
         <!-- Installments -->
-        <ServiceOrdersDetailOSInstallmentsCard :installments="detail.installments" />
+        <ServiceOrdersDetailOSInstallmentsCard
+          :installments="detail.installments"
+          :order-id="detail.order.id"
+          :can-update="canUpdate"
+          @paid="loadDetail"
+        />
 
         <!-- Responsibles -->
         <ServiceOrdersDetailOSResponsiblesCard
