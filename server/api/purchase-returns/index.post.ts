@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { resolveOrganizationId } from '../../utils/organization'
 
 const VALID_REASONS = ['warranty', 'wrong_part', 'manufacturing_defect', 'damaged_product', 'incompatible', 'other']
 const VALID_STATUSES = ['pending', 'completed']
@@ -8,16 +9,7 @@ export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
 
-  const { data: profile } = await supabase
-    .from('user_profiles')
-    .select('organization_id')
-    .eq('email', authUser.email!)
-    .maybeSingle()
-
-  if (!profile?.organization_id)
-    throw createError({ statusCode: 403, statusMessage: 'Usuário não vinculado a uma organização' })
-
-  const organizationId = profile.organization_id as string
+  const organizationId = await resolveOrganizationId(event, authUser.id)
   const body = await readBody(event)
 
   if (!body.purchase_id)

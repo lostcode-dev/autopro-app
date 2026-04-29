@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
+import { parseDateRange, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 interface ServiceOrderRecord {
   id?: string | null
@@ -97,8 +97,7 @@ export default defineEventHandler(async (event) => {
   const clientIds = qArr(query.clientIds as string | string[] | undefined)
   const orderStatusFilters = qArr(query.orderStatusFilters as string | string[] | undefined)
   const allowedOrderStatuses = orderStatusFilters.length > 0 ? orderStatusFilters : null
-  const dateFrom = parseDateStart(query.dateFrom as string)
-  const dateTo = parseDateEnd(query.dateTo as string)
+  const { dateFrom, dateTo } = parseDateRange(query.dateFrom as string, query.dateTo as string)
 
   const [orders, installments, clients] = await Promise.all([
     fetchAllOrganizationRows<ServiceOrderRecord>(supabase, {

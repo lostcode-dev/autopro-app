@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
+import { parseDateRange, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
 
 interface EmployeeRecord {
   id: string
@@ -64,8 +64,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
 
-  const dateFrom = parseDateStart(query.dateFrom as string)
-  const dateTo = parseDateEnd(query.dateTo as string)
+  const { dateFrom, dateTo } = parseDateRange(query.dateFrom as string, query.dateTo as string)
   const employeeIds = qArr(query.employeeIds as string | string[] | undefined)
   const employeeId = query.employeeId && query.employeeId !== 'all' ? String(query.employeeId) : null
   const status = query.status && query.status !== 'all' ? normalizeReportStatus(query.status) : null

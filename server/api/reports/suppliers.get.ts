@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { parseDateStart, parseDateEnd, toNumber, qArr, paginate, sortFactor } from '../../utils/report-helpers'
+import { parseDateRange, toNumber, qArr, paginate, sortFactor } from '../../utils/report-helpers'
 
 interface PurchaseItemRecord {
   description?: string | null
@@ -63,8 +63,7 @@ export default defineEventHandler(async (event) => {
 
   const query = getQuery(event)
 
-  const dateFrom = parseDateStart(query.dateFrom as string)
-  const dateTo = parseDateEnd(query.dateTo as string)
+  const { dateFrom, dateTo } = parseDateRange(query.dateFrom as string, query.dateTo as string)
   const supplierIds = qArr(query.supplierIds as string | string[] | undefined)
   const selectedSupplierId = query.selectedSupplierId ? String(query.selectedSupplierId) : null
   const searchTerm = String(query.searchTerm || '').trim().toLowerCase()

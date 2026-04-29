@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   const search = String(query.search || '').trim().toLowerCase()
   const typeFilter = String(query.type || 'all')
   const dateFrom = query.date_from ? String(query.date_from) : null
-  const dateTo = query.date_to ? String(query.date_to) : null
+  const dateTo = query.date_to ? String(query.date_to) : (dateFrom ?? null)
 
   let q = supabase
     .from('financial_transactions')

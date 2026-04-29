@@ -18,7 +18,7 @@ export default defineEventHandler(async (event) => {
   const typeFilter = String(query.type || 'all')
   const category = String(query.category || '').trim().toLowerCase()
   const dateFrom = query.date_from ? String(query.date_from) : null
-  const dateTo = query.date_to ? String(query.date_to) : null
+  const dateTo = query.date_to ? String(query.date_to) : (dateFrom ?? null)
   const page = Math.max(1, parseInt(String(query.page || '1'), 10))
   const pageSize = Math.min(100, Math.max(1, parseInt(String(query.page_size || '20'), 10)))
 

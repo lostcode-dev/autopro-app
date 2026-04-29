@@ -4,7 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { buildReportDownloadData } from '../../utils/report-export'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
-import { formatCurrency, formatOptionalDate, getPurchasePaymentStatus, parseDateEnd, parseDateStart, sortFactor, toNumber } from '../../utils/report-helpers'
+import { parseDateRange, formatCurrency, formatOptionalDate, getPurchasePaymentStatus, sortFactor, toNumber } from '../../utils/report-helpers'
 
 interface PurchaseRecord {
   supplier_id?: string | null
@@ -53,8 +53,7 @@ export default defineEventHandler(async (event) => {
 
   const body = (await readBody(event)) || {}
 
-  const dateFrom = parseDateStart(body?.dateFrom)
-  const dateTo = parseDateEnd(body?.dateTo)
+  const { dateFrom, dateTo } = parseDateRange(body?.dateFrom, body?.dateTo)
   const supplierIds = Array.isArray(body?.supplierIds) ? body.supplierIds.map((value: unknown) => String(value)).filter(Boolean) : []
   const statusFilters = Array.isArray(body?.status) ? body.status.map((value: unknown) => String(value)).filter(Boolean) : []
   const searchTerm = String(body?.searchTerm || '').trim().toLowerCase()
