@@ -17,7 +17,7 @@ const detail = ref<ServiceOrderDetailFull | null>(null)
 const organization = ref<OrganizationData | null>(null)
 const isLoading = ref(false)
 const isDownloading = ref(false)
-const previewDocRef = ref<{ el: HTMLElement | null } | null>(null)
+const captureDocRef = ref<{ el: HTMLElement | null } | null>(null)
 
 watch(
   () => props.open,
@@ -76,7 +76,7 @@ function sanitizeFileNamePart(value: string | null | undefined) {
 }
 
 async function downloadPdf() {
-  const el = previewDocRef.value?.el
+  const el = captureDocRef.value?.el
   if (!el || !detail.value || isDownloading.value) return
 
   isDownloading.value = true
@@ -87,7 +87,7 @@ async function downloadPdf() {
       import('pdf-lib')
     ])
 
-    // Render the preview to a full-height high-res PNG
+    // Render the fixed-width off-screen element to a full-height high-res PNG
     const dataUrl = await toPng(el, {
       pixelRatio: 2,
       cacheBust: true,
@@ -101,7 +101,6 @@ async function downloadPdf() {
     const USABLE_W = PAGE_W - MARGIN * 2
     const USABLE_H = PAGE_H - MARGIN * 2
 
-    // Load the captured image to measure its dimensions
     const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image()
       img.onload = () => resolve(img)
@@ -112,23 +111,32 @@ async function downloadPdf() {
     const imgW = fullImg.naturalWidth
     const imgH = fullImg.naturalHeight
 
-    // How many source pixels fit in one usable page height (maintaining aspect)
+    // How many source pixels tall is one A4 usable-area worth
     const pageSliceH = Math.floor((USABLE_H / USABLE_W) * imgW)
-    const numPages = Math.ceil(imgH / pageSliceH)
+    const rawNumPages = Math.ceil(imgH / pageSliceH)
+
+    // Prevent orphan tiny last page: if last page < 25% full, absorb into fewer pages
+    // (e.g. just a footer line overflowing by a few pixels → stays on one page)
+    const remainder = imgH - (rawNumPages - 1) * pageSliceH
+    const lastPageRatio = remainder / pageSliceH
+    const numPages = rawNumPages > 1 && lastPageRatio < 0.25 ? rawNumPages - 1 : rawNumPages
+
+    // Distribute content evenly across the resolved page count
+    const effectiveSliceH = Math.ceil(imgH / numPages)
 
     const pdf = await PDFDocument.create()
 
     for (let i = 0; i < numPages; i++) {
-      const srcY = i * pageSliceH
-      const srcH = Math.min(pageSliceH, imgH - srcY)
+      const srcY = i * effectiveSliceH
+      const srcH = Math.min(effectiveSliceH, imgH - srcY)
 
       // Paint this page's slice onto a fixed-size canvas (white background)
       const canvas = document.createElement('canvas')
       canvas.width = imgW
-      canvas.height = pageSliceH
+      canvas.height = effectiveSliceH
       const ctx = canvas.getContext('2d')!
       ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, imgW, pageSliceH)
+      ctx.fillRect(0, 0, imgW, effectiveSliceH)
       ctx.drawImage(fullImg, 0, srcY, imgW, srcH, 0, 0, imgW, srcH)
 
       // Convert slice to bytes
@@ -255,7 +263,6 @@ async function downloadPdf() {
       <div v-else-if="detail" class="px-4 py-6 lg:px-8 lg:py-8">
         <div class="mx-auto max-w-[900px]">
           <ServiceOrdersQuoteDocumentPreview
-            ref="previewDocRef"
             :detail="detail"
             :organization="organization"
             :quote-mode="quoteMode"
@@ -264,4 +271,18 @@ async function downloadPdf() {
       </div>
     </template>
   </UModal>
+
+  <!-- Hidden fixed-width element used exclusively for PDF capture -->
+  <div
+    v-if="detail"
+    style="position:fixed;top:-9999px;left:-9999px;width:820px;pointer-events:none;"
+    aria-hidden="true"
+  >
+    <ServiceOrdersQuoteDocumentPreview
+      ref="captureDocRef"
+      :detail="detail"
+      :organization="organization"
+      :quote-mode="quoteMode"
+    />
+  </div>
 </template>

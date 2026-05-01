@@ -46,7 +46,11 @@ const groupedItems = computed(() => {
   }
   return Array.from(groups.entries()).map(([category, items]) => ({
     category,
-    items
+    items: [...items].sort((a, b) => {
+      const nameA = (a.description || a.name || '').toLowerCase()
+      const nameB = (b.description || b.name || '').toLowerCase()
+      return nameA.localeCompare(nameB, 'pt-BR')
+    })
   }))
 })
 
