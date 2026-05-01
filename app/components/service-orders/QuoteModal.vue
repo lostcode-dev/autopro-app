@@ -1,87 +1,92 @@
 <script setup lang="ts">
 import type {
   ServiceOrderDetailFull,
-  ServiceOrderItem,
-} from "~/types/service-orders";
+  ServiceOrderItem
+} from '~/types/service-orders'
+
 import {
   formatCurrency,
   formatDate,
-  formatPhone,
-} from "~/utils/service-orders";
+  formatPhone
+} from '~/utils/service-orders'
 
 type OrganizationData = {
-  name?: string | null;
-  trade_name?: string | null;
-  tax_id?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  mobile_phone?: string | null;
-  website?: string | null;
-  logo_url?: string | null;
-  address_zip_code?: string | null;
-  address_street?: string | null;
-  address_number?: string | null;
-  address_complement?: string | null;
-  address_neighborhood?: string | null;
-  address_city?: string | null;
-  address_state?: string | null;
-};
+  name?: string | null
+  trade_name?: string | null
+  tax_id?: string | null
+  email?: string | null
+  phone?: string | null
+  mobile_phone?: string | null
+  website?: string | null
+  logo_url?: string | null
+  address_zip_code?: string | null
+  address_street?: string | null
+  address_number?: string | null
+  address_complement?: string | null
+  address_neighborhood?: string | null
+  address_city?: string | null
+  address_state?: string | null
+}
 
 const props = defineProps<{
-  open: boolean;
-  orderId: string | null;
-  quoteMode?: boolean;
-}>();
+  open: boolean
+  orderId: string | null
+  quoteMode?: boolean
+}>()
 
 const emit = defineEmits<{
-  "update:open": [value: boolean];
-}>();
+  'update:open': [value: boolean]
+}>()
 
-const toast = useToast();
-const detail = ref<ServiceOrderDetailFull | null>(null);
-const organization = ref<OrganizationData | null>(null);
-const isLoading = ref(false);
-const isDownloading = ref(false);
-const paperRef = ref<HTMLElement | null>(null);
-const printRef = ref<HTMLElement | null>(null);
+const toast = useToast()
+const detail = ref<ServiceOrderDetailFull | null>(null)
+const organization = ref<OrganizationData | null>(null)
+const isLoading = ref(false)
+const isDownloading = ref(false)
+const paperRef = ref<HTMLElement | null>(null)
+const printRef = ref<HTMLElement | null>(null)
 
 const workshopName = computed(
   () =>
-    organization.value?.trade_name?.trim() ||
-    organization.value?.name?.trim() ||
-    "AutoPro",
-);
+    organization.value?.trade_name?.trim()
+    || organization.value?.name?.trim()
+    || 'AutoPro'
+)
 
 const subtotal = computed(() =>
   (detail.value?.order.items ?? []).reduce(
     (total, item) => total + getItemTotal(item),
-    0,
-  ),
-);
+    0
+  )
+)
 
 const totalAmount = computed(() =>
-  Number(detail.value?.order.total_amount ?? 0),
-);
+  Number(detail.value?.order.total_amount ?? 0)
+)
 const discountAmount = computed(() =>
-  Number(detail.value?.order.discount ?? 0),
-);
+  Number(detail.value?.order.discount ?? 0)
+)
 
 const groupedItems = computed(() => {
-  const items = detail.value?.order.items ?? [];
-  const groups = new Map<string, ServiceOrderItem[]>();
+  const items = detail.value?.order.items ?? []
+  const groups = new Map<string, ServiceOrderItem[]>()
   for (const item of items) {
-    const cat = item.category_name?.trim() || "Serviços e Peças";
-    if (!groups.has(cat)) groups.set(cat, []);
-    groups.get(cat)!.push(item);
+    const cat = item.category_name?.trim() || 'Serviços e Peças'
+    if (!groups.has(cat)) groups.set(cat, [])
+    groups.get(cat)!.push(item)
   }
   return Array.from(groups.entries()).map(([category, items]) => ({
     category,
-    items,
-  }));
-});
+    items
+  }))
+})
 
 const flatPrintRows = computed(() => {
-  const rows: { isCategory: boolean, label: string, item?: ServiceOrderItem }[] = []
+  const rows: {
+    isCategory: boolean
+    label: string
+    item?: ServiceOrderItem
+  }[] = []
   for (const group of groupedItems.value) {
     rows.push({ isCategory: true, label: group.category })
     for (const item of group.items) {
@@ -94,159 +99,169 @@ const flatPrintRows = computed(() => {
 watch(
   () => props.open,
   (opened) => {
-    if (opened) loadData();
+    if (opened) loadData()
     else {
-      detail.value = null;
-      organization.value = null;
+      detail.value = null
+      organization.value = null
     }
-  },
-);
+  }
+)
 
 async function loadData() {
-  if (!props.orderId) return;
+  if (!props.orderId) return
 
-  isLoading.value = true;
-  detail.value = null;
+  isLoading.value = true
+  detail.value = null
 
   try {
     const [detailResponse, organizationResponse] = await Promise.all([
       $fetch<{ data: ServiceOrderDetailFull }>(
-        `/api/service-orders/${props.orderId}`,
+        `/api/service-orders/${props.orderId}`
       ),
-      $fetch<OrganizationData>("/api/organizations"),
-    ]);
+      $fetch<OrganizationData>('/api/organizations')
+    ])
 
-    detail.value = detailResponse.data;
-    organization.value = organizationResponse;
+    detail.value = detailResponse.data
+    organization.value = organizationResponse
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro ao carregar orçamento",
+      title: 'Erro ao carregar orçamento',
       description:
-        err?.data?.statusMessage || err?.statusMessage || "Tente novamente.",
-      color: "error",
-    });
-    emit("update:open", false);
+        err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
+    emit('update:open', false)
   } finally {
-    isLoading.value = false;
+    isLoading.value = false
   }
 }
 
 function close() {
-  emit("update:open", false);
+  emit('update:open', false)
 }
 
 function getItemTotal(item: ServiceOrderItem) {
-  return Number(item.total_price ?? item.total_amount ?? item.unit_price * item.quantity);
+  return Number(
+    item.total_price ?? item.total_amount ?? item.unit_price * item.quantity
+  )
 }
 
 function getClientPhone() {
   return (
     detail.value?.client?.mobile_phone || detail.value?.client?.phone || null
-  );
+  )
 }
 
 function formatTaxId(value: string | null | undefined) {
-  const digits = String(value ?? "").replace(/\D/g, "");
+  const digits = String(value ?? '').replace(/\D/g, '')
   if (digits.length === 11) {
-    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
   }
   if (digits.length === 14) {
     return digits.replace(
       /(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,
-      "$1.$2.$3/$4-$5",
-    );
+      '$1.$2.$3/$4-$5'
+    )
   }
-  return value || "—";
+  return value || '—'
 }
 
 function formatZipCode(value: string | null | undefined) {
-  const digits = String(value ?? "").replace(/\D/g, "");
+  const digits = String(value ?? '').replace(/\D/g, '')
   if (digits.length === 8) {
-    return digits.replace(/(\d{5})(\d{3})/, "$1-$2");
+    return digits.replace(/(\d{5})(\d{3})/, '$1-$2')
   }
-  return value || "—";
+  return value || '—'
 }
 
 function sanitizeFileNamePart(value: string | null | undefined) {
-  return String(value ?? "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "");
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
 }
 
 async function downloadPdf() {
-  if (!printRef.value || !detail.value || isDownloading.value) return;
+  if (!printRef.value || !detail.value || isDownloading.value) return
 
-  isDownloading.value = true;
+  isDownloading.value = true
 
   try {
     const [{ toPng }, { PDFDocument }] = await Promise.all([
-      import("html-to-image"),
-      import("pdf-lib"),
-    ]);
+      import('html-to-image'),
+      import('pdf-lib')
+    ])
 
     const dataUrl = await toPng(printRef.value, {
       pixelRatio: 2,
       cacheBust: true,
-      backgroundColor: "#ffffff",
-    });
+      backgroundColor: '#ffffff'
+    })
 
-    const pdf = await PDFDocument.create();
-    const image = await pdf.embedPng(dataUrl);
+    const pdf = await PDFDocument.create()
+    const image = await pdf.embedPng(dataUrl)
 
-    const pageWidth = 595.28;
-    const pageHeight = 841.89;
-    const margin = 24;
-    const usableWidth = pageWidth - margin * 2;
-    const usableHeight = pageHeight - margin * 2;
+    const pageWidth = 595.28
+    const pageHeight = 841.89
+    const margin = 24
+    const usableWidth = pageWidth - margin * 2
+    const usableHeight = pageHeight - margin * 2
 
     // Scale image to fit page width exactly; height grows naturally
-    const scale = usableWidth / image.width;
-    const scaledWidth = usableWidth;
-    const scaledHeight = image.height * scale;
+    const scale = usableWidth / image.width
+    const scaledWidth = usableWidth
+    const scaledHeight = image.height * scale
 
-    const numPages = Math.ceil(scaledHeight / usableHeight);
+    const numPages = Math.ceil(scaledHeight / usableHeight)
 
     for (let i = 0; i < numPages; i++) {
-      const page = pdf.addPage([pageWidth, pageHeight]);
+      const page = pdf.addPage([pageWidth, pageHeight])
       // Shift image upward so each page reveals the next vertical slice
-      const imageY = pageHeight - margin - scaledHeight + i * usableHeight;
+      const imageY = pageHeight - margin - scaledHeight + i * usableHeight
       page.drawImage(image, {
         x: margin,
         y: imageY,
         width: scaledWidth,
-        height: scaledHeight,
-      });
+        height: scaledHeight
+      })
     }
 
-    const bytes = await pdf.save();
-    const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const clientPart =
-      sanitizeFileNamePart(detail.value.client?.name) || "Cliente";
-    const numberPart = sanitizeFileNamePart(detail.value.order.number) || "OS";
-    const datePart = new Date().toISOString().slice(0, 10);
+    const bytes = await pdf.save()
+    const blob = new Blob(
+      [
+        bytes.buffer.slice(
+          bytes.byteOffset,
+          bytes.byteOffset + bytes.byteLength
+        ) as ArrayBuffer
+      ],
+      { type: 'application/pdf' }
+    )
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const clientPart
+      = sanitizeFileNamePart(detail.value.client?.name) || 'Cliente'
+    const numberPart = sanitizeFileNamePart(detail.value.order.number) || 'OS'
+    const datePart = new Date().toISOString().slice(0, 10)
 
-    link.href = url;
-    link.download = `${clientPart}_${numberPart}_${datePart}.pdf`;
-    link.click();
-    URL.revokeObjectURL(url);
+    link.href = url
+    link.download = `${clientPart}_${numberPart}_${datePart}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
 
-    toast.add({ title: "PDF gerado com sucesso", color: "success" });
+    toast.add({ title: 'PDF gerado com sucesso', color: 'success' })
   } catch {
     toast.add({
-      title: "Erro ao gerar PDF",
-      description: "Não foi possível gerar o documento do orçamento.",
-      color: "error",
-    });
+      title: 'Erro ao gerar PDF',
+      description: 'Não foi possível gerar o documento do orçamento.',
+      color: 'error'
+    })
   } finally {
-    isDownloading.value = false;
+    isDownloading.value = false
   }
 }
 </script>
@@ -259,7 +274,7 @@ async function downloadPdf() {
       content:
         'sm:max-h-[100dvh] max-h-[100dvh] m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
       header: 'p-0 border-b border-default shrink-0',
-      body: 'flex-1 min-h-0 overflow-y-auto p-0 bg-[linear-gradient(180deg,rgba(var(--ui-bg),1),rgba(var(--ui-bg-elevated),0.92))]',
+      body: 'flex-1 min-h-0 overflow-y-auto p-0 bg-[linear-gradient(180deg,rgba(var(--ui-bg),1),rgba(var(--ui-bg-elevated),0.92))]'
     }"
     @update:open="emit('update:open', $event)"
   >
@@ -272,7 +287,11 @@ async function downloadPdf() {
             <p
               class="font-semibold uppercase tracking-[0.22em] text-primary/80"
             >
-              {{ quoteMode !== false ? "Visualização do Orçamento" : "Visualização da OS" }}
+              {{
+                quoteMode !== false
+                  ? "Visualização do Orçamento"
+                  : "Visualização da OS"
+              }}
             </p>
             <div
               class="flex flex-col gap-2 xl:flex-row xl:items-end xl:justify-between"
@@ -284,7 +303,9 @@ async function downloadPdf() {
                   {{
                     detail?.order.number
                       ? `OS #${detail.order.number}`
-                      : (quoteMode !== false ? "Orçamento de serviços" : "Ordem de Serviço")
+                      : quoteMode !== false
+                        ? "Orçamento de serviços"
+                        : "Ordem de Serviço"
                   }}
                 </h1>
               </div>
@@ -343,7 +364,7 @@ async function downloadPdf() {
                     :src="organization.logo_url"
                     alt="Logo da oficina"
                     class="h-full w-full object-contain"
-                  />
+                  >
                   <UIcon v-else name="i-lucide-wrench" class="size-8" />
                 </div>
 
@@ -376,9 +397,7 @@ async function downloadPdf() {
                         {{ formatDate(detail.order.entry_date) }}
                       </p>
                       <p>
-                        <span class="font-semibold text-slate-950"
-                          >Previsão:</span
-                        >
+                        <span class="font-semibold text-slate-950">Previsão:</span>
                         {{ formatDate(detail.order.expected_date) }}
                       </p>
                     </div>
@@ -396,9 +415,7 @@ async function downloadPdf() {
                         {{ detail.client?.name ?? "—" }}
                       </p>
                       <p>
-                        <span class="font-semibold text-slate-950"
-                          >Telefone:</span
-                        >
+                        <span class="font-semibold text-slate-950">Telefone:</span>
                         {{ formatPhone(getClientPhone()) }}
                       </p>
                       <p v-if="detail.client?.email">
@@ -419,21 +436,15 @@ async function downloadPdf() {
                   </h3>
                   <div class="mt-3 space-y-2 text-sm text-slate-700">
                     <p v-if="organization?.tax_id">
-                      <span class="font-semibold text-slate-950"
-                        >CNPJ/CPF:</span
-                      >
+                      <span class="font-semibold text-slate-950">CNPJ/CPF:</span>
                       {{ formatTaxId(organization.tax_id) }}
                     </p>
                     <p v-if="organization?.phone">
-                      <span class="font-semibold text-slate-950"
-                        >Telefone:</span
-                      >
+                      <span class="font-semibold text-slate-950">Telefone:</span>
                       {{ formatPhone(organization.phone) }}
                     </p>
                     <p v-if="organization?.mobile_phone">
-                      <span class="font-semibold text-slate-950"
-                        >WhatsApp:</span
-                      >
+                      <span class="font-semibold text-slate-950">WhatsApp:</span>
                       {{ formatPhone(organization.mobile_phone) }}
                     </p>
                     <p v-if="organization?.email">
@@ -446,8 +457,8 @@ async function downloadPdf() {
                     </p>
                     <div
                       v-if="
-                        organization?.address_street ||
-                        organization?.address_city
+                        organization?.address_street
+                          || organization?.address_city
                       "
                       class="pt-1 leading-relaxed"
                     >
@@ -464,8 +475,8 @@ async function downloadPdf() {
                       </p>
                       <p
                         v-if="
-                          organization?.address_city ||
-                          organization?.address_state
+                          organization?.address_city
+                            || organization?.address_state
                         "
                       >
                         {{ organization?.address_city ?? ""
@@ -502,9 +513,7 @@ async function downloadPdf() {
                   class="grid gap-3 rounded-[24px] border border-slate-200 bg-white sm:grid-cols-2 lg:grid-cols-4 p-5"
                 >
                   <p class="text-sm text-slate-700">
-                    <span class="font-semibold text-slate-950"
-                      >Marca/Modelo:</span
-                    >
+                    <span class="font-semibold text-slate-950">Marca/Modelo:</span>
                     {{ detail.vehicle.brand }} {{ detail.vehicle.model }}
                   </p>
                   <p class="text-sm text-slate-700">
@@ -516,9 +525,7 @@ async function downloadPdf() {
                     {{ detail.vehicle.year ?? "—" }}
                   </p>
                   <p class="text-sm text-slate-700">
-                    <span class="font-semibold text-slate-950"
-                      >Combustível:</span
-                    >
+                    <span class="font-semibold text-slate-950">Combustível:</span>
                     {{ detail.vehicle.fuel_type ?? "—" }}
                   </p>
                 </div>
@@ -543,9 +550,7 @@ async function downloadPdf() {
                     {{ detail.masterProduct.description }}
                   </p>
                   <p v-if="detail.masterProduct.notes">
-                    <span class="font-semibold text-slate-950"
-                      >Observações:</span
-                    >
+                    <span class="font-semibold text-slate-950">Observações:</span>
                     {{ detail.masterProduct.notes }}
                   </p>
                 </div>
@@ -618,13 +623,19 @@ async function downloadPdf() {
                           <td class="px-4 py-2 text-sm text-slate-700">
                             {{ item.description || item.name || "—" }}
                           </td>
-                          <td class="px-4 py-2 text-center text-sm text-slate-700">
+                          <td
+                            class="px-4 py-2 text-center text-sm text-slate-700"
+                          >
                             {{ item.quantity }}
                           </td>
-                          <td class="px-4 py-2 text-center text-sm text-slate-700">
+                          <td
+                            class="px-4 py-2 text-center text-sm text-slate-700"
+                          >
                             {{ formatCurrency(item.unit_price) }}
                           </td>
-                          <td class="px-4 py-2 text-right text-sm font-semibold text-slate-950">
+                          <td
+                            class="px-4 py-2 text-right text-sm font-semibold text-slate-950"
+                          >
                             {{ formatCurrency(getItemTotal(item)) }}
                           </td>
                         </tr>
@@ -651,9 +662,7 @@ async function downloadPdf() {
                     class="flex items-center justify-between py-2 text-sm text-rose-600"
                   >
                     <span>Desconto</span>
-                    <span class="font-semibold"
-                      >- {{ formatCurrency(discountAmount) }}</span
-                    >
+                    <span class="font-semibold">- {{ formatCurrency(discountAmount) }}</span>
                   </div>
                   <div
                     class="mt-2 flex items-center justify-between border-t-2 border-slate-200 pt-4 text-base font-bold text-slate-950"
@@ -667,7 +676,10 @@ async function downloadPdf() {
               </div>
 
               <footer class="border-t border-slate-200 pt-6 text-center">
-                <p v-if="quoteMode !== false" class="text-sm font-medium text-slate-600">
+                <p
+                  v-if="quoteMode !== false"
+                  class="text-sm font-medium text-slate-600"
+                >
                   Este orçamento tem validade de 30 dias.
                 </p>
                 <p class="mt-1 text-sm text-slate-500">
@@ -685,79 +697,289 @@ async function downloadPdf() {
   <div
     v-if="detail"
     ref="printRef"
-    style="position: absolute; top: -9999px; left: 0; width: 800px; background: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; padding: 36px 40px; box-sizing: border-box;"
+    style="
+      position: absolute;
+      top: -9999px;
+      left: 0;
+      width: 800px;
+      background: #fff;
+      font-family: &quot;Helvetica Neue&quot;, Helvetica, Arial, sans-serif;
+      color: #111;
+      padding: 36px 40px;
+      box-sizing: border-box;
+    "
   >
     <!-- Header -->
-    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 12px; gap: 16px;">
-      <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
+    <div
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 2px solid #111;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+        gap: 16px;
+      "
+    >
+      <div style="display: flex; align-items: center; gap: 10px; min-width: 0">
         <img
           v-if="organization?.logo_url"
           :src="organization.logo_url"
           alt="Logo"
-          style="max-height: 40px; max-width: 160px; width: auto; height: auto; object-fit: contain; display: block; flex-shrink: 0;"
-        />
-        <div v-else style="height: 40px; width: 40px; background: #111; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-          <span style="color: #fff; font-size: 18px; font-weight: 700;">{{ workshopName.charAt(0) }}</span>
+          style="
+            max-height: 40px;
+            max-width: 160px;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
+            flex-shrink: 0;
+          "
+        >
+        <div
+          v-else
+          style="
+            height: 40px;
+            width: 40px;
+            background: #111;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          "
+        >
+          <span style="color: #fff; font-size: 18px; font-weight: 700">{{
+            workshopName.charAt(0)
+          }}</span>
         </div>
-        <div style="min-width: 0;">
-          <div style="font-size: 15px; font-weight: 800; letter-spacing: -0.2px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ workshopName }}</div>
-          <div style="font-size: 10px; color: #555; margin-top: 1px; white-space: nowrap;">
-            <span v-if="organization?.tax_id">{{ formatTaxId(organization.tax_id) }}</span>
-            <span v-if="organization?.tax_id && (organization?.phone || organization?.email)"> · </span>
-            <span v-if="organization?.phone">{{ formatPhone(organization.phone) }}</span>
+        <div style="min-width: 0">
+          <div
+            style="
+              font-size: 15px;
+              font-weight: 800;
+              letter-spacing: -0.2px;
+              line-height: 1.2;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            "
+          >
+            {{ workshopName }}
+          </div>
+          <div
+            style="
+              font-size: 10px;
+              color: #555;
+              margin-top: 1px;
+              white-space: nowrap;
+            "
+          >
+            <span v-if="organization?.tax_id">{{
+              formatTaxId(organization.tax_id)
+            }}</span>
+            <span
+              v-if="
+                organization?.tax_id
+                  && (organization?.phone || organization?.email)
+              "
+            >
+              ·
+            </span>
+            <span v-if="organization?.phone">{{
+              formatPhone(organization.phone)
+            }}</span>
             <span v-if="organization?.phone && organization?.email"> · </span>
             <span v-if="organization?.email">{{ organization.email }}</span>
           </div>
-          <div v-if="organization?.address_city" style="font-size: 10px; color: #777; margin-top: 1px;">
-            {{ organization.address_city }}{{ organization.address_state ? ` - ${organization.address_state}` : '' }}
+          <div
+            v-if="organization?.address_city"
+            style="font-size: 10px; color: #777; margin-top: 1px"
+          >
+            {{ organization.address_city
+            }}{{
+              organization.address_state
+                ? ` - ${organization.address_state}`
+                : ""
+            }}
           </div>
         </div>
       </div>
-      <div style="text-align: right; flex-shrink: 0;">
-        <div style="font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;">
-          {{ quoteMode !== false ? 'Orçamento' : 'Ordem de Serviço' }}
+      <div style="text-align: right; flex-shrink: 0">
+        <div
+          style="
+            font-size: 17px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+          "
+        >
+          {{ quoteMode !== false ? "Orçamento" : "Ordem de Serviço" }}
         </div>
-        <div style="font-size: 11px; color: #333; margin-top: 2px;">Nº <strong>{{ detail.order.number ?? '—' }}</strong></div>
-        <div style="font-size: 11px; color: #555; margin-top: 1px;">{{ formatDate(detail.order.entry_date) }}{{ detail.order.expected_date ? ` · Prev: ${formatDate(detail.order.expected_date)}` : '' }}</div>
+        <div style="font-size: 11px; color: #333; margin-top: 2px">
+          Nº <strong>{{ detail.order.number ?? "—" }}</strong>
+        </div>
+        <div style="font-size: 11px; color: #555; margin-top: 1px">
+          {{ formatDate(detail.order.entry_date)
+          }}{{
+            detail.order.expected_date
+              ? ` · Prev: ${formatDate(detail.order.expected_date)}`
+              : ""
+          }}
+        </div>
       </div>
     </div>
 
     <!-- Client + Vehicle -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #ccc; margin-bottom: 12px;">
-      <div style="padding: 10px 14px; border-right: 1px solid #ccc;">
-        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 6px;">Cliente</div>
-        <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px;">{{ detail.client?.name ?? '—' }}</div>
-        <div v-if="getClientPhone()" style="font-size: 12px; color: #444;">{{ formatPhone(getClientPhone()) }}</div>
-        <div v-if="detail.client?.email" style="font-size: 12px; color: #444;">{{ detail.client.email }}</div>
-      </div>
-      <div style="padding: 10px 14px;">
-        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 6px;">Veículo</div>
-        <div v-if="detail.vehicle">
-          <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px;">{{ detail.vehicle.brand }} {{ detail.vehicle.model }}</div>
-          <div style="font-size: 12px; color: #444;">
-            Placa: {{ detail.vehicle.license_plate ?? '—' }}<span v-if="detail.vehicle.year"> · Ano: {{ detail.vehicle.year }}</span>
-          </div>
-          <div v-if="detail.vehicle.fuel_type" style="font-size: 12px; color: #444;">Combustível: {{ detail.vehicle.fuel_type }}</div>
+    <div
+      style="
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border: 1px solid #ccc;
+        margin-bottom: 12px;
+      "
+    >
+      <div style="padding: 10px 14px; border-right: 1px solid #ccc">
+        <div
+          style="
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #666;
+            margin-bottom: 6px;
+          "
+        >
+          Cliente
         </div>
-        <div v-else style="font-size: 12px; color: #888;">Não informado</div>
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px">
+          {{ detail.client?.name ?? "—" }}
+        </div>
+        <div v-if="getClientPhone()" style="font-size: 12px; color: #444">
+          {{ formatPhone(getClientPhone()) }}
+        </div>
+        <div v-if="detail.client?.email" style="font-size: 12px; color: #444">
+          {{ detail.client.email }}
+        </div>
+      </div>
+      <div style="padding: 10px 14px">
+        <div
+          style="
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #666;
+            margin-bottom: 6px;
+          "
+        >
+          Veículo
+        </div>
+        <div v-if="detail.vehicle">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px">
+            {{ detail.vehicle.brand }} {{ detail.vehicle.model }}
+          </div>
+          <div style="font-size: 12px; color: #444">
+            Placa: {{ detail.vehicle.license_plate ?? "—"
+            }}<span v-if="detail.vehicle.year">
+              · Ano: {{ detail.vehicle.year }}</span>
+          </div>
+          <div
+            v-if="detail.vehicle.fuel_type"
+            style="font-size: 12px; color: #444"
+          >
+            Combustível: {{ detail.vehicle.fuel_type }}
+          </div>
+        </div>
+        <div v-else style="font-size: 12px; color: #888">
+          Não informado
+        </div>
       </div>
     </div>
 
     <!-- Reported defect -->
-    <div v-if="detail.order.reported_defect" style="border: 1px solid #ccc; padding: 10px 14px; margin-bottom: 12px;">
-      <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 5px;">Problema Relatado</div>
-      <div style="font-size: 12px; line-height: 1.5; color: #333;">{{ detail.order.reported_defect }}</div>
+    <div
+      v-if="detail.order.reported_defect"
+      style="border: 1px solid #ccc; padding: 10px 14px; margin-bottom: 12px"
+    >
+      <div
+        style="
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          color: #666;
+          margin-bottom: 5px;
+        "
+      >
+        Problema Relatado
+      </div>
+      <div style="font-size: 12px; line-height: 1.5; color: #333">
+        {{ detail.order.reported_defect }}
+      </div>
     </div>
 
     <!-- Items table -->
-    <div style="margin-bottom: 12px;">
-      <table style="width: 100%; border-collapse: collapse;">
+    <div style="margin-bottom: 12px">
+      <table style="width: 100%; border-collapse: collapse">
         <thead>
-          <tr style="background: #111;">
-            <th style="padding: 5px 8px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff;">Descrição</th>
-            <th style="padding: 5px 8px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 44px;">Qtd</th>
-            <th style="padding: 5px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 100px;">Val. Unit.</th>
-            <th style="padding: 5px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 100px;">Total</th>
+          <tr style="background: #111">
+            <th
+              style="
+                padding: 5px 8px;
+                text-align: left;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: #fff;
+              "
+            >
+              Descrição
+            </th>
+            <th
+              style="
+                padding: 5px 8px;
+                text-align: center;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: #fff;
+                width: 44px;
+              "
+            >
+              Qtd
+            </th>
+            <th
+              style="
+                padding: 5px 8px;
+                text-align: right;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: #fff;
+                width: 100px;
+              "
+            >
+              Val. Unit.
+            </th>
+            <th
+              style="
+                padding: 5px 8px;
+                text-align: right;
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                color: #fff;
+                width: 100px;
+              "
+            >
+              Total
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -765,33 +987,65 @@ async function downloadPdf() {
             <td
               v-if="row.isCategory"
               colspan="4"
-              style="background: #e8e8e8; padding: 4px 8px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: #444;"
+              style="
+                background: #e8e8e8;
+                padding: 4px 8px;
+                font-size: 9px;
+                font-weight: 800;
+                text-transform: uppercase;
+                letter-spacing: 0.14em;
+                color: #444;
+              "
             >
               {{ row.label }}
             </td>
             <td
               v-if="!row.isCategory"
-              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; font-size: 11px; color: #333;"
+              style="
+                border-bottom: 1px solid #e8e8e8;
+                padding: 3px 8px;
+                font-size: 11px;
+                color: #333;
+              "
             >
-              {{ row.item?.description || row.item?.name || '—' }}
+              {{ row.item?.description || row.item?.name || "—" }}
             </td>
             <td
               v-if="!row.isCategory"
-              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: center; font-size: 11px; color: #333;"
+              style="
+                border-bottom: 1px solid #e8e8e8;
+                padding: 3px 8px;
+                text-align: center;
+                font-size: 11px;
+                color: #333;
+              "
             >
               {{ row.item?.quantity }}
             </td>
             <td
               v-if="!row.isCategory"
-              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; color: #333;"
+              style="
+                border-bottom: 1px solid #e8e8e8;
+                padding: 3px 8px;
+                text-align: right;
+                font-size: 11px;
+                color: #333;
+              "
             >
-              {{ row.item ? formatCurrency(row.item.unit_price) : '' }}
+              {{ row.item ? formatCurrency(row.item.unit_price) : "" }}
             </td>
             <td
               v-if="!row.isCategory"
-              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #111;"
+              style="
+                border-bottom: 1px solid #e8e8e8;
+                padding: 3px 8px;
+                text-align: right;
+                font-size: 11px;
+                font-weight: 600;
+                color: #111;
+              "
             >
-              {{ row.item ? formatCurrency(getItemTotal(row.item)) : '' }}
+              {{ row.item ? formatCurrency(getItemTotal(row.item)) : "" }}
             </td>
           </tr>
         </tbody>
@@ -799,17 +1053,45 @@ async function downloadPdf() {
     </div>
 
     <!-- Totals -->
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
-      <div style="width: 260px; border: 1px solid #ccc;">
-        <div style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 12px; border-bottom: 1px solid #e5e5e5;">
-          <span style="color: #555;">Subtotal</span>
-          <span style="font-weight: 600;">{{ formatCurrency(subtotal) }}</span>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px">
+      <div style="width: 260px; border: 1px solid #ccc">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-bottom: 1px solid #e5e5e5;
+          "
+        >
+          <span style="color: #555">Subtotal</span>
+          <span style="font-weight: 600">{{ formatCurrency(subtotal) }}</span>
         </div>
-        <div v-if="discountAmount > 0" style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 12px; color: #b00; border-bottom: 1px solid #e5e5e5;">
+        <div
+          v-if="discountAmount > 0"
+          style="
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 12px;
+            font-size: 12px;
+            color: #b00;
+            border-bottom: 1px solid #e5e5e5;
+          "
+        >
           <span>Desconto</span>
-          <span style="font-weight: 600;">- {{ formatCurrency(discountAmount) }}</span>
+          <span style="font-weight: 600">- {{ formatCurrency(discountAmount) }}</span>
         </div>
-        <div style="display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; font-weight: 700; background: #f0f0f0; border-top: 2px solid #999;">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            font-size: 14px;
+            font-weight: 700;
+            background: #f0f0f0;
+            border-top: 2px solid #999;
+          "
+        >
           <span>TOTAL</span>
           <span>{{ formatCurrency(totalAmount) }}</span>
         </div>
@@ -817,23 +1099,64 @@ async function downloadPdf() {
     </div>
 
     <!-- Notes -->
-    <div v-if="detail.order.notes" style="border: 1px solid #ccc; padding: 10px 14px; margin-bottom: 20px;">
-      <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 5px;">Observações</div>
-      <div style="font-size: 12px; line-height: 1.5; color: #333;">{{ detail.order.notes }}</div>
+    <div
+      v-if="detail.order.notes"
+      style="border: 1px solid #ccc; padding: 10px 14px; margin-bottom: 20px"
+    >
+      <div
+        style="
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.12em;
+          color: #666;
+          margin-bottom: 5px;
+        "
+      >
+        Observações
+      </div>
+      <div style="font-size: 12px; line-height: 1.5; color: #333">
+        {{ detail.order.notes }}
+      </div>
     </div>
 
     <!-- Footer -->
-    <div style="border-top: 1px solid #ccc; padding-top: 16px;">
-      <div v-if="quoteMode !== false" style="font-size: 11px; color: #555; margin-bottom: 24px;">
+    <div style="border-top: 1px solid #ccc; padding-top: 16px">
+      <div
+        v-if="quoteMode !== false"
+        style="font-size: 11px; color: #555; margin-bottom: 24px"
+      >
         Este orçamento tem validade de 30 dias a partir da data de emissão.
       </div>
-      <div style="display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: flex-end;">
+      <div
+        style="
+          display: grid;
+          grid-template-columns: 1fr auto;
+          gap: 24px;
+          align-items: flex-end;
+        "
+      >
         <div>
-          <div style="border-top: 1px solid #111; padding-top: 5px; font-size: 11px; color: #555; text-align: center;">
+          <div
+            style="
+              border-top: 1px solid #111;
+              padding-top: 5px;
+              font-size: 11px;
+              color: #555;
+              text-align: center;
+            "
+          >
             Assinatura do Cliente
           </div>
         </div>
-        <div style="font-size: 11px; color: #555; white-space: nowrap; padding-bottom: 5px;">
+        <div
+          style="
+            font-size: 11px;
+            color: #555;
+            white-space: nowrap;
+            padding-bottom: 5px;
+          "
+        >
           Data: _____ / _____ / __________
         </div>
       </div>

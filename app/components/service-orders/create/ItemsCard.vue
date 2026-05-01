@@ -1,69 +1,69 @@
 <script setup lang="ts">
-import { formatCurrency } from "~/utils/service-orders";
-import type { ServiceOrderDraftItem } from "~/types/service-orders";
-import type { CommissionBreakdownLine } from "../CommissionBreakdownPopover.vue";
+import { formatCurrency } from '~/utils/service-orders'
+import type { ServiceOrderDraftItem } from '~/types/service-orders'
+import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
 interface ProductGroupItem {
-  description?: string | null;
-  quantity: number;
-  cost_price: number;
-  sale_price: number;
+  description?: string | null
+  quantity: number
+  cost_price: number
+  sale_price: number
 }
 
 interface ProductCatalogItem {
-  id: string;
-  name: string;
-  type: "unit" | "group";
-  category_id?: string | null;
-  product_categories?: { id: string; name: string } | null;
-  unit_sale_price: number | null;
-  unit_cost_price: number | null;
-  group_items?: ProductGroupItem[] | null;
+  id: string
+  name: string
+  type: 'unit' | 'group'
+  category_id?: string | null
+  product_categories?: { id: string, name: string } | null
+  unit_sale_price: number | null
+  unit_cost_price: number | null
+  group_items?: ProductGroupItem[] | null
 }
 
 export type ItemCommissionDisplayDetail = {
-  total: number;
-  lines: CommissionBreakdownLine[];
-};
+  total: number
+  lines: CommissionBreakdownLine[]
+}
 
 const props = defineProps<{
-  items: ServiceOrderDraftItem[];
-  itemCommissionMap: Map<string, number>;
-  itemCommissionDetailMap?: Map<string, ItemCommissionDisplayDetail>;
-}>();
+  items: ServiceOrderDraftItem[]
+  itemCommissionMap: Map<string, number>
+  itemCommissionDetailMap?: Map<string, ItemCommissionDisplayDetail>
+}>()
 
 const emit = defineEmits<{
-  addManual: [];
-  addProduct: [product: ProductCatalogItem];
-  remove: [id: string];
-  setQuantity: [item: ServiceOrderDraftItem, value: string | number];
-}>();
+  addManual: []
+  addProduct: [product: ProductCatalogItem]
+  remove: [id: string]
+  setQuantity: [item: ServiceOrderDraftItem, value: string | number]
+}>()
 
 function toNumber(value: number | string | null | undefined) {
-  const parsed = Number(value ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
+  const parsed = Number(value ?? 0)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
 function getItemTotal(item: ServiceOrderDraftItem) {
   return (
-    Math.max(toNumber(item.quantity), 0) *
-    Math.max(toNumber(item.unit_price), 0)
-  );
+    Math.max(toNumber(item.quantity), 0)
+    * Math.max(toNumber(item.unit_price), 0)
+  )
 }
 
 function getItemCommission(item: ServiceOrderDraftItem) {
-  const computed = props.itemCommissionMap.get(item.id) ?? 0;
-  if (computed > 0) return computed;
-  return item.stored_commission ?? 0;
+  const computed = props.itemCommissionMap.get(item.id) ?? 0
+  if (computed > 0) return computed
+  return item.stored_commission ?? 0
 }
 
 function getItemCommissionDetail(
-  item: ServiceOrderDraftItem,
+  item: ServiceOrderDraftItem
 ): ItemCommissionDisplayDetail {
-  const detail = props.itemCommissionDetailMap?.get(item.id);
-  if (detail) return detail;
-  const fallback = getItemCommission(item);
-  return { total: fallback, lines: [] };
+  const detail = props.itemCommissionDetailMap?.get(item.id)
+  if (detail) return detail
+  const fallback = getItemCommission(item)
+  return { total: fallback, lines: [] }
 }
 </script>
 
@@ -136,13 +136,27 @@ function getItemCommissionDetail(
               class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted"
             >
               <tr>
-                <th class="min-w-80 px-4 py-3 font-medium">Descrição</th>
-                <th class="w-24 px-4 py-3 font-medium">Qtd</th>
-                <th class="w-32 px-4 py-3 font-medium">Venda</th>
-                <th class="w-32 px-4 py-3 font-medium">Custo</th>
-                <th class="w-28 px-4 py-3 text-right font-medium">Comissão</th>
-                <th class="w-32 px-4 py-3 text-right font-medium">Total</th>
-                <th class="w-20 px-4 py-3 text-right font-medium">Ações</th>
+                <th class="min-w-80 px-4 py-3 font-medium">
+                  Descrição
+                </th>
+                <th class="w-24 px-4 py-3 font-medium">
+                  Qtd
+                </th>
+                <th class="w-32 px-4 py-3 font-medium">
+                  Venda
+                </th>
+                <th class="w-32 px-4 py-3 font-medium">
+                  Custo
+                </th>
+                <th class="w-28 px-4 py-3 text-right font-medium">
+                  Comissão
+                </th>
+                <th class="w-32 px-4 py-3 text-right font-medium">
+                  Total
+                </th>
+                <th class="w-20 px-4 py-3 text-right font-medium">
+                  Ações
+                </th>
               </tr>
             </thead>
             <tbody class="divide-y divide-default">

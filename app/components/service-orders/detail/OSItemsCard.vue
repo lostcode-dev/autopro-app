@@ -1,50 +1,50 @@
 <script setup lang="ts">
-import type { ServiceOrderDetailFull } from "~/types/service-orders";
-import { formatCurrency } from "~/utils/service-orders";
-import type { CommissionBreakdownLine } from "../CommissionBreakdownPopover.vue";
+import type { ServiceOrderDetailFull } from '~/types/service-orders'
+import { formatCurrency } from '~/utils/service-orders'
+import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
-type OrderItem = ServiceOrderDetailFull["order"]["items"][number];
+type OrderItem = ServiceOrderDetailFull['order']['items'][number]
 
 const props = defineProps<{
-  order: ServiceOrderDetailFull["order"];
-  employees: ServiceOrderDetailFull["employees"];
-}>();
+  order: ServiceOrderDetailFull['order']
+  employees: ServiceOrderDetailFull['employees']
+}>()
 
-const items = computed(() => props.order.items ?? []);
+const items = computed(() => props.order.items ?? [])
 
 function getItemSource(item: OrderItem) {
-  return item.product_id ? "catalog" : "manual";
+  return item.product_id ? 'catalog' : 'manual'
 }
 
 function getItemTotal(item: OrderItem) {
   return (
     item.total_price ?? item.total_amount ?? item.unit_price * item.quantity
-  );
+  )
 }
 
 function getItemCost(item: OrderItem) {
-  return item.cost_price ?? item.cost_amount ?? 0;
+  return item.cost_price ?? item.cost_amount ?? 0
 }
 
 function getItemCommission(item: OrderItem) {
-  return item.commission_total ?? item.total_commission ?? 0;
+  return item.commission_total ?? item.total_commission ?? 0
 }
 
 function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
   return (item.commissions ?? [])
-    .filter((c) => (c.amount ?? 0) > 0)
+    .filter(c => (c.amount ?? 0) > 0)
     .map((c) => {
-      const emp = props.employees.find((e) => e.id === c.employee_id);
-      const typeLabel =
-        c.commission_type === "percentage"
-          ? `${c.commission_percentage}% • ${c.commission_base === "profit" ? "Lucro" : "Faturamento"}`
-          : `Valor fixo • ${c.commission_base === "profit" ? "Lucro" : "Faturamento"}`;
+      const emp = props.employees.find(e => e.id === c.employee_id)
+      const typeLabel
+        = c.commission_type === 'percentage'
+          ? `${c.commission_percentage}% • ${c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'}`
+          : `Valor fixo • ${c.commission_base === 'profit' ? 'Lucro' : 'Faturamento'}`
       return {
-        label: emp?.name ?? "Funcionário",
+        label: emp?.name ?? 'Funcionário',
         sublabel: typeLabel,
-        amount: Number(c.amount ?? 0),
-      };
-    });
+        amount: Number(c.amount ?? 0)
+      }
+    })
 }
 </script>
 
@@ -53,7 +53,9 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-package" class="size-4 text-primary" />
-        <h3 class="font-semibold text-highlighted">Itens da OS</h3>
+        <h3 class="font-semibold text-highlighted">
+          Itens da OS
+        </h3>
       </div>
     </template>
 
@@ -82,12 +84,24 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
             class="bg-elevated/70 text-left text-xs uppercase tracking-wide text-muted"
           >
             <tr>
-              <th class="px-4 py-3 font-medium">Descrição</th>
-              <th class="w-24 px-4 py-3 font-medium">Qtd</th>
-              <th class="w-32 px-4 py-3 font-medium">Venda</th>
-              <th class="w-32 px-4 py-3 font-medium">Custo</th>
-              <th class="w-28 px-4 py-3 text-right font-medium">Comissão</th>
-              <th class="w-32 px-4 py-3 text-right font-medium">Total</th>
+              <th class="px-4 py-3 font-medium">
+                Descrição
+              </th>
+              <th class="w-24 px-4 py-3 font-medium">
+                Qtd
+              </th>
+              <th class="w-32 px-4 py-3 font-medium">
+                Venda
+              </th>
+              <th class="w-32 px-4 py-3 font-medium">
+                Custo
+              </th>
+              <th class="w-28 px-4 py-3 text-right font-medium">
+                Comissão
+              </th>
+              <th class="w-32 px-4 py-3 text-right font-medium">
+                Total
+              </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-default">

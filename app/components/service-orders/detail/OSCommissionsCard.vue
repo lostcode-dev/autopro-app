@@ -1,67 +1,67 @@
 <script setup lang="ts">
 import type {
   ServiceOrderCommission,
-  ServiceOrderEmployee,
-} from "~/types/service-orders";
-import { formatCurrency, formatDate } from "~/utils/service-orders";
+  ServiceOrderEmployee
+} from '~/types/service-orders'
+import { formatCurrency, formatDate } from '~/utils/service-orders'
 
 const props = defineProps<{
-  commissions: ServiceOrderCommission[];
-  employees: ServiceOrderEmployee[];
-  canUpdate?: boolean;
-}>();
+  commissions: ServiceOrderCommission[]
+  employees: ServiceOrderEmployee[]
+  canUpdate?: boolean
+}>()
 
-const emit = defineEmits<{ paid: [] }>();
+const emit = defineEmits<{ paid: [] }>()
 
-const toast = useToast();
+const toast = useToast()
 
 const employeeNameById = computed(
-  () => new Map(props.employees.map((e) => [e.id, e.name])),
-);
+  () => new Map(props.employees.map(e => [e.id, e.name]))
+)
 
 function getEmployeeName(employeeId: string | null) {
-  if (!employeeId) return "Funcionário não encontrado";
-  return employeeNameById.value.get(employeeId) ?? "Funcionário não encontrado";
+  if (!employeeId) return 'Funcionário não encontrado'
+  return employeeNameById.value.get(employeeId) ?? 'Funcionário não encontrado'
 }
 
 function isPending(commission: ServiceOrderCommission) {
-  const s = commission.status ?? "";
-  return s !== "pago" && s !== "paid";
+  const s = commission.status ?? ''
+  return s !== 'pago' && s !== 'paid'
 }
 
-const pendingCommissions = computed(() => props.commissions.filter(isPending));
+const pendingCommissions = computed(() => props.commissions.filter(isPending))
 
 // ─── Pay single ────────────────────────────────────────────────────────────────
 
-const confirmingId = ref<string | null>(null);
-const payingId = ref<string | null>(null);
+const confirmingId = ref<string | null>(null)
+const payingId = ref<string | null>(null)
 
 function requestPay(id: string) {
-  confirmingId.value = id;
+  confirmingId.value = id
 }
 
 async function confirmPaySingle() {
-  if (!confirmingId.value) return;
-  const id = confirmingId.value;
-  payingId.value = id;
-  confirmingId.value = null;
+  if (!confirmingId.value) return
+  const id = confirmingId.value
+  payingId.value = id
+  confirmingId.value = null
 
   try {
-    await $fetch("/api/financial/pay-commissions-bulk", {
-      method: "POST",
-      body: { registroIds: [id] },
-    });
-    toast.add({ title: "Comissão paga com sucesso", color: "success" });
-    emit("paid");
+    await $fetch('/api/financial/pay-commissions-bulk', {
+      method: 'POST',
+      body: { registroIds: [id] }
+    })
+    toast.add({ title: 'Comissão paga com sucesso', color: 'success' })
+    emit('paid')
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string } };
+    const err = error as { data?: { statusMessage?: string } }
     toast.add({
-      title: "Erro ao pagar comissão",
-      description: err?.data?.statusMessage || "Tente novamente.",
-      color: "error",
-    });
+      title: 'Erro ao pagar comissão',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
   } finally {
-    payingId.value = null;
+    payingId.value = null
   }
 }
 </script>

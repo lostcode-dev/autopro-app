@@ -7,9 +7,9 @@ import type { CreateFeedbackPayload } from '~/types/feedback'
 // ─── Configuration ─────────────────────────────────────────────────────────────
 // Adjust these constants to change upload limits across the app.
 // The server enforces the same limits in server/api/feedback/upload.post.ts
-const MAX_ATTACHMENTS = 5              // max files per ticket
-const MAX_IMAGE_SIZE_MB = 5            // max image size in MB
-const MAX_VIDEO_SIZE_MB = 10           // max video size in MB
+const MAX_ATTACHMENTS = 5 // max files per ticket
+const MAX_IMAGE_SIZE_MB = 5 // max image size in MB
+const MAX_VIDEO_SIZE_MB = 10 // max video size in MB
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime']
 const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES]
@@ -113,7 +113,7 @@ function resetForm() {
   selectedType.value = FeedbackType.Bug
   state.title = ''
   state.description = ''
-  selectedFiles.value.forEach(f => { if (f.preview) URL.revokeObjectURL(f.preview) })
+  selectedFiles.value.forEach((f) => { if (f.preview) URL.revokeObjectURL(f.preview) })
   selectedFiles.value = []
 }
 
@@ -234,7 +234,9 @@ function onClose() {
             @click="fileInputRef?.click()"
           >
             <UIcon name="i-lucide-paperclip" class="size-7 text-muted mb-2" />
-            <p class="text-sm text-muted">Adicionar imagens ou vídeos</p>
+            <p class="text-sm text-muted">
+              Adicionar imagens ou vídeos
+            </p>
             <p class="text-xs text-dimmed mt-0.5">
               JPEG, PNG, GIF, WebP, MP4, WebM, MOV
             </p>
@@ -251,7 +253,12 @@ function onClose() {
         </div>
 
         <div class="flex justify-end gap-2 pt-2">
-          <UButton color="neutral" variant="ghost" label="Cancelar" @click="onClose" />
+          <UButton
+            color="neutral"
+            variant="ghost"
+            label="Cancelar"
+            @click="onClose"
+          />
           <UButton
             type="submit"
             label="Enviar chamado"

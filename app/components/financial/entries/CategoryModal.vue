@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type CategoryCustom = { id: string; name: string; type: 'income' | 'expense' }
+type CategoryCustom = { id: string, name: string, type: 'income' | 'expense' }
 
 const props = defineProps<{
   open: boolean
@@ -72,7 +72,7 @@ async function createCategory() {
     toast.add({ title: 'Categoria criada', color: 'success' })
     emit('updated')
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível criar',
@@ -91,7 +91,7 @@ async function deleteCategory(id: string) {
     toast.add({ title: 'Categoria removida', color: 'success' })
     emit('updated')
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro',
       description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível remover',
@@ -141,7 +141,9 @@ async function deleteCategory(id: string) {
 
         <!-- Nova categoria -->
         <div>
-          <p class="mb-1.5 text-sm font-medium">Nova categoria</p>
+          <p class="mb-1.5 text-sm font-medium">
+            Nova categoria
+          </p>
           <div class="flex gap-2">
             <UInput
               v-model="newCategoryName"
@@ -161,12 +163,16 @@ async function deleteCategory(id: string) {
 
         <!-- Categorias disponíveis -->
         <div>
-          <p class="mb-2 text-sm font-medium">Categorias disponíveis</p>
+          <p class="mb-2 text-sm font-medium">
+            Categorias disponíveis
+          </p>
 
           <div class="rounded-lg border border-default divide-y divide-default">
             <!-- Padrão -->
             <div class="p-3">
-              <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">Padrão</p>
+              <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">
+                Padrão
+              </p>
               <div class="flex flex-wrap gap-2">
                 <UBadge
                   v-for="cat in defaultsForType"
@@ -180,7 +186,9 @@ async function deleteCategory(id: string) {
 
             <!-- Personalizadas -->
             <div class="p-3">
-              <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">Personalizadas</p>
+              <p class="mb-2 text-xs font-medium text-muted uppercase tracking-wide">
+                Personalizadas
+              </p>
 
               <div v-if="customForType.length === 0" class="text-sm text-muted">
                 Nenhuma categoria {{ activeType === 'income' ? 'de entrada' : 'de saída' }} personalizada.

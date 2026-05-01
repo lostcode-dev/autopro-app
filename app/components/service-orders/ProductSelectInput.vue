@@ -14,7 +14,7 @@ interface ProductCatalogItem {
   code: number
   type: 'unit' | 'group'
   category_id?: string | null
-  product_categories?: { id: string; name: string } | null
+  product_categories?: { id: string, name: string } | null
   unit_sale_price: number | null
   unit_cost_price: number | null
   group_items?: ProductGroupItem[] | null

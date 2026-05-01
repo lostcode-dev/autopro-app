@@ -14,7 +14,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [v: boolean]
-  saved: [product: MasterProductItem]
+  'saved': [product: MasterProductItem]
 }>()
 
 const toast = useToast()
@@ -29,7 +29,7 @@ watch(
     form.name = props.editProduct?.name ?? ''
     form.description = props.editProduct?.description ?? ''
     form.notes = props.editProduct?.notes ?? ''
-  },
+  }
 )
 
 async function save() {
@@ -44,7 +44,7 @@ async function save() {
     const body = {
       name: form.name.trim(),
       description: form.description.trim() || null,
-      notes: form.notes.trim() || null,
+      notes: form.notes.trim() || null
     }
 
     const res = props.mode === 'create'
@@ -53,16 +53,16 @@ async function save() {
 
     toast.add({
       title: props.mode === 'create' ? 'Produto master criado' : 'Produto master atualizado',
-      color: 'success',
+      color: 'success'
     })
     emit('saved', res.item)
     emit('update:open', false)
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string }; statusMessage?: string }
+    const err = error as { data?: { statusMessage?: string }, statusMessage?: string }
     toast.add({
       title: 'Erro ao salvar produto master',
       description: err?.data?.statusMessage || err?.statusMessage || 'Tente novamente.',
-      color: 'error',
+      color: 'error'
     })
   } finally {
     isSaving.value = false

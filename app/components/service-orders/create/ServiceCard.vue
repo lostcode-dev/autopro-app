@@ -17,7 +17,9 @@ defineEmits<{
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-wrench" class="size-4 text-primary" />
-        <h3 class="font-semibold text-highlighted">Atendimento inicial</h3>
+        <h3 class="font-semibold text-highlighted">
+          Atendimento inicial
+        </h3>
       </div>
     </template>
 

@@ -8,7 +8,7 @@ interface MasterProductItem {
 
 const props = defineProps<{
   modelValue: string
-  selectedProduct: { name: string; description?: string | null } | null
+  selectedProduct: { name: string, description?: string | null } | null
 }>()
 
 const emit = defineEmits<{
@@ -39,12 +39,12 @@ async function fetchPage(reset = false) {
     loadingMore.value = true
   }
   try {
-    const res = await $fetch<{ items: MasterProductItem[]; total: number }>('/api/master-products', {
+    const res = await $fetch<{ items: MasterProductItem[], total: number }>('/api/master-products', {
       query: {
         search: search.value.trim() || undefined,
         page: currentPage.value,
-        page_size: PAGE_SIZE,
-      },
+        page_size: PAGE_SIZE
+      }
     })
     if (reset) {
       items.value = res.items ?? []
@@ -100,7 +100,7 @@ function selectProduct(product: MasterProductItem) {
       v-model:open="open"
       :content="{ align: 'start', side: 'bottom', sideOffset: 4 }"
       :ui="{
-        content: 'z-[260] w-[var(--reka-popover-trigger-width)] min-w-72 rounded-xl border border-default bg-default p-0 shadow-xl overflow-hidden',
+        content: 'z-[260] w-[var(--reka-popover-trigger-width)] min-w-72 rounded-xl border border-default bg-default p-0 shadow-xl overflow-hidden'
       }"
       :modal="true"
       class="min-w-0 flex-1"
