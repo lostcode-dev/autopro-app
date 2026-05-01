@@ -618,6 +618,10 @@ async function duplicate(entry: Entry) {
   }
 }
 
+// ── Fullscreen modal ─────────────────────────────────────────────────────────
+
+const showFullscreen = ref(false)
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 type ExportFormat = 'csv' | 'pdf'
@@ -872,6 +876,17 @@ const columns = [
               </UDropdownMenu>
             </UTooltip>
 
+            <UTooltip text="Expandir tabela">
+              <UButton
+                icon="i-lucide-maximize-2"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                square
+                @click="showFullscreen = true"
+              />
+            </UTooltip>
+
             <UButton
               v-if="canCreate"
               label="Novo lançamento"
@@ -1022,6 +1037,48 @@ const columns = [
     :entry="selectedEntry"
     :bank-account-options="bankAccountOptions"
     @saved="onEntrySaved"
+  />
+
+  <!-- Fullscreen modal -->
+  <FinancialEntriesFullscreenModal
+    v-model:open="showFullscreen"
+    v-model:search="search"
+    v-model:row-selection="rowSelection"
+    v-model:date-from="dateFrom"
+    v-model:date-to="dateTo"
+    v-model:type-filters="typeFilters"
+    v-model:status-filters="statusFilters"
+    v-model:category-filter="categoryFilter"
+    :data="accumulatedItems"
+    :loading="!isHydrated || (status === 'pending' && page === 1) || isBootstrapping"
+    :loading-more="loadingMore"
+    :has-more="hasMore"
+    :total="totalFromServer"
+    :unique-categories="uniqueCategories"
+    :export-items="exportItems"
+    :exporting="exporting"
+    :can-create="canCreate"
+    :can-update="canUpdate"
+    :can-delete="canDelete"
+    :pending-selected-count="pendingSelectedCount"
+    :selected-count="selectedCount"
+    :bank-account-options="bankAccountOptions"
+    :is-paying="isPaying"
+    :paying-entry-id="payingEntryId"
+    :is-duplicating="isDuplicating"
+    :duplicating-entry-id="duplicatingEntryId"
+    :is-deleting="isDeleting"
+    :entry-pending-deletion-id="entryPendingDeletion ? String(entryPendingDeletion.id) : null"
+    @search-submit="submitSearch"
+    @load-more="loadMore"
+    @bulk-pay="showBulkPayModal = true"
+    @bulk-delete="showBulkDeleteModal = true"
+    @open-create="openCreate"
+    @open-detail="openDetail"
+    @pay="pay"
+    @duplicate="duplicate"
+    @open-edit="openEdit"
+    @remove="requestRemove"
   />
 
   <FinancialEntriesDetailSlideover
