@@ -80,14 +80,14 @@ function getClientPhone() {
       </div>
     </div>
 
-    <div class="space-y-4 px-8 py-8 lg:px-10 lg:py-10">
-      <div class="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+    <div class="space-y-2 p-4">
+      <div class="grid gap-2 lg:grid-cols-[1.2fr_1fr]">
         <section class="grid gap-6 sm:grid-cols-2">
           <div>
             <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
               Dados da Ordem
             </h3>
-            <div class="mt-3 space-y-2 text-sm text-slate-700">
+            <div class="mt-1 space-y-1 text-sm text-slate-700">
               <p>
                 <span class="font-semibold text-slate-950">OS Nº:</span>
                 {{ detail.order.number ?? '—' }}
@@ -107,7 +107,7 @@ function getClientPhone() {
             <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
               Cliente
             </h3>
-            <div class="mt-3 space-y-2 text-sm text-slate-700">
+            <div class="mt-1 space-y-1 text-sm text-slate-700">
               <p>
                 <span class="font-semibold text-slate-950">Nome:</span>
                 {{ detail.client?.name ?? '—' }}
@@ -124,11 +124,11 @@ function getClientPhone() {
           </div>
         </section>
 
-        <section class="rounded-[24px] border border-slate-200 bg-slate-50/80 p-5 text-right">
+        <section class="rounded-[24px] border border-slate-200 bg-slate-50/80 p-2 text-right">
           <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
             Dados da Empresa
           </h3>
-          <div class="mt-3 space-y-2 text-sm text-slate-700">
+          <div class="mt-1 space-y-1 text-sm text-slate-700">
             <p v-if="organization?.tax_id">
               <span class="font-semibold text-slate-950">CNPJ/CPF:</span>
               {{ formatTaxId(organization.tax_id) }}
@@ -207,12 +207,12 @@ function getClientPhone() {
 
       <section
         v-if="detail.masterProduct"
-        class="rounded-[24px] border border-violet-200 bg-violet-50/70 p-5"
+        class="rounded-[24px] border border-violet-200 bg-violet-50/70 p-2"
       >
         <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-violet-700">
           Produto Master
         </h3>
-        <div class="mt-3 space-y-2 text-sm text-slate-700">
+        <div class="mt-1 space-y-2 text-sm text-slate-700">
           <p>
             <span class="font-semibold text-slate-950">Nome:</span>
             {{ detail.masterProduct.name }}
@@ -228,11 +228,11 @@ function getClientPhone() {
         </div>
       </section>
 
-      <section class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-5">
+      <section class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-2">
         <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
           Problema Relatado
         </h3>
-        <p class="mt-3 text-sm leading-relaxed text-slate-700">
+        <p class="mt-1 text-sm leading-relaxed text-slate-700">
           {{ detail.order.reported_defect || 'Não informado' }}
         </p>
       </section>
@@ -246,22 +246,22 @@ function getClientPhone() {
             <thead class="bg-slate-50">
               <tr>
                 <th
-                  class="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-2 py-1 text-left text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Descrição
                 </th>
                 <th
-                  class="px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-2 py-1 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Qtd
                 </th>
                 <th
-                  class="px-4 py-3 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-2 py-1 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Valor Unit.
                 </th>
                 <th
-                  class="px-4 py-3 text-right text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-2 py-1 text-right text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Total
                 </th>
@@ -302,21 +302,21 @@ function getClientPhone() {
 
       <div class="flex justify-end">
         <div
-          class="w-full max-w-[320px] rounded-[24px] border border-slate-200 bg-slate-50/80 p-5"
+          class="w-full max-w-[320px] rounded-[24px] border border-slate-200 bg-slate-50/80 p-2"
         >
-          <div class="flex items-center justify-between py-2 text-sm text-slate-700">
+          <div class="flex items-center justify-between py-1 text-sm text-slate-700">
             <span>Subtotal</span>
             <span class="font-semibold text-slate-950">{{ formatCurrency(subtotal) }}</span>
           </div>
           <div
             v-if="discountAmount > 0"
-            class="flex items-center justify-between py-2 text-sm text-rose-600"
+            class="flex items-center justify-between py-1 text-sm text-rose-600"
           >
             <span>Desconto</span>
             <span class="font-semibold">- {{ formatCurrency(discountAmount) }}</span>
           </div>
           <div
-            class="mt-2 flex items-center justify-between border-t-2 border-slate-200 pt-4 text-base font-bold text-slate-950"
+            class="mt-1 flex items-center justify-between border-t-2 border-slate-200 pt-2 text-base font-bold text-slate-950"
           >
             <span>TOTAL</span>
             <span class="text-xl text-emerald-600">{{ formatCurrency(totalAmount) }}</span>
@@ -324,7 +324,7 @@ function getClientPhone() {
         </div>
       </div>
 
-      <footer class="border-t border-slate-200 pt-6 text-center">
+      <footer class="border-t border-slate-200 pt-2 text-center">
         <p v-if="quoteMode !== false" class="text-sm font-medium text-slate-600">
           Este orçamento tem validade de 30 dias.
         </p>
