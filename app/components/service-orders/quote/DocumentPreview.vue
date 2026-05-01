@@ -281,16 +281,16 @@ function getClientPhone() {
                   v-for="(item, index) in group.items"
                   :key="`${group.category}-${index}`"
                 >
-                  <td class="px-4 py-2 text-sm text-slate-700">
+                  <td class="px-4 py-1 text-sm text-slate-700">
                     {{ item.description || item.name || '—' }}
                   </td>
-                  <td class="px-4 py-2 text-center text-sm text-slate-700">
+                  <td class="px-4 py-1 text-center text-sm text-slate-700">
                     {{ item.quantity }}
                   </td>
-                  <td class="px-4 py-2 text-center text-sm text-slate-700">
+                  <td class="px-4 py-1 text-center text-sm text-slate-700">
                     {{ formatCurrency(item.unit_price) }}
                   </td>
-                  <td class="px-4 py-2 text-right text-sm font-semibold text-slate-950">
+                  <td class="px-4 py-1 text-right text-sm font-semibold text-slate-950">
                     {{ formatCurrency(getItemTotal(item)) }}
                   </td>
                 </tr>
