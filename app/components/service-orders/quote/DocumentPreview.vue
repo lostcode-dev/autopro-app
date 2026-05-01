@@ -54,17 +54,17 @@ function getClientPhone() {
 
 <template>
   <article
-    class="mx-auto overflow-hidden rounded-[32px] border border-slate-200 bg-white text-slate-900 shadow-[0_24px_80px_rgba(15,23,42,0.14)]"
+    class="mx-auto overflow-hidden border border-slate-200 bg-white text-slate-900 shadow-[0_24px_80px_rgba(15,23,42,0.14)]"
   >
     <div
-      class="border-b border-slate-200 bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_100%)] px-8 py-7 lg:px-10"
+      class="border-b border-slate-200 bg-[linear-gradient(135deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-2"
     >
       <div class="flex items-center gap-4">
         <img
           v-if="organization?.logo_url"
           :src="organization.logo_url"
           alt="Logo da oficina"
-          class="max-h-12 max-w-[160px] w-auto h-auto object-contain flex-shrink-0"
+          class="max-h-12 max-w-[200px] w-auto h-auto object-contain flex-shrink-0"
         >
         <div
           v-else
@@ -73,7 +73,7 @@ function getClientPhone() {
           <UIcon name="i-lucide-wrench" class="size-6" />
         </div>
         <div class="min-w-0 flex-1">
-          <h2 class="mt-1 text-3xl font-black tracking-tight text-slate-950">
+          <h2 class="mt-1 text-lg font-black tracking-tight text-slate-950">
             {{ workshopName }}
           </h2>
         </div>
@@ -82,10 +82,10 @@ function getClientPhone() {
 
     <div class="space-y-2 p-4">
       <div class="grid gap-2 lg:grid-cols-[1.2fr_1fr]">
-        <section class="grid gap-6 sm:grid-cols-2">
+        <section class="grid gap-6 sm:grid-cols-3">
           <div>
             <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
-              Dados da Ordem
+              Ordem
             </h3>
             <div class="mt-1 space-y-1 text-sm text-slate-700">
               <p>
@@ -103,7 +103,7 @@ function getClientPhone() {
             </div>
           </div>
 
-          <div>
+          <div class="col-span-2">
             <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
               Cliente
             </h3>
@@ -246,22 +246,22 @@ function getClientPhone() {
             <thead class="bg-slate-50">
               <tr>
                 <th
-                  class="px-2 py-1 text-left text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-4 py-1 text-left text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Descrição
                 </th>
                 <th
-                  class="px-2 py-1 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-4 py-1 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Qtd
                 </th>
                 <th
-                  class="px-2 py-1 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-4 py-1 text-center text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Valor Unit.
                 </th>
                 <th
-                  class="px-2 py-1 text-right text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                  class="px-4 py-1 text-right text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
                 >
                   Total
                 </th>
