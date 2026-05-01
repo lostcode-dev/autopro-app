@@ -1,28 +1,31 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{
-  open: boolean
-  title?: string
-  description?: string
-  confirmLabel?: string
-  confirmColor?: string
-  loading?: boolean
-}>(), {
-  title: 'Confirmar exclusão',
-  description: 'Tem certeza que deseja realizar esta ação? Ela não pode ser desfeita.',
-  confirmLabel: 'Confirmar',
-  confirmColor: 'error',
-  loading: false
-})
+const props = withDefaults(
+  defineProps<{
+    open: boolean;
+    title?: string;
+    description?: string;
+    confirmLabel?: string;
+    confirmColor?: string;
+    loading?: boolean;
+  }>(),
+  {
+    title: "Confirmar exclusão",
+    description:
+      "Tem certeza que deseja realizar esta ação? Ela não pode ser desfeita.",
+    confirmLabel: "Confirmar",
+    confirmColor: "error",
+    loading: false,
+  },
+);
 
 const emit = defineEmits<{
-  'update:open': [value: boolean]
-  'confirm': []
-}>()
+  "update:open": [value: boolean];
+  confirm: [];
+}>();
 
 function close() {
-  if (props.loading)
-    return
-  emit('update:open', false)
+  if (props.loading) return;
+  emit("update:open", false);
 }
 </script>
 
@@ -30,7 +33,8 @@ function close() {
   <UModal
     :open="open"
     :title="title"
-    @update:open="value => !value && close()"
+    :ui="{ overlay: 'z-30', content: 'z-40' }"
+    @update:open="(value) => !value && close()"
   >
     <template #body>
       <div class="space-y-4">

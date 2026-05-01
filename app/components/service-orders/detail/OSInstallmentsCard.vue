@@ -1,58 +1,58 @@
 <script setup lang="ts">
-import type { ServiceOrderInstallment } from "~/types/service-orders";
-import { formatCurrency, formatDate } from "~/utils/service-orders";
+import type { ServiceOrderInstallment } from '~/types/service-orders'
+import { formatCurrency, formatDate } from '~/utils/service-orders'
 
 const props = defineProps<{
-  installments: ServiceOrderInstallment[];
-  orderId: string;
-  canUpdate?: boolean;
-}>();
+  installments: ServiceOrderInstallment[]
+  orderId: string
+  canUpdate?: boolean
+}>()
 
-const emit = defineEmits<{ paid: [] }>();
+const emit = defineEmits<{ paid: [] }>()
 
-const toast = useToast();
+const toast = useToast()
 
 const installmentStatusColor: Record<string, string> = {
-  paid: "success",
-  pending: "warning",
-  overdue: "error",
-};
+  paid: 'success',
+  pending: 'warning',
+  overdue: 'error'
+}
 
 const installmentStatusLabel: Record<string, string> = {
-  paid: "Pago",
-  pending: "Pendente",
-  overdue: "Atrasado",
-};
+  paid: 'Pago',
+  pending: 'Pendente',
+  overdue: 'Atrasado'
+}
 
-const confirmingId = ref<string | null>(null);
-const payingId = ref<string | null>(null);
+const confirmingId = ref<string | null>(null)
+const payingId = ref<string | null>(null)
 
 function requestPay(id: string) {
-  confirmingId.value = id;
+  confirmingId.value = id
 }
 
 async function confirmPay() {
-  if (!confirmingId.value) return;
-  const id = confirmingId.value;
-  payingId.value = id;
-  confirmingId.value = null;
+  if (!confirmingId.value) return
+  const id = confirmingId.value
+  payingId.value = id
+  confirmingId.value = null
 
   try {
     await $fetch(
       `/api/service-orders/${props.orderId}/installments/${id}/pay`,
-      { method: "POST" },
-    );
-    toast.add({ title: "Parcela paga com sucesso", color: "success" });
-    emit("paid");
+      { method: 'POST' }
+    )
+    toast.add({ title: 'Parcela paga com sucesso', color: 'success' })
+    emit('paid')
   } catch (error: unknown) {
-    const err = error as { data?: { statusMessage?: string } };
+    const err = error as { data?: { statusMessage?: string } }
     toast.add({
-      title: "Erro ao pagar parcela",
-      description: err?.data?.statusMessage || "Tente novamente.",
-      color: "error",
-    });
+      title: 'Erro ao pagar parcela',
+      description: err?.data?.statusMessage || 'Tente novamente.',
+      color: 'error'
+    })
   } finally {
-    payingId.value = null;
+    payingId.value = null
   }
 }
 </script>

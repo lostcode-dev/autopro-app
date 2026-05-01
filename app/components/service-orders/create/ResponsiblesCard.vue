@@ -2,13 +2,13 @@
 import { formatCurrency } from '~/utils/service-orders'
 import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
-interface SelectOption { label: string; value: string }
+interface SelectOption { label: string, value: string }
 
 export type EmployeeCommissionDisplay = {
   commissionLabel: string
   rateLabel: string | null
   baseLabel: string | null
-  note: { label: string; color: 'neutral' | 'warning'; icon: string } | null
+  note: { label: string, color: 'neutral' | 'warning', icon: string } | null
   hasInfo: boolean
   itemBreakdown: CommissionBreakdownLine[]
 }
@@ -22,14 +22,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [v: string[]]
-  add: []
-  remove: [index: number]
-  update: [index: number, employeeId: string]
+  'add': []
+  'remove': [index: number]
+  'update': [index: number, employeeId: string]
 }>()
 
 function getOptionsForIndex(index: number) {
   const selectedIds = new Set(
-    props.modelValue.filter((id, i) => i !== index && !!id),
+    props.modelValue.filter((id, i) => i !== index && !!id)
   )
   return props.employeeOptions.filter(opt => !selectedIds.has(opt.value))
 }
@@ -41,7 +41,9 @@ function getOptionsForIndex(index: number) {
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <UIcon name="i-lucide-user-round-cog" class="size-4 text-primary" />
-          <h3 class="font-semibold text-highlighted">Responsáveis e comissão</h3>
+          <h3 class="font-semibold text-highlighted">
+            Responsáveis e comissão
+          </h3>
         </div>
         <UButton
           label="Adicionar"
@@ -60,7 +62,9 @@ function getOptionsForIndex(index: number) {
         class="rounded-xl border border-dashed border-default bg-elevated/40 px-4 py-8 text-center"
       >
         <UIcon name="i-lucide-users-round" class="mx-auto size-8 text-dimmed" />
-        <p class="mt-3 text-sm font-medium text-highlighted">Nenhum responsável adicionado</p>
+        <p class="mt-3 text-sm font-medium text-highlighted">
+          Nenhum responsável adicionado
+        </p>
         <p class="mt-1 text-sm text-muted">
           Adicione responsáveis para já visualizar a previsão de comissão da OS.
         </p>
@@ -147,8 +151,12 @@ function getOptionsForIndex(index: number) {
         v-if="modelValue.length"
         class="rounded-xl border border-success/20 bg-success/10 p-4"
       >
-        <p class="text-xs uppercase tracking-wide text-success/80">Total de comissão estimada</p>
-        <p class="mt-1 text-lg font-semibold text-success">{{ formatCurrency(totalCommissionAmount) }}</p>
+        <p class="text-xs uppercase tracking-wide text-success/80">
+          Total de comissão estimada
+        </p>
+        <p class="mt-1 text-lg font-semibold text-success">
+          {{ formatCurrency(totalCommissionAmount) }}
+        </p>
       </div>
     </div>
   </UCard>

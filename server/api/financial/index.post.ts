@@ -22,8 +22,8 @@ export default defineEventHandler(async (event) => {
   if (!body.type) throw createError({ statusCode: 400, statusMessage: 'O campo "type" é obrigatório' })
   if (!body.category) throw createError({ statusCode: 400, statusMessage: 'O campo "category" é obrigatório' })
 
-  const installmentList: Array<{ number: number; amount: number; due_date: string; status: string }> =
-    Array.isArray(body.installments) ? body.installments : []
+  const installmentList: Array<{ number: number, amount: number, due_date: string, status: string }>
+    = Array.isArray(body.installments) ? body.installments : []
 
   // Batch installment creation
   if (body.is_installment && installmentList.length > 1) {

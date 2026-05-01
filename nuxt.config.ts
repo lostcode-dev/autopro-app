@@ -14,6 +14,16 @@ export default defineNuxtConfig({
     enabled: true
   },
 
+  app: {
+    head: {
+      link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon.png' },
+        { rel: 'apple-touch-icon', sizes: '180x180', href: '/icons/apple-touch-icon.png' }
+      ]
+    }
+  },
+
   css: ['driver.js/dist/driver.css', '~/assets/css/main.css'],
 
   colorMode: {
@@ -61,16 +71,6 @@ export default defineNuxtConfig({
       posthogKey: process.env.NUXT_PUBLIC_POSTHOG_KEY ?? '',
       stripeStarterPriceId: process.env.NUXT_PUBLIC_STRIPE_PRICE_ID_STARTER ?? '',
       stripeProPriceId: process.env.NUXT_PUBLIC_STRIPE_PRICE_ID_PRO ?? ''
-    }
-  },
-
-  app: {
-    head: {
-      link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
-        { rel: 'icon', type: 'image/png', sizes: '32x32', href: '/favicon.png' },
-        { rel: 'apple-touch-icon', sizes: '180x180', href: '/icons/apple-touch-icon.png' }
-      ]
     }
   },
 

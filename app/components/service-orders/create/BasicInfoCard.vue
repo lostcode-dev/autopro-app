@@ -1,7 +1,7 @@
 <script setup lang="ts">
-interface SelectOption { label: string; value: string }
-interface MasterProductDisplay { name: string; description?: string | null }
-interface MasterProductSelected { id: string; name: string; description: string | null; notes: string | null }
+interface SelectOption { label: string, value: string }
+interface MasterProductDisplay { name: string, description?: string | null }
+interface MasterProductSelected { id: string, name: string, description: string | null, notes: string | null }
 
 defineProps<{
   number: string
@@ -47,7 +47,9 @@ const statusOptions = [
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-clipboard-list" class="size-4 text-primary" />
-        <h3 class="font-semibold text-highlighted">Informações básicas</h3>
+        <h3 class="font-semibold text-highlighted">
+          Informações básicas
+        </h3>
       </div>
     </template>
 
@@ -155,7 +157,9 @@ const statusOptions = [
               <div class="flex items-start gap-3">
                 <UIcon name="i-lucide-box" class="mt-0.5 size-4 text-primary" />
                 <div class="min-w-0 flex-1">
-                  <p class="truncate text-sm font-semibold text-highlighted">{{ selectedMasterProduct.name }}</p>
+                  <p class="truncate text-sm font-semibold text-highlighted">
+                    {{ selectedMasterProduct.name }}
+                  </p>
                   <p v-if="selectedMasterProduct.description" class="mt-1 text-sm text-muted">
                     {{ selectedMasterProduct.description }}
                   </p>

@@ -1,6 +1,7 @@
 export interface InfiniteListFetchParams {
   cursor: number
   limit: number
+  signal: AbortSignal
 }
 
 export interface InfiniteListFetchResult<T> {
@@ -33,15 +34,29 @@ export function useInfiniteList<T>(
 
   const hasMore = computed(() => items.value.length < total.value)
 
+  let loadController: AbortController | null = null
+
+  function isAbortError(err: unknown): boolean {
+    if (err instanceof DOMException && err.name === 'AbortError') return true
+    if (err instanceof Error && err.name === 'AbortError') return true
+    const cause = (err as { cause?: { name?: string } })?.cause
+    return cause?.name === 'AbortError'
+  }
+
   async function load() {
-    if (isLoading.value) return
+    loadController?.abort()
+    loadController = new AbortController()
+    const { signal } = loadController
     isLoading.value = true
     try {
-      const result = await fetcher({ cursor: 0, limit: PAGE_SIZE })
+      const result = await fetcher({ cursor: 0, limit: PAGE_SIZE, signal })
+      if (signal.aborted) return
       items.value = result.items
       total.value = result.total
+    } catch (err: unknown) {
+      if (!isAbortError(err)) throw err
     } finally {
-      isLoading.value = false
+      if (!signal.aborted) isLoading.value = false
     }
   }
 

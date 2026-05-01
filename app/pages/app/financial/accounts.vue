@@ -1,79 +1,79 @@
 <script setup lang="ts">
-import { watchDebounced } from "@vueuse/core";
-import type { RowSelectionState, SortingState } from "@tanstack/table-core";
-import { ActionCode } from "~/constants/action-codes";
+import { watchDebounced } from '@vueuse/core'
+import type { RowSelectionState, SortingState } from '@tanstack/table-core'
+import { ActionCode } from '~/constants/action-codes'
 
-definePageMeta({ layout: "app" });
-useSeoMeta({ title: "Contas bancárias" });
+definePageMeta({ layout: 'app' })
+useSeoMeta({ title: 'Contas bancárias' })
 
-type BankAccount = Record<string, any>;
+type BankAccount = Record<string, any>
 type AccountsResponse = {
-  items: BankAccount[];
-  total: number;
-  page: number;
-  page_size: number;
-};
-type ViewMode = "table" | "card";
-type BadgeColor =
-  | "primary"
-  | "secondary"
-  | "success"
-  | "info"
-  | "warning"
-  | "error"
-  | "neutral";
+  items: BankAccount[]
+  total: number
+  page: number
+  page_size: number
+}
+type ViewMode = 'table' | 'card'
+type BadgeColor
+  = | 'primary'
+    | 'secondary'
+    | 'success'
+    | 'info'
+    | 'warning'
+    | 'error'
+    | 'neutral'
 
-const DEFAULT_PAGE_SIZE = 10;
-const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+const DEFAULT_PAGE_SIZE = 10
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const MANAGED_QUERY_KEYS = [
-  "search",
-  "page",
-  "pageSize",
-  "view",
-  "sortBy",
-  "sortOrder",
-] as const;
+  'search',
+  'page',
+  'pageSize',
+  'view',
+  'sortBy',
+  'sortOrder'
+] as const
 
-const toast = useToast();
-const workshop = useWorkshopPermissions();
-const requestFetch = useRequestFetch();
+const toast = useToast()
+const workshop = useWorkshopPermissions()
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
-const route = useRoute();
-const router = useRouter();
+  ? useRequestHeaders(['cookie'])
+  : undefined
+const route = useRoute()
+const router = useRouter()
 
-const canRead = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_READ));
-const canCreate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_CREATE));
-const canUpdate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_UPDATE));
-const canDelete = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_DELETE));
+const canRead = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_READ))
+const canCreate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_CREATE))
+const canUpdate = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_UPDATE))
+const canDelete = computed(() => workshop.can(ActionCode.BANK_ACCOUNTS_DELETE))
 
 function parsePage(v: unknown) {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1;
+  const n = Number(v)
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 1
 }
 function parsePageSize(v: unknown) {
-  const n = Number(v);
-  return PAGE_SIZE_OPTIONS.includes(n) ? n : DEFAULT_PAGE_SIZE;
+  const n = Number(v)
+  return PAGE_SIZE_OPTIONS.includes(n) ? n : DEFAULT_PAGE_SIZE
 }
 function parseView(v: unknown): ViewMode {
-  return v === "card" ? "card" : "table";
+  return v === 'card' ? 'card' : 'table'
 }
 
 const search = ref(
-  typeof route.query.search === "string" ? route.query.search : "",
-);
-const debouncedSearch = ref(search.value);
-const page = ref(parsePage(route.query.page));
-const pageSize = ref(parsePageSize(route.query.pageSize));
-const viewMode = ref<ViewMode>(parseView(route.query.view));
+  typeof route.query.search === 'string' ? route.query.search : ''
+)
+const debouncedSearch = ref(search.value)
+const page = ref(parsePage(route.query.page))
+const pageSize = ref(parsePageSize(route.query.pageSize))
+const viewMode = ref<ViewMode>(parseView(route.query.view))
 
-const DEFAULT_SORT = { id: "account_name", desc: false };
+const DEFAULT_SORT = { id: 'account_name', desc: false }
 const sorting = ref<SortingState>(
-  typeof route.query.sortBy === "string" && route.query.sortBy
-    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === "desc" }]
-    : [DEFAULT_SORT],
-);
+  typeof route.query.sortBy === 'string' && route.query.sortBy
+    ? [{ id: route.query.sortBy, desc: route.query.sortOrder === 'desc' }]
+    : [DEFAULT_SORT]
+)
 
 const requestQuery = computed(() => ({
   search: debouncedSearch.value || undefined,
@@ -82,10 +82,10 @@ const requestQuery = computed(() => ({
   sort_by: sorting.value[0]?.id || undefined,
   sort_order: sorting.value[0]
     ? sorting.value[0].desc
-      ? "desc"
-      : "asc"
-    : undefined,
-}));
+      ? 'desc'
+      : 'asc'
+    : undefined
+}))
 
 const { data, status, refresh } = await useAsyncData(
   () =>
@@ -96,12 +96,12 @@ const { data, status, refresh } = await useAsyncData(
         items: [],
         total: 0,
         page: 1,
-        page_size: pageSize.value,
-      } satisfies AccountsResponse;
-    return requestFetch<AccountsResponse>("/api/bank-accounts", {
+        page_size: pageSize.value
+      } satisfies AccountsResponse
+    return requestFetch<AccountsResponse>('/api/bank-accounts', {
       headers: requestHeaders,
-      query: requestQuery.value,
-    });
+      query: requestQuery.value
+    })
   },
   {
     watch: [requestQuery],
@@ -109,16 +109,16 @@ const { data, status, refresh } = await useAsyncData(
       items: [],
       total: 0,
       page: 1,
-      page_size: pageSize.value,
-    }),
-  },
-);
+      page_size: pageSize.value
+    })
+  }
+)
 
-const items = computed(() => data.value?.items ?? []);
-const total = computed(() => data.value?.total ?? 0);
+const items = computed(() => data.value?.items ?? [])
+const total = computed(() => data.value?.total ?? 0)
 const totalPages = computed(() =>
-  Math.max(1, Math.ceil(total.value / pageSize.value)),
-);
+  Math.max(1, Math.ceil(total.value / pageSize.value))
+)
 
 function buildManagedQuery() {
   return {
@@ -126,242 +126,242 @@ function buildManagedQuery() {
     page: page.value > 1 ? String(page.value) : undefined,
     pageSize:
       pageSize.value !== DEFAULT_PAGE_SIZE ? String(pageSize.value) : undefined,
-    view: viewMode.value !== "table" ? viewMode.value : undefined,
+    view: viewMode.value !== 'table' ? viewMode.value : undefined,
     sortBy: sorting.value[0]?.id || undefined,
-    sortOrder: sorting.value[0]?.desc ? "desc" : undefined,
-  };
+    sortOrder: sorting.value[0]?.desc ? 'desc' : undefined
+  }
 }
 
 async function syncQuery() {
   const nextQuery = Object.fromEntries(
     Object.entries(route.query).filter(
       ([k]) =>
-        !MANAGED_QUERY_KEYS.includes(k as (typeof MANAGED_QUERY_KEYS)[number]),
-    ),
-  ) as Record<string, string | string[] | undefined>;
-  Object.assign(nextQuery, buildManagedQuery());
-  if (JSON.stringify(route.query) === JSON.stringify(nextQuery)) return;
-  await router.replace({ query: nextQuery });
+        !MANAGED_QUERY_KEYS.includes(k as (typeof MANAGED_QUERY_KEYS)[number])
+    )
+  ) as Record<string, string | string[] | undefined>
+  Object.assign(nextQuery, buildManagedQuery())
+  if (JSON.stringify(route.query) === JSON.stringify(nextQuery)) return
+  await router.replace({ query: nextQuery })
 }
 
 async function submitSearch(value: string) {
-  search.value = value;
-  debouncedSearch.value = value;
-  page.value = 1;
-  await syncQuery();
+  search.value = value
+  debouncedSearch.value = value
+  page.value = 1
+  await syncQuery()
 }
 
 watch(
   () => route.query,
   (query) => {
-    const nextSearch = typeof query.search === "string" ? query.search : "";
-    const nextPage = parsePage(query.page);
-    const nextPageSize = parsePageSize(query.pageSize);
-    const nextView = parseView(query.view);
+    const nextSearch = typeof query.search === 'string' ? query.search : ''
+    const nextPage = parsePage(query.page)
+    const nextPageSize = parsePageSize(query.pageSize)
+    const nextView = parseView(query.view)
     if (search.value !== nextSearch) {
-      search.value = nextSearch;
-      debouncedSearch.value = nextSearch;
+      search.value = nextSearch
+      debouncedSearch.value = nextSearch
     }
-    if (page.value !== nextPage) page.value = nextPage;
-    if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize;
-    if (viewMode.value !== nextView) viewMode.value = nextView;
-    const nextSortBy = typeof query.sortBy === "string" ? query.sortBy : "";
-    const nextSortDesc = query.sortOrder === "desc";
-    const cur = sorting.value[0];
+    if (page.value !== nextPage) page.value = nextPage
+    if (pageSize.value !== nextPageSize) pageSize.value = nextPageSize
+    if (viewMode.value !== nextView) viewMode.value = nextView
+    const nextSortBy = typeof query.sortBy === 'string' ? query.sortBy : ''
+    const nextSortDesc = query.sortOrder === 'desc'
+    const cur = sorting.value[0]
     if (nextSortBy) {
       if (!cur || cur.id !== nextSortBy || cur.desc !== nextSortDesc)
-        sorting.value = [{ id: nextSortBy, desc: nextSortDesc }];
+        sorting.value = [{ id: nextSortBy, desc: nextSortDesc }]
     } else if (
-      !cur ||
-      cur.id !== DEFAULT_SORT.id ||
-      cur.desc !== DEFAULT_SORT.desc
+      !cur
+      || cur.id !== DEFAULT_SORT.id
+      || cur.desc !== DEFAULT_SORT.desc
     ) {
-      sorting.value = [DEFAULT_SORT];
+      sorting.value = [DEFAULT_SORT]
     }
-  },
-);
+  }
+)
 
 watchDebounced(
   search,
   async (val) => {
-    debouncedSearch.value = val;
-    page.value = 1;
-    await syncQuery();
+    debouncedSearch.value = val
+    page.value = 1
+    await syncQuery()
   },
-  { debounce: 300, maxWait: 800 },
-);
+  { debounce: 300, maxWait: 800 }
+)
 watch(page, async () => {
   if (page.value > totalPages.value && totalPages.value > 0)
-    page.value = totalPages.value;
-  await syncQuery();
-});
+    page.value = totalPages.value
+  await syncQuery()
+})
 watch(pageSize, async () => {
-  page.value = 1;
-  await syncQuery();
-});
-watch(viewMode, syncQuery);
+  page.value = 1
+  await syncQuery()
+})
+watch(viewMode, syncQuery)
 watch(sorting, async () => {
-  page.value = 1;
-  await syncQuery();
-});
+  page.value = 1
+  await syncQuery()
+})
 
 // ─── Row selection ───────────────────────────────────────────────────────────
-const rowSelection = ref<RowSelectionState>({});
+const rowSelection = ref<RowSelectionState>({})
 const selectedIds = computed(() =>
   Object.entries(rowSelection.value)
     .filter(([, v]) => v)
-    .map(([id]) => id),
-);
-const selectedCount = computed(() => selectedIds.value.length);
+    .map(([id]) => id)
+)
+const selectedCount = computed(() => selectedIds.value.length)
 watch(viewMode, () => {
-  rowSelection.value = {};
-});
+  rowSelection.value = {}
+})
 
 // ─── Modal / CRUD ─────────────────────────────────────────────────────────────
-const showModal = ref(false);
-const selectedAccount = ref<BankAccount | null>(null);
-const isDeleting = ref(false);
-const showDeleteModal = ref(false);
-const accountPendingDeletion = ref<BankAccount | null>(null);
-const showBulkDeleteModal = ref(false);
-const isBulkDeleting = ref(false);
+const showModal = ref(false)
+const selectedAccount = ref<BankAccount | null>(null)
+const isDeleting = ref(false)
+const showDeleteModal = ref(false)
+const accountPendingDeletion = ref<BankAccount | null>(null)
+const showBulkDeleteModal = ref(false)
+const isBulkDeleting = ref(false)
 
 function openCreate() {
-  selectedAccount.value = null;
-  showModal.value = true;
+  selectedAccount.value = null
+  showModal.value = true
 }
 function openEdit(a: BankAccount) {
-  selectedAccount.value = a;
-  showModal.value = true;
+  selectedAccount.value = a
+  showModal.value = true
 }
 
 function requestRemove(a: BankAccount) {
-  if (isDeleting.value) return;
-  accountPendingDeletion.value = a;
-  showDeleteModal.value = true;
+  if (isDeleting.value) return
+  accountPendingDeletion.value = a
+  showDeleteModal.value = true
 }
 
 async function remove(a: BankAccount) {
-  if (isDeleting.value) return;
-  isDeleting.value = true;
+  if (isDeleting.value) return
+  isDeleting.value = true
   try {
-    await $fetch(`/api/bank-accounts/${a.id}`, { method: "DELETE" });
-    toast.add({ title: "Conta removida", color: "success" });
-    showDeleteModal.value = false;
-    accountPendingDeletion.value = null;
-    if (items.value.length === 1 && page.value > 1) page.value -= 1;
-    await refresh();
+    await $fetch(`/api/bank-accounts/${a.id}`, { method: 'DELETE' })
+    toast.add({ title: 'Conta removida', color: 'success' })
+    showDeleteModal.value = false
+    accountPendingDeletion.value = null
+    if (items.value.length === 1 && page.value > 1) page.value -= 1
+    await refresh()
   } catch (error: unknown) {
     const err = error as {
-      data?: { statusMessage?: string };
-      statusMessage?: string;
-    };
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
     toast.add({
-      title: "Erro",
+      title: 'Erro',
       description:
-        err?.data?.statusMessage ||
-        err?.statusMessage ||
-        "Não foi possível remover",
-      color: "error",
-    });
+        err?.data?.statusMessage
+        || err?.statusMessage
+        || 'Não foi possível remover',
+      color: 'error'
+    })
   } finally {
-    isDeleting.value = false;
+    isDeleting.value = false
   }
 }
 
 async function confirmBulkDelete() {
-  if (!selectedIds.value.length || isBulkDeleting.value) return;
-  isBulkDeleting.value = true;
+  if (!selectedIds.value.length || isBulkDeleting.value) return
+  isBulkDeleting.value = true
   try {
     await Promise.all(
-      selectedIds.value.map((id) =>
-        $fetch(`/api/bank-accounts/${id}`, { method: "DELETE" }),
-      ),
-    );
+      selectedIds.value.map(id =>
+        $fetch(`/api/bank-accounts/${id}`, { method: 'DELETE' })
+      )
+    )
     toast.add({
       title: `${selectedIds.value.length} conta(s) removida(s)`,
-      color: "success",
-    });
-    rowSelection.value = {};
-    showBulkDeleteModal.value = false;
-    await refresh();
+      color: 'success'
+    })
+    rowSelection.value = {}
+    showBulkDeleteModal.value = false
+    await refresh()
   } catch {
-    toast.add({ title: "Erro ao excluir contas", color: "error" });
+    toast.add({ title: 'Erro ao excluir contas', color: 'error' })
   } finally {
-    isBulkDeleting.value = false;
+    isBulkDeleting.value = false
   }
 }
 
 const accountTypeLabel = (type: string) =>
   ({
-    checking: "Corrente",
-    savings: "Poupança",
-    cash: "Caixa",
-    investment: "Investimento",
-    other: "Outro",
-  })[type] ?? type;
+    checking: 'Corrente',
+    savings: 'Poupança',
+    cash: 'Caixa',
+    investment: 'Investimento',
+    other: 'Outro'
+  })[type] ?? type
 
 const accountTypeIcon = (type: string) =>
   ({
-    checking: "i-lucide-landmark",
-    savings: "i-lucide-piggy-bank",
-    cash: "i-lucide-wallet",
-    investment: "i-lucide-chart-no-axes-combined",
-    other: "i-lucide-credit-card"
-  })[type] ?? "i-lucide-credit-card";
+    checking: 'i-lucide-landmark',
+    savings: 'i-lucide-piggy-bank',
+    cash: 'i-lucide-wallet',
+    investment: 'i-lucide-chart-no-axes-combined',
+    other: 'i-lucide-credit-card'
+  })[type] ?? 'i-lucide-credit-card'
 
 const accountTypeAvatarClass = (type: string) =>
   ({
-    checking: "bg-primary/12 text-primary",
-    savings: "bg-success/12 text-success",
-    cash: "bg-warning/12 text-warning",
-    investment: "bg-info/12 text-info",
-    other: "bg-neutral/12 text-muted"
-  })[type] ?? "bg-neutral/12 text-muted";
+    checking: 'bg-primary/12 text-primary',
+    savings: 'bg-success/12 text-success',
+    cash: 'bg-warning/12 text-warning',
+    investment: 'bg-info/12 text-info',
+    other: 'bg-neutral/12 text-muted'
+  })[type] ?? 'bg-neutral/12 text-muted'
 
 const accountTypeBadgeColor = (type: string): BadgeColor =>
   ({
-    checking: "primary",
-    savings: "success",
-    cash: "warning",
-    investment: "info",
-    other: "neutral"
-  } as Record<string, BadgeColor>)[type] ?? "neutral";
+    checking: 'primary',
+    savings: 'success',
+    cash: 'warning',
+    investment: 'info',
+    other: 'neutral'
+  } as Record<string, BadgeColor>)[type] ?? 'neutral'
 
 const statusIcon = (active: boolean) =>
-  active ? "i-lucide-circle-check" : "i-lucide-circle-x";
+  active ? 'i-lucide-circle-check' : 'i-lucide-circle-x'
 
 const formatCurrency = (val: number | null) =>
   val != null
-    ? new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
+    ? new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
       }).format(val)
-    : "-";
+    : '-'
 
 function resolveCurrentBalance(account: BankAccount) {
-  const raw = account.current_balance ?? account.initial_balance;
-  return raw != null ? Number(raw) : null;
+  const raw = account.current_balance ?? account.initial_balance
+  return raw != null ? Number(raw) : null
 }
 
 function formatBankRouting(account: BankAccount) {
-  const parts: string[] = [];
-  if (account.branch) parts.push(`Ag. ${account.branch}`);
-  if (account.account_number) parts.push(`Cta. ${account.account_number}`);
-  return parts.join(" • ");
+  const parts: string[] = []
+  if (account.branch) parts.push(`Ag. ${account.branch}`)
+  if (account.account_number) parts.push(`Cta. ${account.account_number}`)
+  return parts.join(' • ')
 }
 
 const lineColumns = [
-  { accessorKey: "account_name", header: "Nome", enableSorting: true },
-  { accessorKey: "account_type", header: "Tipo", enableSorting: true },
+  { accessorKey: 'account_name', header: 'Nome', enableSorting: true },
+  { accessorKey: 'account_type', header: 'Tipo', enableSorting: true },
   {
-    accessorKey: "current_balance",
-    header: "Saldo atual",
-    enableSorting: true,
+    accessorKey: 'current_balance',
+    header: 'Saldo atual',
+    enableSorting: true
   },
-  { accessorKey: "is_active", header: "Status", enableSorting: false },
-  { id: "actions", header: "Ações", enableSorting: false },
-];
+  { accessorKey: 'is_active', header: 'Status', enableSorting: false },
+  { id: 'actions', header: 'Ações', enableSorting: false }
+]
 </script>
 
 <template>
@@ -475,7 +475,7 @@ const lineColumns = [
                 <p class="text-sm font-semibold text-highlighted">
                   {{
                     formatCurrency(
-                      resolveCurrentBalance(row.original as BankAccount),
+                      resolveCurrentBalance(row.original as BankAccount)
                     )
                   }}
                 </p>
@@ -595,29 +595,25 @@ const lineColumns = [
                       </div>
                       <div class="flex items-center gap-2">
                         <UIcon name="i-lucide-wallet" class="size-4 shrink-0" />
-                        <span class="truncate"
-                          >Saldo atual:
+                        <span class="truncate">Saldo atual:
                           {{
                             formatCurrency(
-                              resolveCurrentBalance(account as BankAccount),
+                              resolveCurrentBalance(account as BankAccount)
                             )
-                          }}</span
-                        >
+                          }}</span>
                       </div>
                       <div class="flex items-center gap-2">
                         <UIcon
                           name="i-lucide-badge-dollar-sign"
                           class="size-4 shrink-0"
                         />
-                        <span class="truncate"
-                          >Saldo inicial:
+                        <span class="truncate">Saldo inicial:
                           {{
                             formatCurrency(
-                              (account.initial_balance as number | null) ??
-                                null,
+                              (account.initial_balance as number | null)
+                                ?? null
                             )
-                          }}</span
-                        >
+                          }}</span>
                       </div>
                     </div>
                   </div>
@@ -655,8 +651,7 @@ const lineColumns = [
         Tem certeza que deseja excluir a conta
         <strong class="text-highlighted">{{
           accountPendingDeletion?.account_name || "esta conta"
-        }}</strong
-        >? Esta ação não pode ser desfeita.
+        }}</strong>? Esta ação não pode ser desfeita.
       </p>
     </template>
   </AppConfirmModal>

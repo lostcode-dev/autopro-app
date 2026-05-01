@@ -618,6 +618,10 @@ async function duplicate(entry: Entry) {
   }
 }
 
+// ── Fullscreen modal ─────────────────────────────────────────────────────────
+
+const showFullscreen = ref(false)
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 type ExportFormat = 'csv' | 'pdf'
@@ -711,13 +715,12 @@ function hasRecurrence(value: unknown) {
 
 function getBankAccountLabel(entry: Entry) {
   const accountId = String(entry.bank_account_id || '')
-  if (!accountId) return 'Sem conta vinculada'
-  return bankAccountById.value.get(accountId) || 'Conta vinculada'
+  if (!accountId) return null
+  const account = bankAccountOptions.value.find(a => a.id === accountId)
+  return account?.account_name ?? null
 }
 
-const typeBadgeColor: Record<string, BadgeColor> = { income: 'success', expense: 'error' }
 const typeBadgeLabel: Record<string, string> = { income: 'Receita', expense: 'Despesa' }
-const typeBadgeIcon: Record<string, string> = { income: 'i-lucide-trending-up', expense: 'i-lucide-trending-down' }
 const statusBadgeColor: Record<string, BadgeColor> = { paid: 'success', pending: 'warning' }
 const statusBadgeIcon: Record<string, string> = { paid: 'i-lucide-circle-check', pending: 'i-lucide-clock' }
 
@@ -751,10 +754,7 @@ function formatCategory(value: string | null | undefined): string {
 }
 
 const columns = [
-  { accessorKey: 'description', header: 'Lançamento', enableSorting: false, meta: { class: { th: 'w-[36%]', td: 'w-[36%]' } } },
-  { accessorKey: 'category', header: 'Categoria', enableSorting: false, meta: { class: { th: 'w-40', td: 'w-40' } } },
-  { accessorKey: 'due_date', header: 'Vencimento', enableSorting: false, meta: { class: { th: 'w-32', td: 'w-32 whitespace-nowrap' } } },
-  { id: 'type', header: 'Tipo', enableSorting: false, meta: { class: { th: 'w-28', td: 'w-28' } } },
+  { accessorKey: 'description', header: 'Lançamento', enableSorting: false, meta: { class: { th: 'w-[56%]', td: 'w-[56%]' } } },
   { id: 'status_col', header: 'Status', enableSorting: false, meta: { class: { th: 'w-32', td: 'w-32' } } },
   { id: 'amount_col', header: 'Valor', enableSorting: false, meta: { class: { th: 'w-36 text-right', td: 'w-36 text-right whitespace-nowrap' } } },
   { id: 'actions', header: '', enableSorting: false, meta: { class: { th: 'w-40', td: 'w-40' } } }
@@ -821,7 +821,7 @@ const columns = [
           :total="totalFromServer"
           :selectable="true"
           :get-row-id="(row) => String(row.id ?? '')"
-          table-class="table-fixed min-w-[1120px] w-full"
+          table-class="table-fixed min-w-[860px] w-full"
           show-search
           search-placeholder="Buscar por descrição..."
           empty-icon="i-lucide-wallet-cards"
@@ -876,6 +876,17 @@ const columns = [
               </UDropdownMenu>
             </UTooltip>
 
+            <UTooltip text="Expandir tabela">
+              <UButton
+                icon="i-lucide-maximize-2"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                square
+                @click="showFullscreen = true"
+              />
+            </UTooltip>
+
             <UButton
               v-if="canCreate"
               label="Novo lançamento"
@@ -898,17 +909,21 @@ const columns = [
 
           <template #description-cell="{ row }">
             <div class="flex items-center gap-3">
-              <div
-                class="flex size-8 shrink-0 items-center justify-center rounded-full"
-                :class="row.original.type === 'income' ? 'bg-success/10' : 'bg-error/10'"
+              <UTooltip
+                :text="typeBadgeLabel[String(row.original.type)] ?? String(row.original.type || '—')"
               >
-                <UIcon
-                  :name="row.original.type === 'income' ? 'i-lucide-trending-up' : 'i-lucide-trending-down'"
-                  class="size-4"
-                  :class="row.original.type === 'income' ? 'text-success' : 'text-error'"
-                />
-              </div>
-              <div class="min-w-0 space-y-1">
+                <div
+                  class="flex size-8 shrink-0 cursor-default items-center justify-center rounded-full"
+                  :class="row.original.type === 'income' ? 'bg-success/10' : 'bg-error/10'"
+                >
+                  <UIcon
+                    :name="row.original.type === 'income' ? 'i-lucide-trending-up' : 'i-lucide-trending-down'"
+                    class="size-4"
+                    :class="row.original.type === 'income' ? 'text-success' : 'text-error'"
+                  />
+                </div>
+              </UTooltip>
+              <div class="min-w-0 space-y-0.5">
                 <div class="flex items-center gap-1.5">
                   <p class="truncate font-semibold text-highlighted">
                     {{ row.original.description }}
@@ -922,40 +937,12 @@ const columns = [
                   />
                 </div>
                 <p class="truncate text-xs text-muted">
-                  {{ getBankAccountLabel(row.original as Entry) }}
+                  {{ formatDate(String((row.original as Entry).due_date || '')) }}
+                  <span class="mx-1 opacity-40">·</span>
+                  {{ getBankAccountLabel(row.original as Entry) ?? '—' }}
                 </p>
               </div>
             </div>
-          </template>
-
-          <template #category-cell="{ row }">
-            <div class="space-y-1">
-              <p class="text-sm text-highlighted">
-                {{ formatCategory((row.original as Entry).category) }}
-              </p>
-              <p
-                v-if="hasRecurrence((row.original as Entry).recurrence)"
-                class="text-xs text-muted"
-              >
-                {{ formatRecurrence((row.original as Entry).recurrence) }}
-              </p>
-            </div>
-          </template>
-
-          <template #due_date-cell="{ row }">
-            <span class="text-sm text-muted">
-              {{ formatDate(String(row.original.due_date || '')) }}
-            </span>
-          </template>
-
-          <template #type-cell="{ row }">
-            <UBadge
-              :color="typeBadgeColor[String(row.original.type)] ?? 'neutral'"
-              variant="subtle"
-              :icon="typeBadgeIcon[String(row.original.type)]"
-              :label="typeBadgeLabel[String(row.original.type)] ?? String(row.original.type || '—')"
-              size="sm"
-            />
           </template>
 
           <template #status_col-cell="{ row }">
@@ -1050,6 +1037,48 @@ const columns = [
     :entry="selectedEntry"
     :bank-account-options="bankAccountOptions"
     @saved="onEntrySaved"
+  />
+
+  <!-- Fullscreen modal -->
+  <FinancialEntriesFullscreenModal
+    v-model:open="showFullscreen"
+    v-model:search="search"
+    v-model:row-selection="rowSelection"
+    v-model:date-from="dateFrom"
+    v-model:date-to="dateTo"
+    v-model:type-filters="typeFilters"
+    v-model:status-filters="statusFilters"
+    v-model:category-filter="categoryFilter"
+    :data="accumulatedItems"
+    :loading="!isHydrated || (status === 'pending' && page === 1) || isBootstrapping"
+    :loading-more="loadingMore"
+    :has-more="hasMore"
+    :total="totalFromServer"
+    :unique-categories="uniqueCategories"
+    :export-items="exportItems"
+    :exporting="exporting"
+    :can-create="canCreate"
+    :can-update="canUpdate"
+    :can-delete="canDelete"
+    :pending-selected-count="pendingSelectedCount"
+    :selected-count="selectedCount"
+    :bank-account-options="bankAccountOptions"
+    :is-paying="isPaying"
+    :paying-entry-id="payingEntryId"
+    :is-duplicating="isDuplicating"
+    :duplicating-entry-id="duplicatingEntryId"
+    :is-deleting="isDeleting"
+    :entry-pending-deletion-id="entryPendingDeletion ? String(entryPendingDeletion.id) : null"
+    @search-submit="submitSearch"
+    @load-more="loadMore"
+    @bulk-pay="showBulkPayModal = true"
+    @bulk-delete="showBulkDeleteModal = true"
+    @open-create="openCreate"
+    @open-detail="openDetail"
+    @pay="pay"
+    @duplicate="duplicate"
+    @open-edit="openEdit"
+    @remove="requestRemove"
   />
 
   <FinancialEntriesDetailSlideover

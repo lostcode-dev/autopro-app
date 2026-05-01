@@ -1,55 +1,55 @@
 <script setup lang="ts">
-import type { ServiceOrderDetailFull } from "~/types/service-orders";
+import type { ServiceOrderDetailFull } from '~/types/service-orders'
 import {
   computeServiceOrderCommissionBreakdown,
-  formatCurrency,
-} from "~/utils/service-orders";
-import type { CommissionBreakdownLine } from "../CommissionBreakdownPopover.vue";
+  formatCurrency
+} from '~/utils/service-orders'
+import type { CommissionBreakdownLine } from '../CommissionBreakdownPopover.vue'
 
 const props = defineProps<{
-  order: ServiceOrderDetailFull["order"];
-  responsibleNames: ServiceOrderDetailFull["responsibleNames"];
-  employees: ServiceOrderDetailFull["employees"];
-  commissions: ServiceOrderDetailFull["commissions"];
-}>();
+  order: ServiceOrderDetailFull['order']
+  responsibleNames: ServiceOrderDetailFull['responsibleNames']
+  employees: ServiceOrderDetailFull['employees']
+  commissions: ServiceOrderDetailFull['commissions']
+}>()
 
 type ResponsibleInfo = {
-  employee_id: string;
-  name: string | null;
-  commission_type: string | null | undefined;
-  configured_commission_amount: number | null | undefined;
-  commission_base: string | null | undefined;
-  commission_categories: string[];
-  has_commission: boolean;
-  commission_amount: number | null;
-  item_breakdown: CommissionBreakdownLine[];
-};
+  employee_id: string
+  name: string | null
+  commission_type: string | null | undefined
+  configured_commission_amount: number | null | undefined
+  commission_base: string | null | undefined
+  commission_categories: string[]
+  has_commission: boolean
+  commission_amount: number | null
+  item_breakdown: CommissionBreakdownLine[]
+}
 
 const commissionBreakdown = computed(() =>
-  computeServiceOrderCommissionBreakdown(props.order, props.employees),
-);
+  computeServiceOrderCommissionBreakdown(props.order, props.employees)
+)
 
 const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
-  const items = props.order.items ?? [];
+  const items = props.order.items ?? []
 
   return props.responsibleNames.map((r) => {
-    const emp = props.employees.find((e) => e.id === r.employee_id);
+    const emp = props.employees.find(e => e.id === r.employee_id)
 
     const commission_amount = emp
       ? (commissionBreakdown.value.byEmployeeId.get(emp.id)?.value ?? 0)
-      : 0;
+      : 0
 
-    const item_breakdown: CommissionBreakdownLine[] = [];
+    const item_breakdown: CommissionBreakdownLine[] = []
     if (emp) {
       for (const [itemIndex, entry] of commissionBreakdown.value.byItemIndex) {
-        const c = entry.commissions.find((x) => x.employee_id === emp.id);
-        if (!c || c.amount <= 0) continue;
-        const item = items[itemIndex];
-        if (!item) continue;
+        const c = entry.commissions.find(x => x.employee_id === emp.id)
+        if (!c || c.amount <= 0) continue
+        const item = items[itemIndex]
+        if (!item) continue
         item_breakdown.push({
           label: item.description || item.name || `Item ${itemIndex + 1}`,
-          amount: c.amount,
-        });
+          amount: c.amount
+        })
       }
     }
 
@@ -62,44 +62,44 @@ const responsiblesInfo = computed<ResponsibleInfo[]>(() => {
       commission_categories: emp?.commission_categories ?? [],
       has_commission: Boolean(emp?.has_commission),
       commission_amount,
-      item_breakdown,
-    };
-  });
-});
+      item_breakdown
+    }
+  })
+})
 
 const totalCommissionAmount = computed(() =>
   responsiblesInfo.value.reduce(
     (total, responsible) => total + Number(responsible.commission_amount ?? 0),
-    0,
-  ),
-);
+    0
+  )
+)
 
 function getResponsibleRateLabel(assignee: ResponsibleInfo) {
   if (!assignee.has_commission || assignee.configured_commission_amount == null)
-    return null;
+    return null
 
-  return assignee.commission_type === "percentage"
+  return assignee.commission_type === 'percentage'
     ? `${assignee.configured_commission_amount}%`
-    : formatCurrency(assignee.configured_commission_amount);
+    : formatCurrency(assignee.configured_commission_amount)
 }
 
 function getResponsibleBaseLabel(assignee: ResponsibleInfo) {
-  if (!assignee.has_commission) return null;
+  if (!assignee.has_commission) return null
 
-  return assignee.commission_base === "profit"
-    ? "Base: lucro"
-    : "Base: faturamento";
+  return assignee.commission_base === 'profit'
+    ? 'Base: lucro'
+    : 'Base: faturamento'
 }
 
 function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
   if (!assignee.has_commission) {
     return {
-      label: "Sem comissão",
-      color: "neutral" as const,
-      icon: "i-lucide-circle-off",
-    };
+      label: 'Sem comissão',
+      color: 'neutral' as const,
+      icon: 'i-lucide-circle-off'
+    }
   }
-  return null;
+  return null
 }
 </script>
 
@@ -108,7 +108,9 @@ function getResponsibleCommissionNote(assignee: ResponsibleInfo) {
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-user-round-cog" class="size-4 text-primary" />
-        <h3 class="font-semibold text-highlighted">Responsáveis e comissão</h3>
+        <h3 class="font-semibold text-highlighted">
+          Responsáveis e comissão
+        </h3>
       </div>
     </template>
 

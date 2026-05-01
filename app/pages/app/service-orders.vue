@@ -100,10 +100,11 @@ const {
   softRefresh,
   reset: resetList
 } = useInfiniteList<ServiceOrder>(
-  async ({ cursor, limit }) => {
+  async ({ cursor, limit, signal }) => {
     if (!canRead.value) return { items: [], total: 0 }
     const res = await requestFetch<ServiceOrdersApiResponse>('/api/service-orders', {
       headers: requestHeaders,
+      signal,
       query: {
         searchTerm: apiSearch.value || undefined,
         status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
@@ -132,7 +133,7 @@ watchDebounced(
     apiSearch.value = val
     await syncQuery()
   },
-  { debounce: 300, maxWait: 800 }
+  { debounce: 500, maxWait: 1200 }
 )
 
 watch([apiSearch, statusFilter, clientIdFilter, vehicleIdFilter, responsibleIdFilter, dateFrom, dateTo], () => {

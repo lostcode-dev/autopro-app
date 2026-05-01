@@ -21,7 +21,9 @@ defineEmits<{
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-calculator" class="size-4 text-primary" />
-        <h3 class="font-semibold text-highlighted">Resumo financeiro</h3>
+        <h3 class="font-semibold text-highlighted">
+          Resumo financeiro
+        </h3>
       </div>
     </template>
 
@@ -31,7 +33,9 @@ defineEmits<{
           <UIcon name="i-lucide-circle-dollar-sign" class="size-4 text-primary" />
           Valor previsto para o cliente
         </p>
-        <p class="mt-1 text-3xl font-bold text-highlighted">{{ formatCurrency(totalAmount) }}</p>
+        <p class="mt-1 text-3xl font-bold text-highlighted">
+          {{ formatCurrency(totalAmount) }}
+        </p>
       </div>
 
       <div class="grid grid-cols-2 gap-3 text-center">
@@ -39,25 +43,33 @@ defineEmits<{
           <p class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted">
             <UIcon name="i-lucide-receipt" class="size-3.5" />Subtotal
           </p>
-          <p class="mt-1 font-semibold text-highlighted">{{ formatCurrency(subtotal) }}</p>
+          <p class="mt-1 font-semibold text-highlighted">
+            {{ formatCurrency(subtotal) }}
+          </p>
         </div>
         <div class="rounded-xl bg-elevated/70 p-3">
           <p class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted">
             <UIcon name="i-lucide-badge-dollar-sign" class="size-3.5" />Custo
           </p>
-          <p class="mt-1 font-semibold text-error">{{ formatCurrency(totalCost) }}</p>
+          <p class="mt-1 font-semibold text-error">
+            {{ formatCurrency(totalCost) }}
+          </p>
         </div>
         <div class="rounded-xl bg-elevated/70 p-3">
           <p class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted">
             <UIcon name="i-lucide-percent" class="size-3.5" />Impostos
           </p>
-          <p class="mt-1 font-semibold text-warning">{{ formatCurrency(totalTaxesAmount) }}</p>
+          <p class="mt-1 font-semibold text-warning">
+            {{ formatCurrency(totalTaxesAmount) }}
+          </p>
         </div>
         <div class="rounded-xl bg-elevated/70 p-3">
           <p class="flex items-center justify-center gap-1.5 text-xs uppercase tracking-wide text-muted">
             <UIcon name="i-lucide-wallet-cards" class="size-3.5" />Comissão
           </p>
-          <p class="mt-1 font-semibold text-info">{{ formatCurrency(totalCommissionAmount) }}</p>
+          <p class="mt-1 font-semibold text-info">
+            {{ formatCurrency(totalCommissionAmount) }}
+          </p>
         </div>
       </div>
 

@@ -55,8 +55,12 @@ const open = ref(false)
             class="flex items-start justify-between gap-3"
           >
             <div class="min-w-0 flex-1">
-              <p class="truncate text-sm font-medium text-highlighted">{{ line.label }}</p>
-              <p v-if="line.sublabel" class="mt-0.5 text-xs text-muted">{{ line.sublabel }}</p>
+              <p class="truncate text-sm font-medium text-highlighted">
+                {{ line.label }}
+              </p>
+              <p v-if="line.sublabel" class="mt-0.5 text-xs text-muted">
+                {{ line.sublabel }}
+              </p>
             </div>
             <span class="shrink-0 text-sm font-semibold text-info">
               {{ formatCurrency(line.amount) }}

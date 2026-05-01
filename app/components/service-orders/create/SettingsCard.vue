@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { formatCurrency } from '~/utils/service-orders'
 
-interface TaxItem { id: string; name: string; type: string; rate: number }
-interface SelectedTax { tax_id: string; calculated_amount: number }
+interface TaxItem { id: string, name: string, type: string, rate: number }
+interface SelectedTax { tax_id: string, calculated_amount: number }
 
 const props = defineProps<{
   applyTaxes: boolean
@@ -34,18 +34,18 @@ const appointmentPriorityOptions = [
   { label: 'Sem prioridade', value: APPOINTMENT_NO_PRIORITY },
   { label: 'Baixa', value: 'low' },
   { label: 'Média', value: 'medium' },
-  { label: 'Alta', value: 'high' },
+  { label: 'Alta', value: 'high' }
 ]
 
-const appointmentPriorityMeta: Record<string, { label: string; icon: string; color: 'neutral' | 'info' | 'warning' }> = {
+const appointmentPriorityMeta: Record<string, { label: string, icon: string, color: 'neutral' | 'info' | 'warning' }> = {
   [APPOINTMENT_NO_PRIORITY]: { label: 'Sem prioridade', icon: 'i-lucide-minus', color: 'neutral' },
   low: { label: 'Baixa', icon: 'i-lucide-arrow-down', color: 'neutral' },
   medium: { label: 'Média', icon: 'i-lucide-equal', color: 'info' },
-  high: { label: 'Alta', icon: 'i-lucide-arrow-up', color: 'warning' },
+  high: { label: 'Alta', icon: 'i-lucide-arrow-up', color: 'warning' }
 }
 
 const appointmentPriorityBadge = computed(
-  () => appointmentPriorityMeta[props.appointmentPriority] ?? appointmentPriorityMeta[APPOINTMENT_NO_PRIORITY]!,
+  () => appointmentPriorityMeta[props.appointmentPriority] ?? appointmentPriorityMeta[APPOINTMENT_NO_PRIORITY]!
 )
 
 function toNumber(value: number | string | null | undefined) {
@@ -70,7 +70,9 @@ function getTaxCalculatedAmount(taxId: string) {
     <template #header>
       <div class="flex items-center gap-2">
         <UIcon name="i-lucide-settings-2" class="size-4 text-primary/70" />
-        <h3 class="font-semibold text-highlighted">Configurações</h3>
+        <h3 class="font-semibold text-highlighted">
+          Configurações
+        </h3>
       </div>
     </template>
 
@@ -83,7 +85,9 @@ function getTaxCalculatedAmount(taxId: string) {
               <UIcon name="i-lucide-percent" class="size-4 text-primary" />
               Impostos
             </p>
-            <p class="text-xs text-muted">Entram como custo interno da OS.</p>
+            <p class="text-xs text-muted">
+              Entram como custo interno da OS.
+            </p>
           </div>
           <USwitch
             :model-value="applyTaxes"
@@ -97,7 +101,9 @@ function getTaxCalculatedAmount(taxId: string) {
             class="rounded-xl border border-dashed border-default bg-default/70 px-4 py-5 text-center"
           >
             <UIcon name="i-lucide-percent-diamond" class="mx-auto size-6 text-dimmed" />
-            <p class="mt-2 text-sm font-medium text-highlighted">Nenhum imposto cadastrado</p>
+            <p class="mt-2 text-sm font-medium text-highlighted">
+              Nenhum imposto cadastrado
+            </p>
           </div>
 
           <button
@@ -116,10 +122,14 @@ function getTaxCalculatedAmount(taxId: string) {
                 class="mt-0.5 size-4"
                 :checked="selectedTaxIds.includes(tax.id)"
                 @click.stop="toggleTax(tax.id)"
-              />
+              >
               <div>
-                <p class="font-medium text-highlighted">{{ tax.name }}</p>
-                <p class="text-xs uppercase tracking-wide text-muted">{{ tax.type }}</p>
+                <p class="font-medium text-highlighted">
+                  {{ tax.name }}
+                </p>
+                <p class="text-xs uppercase tracking-wide text-muted">
+                  {{ tax.type }}
+                </p>
               </div>
             </div>
             <div class="text-right">
@@ -133,8 +143,12 @@ function getTaxCalculatedAmount(taxId: string) {
           </button>
 
           <div class="rounded-xl border border-warning/20 bg-warning/10 px-4 py-3">
-            <p class="text-xs uppercase tracking-wide text-warning/80">Total de impostos</p>
-            <p class="mt-1 text-base font-semibold text-warning">{{ formatCurrency(totalTaxesAmount) }}</p>
+            <p class="text-xs uppercase tracking-wide text-warning/80">
+              Total de impostos
+            </p>
+            <p class="mt-1 text-base font-semibold text-warning">
+              {{ formatCurrency(totalTaxesAmount) }}
+            </p>
           </div>
         </div>
       </div>
@@ -147,7 +161,9 @@ function getTaxCalculatedAmount(taxId: string) {
               <UIcon name="i-lucide-calendar-clock" class="size-4 text-primary/70" />
               Agendamento
             </p>
-            <p class="text-xs text-muted">Cria agenda automaticamente ao salvar.</p>
+            <p class="text-xs text-muted">
+              Cria agenda automaticamente ao salvar.
+            </p>
           </div>
           <USwitch
             :model-value="createAppointment"

@@ -134,7 +134,7 @@ function initials(value: string | null | undefined) {
           <div class="min-w-0 space-y-1.5">
             <div class="flex min-w-0 items-center gap-2">
               <p class="truncate font-semibold text-highlighted">
-                OS #{{ order.number }}
+                #{{ order.number }}
               </p>
 
               <div v-if="order.client_name" class="flex items-center gap-1.5">
