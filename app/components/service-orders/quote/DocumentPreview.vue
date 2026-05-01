@@ -64,7 +64,7 @@ function getClientPhone() {
           v-if="organization?.logo_url"
           :src="organization.logo_url"
           alt="Logo da oficina"
-          class="max-h-12 max-w-[200px] w-auto h-auto object-contain flex-shrink-0"
+          class="max-h-12 max-w-50 w-auto h-auto object-contain flex-shrink-0"
         >
         <div
           v-else
@@ -172,7 +172,7 @@ function getClientPhone() {
 
       <div
         v-if="quoteMode !== false"
-        class="rounded-[24px] border border-slate-200 bg-slate-50 px-6 py-4 text-center"
+        class="border border-slate-200 bg-slate-50 px-6 py-4 text-center"
       >
         <p class="text-lg font-black tracking-[0.18em] text-slate-950">
           ORÇAMENTO DE SERVIÇOS
@@ -184,7 +184,7 @@ function getClientPhone() {
           Veículo
         </h3>
         <div
-          class="grid gap-3 rounded-[24px] border border-slate-200 bg-white sm:grid-cols-2 lg:grid-cols-4 p-5"
+          class="grid gap-3 border border-slate-200 bg-white sm:grid-cols-2 lg:grid-cols-4 p-5"
         >
           <p class="text-sm text-slate-700">
             <span class="font-semibold text-slate-950">Marca/Modelo:</span>
@@ -207,7 +207,7 @@ function getClientPhone() {
 
       <section
         v-if="detail.masterProduct"
-        class="rounded-[24px] border border-violet-200 bg-violet-50/70 p-2"
+        class="border border-violet-200 bg-violet-50/70 p-2"
       >
         <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-violet-700">
           Produto Master
@@ -228,7 +228,7 @@ function getClientPhone() {
         </div>
       </section>
 
-      <section class="rounded-[24px] border border-slate-200 bg-slate-50/70 p-2">
+      <section class="border border-slate-200 bg-slate-50/70 p-2">
         <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
           Problema Relatado
         </h3>
@@ -241,7 +241,7 @@ function getClientPhone() {
         <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
           Serviços e Produtos
         </h3>
-        <div class="overflow-hidden rounded-[24px] border border-slate-200">
+        <div class="overflow-hidden border border-slate-200">
           <table class="min-w-full divide-y divide-slate-200">
             <thead class="bg-slate-50">
               <tr>
@@ -302,7 +302,7 @@ function getClientPhone() {
 
       <div class="flex justify-end">
         <div
-          class="w-full max-w-[320px] rounded-[24px] border border-slate-200 bg-slate-50/80 p-2"
+          class="w-full max-w-[320px] border border-slate-200 bg-slate-50/80 p-2"
         >
           <div class="flex items-center justify-between py-1 text-sm text-slate-700">
             <span>Subtotal</span>
