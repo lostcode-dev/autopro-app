@@ -369,7 +369,7 @@ function getClientPhone() {
               <tr v-if="row.type === 'category'" style="background:#eef2ff;">
                 <td
                   colspan="4"
-                  style="padding:4px 8px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; color:#4338ca;"
+                  style="padding:4px 8px; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:0.14em; color:#475569;"
                 >
                   {{ row.label }}
                 </td>
