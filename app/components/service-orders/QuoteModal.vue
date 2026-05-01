@@ -43,6 +43,7 @@ const organization = ref<OrganizationData | null>(null);
 const isLoading = ref(false);
 const isDownloading = ref(false);
 const paperRef = ref<HTMLElement | null>(null);
+const printRef = ref<HTMLElement | null>(null);
 
 const workshopName = computed(
   () =>
@@ -64,6 +65,20 @@ const totalAmount = computed(() =>
 const discountAmount = computed(() =>
   Number(detail.value?.order.discount ?? 0),
 );
+
+const groupedItems = computed(() => {
+  const items = detail.value?.order.items ?? [];
+  const groups = new Map<string, ServiceOrderItem[]>();
+  for (const item of items) {
+    const cat = item.category_name?.trim() || "Serviços e Peças";
+    if (!groups.has(cat)) groups.set(cat, []);
+    groups.get(cat)!.push(item);
+  }
+  return Array.from(groups.entries()).map(([category, items]) => ({
+    category,
+    items,
+  }));
+});
 
 watch(
   () => props.open,
@@ -154,7 +169,7 @@ function sanitizeFileNamePart(value: string | null | undefined) {
 }
 
 async function downloadPdf() {
-  if (!paperRef.value || !detail.value || isDownloading.value) return;
+  if (!printRef.value || !detail.value || isDownloading.value) return;
 
   isDownloading.value = true;
 
@@ -164,7 +179,7 @@ async function downloadPdf() {
       import("pdf-lib"),
     ]);
 
-    const dataUrl = await toPng(paperRef.value, {
+    const dataUrl = await toPng(printRef.value, {
       pixelRatio: 2,
       cacheBust: true,
       backgroundColor: "#ffffff",
@@ -573,29 +588,36 @@ async function downloadPdf() {
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200 bg-white">
-                      <tr
-                        v-for="(item, index) in detail.order.items ?? []"
-                        :key="`${index}-${item.name ?? item.description ?? 'item'}`"
+                      <template
+                        v-for="group in groupedItems"
+                        :key="group.category"
                       >
-                        <td class="px-4 py-3 text-sm text-slate-700">
-                          {{ item.description || item.name || "—" }}
-                        </td>
-                        <td
-                          class="px-4 py-3 text-center text-sm text-slate-700"
+                        <tr class="bg-slate-100/80">
+                          <td
+                            colspan="4"
+                            class="px-4 py-1.5 text-xs font-bold uppercase tracking-[0.18em] text-slate-500"
+                          >
+                            {{ group.category }}
+                          </td>
+                        </tr>
+                        <tr
+                          v-for="(item, index) in group.items"
+                          :key="`${group.category}-${index}`"
                         >
-                          {{ item.quantity }}
-                        </td>
-                        <td
-                          class="px-4 py-3 text-center text-sm text-slate-700"
-                        >
-                          {{ formatCurrency(item.unit_price) }}
-                        </td>
-                        <td
-                          class="px-4 py-3 text-right text-sm font-semibold text-slate-950"
-                        >
-                          {{ formatCurrency(getItemTotal(item)) }}
-                        </td>
-                      </tr>
+                          <td class="px-4 py-2 text-sm text-slate-700">
+                            {{ item.description || item.name || "—" }}
+                          </td>
+                          <td class="px-4 py-2 text-center text-sm text-slate-700">
+                            {{ item.quantity }}
+                          </td>
+                          <td class="px-4 py-2 text-center text-sm text-slate-700">
+                            {{ formatCurrency(item.unit_price) }}
+                          </td>
+                          <td class="px-4 py-2 text-right text-sm font-semibold text-slate-950">
+                            {{ formatCurrency(getItemTotal(item)) }}
+                          </td>
+                        </tr>
+                      </template>
                     </tbody>
                   </table>
                 </div>
@@ -647,4 +669,145 @@ async function downloadPdf() {
       </div>
     </template>
   </UModal>
+
+  <!-- Hidden document-style template captured for PDF export -->
+  <div
+    v-if="detail"
+    ref="printRef"
+    style="position: fixed; top: 0; left: -9999px; width: 800px; background: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; padding: 36px 40px; box-sizing: border-box;"
+  >
+    <!-- Header -->
+    <div style="display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img
+          v-if="organization?.logo_url"
+          :src="organization.logo_url"
+          alt="Logo"
+          style="height: 52px; width: 52px; object-fit: contain; border-radius: 6px;"
+        />
+        <div v-else style="height: 52px; width: 52px; background: #111; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
+          <span style="color: #fff; font-size: 22px; font-weight: 700;">{{ workshopName.charAt(0) }}</span>
+        </div>
+        <div>
+          <div style="font-size: 18px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.2;">{{ workshopName }}</div>
+          <div v-if="organization?.tax_id" style="font-size: 11px; color: #555; margin-top: 2px;">CNPJ/CPF: {{ formatTaxId(organization.tax_id) }}</div>
+          <div style="font-size: 11px; color: #555; margin-top: 1px;">
+            <span v-if="organization?.phone">{{ formatPhone(organization.phone) }}</span>
+            <span v-if="organization?.phone && organization?.email"> · </span>
+            <span v-if="organization?.email">{{ organization.email }}</span>
+          </div>
+          <div v-if="organization?.address_city" style="font-size: 11px; color: #555; margin-top: 1px;">
+            {{ organization.address_city }}{{ organization.address_state ? ` - ${organization.address_state}` : '' }}
+          </div>
+        </div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;">
+          {{ quoteMode !== false ? 'Orçamento' : 'Ordem de Serviço' }}
+        </div>
+        <div style="font-size: 13px; color: #333; margin-top: 4px;">Nº <strong>{{ detail.order.number ?? '—' }}</strong></div>
+        <div style="font-size: 12px; color: #555; margin-top: 2px;">Data: {{ formatDate(detail.order.entry_date) }}</div>
+        <div v-if="detail.order.expected_date" style="font-size: 12px; color: #555; margin-top: 2px;">Previsão: {{ formatDate(detail.order.expected_date) }}</div>
+      </div>
+    </div>
+
+    <!-- Client + Vehicle -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #ccc; margin-bottom: 12px;">
+      <div style="padding: 10px 14px; border-right: 1px solid #ccc;">
+        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 6px;">Cliente</div>
+        <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px;">{{ detail.client?.name ?? '—' }}</div>
+        <div v-if="getClientPhone()" style="font-size: 12px; color: #444;">{{ formatPhone(getClientPhone()) }}</div>
+        <div v-if="detail.client?.email" style="font-size: 12px; color: #444;">{{ detail.client.email }}</div>
+      </div>
+      <div style="padding: 10px 14px;">
+        <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 6px;">Veículo</div>
+        <div v-if="detail.vehicle">
+          <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px;">{{ detail.vehicle.brand }} {{ detail.vehicle.model }}</div>
+          <div style="font-size: 12px; color: #444;">
+            Placa: {{ detail.vehicle.license_plate ?? '—' }}<span v-if="detail.vehicle.year"> · Ano: {{ detail.vehicle.year }}</span>
+          </div>
+          <div v-if="detail.vehicle.fuel_type" style="font-size: 12px; color: #444;">Combustível: {{ detail.vehicle.fuel_type }}</div>
+        </div>
+        <div v-else style="font-size: 12px; color: #888;">Não informado</div>
+      </div>
+    </div>
+
+    <!-- Reported defect -->
+    <div v-if="detail.order.reported_defect" style="border: 1px solid #ccc; padding: 10px 14px; margin-bottom: 12px;">
+      <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 5px;">Problema Relatado</div>
+      <div style="font-size: 12px; line-height: 1.5; color: #333;">{{ detail.order.reported_defect }}</div>
+    </div>
+
+    <!-- Items table -->
+    <div style="margin-bottom: 12px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #111;">
+            <th style="padding: 5px 8px; text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff;">Descrição</th>
+            <th style="padding: 5px 8px; text-align: center; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 44px;">Qtd</th>
+            <th style="padding: 5px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 100px;">Val. Unit.</th>
+            <th style="padding: 5px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 100px;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <template v-for="group in groupedItems" :key="group.category">
+            <tr style="background: #e8e8e8;">
+              <td colspan="4" style="padding: 4px 8px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: #444;">{{ group.category }}</td>
+            </tr>
+            <tr
+              v-for="(item, idx) in group.items"
+              :key="idx"
+              :style="{ background: idx % 2 === 0 ? '#fff' : '#f7f7f7' }"
+            >
+              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; font-size: 11px; color: #333;">{{ item.description || item.name || '—' }}</td>
+              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: center; font-size: 11px; color: #333;">{{ item.quantity }}</td>
+              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; color: #333;">{{ formatCurrency(item.unit_price) }}</td>
+              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #111;">{{ formatCurrency(getItemTotal(item)) }}</td>
+            </tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Totals -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+      <div style="width: 260px; border: 1px solid #ccc;">
+        <div style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 12px; border-bottom: 1px solid #e5e5e5;">
+          <span style="color: #555;">Subtotal</span>
+          <span style="font-weight: 600;">{{ formatCurrency(subtotal) }}</span>
+        </div>
+        <div v-if="discountAmount > 0" style="display: flex; justify-content: space-between; padding: 6px 12px; font-size: 12px; color: #b00; border-bottom: 1px solid #e5e5e5;">
+          <span>Desconto</span>
+          <span style="font-weight: 600;">- {{ formatCurrency(discountAmount) }}</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; padding: 8px 12px; font-size: 14px; font-weight: 700; background: #f0f0f0; border-top: 2px solid #999;">
+          <span>TOTAL</span>
+          <span>{{ formatCurrency(totalAmount) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div v-if="detail.order.notes" style="border: 1px solid #ccc; padding: 10px 14px; margin-bottom: 20px;">
+      <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #666; margin-bottom: 5px;">Observações</div>
+      <div style="font-size: 12px; line-height: 1.5; color: #333;">{{ detail.order.notes }}</div>
+    </div>
+
+    <!-- Footer -->
+    <div style="border-top: 1px solid #ccc; padding-top: 16px;">
+      <div v-if="quoteMode !== false" style="font-size: 11px; color: #555; margin-bottom: 24px;">
+        Este orçamento tem validade de 30 dias a partir da data de emissão.
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: flex-end;">
+        <div>
+          <div style="border-top: 1px solid #111; padding-top: 5px; font-size: 11px; color: #555; text-align: center;">
+            Assinatura do Cliente
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #555; white-space: nowrap; padding-bottom: 5px;">
+          Data: _____ / _____ / __________
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
