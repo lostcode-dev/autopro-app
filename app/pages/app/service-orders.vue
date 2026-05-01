@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { watchDebounced } from '@vueuse/core'
 import { ActionCode } from '~/constants/action-codes'
 import type { ServiceOrder, ServiceOrderRaw } from '~/types/service-orders'
 
@@ -100,10 +99,11 @@ const {
   softRefresh,
   reset: resetList
 } = useInfiniteList<ServiceOrder>(
-  async ({ cursor, limit }) => {
+  async ({ cursor, limit, signal }) => {
     if (!canRead.value) return { items: [], total: 0 }
     const res = await requestFetch<ServiceOrdersApiResponse>('/api/service-orders', {
       headers: requestHeaders,
+      signal,
       query: {
         searchTerm: apiSearch.value || undefined,
         status: statusFilter.value !== 'all' ? statusFilter.value : undefined,
@@ -125,15 +125,6 @@ const {
 await loadOrders()
 
 // ─── Watchers ──────────────────────────────────────────────────────────────────
-
-watchDebounced(
-  search,
-  async (val) => {
-    apiSearch.value = val
-    await syncQuery()
-  },
-  { debounce: 300, maxWait: 800 }
-)
 
 watch([apiSearch, statusFilter, clientIdFilter, vehicleIdFilter, responsibleIdFilter, dateFrom, dateTo], () => {
   resetList()
