@@ -17,7 +17,7 @@ const detail = ref<ServiceOrderDetailFull | null>(null)
 const organization = ref<OrganizationData | null>(null)
 const isLoading = ref(false)
 const isDownloading = ref(false)
-const printDocRef = ref<{ el: HTMLElement | null } | null>(null)
+const previewDocRef = ref<{ el: HTMLElement | null } | null>(null)
 
 watch(
   () => props.open,
@@ -76,7 +76,7 @@ function sanitizeFileNamePart(value: string | null | undefined) {
 }
 
 async function downloadPdf() {
-  const el = printDocRef.value?.el
+  const el = previewDocRef.value?.el
   if (!el || !detail.value || isDownloading.value) return
 
   isDownloading.value = true
@@ -87,41 +87,73 @@ async function downloadPdf() {
       import('pdf-lib')
     ])
 
+    // Render the preview to a full-height high-res PNG
     const dataUrl = await toPng(el, {
       pixelRatio: 2,
       cacheBust: true,
       backgroundColor: '#ffffff'
     })
 
+    // A4 dimensions in PDF points
+    const PAGE_W = 595.28
+    const PAGE_H = 841.89
+    const MARGIN = 28
+    const USABLE_W = PAGE_W - MARGIN * 2
+    const USABLE_H = PAGE_H - MARGIN * 2
+
+    // Load the captured image to measure its dimensions
+    const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = dataUrl
+    })
+
+    const imgW = fullImg.naturalWidth
+    const imgH = fullImg.naturalHeight
+
+    // How many source pixels fit in one usable page height (maintaining aspect)
+    const pageSliceH = Math.floor((USABLE_H / USABLE_W) * imgW)
+    const numPages = Math.ceil(imgH / pageSliceH)
+
     const pdf = await PDFDocument.create()
-    const image = await pdf.embedPng(dataUrl)
-
-    const pageWidth = 595.28
-    const pageHeight = 841.89
-    const margin = 24
-    const usableWidth = pageWidth - margin * 2
-    const usableHeight = pageHeight - margin * 2
-
-    const scale = usableWidth / image.width
-    const scaledWidth = usableWidth
-    const scaledHeight = image.height * scale
-
-    const numPages = Math.ceil(scaledHeight / usableHeight)
 
     for (let i = 0; i < numPages; i++) {
-      const page = pdf.addPage([pageWidth, pageHeight])
-      const imageY = pageHeight - margin - scaledHeight + i * usableHeight
-      page.drawImage(image, {
-        x: margin,
-        y: imageY,
-        width: scaledWidth,
-        height: scaledHeight
+      const srcY = i * pageSliceH
+      const srcH = Math.min(pageSliceH, imgH - srcY)
+
+      // Paint this page's slice onto a fixed-size canvas (white background)
+      const canvas = document.createElement('canvas')
+      canvas.width = imgW
+      canvas.height = pageSliceH
+      const ctx = canvas.getContext('2d')!
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, imgW, pageSliceH)
+      ctx.drawImage(fullImg, 0, srcY, imgW, srcH, 0, 0, imgW, srcH)
+
+      // Convert slice to bytes
+      const sliceBlob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          blob => (blob ? resolve(blob) : reject(new Error('canvas.toBlob failed'))),
+          'image/png'
+        )
+      })
+      const imageBytes = new Uint8Array(await sliceBlob.arrayBuffer())
+
+      // Embed slice as a full A4 page
+      const pdfImage = await pdf.embedPng(imageBytes)
+      const page = pdf.addPage([PAGE_W, PAGE_H])
+      page.drawImage(pdfImage, {
+        x: MARGIN,
+        y: MARGIN,
+        width: USABLE_W,
+        height: USABLE_H
       })
     }
 
-    const bytes = await pdf.save()
+    const pdfBytes = await pdf.save()
     const blob = new Blob(
-      [bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer],
+      [pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength) as ArrayBuffer],
       { type: 'application/pdf' }
     )
     const url = URL.createObjectURL(blob)
@@ -223,6 +255,7 @@ async function downloadPdf() {
       <div v-else-if="detail" class="px-4 py-6 lg:px-8 lg:py-8">
         <div class="mx-auto max-w-[900px]">
           <ServiceOrdersQuoteDocumentPreview
+            ref="previewDocRef"
             :detail="detail"
             :organization="organization"
             :quote-mode="quoteMode"
@@ -231,12 +264,4 @@ async function downloadPdf() {
       </div>
     </template>
   </UModal>
-
-  <ServiceOrdersQuoteDocumentPrint
-    v-if="detail"
-    ref="printDocRef"
-    :detail="detail"
-    :organization="organization"
-    :quote-mode="quoteMode"
-  />
 </template>
