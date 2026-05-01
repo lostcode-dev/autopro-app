@@ -178,7 +178,7 @@ function getClientPhone() {
     >
       <!-- ── Per-page header ───────────────────────────────────────────────── -->
       <div
-        :style="`height:${PG_HDR}px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 ${H_PAD}px; border-bottom:2px solid #1e293b; background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%); box-sizing:border-box;`"
+        :style="`height:${PG_HDR}px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 ${H_PAD}px; border-bottom:1px solid #e2e8f0; background:linear-gradient(135deg,#f8fafc 0%,#eef2ff 100%); box-sizing:border-box;`"
       >
         <div style="display:flex; align-items:center; gap:10px; min-width:0; overflow:hidden;">
           <img
@@ -191,29 +191,15 @@ function getClientPhone() {
             v-else
             style="height:36px; width:36px; background:#0f172a; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
           >
-            <span style="color:#fff; font-size:16px; font-weight:800; line-height:1;">{{ workshopName.charAt(0) }}</span>
+            <span style="color:#fff; font-size:16px; font-weight:600; line-height:1;">{{ workshopName.charAt(0) }}</span>
           </div>
           <div style="min-width:0; overflow:hidden;">
-            <div style="font-size:14px; font-weight:800; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+            <div style="font-size:14px; font-weight:500; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
               {{ workshopName }}
-            </div>
-            <div style="font-size:10px; color:#64748b; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-              <template v-if="organization?.phone">
-                {{ formatPhone(organization.phone) }}
-              </template>
-              <template v-if="organization?.phone && organization?.email">
-                ·
-              </template>
-              <template v-if="organization?.email">
-                {{ organization.email }}
-              </template>
             </div>
           </div>
         </div>
         <div style="text-align:right; flex-shrink:0; padding-left:12px;">
-          <div style="font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; color:#0f172a;">
-            {{ quoteMode !== false ? 'Orçamento' : 'Ordem de Serviço' }}
-          </div>
           <div style="font-size:11px; color:#475569; margin-top:2px;">
             Nº <strong>{{ detail.order.number ?? '—' }}</strong>
           </div>
@@ -363,17 +349,17 @@ function getClientPhone() {
         <!-- ── Items table (repeated on every page) ────────────────────────── -->
         <table style="width:100%; border-collapse:collapse; flex-shrink:0;">
           <thead>
-            <tr style="background:#0f172a;">
-              <th style="padding:5px 8px; text-align:left; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#fff;">
+            <tr style="background:#f1f5f9; border-bottom:1px solid #cbd5e1;">
+              <th style="padding:5px 8px; text-align:left; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#475569;">
                 Descrição
               </th>
-              <th style="padding:5px 8px; text-align:center; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#fff; width:44px;">
+              <th style="padding:5px 8px; text-align:center; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#475569; width:44px;">
                 Qtd
               </th>
-              <th style="padding:5px 8px; text-align:right; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#fff; width:96px;">
+              <th style="padding:5px 8px; text-align:right; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#475569; width:96px;">
                 Val. Unit.
               </th>
-              <th style="padding:5px 8px; text-align:right; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#fff; width:96px;">
+              <th style="padding:5px 8px; text-align:right; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:#475569; width:96px;">
                 Total
               </th>
             </tr>
@@ -419,20 +405,20 @@ function getClientPhone() {
           <div style="display:flex; justify-content:flex-end; margin-top:8px; flex-shrink:0;">
             <div style="width:264px; border:1px solid #e2e8f0;">
               <div
-                style="display:flex; justify-content:space-between; padding:6px 12px; font-size:11px; border-bottom:1px solid #f1f5f9; color:#475569;"
+                style="display:flex; justify-content:space-between; padding:6px 12px; font-size:11px; border-bottom:1px solid #e2e8f0; color:#475569;"
               >
                 <span>Subtotal</span>
                 <span style="font-weight:600; color:#0f172a;">{{ formatCurrency(subtotal) }}</span>
               </div>
               <div
                 v-if="discountAmount > 0"
-                style="display:flex; justify-content:space-between; padding:6px 12px; font-size:11px; color:#dc2626; border-bottom:1px solid #f1f5f9;"
+                style="display:flex; justify-content:space-between; padding:6px 12px; font-size:11px; color:#dc2626; border-bottom:1px solid #e2e8f0;"
               >
                 <span>Desconto</span>
                 <span style="font-weight:600;">- {{ formatCurrency(discountAmount) }}</span>
               </div>
               <div
-                style="display:flex; justify-content:space-between; padding:8px 12px; font-size:14px; font-weight:700; background:#f0fdf4; border-top:2px solid #16a34a;"
+                style="display:flex; justify-content:space-between; padding:8px 12px; font-size:14px; font-weight:700; background:#f8fafc; border-top:1px solid #e2e8f0;"
               >
                 <span>TOTAL</span>
                 <span style="color:#16a34a;">{{ formatCurrency(totalAmount) }}</span>
@@ -476,8 +462,8 @@ function getClientPhone() {
       <div
         :style="`height:${PG_FTR}px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between; padding:0 ${H_PAD}px; border-top:1px solid #e2e8f0; background:#f8fafc; box-sizing:border-box;`"
       >
-        <span style="font-size:9px; color:#94a3b8;">
-          {{ workshopName }} — Sistema de Gestão
+        <span style="font-size:9px; color:#cbd5e1; font-style:italic; letter-spacing:0.04em;">
+          AutoPro Beenk
         </span>
         <span style="font-size:9px; color:#94a3b8; font-weight:600;">
           Página {{ page.pageNum }} / {{ page.total }}
