@@ -80,6 +80,17 @@ const groupedItems = computed(() => {
   }));
 });
 
+const flatPrintRows = computed(() => {
+  const rows: { isCategory: boolean, label: string, item?: ServiceOrderItem }[] = []
+  for (const group of groupedItems.value) {
+    rows.push({ isCategory: true, label: group.category })
+    for (const item of group.items) {
+      rows.push({ isCategory: false, label: '', item })
+    }
+  }
+  return rows
+})
+
 watch(
   () => props.open,
   (opened) => {
@@ -214,7 +225,7 @@ async function downloadPdf() {
     }
 
     const bytes = await pdf.save();
-    const blob = new Blob([bytes], { type: "application/pdf" });
+    const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     const clientPart =
@@ -674,7 +685,7 @@ async function downloadPdf() {
   <div
     v-if="detail"
     ref="printRef"
-    style="position: fixed; top: 0; left: -9999px; width: 800px; background: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; padding: 36px 40px; box-sizing: border-box;"
+    style="position: absolute; top: -9999px; left: 0; width: 800px; background: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; padding: 36px 40px; box-sizing: border-box;"
   >
     <!-- Header -->
     <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 12px; gap: 16px;">
@@ -749,24 +760,38 @@ async function downloadPdf() {
             <th style="padding: 5px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 100px;">Total</th>
           </tr>
         </thead>
-        <tbody v-for="group in groupedItems" :key="group.category">
-          <tr style="background: #e8e8e8;">
-            <td colspan="4" style="padding: 4px 8px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: #444;">
-              {{ group.category }}
+        <tbody>
+          <tr v-for="(row, idx) in flatPrintRows" :key="idx">
+            <td
+              v-if="row.isCategory"
+              colspan="4"
+              style="background: #e8e8e8; padding: 4px 8px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: #444;"
+            >
+              {{ row.label }}
             </td>
-          </tr>
-          <tr v-for="(item, idx) in group.items" :key="idx" style="background: #fff;">
-            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; font-size: 11px; color: #333;">
-              {{ item.description || item.name || '—' }}
+            <td
+              v-if="!row.isCategory"
+              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; font-size: 11px; color: #333;"
+            >
+              {{ row.item?.description || row.item?.name || '—' }}
             </td>
-            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: center; font-size: 11px; color: #333;">
-              {{ item.quantity }}
+            <td
+              v-if="!row.isCategory"
+              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: center; font-size: 11px; color: #333;"
+            >
+              {{ row.item?.quantity }}
             </td>
-            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; color: #333;">
-              {{ formatCurrency(item.unit_price) }}
+            <td
+              v-if="!row.isCategory"
+              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; color: #333;"
+            >
+              {{ row.item ? formatCurrency(row.item.unit_price) : '' }}
             </td>
-            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #111;">
-              {{ formatCurrency(getItemTotal(item)) }}
+            <td
+              v-if="!row.isCategory"
+              style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #111;"
+            >
+              {{ row.item ? formatCurrency(getItemTotal(row.item)) : '' }}
             </td>
           </tr>
         </tbody>
