@@ -30,15 +30,15 @@ const CONTENT = PAGE_H - PG_HDR - PG_FTR - V_PAD * 2 // 979 px
 // Row heights (conservative / slightly generous to prevent overflow)
 const ROW_ITEM = 28
 const ROW_CAT = 26
-const TBL_TH = 28
+const TBL_TH = 24
 
 // First-page fixed section heights (include their own margin-bottom)
-const H_INFO = 133 // 3-col grid (order / client / company)
-const H_BANNER = 46 // "ORÇAMENTO DE SERVIÇOS" banner
-const H_VEHICLE = 86 // vehicle 4-col grid
-const H_MASTER = 74 // master product block
-const H_DEFECT = 66 // reported defect block
-const H_LABEL = 24 // "Serviços e Produtos" label + small gap before table
+const H_INFO = 100 // 3-col grid (order / client / company)
+const H_BANNER = 44 // "ORÇAMENTO DE SERVIÇOS" banner
+const H_VEHICLE = 68 // vehicle 4-col grid
+const H_MASTER = 60 // master product block
+const H_DEFECT = 52 // reported defect block
+const H_LABEL = 14 // "Serviços e Produtos" label + small gap before table
 const GAP = 8 // margin-bottom between each section
 
 // Closing-block section heights (last page)
