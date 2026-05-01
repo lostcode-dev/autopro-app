@@ -120,6 +120,14 @@ const typeBadgeLabel: Record<string, string> = { income: 'Receita', expense: 'De
 const statusBadgeColor: Record<string, BadgeColor> = { paid: 'success', pending: 'warning' }
 const statusBadgeIcon: Record<string, string> = { paid: 'i-lucide-circle-check', pending: 'i-lucide-clock' }
 
+function onDateFromUpdate(v: string | undefined) {
+  emit('update:dateFrom', v ?? '')
+}
+
+function onDateToUpdate(v: string | undefined) {
+  emit('update:dateTo', v ?? '')
+}
+
 const columns = [
   { accessorKey: 'description', header: 'Lançamento', enableSorting: false, meta: { class: { th: 'w-[56%]', td: 'w-[56%]' } } },
   { id: 'status_col', header: 'Status', enableSorting: false, meta: { class: { th: 'w-32', td: 'w-32' } } },
@@ -132,8 +140,8 @@ const columns = [
   <UModal
     :open="open"
     :ui="{
-      overlay: 'bg-default/92 backdrop-blur-sm',
-      content: 'sm:max-h-[100dvh] max-h-[100dvh] m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
+      overlay: 'z-40 bg-default/92 backdrop-blur-sm',
+      content: 'z-40 sm:max-h-[100dvh] max-h-[100dvh] m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
       header: 'px-4 py-3 border-b border-default shrink-0',
       body: 'flex-1 min-h-0 overflow-hidden p-4'
     }"
@@ -242,8 +250,8 @@ const columns = [
             :status-filters="statusFilters"
             :category-filter="categoryFilter"
             :categories="uniqueCategories"
-            @update:date-from="emit('update:dateFrom', $event)"
-            @update:date-to="emit('update:dateTo', $event)"
+            @update:date-from="onDateFromUpdate"
+            @update:date-to="onDateToUpdate"
             @update:type-filters="emit('update:typeFilters', $event)"
             @update:status-filters="emit('update:statusFilters', $event)"
             @update:category-filter="emit('update:categoryFilter', $event)"
