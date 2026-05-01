@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { watchDebounced } from '@vueuse/core'
 import { ActionCode } from '~/constants/action-codes'
 import type { ServiceOrder, ServiceOrderRaw } from '~/types/service-orders'
 
@@ -125,6 +126,15 @@ const {
 await loadOrders()
 
 // ─── Watchers ──────────────────────────────────────────────────────────────────
+
+watchDebounced(
+  search,
+  async (val) => {
+    apiSearch.value = val
+    await syncQuery()
+  },
+  { debounce: 500, maxWait: 1200 }
+)
 
 watch([apiSearch, statusFilter, clientIdFilter, vehicleIdFilter, responsibleIdFilter, dateFrom, dateTo], () => {
   resetList()

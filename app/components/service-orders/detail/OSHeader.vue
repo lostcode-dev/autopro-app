@@ -73,7 +73,7 @@ const canEdit = computed(() =>
             Detalhes da Ordem de Serviço
           </p>
           <h1 class="text-xl font-bold leading-tight text-highlighted lg:text-2xl">
-            OS #{{ order.number ?? '—' }}
+            #{{ order.number ?? '—' }}
           </h1>
         </div>
 
