@@ -140,7 +140,7 @@ const columns = [
   <UModal
     :open="open"
     :ui="{
-      overlay: 'z-20 bg-default/92 backdrop-blur-sm',
+      overlay: 'z-10 bg-default/92 backdrop-blur-sm',
       content: 'z-20 sm:max-h-[100dvh] max-h-[100dvh] m-0 max-w-none w-screen h-dvh rounded-none flex flex-col overflow-hidden',
       header: 'px-4 py-3 border-b border-default shrink-0',
       body: 'flex-1 min-h-0 overflow-hidden p-4'

@@ -463,7 +463,7 @@ function formatCurrency(value: number) {
         ? 'Atualize os dados do lançamento financeiro.'
         : 'Cadastre uma nova receita ou despesa da oficina.'
     "
-    :ui="{ body: 'overflow-y-auto max-h-[72vh]' }"
+    :ui="{ body: 'overflow-y-auto max-h-[72vh]', overlay: 'z-30', content: 'z-40' }"
     @update:open="emit('update:open', $event)"
   >
     <template #body>

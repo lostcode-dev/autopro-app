@@ -197,7 +197,7 @@ function linkedEntryStatus(status: string) {
   <USlideover
     :open="open"
     side="right"
-    :ui="{ content: 'max-w-xl' }"
+    :ui="{ content: 'max-w-xl z-40', overlay: 'z-30', }"
     @update:open="emit('update:open', $event)"
   >
     <!-- Header -->
