@@ -124,7 +124,7 @@ function getClientPhone() {
           </div>
         </section>
 
-        <section class="rounded-[24px] border border-slate-200 bg-slate-50/80 p-2 text-right">
+        <section class="text-right">
           <h3 class="text-sm font-bold uppercase tracking-[0.2em] text-slate-500">
             Dados da Empresa
           </h3>
