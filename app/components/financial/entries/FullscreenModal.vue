@@ -140,7 +140,7 @@ const columns = [
     @update:open="emit('update:open', $event)"
   >
     <template #header>
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between w-full">
         <p class="text-base font-semibold text-highlighted">
           Financeiro
         </p>

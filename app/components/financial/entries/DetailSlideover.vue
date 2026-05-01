@@ -258,9 +258,6 @@ function linkedEntryStatus(status: string) {
       <div v-else-if="entry" class="divide-y divide-default">
         <!-- ── Valores ──────────────────────────────────────────────── -->
         <section class="px-6 py-4 space-y-3">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
-            Valores & Datas
-          </h3>
           <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
             <div>
               <dt class="text-xs text-muted">
@@ -393,7 +390,7 @@ function linkedEntryStatus(status: string) {
           <div class="flex items-center gap-2">
             <UIcon name="i-lucide-repeat" class="size-4 text-primary" />
             <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
-              Série recorrente ({{ recurringSiblings.length }} lançamentos)
+              Série recorrente
             </h3>
           </div>
           <div class="divide-y divide-default rounded-lg border border-default overflow-hidden max-h-72 overflow-y-auto">
@@ -409,9 +406,6 @@ function linkedEntryStatus(status: string) {
                 </span>
               </div>
               <div class="flex items-center gap-2 shrink-0">
-                <span class="text-sm font-semibold tabular-nums" :class="amountClass">
-                  {{ formatCurrency(sibling.amount) }}
-                </span>
                 <UBadge
                   :color="statusColorMap[linkedEntryStatus(sibling.status)] ?? 'neutral'"
                   :icon="statusIconMap[linkedEntryStatus(sibling.status)]"
@@ -419,35 +413,13 @@ function linkedEntryStatus(status: string) {
                   variant="soft"
                   size="xs"
                 />
+                <span class="text-sm font-semibold tabular-nums" :class="amountClass">
+                  {{ formatCurrency(sibling.amount) }}
+                </span>
+              
               </div>
             </div>
           </div>
-        </section>
-
-        <!-- ── Auditoria ───────────────────────────────────────────── -->
-        <section class="px-6 py-4 space-y-2">
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-muted">
-            Informações
-          </h3>
-          <dl class="space-y-1.5 text-xs text-muted">
-            <div v-if="entry.created_by" class="flex items-center gap-1.5">
-              <UIcon name="i-lucide-user" class="size-3.5 shrink-0" />
-              <span>Criado por <span class="text-highlighted">{{ String(entry.created_by) }}</span></span>
-            </div>
-            <div v-if="entry.created_at" class="flex items-center gap-1.5">
-              <UIcon name="i-lucide-clock" class="size-3.5 shrink-0" />
-              <span>
-                Criado em
-                <span class="text-highlighted">
-                  {{ new Date(String(entry.created_at)).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) }}
-                </span>
-              </span>
-            </div>
-            <div v-if="entry.updated_by && entry.updated_by !== entry.created_by" class="flex items-center gap-1.5">
-              <UIcon name="i-lucide-pencil" class="size-3.5 shrink-0" />
-              <span>Atualizado por <span class="text-highlighted">{{ String(entry.updated_by) }}</span></span>
-            </div>
-          </dl>
         </section>
       </div>
     </template>
