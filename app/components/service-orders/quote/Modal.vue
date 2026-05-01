@@ -87,19 +87,15 @@ async function downloadPdf() {
       import('pdf-lib')
     ])
 
-    // Render the fixed-width off-screen element to a full-height high-res PNG
+    const PIXEL_RATIO = 2
+    // Must match PAGE_H constant in DocumentPrint.vue
+    const PAGE_PX_H = 1123
+
     const dataUrl = await toPng(el, {
-      pixelRatio: 2,
+      pixelRatio: PIXEL_RATIO,
       cacheBust: true,
       backgroundColor: '#ffffff'
     })
-
-    // A4 dimensions in PDF points
-    const PAGE_W = 595.28
-    const PAGE_H = 841.89
-    const MARGIN = 28
-    const USABLE_W = PAGE_W - MARGIN * 2
-    const USABLE_H = PAGE_H - MARGIN * 2
 
     const fullImg = await new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image()
@@ -108,55 +104,38 @@ async function downloadPdf() {
       img.src = dataUrl
     })
 
-    const imgW = fullImg.naturalWidth
-    const imgH = fullImg.naturalHeight
+    // Each page in DocumentPrint is exactly PAGE_PX_H px tall;
+    // at PIXEL_RATIO=2 each page stripe in the PNG is PAGE_PX_H*2 px tall.
+    const stripeH  = PAGE_PX_H * PIXEL_RATIO
+    const stripeW  = fullImg.naturalWidth
+    const numPages = Math.max(1, Math.round(fullImg.naturalHeight / stripeH))
 
-    // How many source pixels tall is one A4 usable-area worth
-    const pageSliceH = Math.floor((USABLE_H / USABLE_W) * imgW)
-    const rawNumPages = Math.ceil(imgH / pageSliceH)
-
-    // Prevent orphan tiny last page: if last page < 25% full, absorb into fewer pages
-    // (e.g. just a footer line overflowing by a few pixels → stays on one page)
-    const remainder = imgH - (rawNumPages - 1) * pageSliceH
-    const lastPageRatio = remainder / pageSliceH
-    const numPages = rawNumPages > 1 && lastPageRatio < 0.25 ? rawNumPages - 1 : rawNumPages
-
-    // Distribute content evenly across the resolved page count
-    const effectiveSliceH = Math.ceil(imgH / numPages)
+    const PDF_W = 595.28
+    const PDF_H = 841.89
 
     const pdf = await PDFDocument.create()
 
     for (let i = 0; i < numPages; i++) {
-      const srcY = i * effectiveSliceH
-      const srcH = Math.min(effectiveSliceH, imgH - srcY)
-
-      // Paint this page's slice onto a fixed-size canvas (white background)
+      // Slice exactly one page-stripe from the full image
       const canvas = document.createElement('canvas')
-      canvas.width = imgW
-      canvas.height = effectiveSliceH
+      canvas.width  = stripeW
+      canvas.height = stripeH
       const ctx = canvas.getContext('2d')!
       ctx.fillStyle = '#ffffff'
-      ctx.fillRect(0, 0, imgW, effectiveSliceH)
-      ctx.drawImage(fullImg, 0, srcY, imgW, srcH, 0, 0, imgW, srcH)
+      ctx.fillRect(0, 0, stripeW, stripeH)
+      ctx.drawImage(fullImg, 0, i * stripeH, stripeW, stripeH, 0, 0, stripeW, stripeH)
 
-      // Convert slice to bytes
-      const sliceBlob = await new Promise<Blob>((resolve, reject) => {
+      const blob = await new Promise<Blob>((resolve, reject) => {
         canvas.toBlob(
-          blob => (blob ? resolve(blob) : reject(new Error('canvas.toBlob failed'))),
+          b => (b ? resolve(b) : reject(new Error('canvas.toBlob failed'))),
           'image/png'
         )
       })
-      const imageBytes = new Uint8Array(await sliceBlob.arrayBuffer())
-
-      // Embed slice as a full A4 page
-      const pdfImage = await pdf.embedPng(imageBytes)
-      const page = pdf.addPage([PAGE_W, PAGE_H])
-      page.drawImage(pdfImage, {
-        x: MARGIN,
-        y: MARGIN,
-        width: USABLE_W,
-        height: USABLE_H
-      })
+      const bytes   = new Uint8Array(await blob.arrayBuffer())
+      const pdfImg  = await pdf.embedPng(bytes)
+      const page    = pdf.addPage([PDF_W, PDF_H])
+      // Full-bleed: the document already has its own internal padding
+      page.drawImage(pdfImg, { x: 0, y: 0, width: PDF_W, height: PDF_H })
     }
 
     const pdfBytes = await pdf.save()
@@ -272,13 +251,13 @@ async function downloadPdf() {
     </template>
   </UModal>
 
-  <!-- Hidden fixed-width element used exclusively for PDF capture -->
+  <!-- Hidden fixed-size document used exclusively for PDF capture -->
   <div
     v-if="detail"
-    style="position:fixed;top:-9999px;left:-9999px;width:820px;pointer-events:none;"
+    style="position:fixed; top:-9999px; left:-9999px; pointer-events:none;"
     aria-hidden="true"
   >
-    <ServiceOrdersQuoteDocumentPreview
+    <ServiceOrdersQuoteDocumentPrint
       ref="captureDocRef"
       :detail="detail"
       :organization="organization"
