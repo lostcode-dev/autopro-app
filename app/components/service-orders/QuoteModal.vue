@@ -677,37 +677,37 @@ async function downloadPdf() {
     style="position: fixed; top: 0; left: -9999px; width: 800px; background: #fff; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; padding: 36px 40px; box-sizing: border-box;"
   >
     <!-- Header -->
-    <div style="display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 14px; margin-bottom: 16px;">
-      <div style="display: flex; align-items: center; gap: 12px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 12px; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 10px; min-width: 0;">
         <img
           v-if="organization?.logo_url"
           :src="organization.logo_url"
           alt="Logo"
-          style="height: 52px; width: 52px; object-fit: contain; border-radius: 6px;"
+          style="max-height: 40px; max-width: 160px; width: auto; height: auto; object-fit: contain; display: block; flex-shrink: 0;"
         />
-        <div v-else style="height: 52px; width: 52px; background: #111; border-radius: 6px; display: flex; align-items: center; justify-content: center;">
-          <span style="color: #fff; font-size: 22px; font-weight: 700;">{{ workshopName.charAt(0) }}</span>
+        <div v-else style="height: 40px; width: 40px; background: #111; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+          <span style="color: #fff; font-size: 18px; font-weight: 700;">{{ workshopName.charAt(0) }}</span>
         </div>
-        <div>
-          <div style="font-size: 18px; font-weight: 800; letter-spacing: -0.3px; line-height: 1.2;">{{ workshopName }}</div>
-          <div v-if="organization?.tax_id" style="font-size: 11px; color: #555; margin-top: 2px;">CNPJ/CPF: {{ formatTaxId(organization.tax_id) }}</div>
-          <div style="font-size: 11px; color: #555; margin-top: 1px;">
+        <div style="min-width: 0;">
+          <div style="font-size: 15px; font-weight: 800; letter-spacing: -0.2px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ workshopName }}</div>
+          <div style="font-size: 10px; color: #555; margin-top: 1px; white-space: nowrap;">
+            <span v-if="organization?.tax_id">{{ formatTaxId(organization.tax_id) }}</span>
+            <span v-if="organization?.tax_id && (organization?.phone || organization?.email)"> · </span>
             <span v-if="organization?.phone">{{ formatPhone(organization.phone) }}</span>
             <span v-if="organization?.phone && organization?.email"> · </span>
             <span v-if="organization?.email">{{ organization.email }}</span>
           </div>
-          <div v-if="organization?.address_city" style="font-size: 11px; color: #555; margin-top: 1px;">
+          <div v-if="organization?.address_city" style="font-size: 10px; color: #777; margin-top: 1px;">
             {{ organization.address_city }}{{ organization.address_state ? ` - ${organization.address_state}` : '' }}
           </div>
         </div>
       </div>
-      <div style="text-align: right;">
-        <div style="font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;">
+      <div style="text-align: right; flex-shrink: 0;">
+        <div style="font-size: 17px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;">
           {{ quoteMode !== false ? 'Orçamento' : 'Ordem de Serviço' }}
         </div>
-        <div style="font-size: 13px; color: #333; margin-top: 4px;">Nº <strong>{{ detail.order.number ?? '—' }}</strong></div>
-        <div style="font-size: 12px; color: #555; margin-top: 2px;">Data: {{ formatDate(detail.order.entry_date) }}</div>
-        <div v-if="detail.order.expected_date" style="font-size: 12px; color: #555; margin-top: 2px;">Previsão: {{ formatDate(detail.order.expected_date) }}</div>
+        <div style="font-size: 11px; color: #333; margin-top: 2px;">Nº <strong>{{ detail.order.number ?? '—' }}</strong></div>
+        <div style="font-size: 11px; color: #555; margin-top: 1px;">{{ formatDate(detail.order.entry_date) }}{{ detail.order.expected_date ? ` · Prev: ${formatDate(detail.order.expected_date)}` : '' }}</div>
       </div>
     </div>
 
@@ -749,22 +749,26 @@ async function downloadPdf() {
             <th style="padding: 5px 8px; text-align: right; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #fff; width: 100px;">Total</th>
           </tr>
         </thead>
-        <tbody>
-          <template v-for="group in groupedItems" :key="group.category">
-            <tr style="background: #e8e8e8;">
-              <td colspan="4" style="padding: 4px 8px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: #444;">{{ group.category }}</td>
-            </tr>
-            <tr
-              v-for="(item, idx) in group.items"
-              :key="idx"
-              :style="{ background: idx % 2 === 0 ? '#fff' : '#f7f7f7' }"
-            >
-              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; font-size: 11px; color: #333;">{{ item.description || item.name || '—' }}</td>
-              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: center; font-size: 11px; color: #333;">{{ item.quantity }}</td>
-              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; color: #333;">{{ formatCurrency(item.unit_price) }}</td>
-              <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #111;">{{ formatCurrency(getItemTotal(item)) }}</td>
-            </tr>
-          </template>
+        <tbody v-for="group in groupedItems" :key="group.category">
+          <tr style="background: #e8e8e8;">
+            <td colspan="4" style="padding: 4px 8px; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: #444;">
+              {{ group.category }}
+            </td>
+          </tr>
+          <tr v-for="(item, idx) in group.items" :key="idx" style="background: #fff;">
+            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; font-size: 11px; color: #333;">
+              {{ item.description || item.name || '—' }}
+            </td>
+            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: center; font-size: 11px; color: #333;">
+              {{ item.quantity }}
+            </td>
+            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; color: #333;">
+              {{ formatCurrency(item.unit_price) }}
+            </td>
+            <td style="border-bottom: 1px solid #e8e8e8; padding: 3px 8px; text-align: right; font-size: 11px; font-weight: 600; color: #111;">
+              {{ formatCurrency(getItemTotal(item)) }}
+            </td>
+          </tr>
         </tbody>
       </table>
     </div>
