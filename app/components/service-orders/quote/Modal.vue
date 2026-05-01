@@ -222,7 +222,7 @@ async function downloadPdf() {
 
       <div v-else-if="detail" class="px-4 py-6 lg:px-8 lg:py-8">
         <div class="mx-auto max-w-[900px]">
-          <QuoteDocumentPreview
+          <ServiceOrdersQuoteDocumentPreview
             :detail="detail"
             :organization="organization"
             :quote-mode="quoteMode"
@@ -232,7 +232,7 @@ async function downloadPdf() {
     </template>
   </UModal>
 
-  <QuoteDocumentPrint
+  <ServiceOrdersQuoteDocumentPrint
     v-if="detail"
     ref="printDocRef"
     :detail="detail"
