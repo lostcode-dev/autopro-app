@@ -206,7 +206,7 @@ export async function generateServiceOrderCommissions({
       record_type: 'commission',
       amount: roundedAmount,
       status: 'pending',
-      description: `Commission - OS #${order.number}`,
+      description: `Comissão - #${order.number}`,
       reference_date: order.entry_date || new Date().toISOString().split('T')[0],
       created_by: userEmail || null,
       updated_by: userEmail || null

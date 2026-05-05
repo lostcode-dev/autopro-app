@@ -112,6 +112,13 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
             >
               <td class="px-4 py-4">
                 <div class="flex items-center gap-2">
+                  <UBadge
+                    v-if="item.category_name"
+                    :label="item.category_name"
+                    color="neutral"
+                    variant="subtle"
+                    size="xs"
+                  />
                   <UTooltip
                     :text="
                       getItemSource(item) === 'catalog'
@@ -139,14 +146,6 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
                   </UTooltip>
 
                   <div class="min-w-0 flex-1">
-                    <div v-if="item.category_name" class="mb-1">
-                      <UBadge
-                        :label="item.category_name"
-                        color="neutral"
-                        variant="subtle"
-                        size="xs"
-                      />
-                    </div>
                     <div
                       class="rounded-xl border border-default bg-default px-3 py-2 text-default"
                     >
@@ -199,13 +198,6 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
           class="rounded-2xl border border-default bg-default p-4 shadow-xs"
         >
           <div class="flex items-start gap-2">
-            <UBadge
-              v-if="item.category_name"
-              :label="item.category_name"
-              color="neutral"
-              variant="subtle"
-              size="xs"
-            />
             <UTooltip
               :text="
                 getItemSource(item) === 'catalog'
@@ -233,6 +225,14 @@ function getItemCommissionLines(item: OrderItem): CommissionBreakdownLine[] {
             </UTooltip>
 
             <div class="min-w-0 flex-1">
+              <UBadge
+                v-if="item.category_name"
+                :label="item.category_name"
+                color="neutral"
+                variant="subtle"
+                size="xs"
+                class="mb-1"
+              />
               <div
                 class="rounded-xl border border-default bg-default px-3 py-2 text-default"
               >
