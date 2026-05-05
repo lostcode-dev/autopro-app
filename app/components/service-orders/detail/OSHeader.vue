@@ -47,6 +47,7 @@ const canPay = computed(() =>
   props.canUpdate
   && props.order.payment_status === 'pending'
   && props.order.status === 'completed'
+  && !props.order.installment_count
 )
 
 const canCancelPayment = computed(() =>

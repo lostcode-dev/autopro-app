@@ -86,6 +86,7 @@ const canPay = computed(() =>
   props.canUpdate
   && props.order.payment_status === 'pending'
   && props.order.status === 'completed'
+  && !props.order.installments_progress
 )
 
 function formatCurrency(value: number | string | null | undefined) {
