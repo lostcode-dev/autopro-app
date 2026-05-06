@@ -1,9 +1,8 @@
-import { defineEventHandler, getQuery, createError } from 'h3'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
-  monitoredFocusNfeFetch,
-  sanitizeCpfCnpj
+  monitoredFocusNfeFetch
 } from '../../../utils/focus-nfe'
 import { mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
 import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'
@@ -15,23 +14,18 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Acesso negado' })
   }
 
-  const queryParams = getQuery(event)
+  const id = getRouterParam(event, 'id')
+  if (!id) {
+    throw createError({ statusCode: 400, message: 'id é obrigatório' })
+  }
+
   const authHeader = getFocusNfeBasicAuthHeader()
   const apiBaseUrl = getFocusNfeApiBaseUrl()
 
-  const offset = Math.max(0, Number(queryParams.offset) || 0)
-  const businessId = sanitizeCpfCnpj(queryParams.business_id)
-  const individualId = sanitizeCpfCnpj(queryParams.individual_id)
-
-  const params = new URLSearchParams()
-  params.set('offset', String(offset))
-  if (businessId) params.set('cnpj', businessId)
-  if (individualId) params.set('cpf', individualId)
-
   const { response, responseBodyRaw } = await monitoredFocusNfeFetch({
     authUserEmail: user.email!,
-    functionName: 'listFocusNfeEmpresas',
-    url: `${apiBaseUrl}/v2/empresas?${params.toString()}`,
+    functionName: 'getFocusNfeEmpresa',
+    url: `${apiBaseUrl}/v2/empresas/${encodeURIComponent(id)}`,
     captureResponseBody: 'always',
     init: {
       method: 'GET',
@@ -46,12 +40,10 @@ export default defineEventHandler(async (event) => {
     const raw = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao listar empresas na Focus NFe', details: mapFiscalErrorDetails(raw) }
+      data: { error: 'Erro ao consultar empresa na Focus NFe', details: mapFiscalErrorDetails(raw) }
     })
   }
 
-  const rawList: FocusNfeEmpresaResponse[] = responseBodyRaw ? JSON.parse(responseBodyRaw) : []
-  const results: CompanyResult[] = rawList.map(mapCompanyResult)
-  const total = response.headers.get('x-total-count')
-  return { success: true, data: results, total: total ? Number(total) : undefined }
+  const result: CompanyResult = mapCompanyResult(JSON.parse(responseBodyRaw!) as FocusNfeEmpresaResponse)
+  return { success: true, data: result }
 })

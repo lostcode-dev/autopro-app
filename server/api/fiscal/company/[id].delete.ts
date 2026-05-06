@@ -1,12 +1,12 @@
-import { defineEventHandler, readBody, getQuery, createError } from 'h3'
+import { defineEventHandler, getRouterParam, createError } from 'h3'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
   monitoredFocusNfeFetch
 } from '../../../utils/focus-nfe'
-import { mapCompanyInput, mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
+import { mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
 import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'
-import type { CompanyInput, CompanyResult } from '../../../types/fiscal'
+import type { CompanyResult } from '../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
@@ -14,29 +14,25 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 403, message: 'Acesso negado' })
   }
 
-  const body: CompanyInput = await readBody(event)
-  if (!body || typeof body !== 'object') {
-    throw createError({ statusCode: 400, message: 'Payload da empresa é obrigatório' })
+  const id = getRouterParam(event, 'id')
+  if (!id) {
+    throw createError({ statusCode: 400, message: 'id é obrigatório' })
   }
 
-  const { dry_run } = getQuery(event)
   const authHeader = getFocusNfeBasicAuthHeader()
   const apiBaseUrl = getFocusNfeApiBaseUrl()
 
-  const url = dry_run === '1' ? `${apiBaseUrl}/v2/empresas?dry_run=1` : `${apiBaseUrl}/v2/empresas`
-
   const { response, responseBodyRaw } = await monitoredFocusNfeFetch({
     authUserEmail: user.email!,
-    functionName: 'createFocusNfeEmpresa',
-    url,
+    functionName: 'deleteFocusNfeEmpresa',
+    url: `${apiBaseUrl}/v2/empresas/${encodeURIComponent(id)}`,
     captureResponseBody: 'always',
     init: {
-      method: 'POST',
+      method: 'DELETE',
       headers: {
         'Authorization': authHeader,
         'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(mapCompanyInput(body))
+      }
     }
   })
 
@@ -44,7 +40,7 @@ export default defineEventHandler(async (event) => {
     const raw = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao criar empresa na Focus NFe', details: mapFiscalErrorDetails(raw) }
+      data: { error: 'Erro ao excluir empresa na Focus NFe', details: mapFiscalErrorDetails(raw) }
     })
   }
 
