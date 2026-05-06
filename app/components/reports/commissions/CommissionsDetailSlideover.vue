@@ -179,7 +179,7 @@ const currentBreakdown = computed(() =>
               {{ props.data.employee.name }}
             </h2>
             <p class="mt-0.5 text-xs text-muted">
-              {{ props.data.order.number ? `OS #${props.data.order.number}` : 'Comissão sem OS vinculada' }}
+              {{ props.data.order.number ? `#${props.data.order.number}` : 'Comissão sem OS vinculada' }}
             </p>
           </div>
         </div>

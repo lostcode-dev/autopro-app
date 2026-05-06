@@ -189,7 +189,7 @@ export default defineEventHandler(async (event) => {
       const installmentStatus = inst.status === 'paid' ? 'paid' : 'pending'
       const installmentBankAccountId = inst.bank_account_id || bankAccountId || null
       const installmentTerminalId = inst.payment_terminal_id || paymentTerminalId || null
-      const description = `Recebimento ${installmentNumber}/${installmentsData.length} - OS #${order.number}`
+      const description = `Recebimento ${installmentNumber}/${installmentsData.length} - #${order.number}`
       const notes = `Pagamento da ordem de serviço #${order.number}`
 
       const transaction = await createIncomeTransaction({
@@ -252,7 +252,7 @@ export default defineEventHandler(async (event) => {
   } else {
     // Single (cash) payment
     await createIncomeTransaction({
-      description: `Recebimento da OS #${order.number}`,
+      description: `Recebimento da #${order.number}`,
       amount: totalAmount,
       dueDate: effectiveDate,
       status: 'paid',

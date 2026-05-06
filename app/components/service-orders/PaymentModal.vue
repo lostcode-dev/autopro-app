@@ -316,7 +316,7 @@ async function save() {
   <UModal
     :open="open"
     title="Processar pagamento"
-    :description="order ? `OS #${order.number}` : ''"
+    :description="order ? `#${order.number}` : ''"
     :ui="{ content: 'sm:max-w-5xl lg:max-w-6xl', body: 'overflow-y-auto max-h-[82vh]' }"
     @update:open="emit('update:open', $event)"
   >

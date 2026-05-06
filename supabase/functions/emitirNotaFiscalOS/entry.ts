@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       serv: {
         locPrest: { cLocPrestacao: codigoMunicipio },
         cServ: { xDescServ: descricao },
-        infoCompl: { xInfComp: normalizeText(observacoes) || `OS #${ordem.numero}` }
+        infoCompl: { xInfComp: normalizeText(observacoes) || `#${ordem.numero}` }
       },
       valores: {
         vServPrest: { vServ: valorTotal }

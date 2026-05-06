@@ -180,7 +180,7 @@ const headerSubtitle = computed(() => {
           </div>
           <div>
             <h2 class="text-base font-bold leading-tight text-highlighted">
-              {{ data.mode === 'orders' && data.orderNumber ? `OS #${data.orderNumber}` : data.clientName }}
+              {{ data.mode === 'orders' && data.orderNumber ? `#${data.orderNumber}` : data.clientName }}
             </h2>
             <p class="mt-0.5 text-xs text-muted">
               {{ headerSubtitle }}
