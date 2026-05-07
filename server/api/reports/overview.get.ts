@@ -53,7 +53,7 @@ export default defineEventHandler(async (event) => {
     return createdAt && !Number.isNaN(createdAt.getTime()) && createdAt >= dateFrom && createdAt <= dateTo
   }).length
 
-  const completedOrders = ordersInPeriod.filter((o: any) => o?.status === 'completed' || o?.status === 'delivered')
+  const completedOrders = ordersInPeriod.filter((o: any) => o?.status === 'completed' || o?.status === 'invoiced' || o?.status === 'delivered')
 
   const costsInPeriod = transactions.filter((t: any) => {
     const dueDate = t?.due_date ? new Date(`${t.due_date}T00:00:00`) : null

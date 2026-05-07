@@ -426,6 +426,33 @@ function openPdfFromList(order: ServiceOrder) {
   pdfOrderId.value = order.id
   showPdfModal.value = true
 }
+
+// ─── NFS-e Emission ────────────────────────────────────────────────────────────
+
+const showNfseIssueModal = ref(false)
+const nfseIssueOrder = ref<ServiceOrder | null>(null)
+
+type DetailModalRef = { refreshNfseCard: () => void }
+const detailModalRef = ref<DetailModalRef | null>(null)
+
+function requestIssueNfse(order: ServiceOrder) {
+  nfseIssueOrder.value = order
+  showNfseIssueModal.value = true
+}
+
+function requestIssueNfseFromDetail(orderId: string) {
+  const order = accumulatedOrders.value.find(o => o.id === orderId) ?? selectedOrder.value
+  if (!order) return
+  nfseIssueOrder.value = order
+  showNfseIssueModal.value = true
+}
+
+function onNfseIssued() {
+  showNfseIssueModal.value = false
+  nfseIssueOrder.value = null
+  forceReload()
+  detailModalRef.value?.refreshNfseCard()
+}
 </script>
 
 <template>
@@ -504,6 +531,7 @@ function openPdfFromList(order: ServiceOrder) {
                 @pay="requestPay"
                 @cancel="requestCancel"
                 @delete="requestDelete"
+                @issue-nfse="requestIssueNfse"
               />
             </div>
           </template>
@@ -574,6 +602,7 @@ function openPdfFromList(order: ServiceOrder) {
 
   <!-- ── Detail Modal ────────────────────────────────────────────────────────── -->
   <ServiceOrdersDetailModal
+    ref="detailModalRef"
     v-model:open="showDetail"
     :order="selectedOrder"
     :can-update="canUpdate"
@@ -584,6 +613,7 @@ function openPdfFromList(order: ServiceOrder) {
     @edit="openEdit"
     @updated="forceReload"
     @deleted="() => { closeDetail(); forceReload() }"
+    @issue-nfse="requestIssueNfseFromDetail"
   />
 
   <ServiceOrdersQuoteModal
@@ -602,5 +632,13 @@ function openPdfFromList(order: ServiceOrder) {
     v-model:open="showPaymentModal"
     :order="paymentOrder"
     @paid="onPaymentDone"
+  />
+
+  <!-- ── NFS-e Issue Modal ──────────────────────────────────────────────────── -->
+  <ServiceOrdersNfseIssueModal
+    v-model:open="showNfseIssueModal"
+    :order="nfseIssueOrder"
+    :can-create="canCreate"
+    @issued="onNfseIssued"
   />
 </template>

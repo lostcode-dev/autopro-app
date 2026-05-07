@@ -1,30 +1,25 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
+import type { NfseRow, SyncStatusResponse } from '~/types/nfse'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'NFS-e — Notas de Serviço' })
 
-type NfseRow = {
-  id: string
-  service_order_id: string | null
-  organization_id: string | null
-  status: string
-  service_order_number: string | null
-  provider_nfse_id: string | null
-  provider_status: string | null
-  nfse_number: string | null
-  verification_code: string | null
-  issued_at: string | null
-  environment: string | null
-  provider_reference: string
-  dps_series: string | null
-  dps_number: string | null
-  document_url: string | null
-  last_error_message: string | null
-  last_error_at: string | null
-  created_at: string
-  updated_at: string
-}
+// ─── Sync status ──────────────────────────────────────────────────────────────
+
+const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const requestFetch = useRequestFetch()
+
+const { data: syncStatusData, refresh: refreshSyncStatus } = await useAsyncData(
+  'fiscal-company-sync-status',
+  () => requestFetch<SyncStatusResponse>('/api/fiscal/company/sync-status', { headers: requestHeaders }),
+  { default: () => null as SyncStatusResponse | null }
+)
+
+const isSynced = computed(() => syncStatusData.value?.is_synced === true)
+const showSyncModal = ref(false)
+
+// ─── NFS-e list ───────────────────────────────────────────────────────────────
 
 type NfseListResponse = {
   success: boolean
@@ -32,33 +27,10 @@ type NfseListResponse = {
   meta: { total: number; page: number; limit: number; pages: number }
 }
 
-type NfseDetail = {
-  reference: string
-  status: string
-  nfse_number: string | null
-  verification_code: string | null
-  issued_at: string | null
-  environment: string | null
-  document_url: string | null
-  taker_name: string | null
-  taker_id: string | null
-  taker_email: string | null
-  services_amount: number | null
-  deductions_amount: number | null
-  iss_amount: number | null
-  effective_rate: number | null
-  services_description: string | null
-  service_item_code: string | null
-  errors: Array<{ code: string; message: string; correction: string | null }>
-}
-
 const DEFAULT_PAGE_SIZE = 20
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const MANAGED_QUERY_KEYS = ['search', 'page', 'pageSize', 'status'] as const
 
-const toast = useToast()
-const requestFetch = useRequestFetch()
-const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const route = useRoute()
 const router = useRouter()
 
@@ -86,10 +58,7 @@ const requestQuery = computed(() => ({
 
 const { data, status: fetchStatus, refresh } = await useAsyncData(
   () => `nfse-list-${debouncedSearch.value}-${page.value}-${pageSize.value}-${statusFilter.value}`,
-  () => requestFetch<NfseListResponse>('/api/fiscal/nfse', {
-    headers: requestHeaders,
-    query: requestQuery.value
-  }),
+  () => requestFetch<NfseListResponse>('/api/fiscal/nfse', { headers: requestHeaders, query: requestQuery.value }),
   {
     watch: [requestQuery],
     default: () => ({ success: true, data: [], meta: { total: 0, page: 1, limit: DEFAULT_PAGE_SIZE, pages: 0 } })
@@ -150,6 +119,7 @@ async function submitSearch(value: string) {
 }
 
 // ─── Status helpers ───────────────────────────────────────────────────────────
+
 type BadgeColor = 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' | 'neutral'
 
 const STATUS_LABEL: Record<string, string> = {
@@ -182,7 +152,8 @@ function formatDate(val: string | null) {
   return new Date(val).toLocaleDateString('pt-BR')
 }
 
-// ─── Table columns ─────────────────────────────────────────────────────────────
+// ─── Table columns ────────────────────────────────────────────────────────────
+
 const columns = [
   { accessorKey: 'provider_reference', header: 'Referência', enableSorting: false },
   { accessorKey: 'nfse_number', header: 'Número NFS-e', enableSorting: false },
@@ -192,108 +163,40 @@ const columns = [
   { id: 'actions', header: '', enableSorting: false }
 ]
 
-// ─── Detail Slideover ─────────────────────────────────────────────────────────
+// ─── Detail slideover ─────────────────────────────────────────────────────────
+
 const showDetail = ref(false)
 const selectedRow = ref<NfseRow | null>(null)
-const detailData = ref<NfseDetail | null>(null)
-const isLoadingDetail = ref(false)
 
-async function openDetail(row: NfseRow) {
+function openDetail(row: NfseRow) {
   selectedRow.value = row
   showDetail.value = true
-  detailData.value = null
-  isLoadingDetail.value = true
-  try {
-    const res = await $fetch<{ success: boolean; data: NfseDetail }>(
-      `/api/fiscal/nfse/${encodeURIComponent(row.provider_reference)}`
-    )
-    detailData.value = res.data
-  } catch {
-    toast.add({ title: 'Erro ao carregar detalhes da NFS-e', color: 'error' })
-  } finally {
-    isLoadingDetail.value = false
-  }
 }
 
-function closeDetail() {
-  showDetail.value = false
-  selectedRow.value = null
-  detailData.value = null
-}
+// ─── Cancel modal ─────────────────────────────────────────────────────────────
 
-// ─── Cancel ───────────────────────────────────────────────────────────────────
 const showCancelModal = ref(false)
 const nfsePendingCancel = ref<NfseRow | null>(null)
-const cancelJustification = ref('')
-const isCancelling = ref(false)
 
 function requestCancel(row: NfseRow) {
   nfsePendingCancel.value = row
-  cancelJustification.value = ''
   showCancelModal.value = true
 }
 
-async function confirmCancel() {
-  if (!nfsePendingCancel.value || isCancelling.value) return
-  isCancelling.value = true
-  try {
-    await $fetch(`/api/fiscal/nfse/${encodeURIComponent(nfsePendingCancel.value.provider_reference)}`, {
-      method: 'DELETE',
-      body: cancelJustification.value.trim() ? { justification: cancelJustification.value.trim() } : {}
-    })
-    toast.add({ title: 'NFS-e cancelada com sucesso', color: 'success' })
-    showCancelModal.value = false
-    nfsePendingCancel.value = null
-    if (showDetail.value) closeDetail()
-    await refresh()
-  } catch (err: any) {
-    toast.add({
-      title: 'Erro ao cancelar NFS-e',
-      description: err?.data?.data?.error || err?.data?.statusMessage || 'Tente novamente.',
-      color: 'error'
-    })
-  } finally {
-    isCancelling.value = false
-  }
+async function onCancelled() {
+  showDetail.value = false
+  selectedRow.value = null
+  await refresh()
 }
 
-// ─── Resend email ─────────────────────────────────────────────────────────────
+// ─── Email modal ──────────────────────────────────────────────────────────────
+
 const showEmailModal = ref(false)
 const nfseForEmail = ref<NfseRow | null>(null)
-const emailList = ref('')
-const isSendingEmail = ref(false)
 
 function requestEmail(row: NfseRow) {
   nfseForEmail.value = row
-  emailList.value = ''
   showEmailModal.value = true
-}
-
-async function confirmSendEmail() {
-  if (!nfseForEmail.value || isSendingEmail.value) return
-  const emails = emailList.value.split(/[\n,;]/).map(e => e.trim()).filter(Boolean)
-  if (!emails.length) {
-    toast.add({ title: 'Informe ao menos um e-mail', color: 'warning' })
-    return
-  }
-  isSendingEmail.value = true
-  try {
-    await $fetch(`/api/fiscal/nfse/${encodeURIComponent(nfseForEmail.value.provider_reference)}/email`, {
-      method: 'POST',
-      body: { emails }
-    })
-    toast.add({ title: 'E-mail reenviado com sucesso', color: 'success' })
-    showEmailModal.value = false
-    nfseForEmail.value = null
-  } catch (err: any) {
-    toast.add({
-      title: 'Erro ao reenviar e-mail',
-      description: err?.data?.data?.error || err?.data?.statusMessage || 'Tente novamente.',
-      color: 'error'
-    })
-  } finally {
-    isSendingEmail.value = false
-  }
 }
 </script>
 
@@ -304,6 +207,12 @@ async function confirmSendEmail() {
     </template>
 
     <template #body>
+      <FinancialFiscalSyncBanner
+        v-if="!isSynced"
+        :error-message="syncStatusData?.sync?.sync_error_message"
+        @configure="showSyncModal = true"
+      />
+
       <AppDataTable
         v-model:search-term="search"
         v-model:page="page"
@@ -333,10 +242,7 @@ async function confirmSendEmail() {
         </template>
 
         <template #provider_reference-cell="{ row }">
-          <button
-            class="font-mono text-xs text-primary hover:underline"
-            @click="openDetail(row.original as NfseRow)"
-          >
+          <button class="font-mono text-xs text-primary hover:underline" @click="openDetail(row.original as NfseRow)">
             {{ row.original.provider_reference }}
           </button>
         </template>
@@ -366,13 +272,7 @@ async function confirmSendEmail() {
         <template #actions-cell="{ row }">
           <div class="flex items-center justify-end gap-1">
             <UTooltip text="Ver detalhes">
-              <UButton
-                icon="i-lucide-eye"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                @click="openDetail(row.original as NfseRow)"
-              />
+              <UButton icon="i-lucide-eye" color="neutral" variant="ghost" size="xs" @click="openDetail(row.original as NfseRow)" />
             </UTooltip>
             <UTooltip text="Reenviar por e-mail">
               <UButton
@@ -400,227 +300,33 @@ async function confirmSendEmail() {
     </template>
   </UDashboardPanel>
 
-  <!-- ── Detail Slideover ──────────────────────────────────────────────────── -->
-  <USlideover
+  <FinancialNfseDetailSlideover
     :open="showDetail"
-    side="right"
-    :ui="{ content: 'max-w-xl' }"
-    @update:open="(v) => !v && closeDetail()"
-  >
-    <template #header>
-      <div>
-        <h2 class="text-lg font-bold text-highlighted">
-          Detalhes da NFS-e
-        </h2>
-        <p v-if="selectedRow" class="mt-0.5 font-mono text-xs text-muted">
-          {{ selectedRow.provider_reference }}
-        </p>
-      </div>
-    </template>
+    :row="selectedRow"
+    @update:open="(v) => { showDetail = v; if (!v) selectedRow = null }"
+    @cancel="(row) => requestCancel(row)"
+    @email="(row) => requestEmail(row)"
+  />
 
-    <template #body>
-      <div v-if="isLoadingDetail" class="space-y-4 p-4">
-        <USkeleton v-for="i in 6" :key="i" class="h-8 rounded" />
-      </div>
-
-      <div v-else-if="detailData" class="space-y-6 p-4">
-        <!-- Status row -->
-        <div class="flex items-center justify-between gap-3">
-          <UBadge
-            :label="statusLabel(detailData.status)"
-            :color="statusColor(detailData.status)"
-            variant="subtle"
-            size="md"
-            class="font-semibold"
-          />
-          <div class="flex gap-2">
-            <UButton
-              v-if="detailData.status !== 'cancelled'"
-              label="Reenviar e-mail"
-              icon="i-lucide-mail"
-              size="xs"
-              color="neutral"
-              variant="outline"
-              @click="selectedRow && requestEmail(selectedRow)"
-            />
-            <UButton
-              v-if="detailData.status !== 'cancelled'"
-              label="Cancelar NFS-e"
-              icon="i-lucide-x-circle"
-              size="xs"
-              color="error"
-              variant="outline"
-              @click="selectedRow && requestCancel(selectedRow)"
-            />
-          </div>
-        </div>
-
-        <!-- Info grid -->
-        <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-          <div>
-            <dt class="text-xs font-medium text-muted">Número NFS-e</dt>
-            <dd class="mt-0.5 font-semibold text-highlighted">{{ detailData.nfse_number ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-muted">Cód. Verificação</dt>
-            <dd class="mt-0.5 font-mono text-xs text-highlighted">{{ detailData.verification_code ?? '—' }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-muted">Emissão</dt>
-            <dd class="mt-0.5">{{ formatDate(detailData.issued_at) }}</dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-muted">Ambiente</dt>
-            <dd class="mt-0.5">
-              <UBadge
-                :label="detailData.environment === 'production' ? 'Produção' : 'Homologação'"
-                :color="detailData.environment === 'production' ? 'success' : 'warning'"
-                variant="subtle"
-                size="xs"
-              />
-            </dd>
-          </div>
-
-          <div class="col-span-2">
-            <dt class="text-xs font-medium text-muted">Tomador</dt>
-            <dd class="mt-0.5 font-semibold text-highlighted">{{ detailData.taker_name ?? '—' }}</dd>
-            <dd v-if="detailData.taker_id" class="font-mono text-xs text-muted">{{ detailData.taker_id }}</dd>
-            <dd v-if="detailData.taker_email" class="text-xs text-muted">{{ detailData.taker_email }}</dd>
-          </div>
-
-          <div>
-            <dt class="text-xs font-medium text-muted">Valor serviços</dt>
-            <dd class="mt-0.5 font-semibold text-highlighted">
-              {{ detailData.services_amount != null ? detailData.services_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—' }}
-            </dd>
-          </div>
-          <div>
-            <dt class="text-xs font-medium text-muted">ISS retido</dt>
-            <dd class="mt-0.5">
-              {{ detailData.iss_amount != null ? detailData.iss_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—' }}
-            </dd>
-          </div>
-
-          <div v-if="detailData.services_description" class="col-span-2">
-            <dt class="text-xs font-medium text-muted">Descrição dos serviços</dt>
-            <dd class="mt-0.5 whitespace-pre-line text-sm">{{ detailData.services_description }}</dd>
-          </div>
-        </dl>
-
-        <!-- Document link -->
-        <div v-if="detailData.document_url">
-          <UButton
-            :to="detailData.document_url"
-            target="_blank"
-            rel="noopener noreferrer"
-            label="Abrir documento PDF"
-            icon="i-lucide-external-link"
-            color="primary"
-            variant="outline"
-            size="sm"
-            class="w-full justify-center"
-          />
-        </div>
-
-        <!-- Errors -->
-        <div v-if="detailData.errors?.length" class="space-y-2">
-          <p class="text-xs font-semibold uppercase tracking-wide text-error">Erros</p>
-          <div
-            v-for="(e, i) in detailData.errors"
-            :key="i"
-            class="rounded-md border border-error/30 bg-error/5 p-3 text-sm"
-          >
-            <p class="font-semibold text-error">{{ e.code }}: {{ e.message }}</p>
-            <p v-if="e.correction" class="mt-1 text-xs text-muted">{{ e.correction }}</p>
-          </div>
-        </div>
-      </div>
-
-      <div v-else class="flex h-32 items-center justify-center text-sm text-muted">
-        Nenhum detalhe disponível.
-      </div>
-    </template>
-  </USlideover>
-
-  <!-- ── Cancel Modal ──────────────────────────────────────────────────────── -->
-  <UModal
+  <FinancialNfseCancelModal
     :open="showCancelModal"
-    title="Cancelar NFS-e"
-    :ui="{ overlay: 'z-30', content: 'z-40' }"
-    @update:open="(v) => !v && !isCancelling && (showCancelModal = false)"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <p class="text-sm text-muted">
-          Esta ação é irreversível. A NFS-e
-          <span class="font-mono font-semibold text-highlighted">{{ nfsePendingCancel?.provider_reference }}</span>
-          será cancelada junto à prefeitura.
-        </p>
-        <UFormField label="Justificativa (opcional)" hint="15–255 caracteres se informada">
-          <UTextarea
-            v-model="cancelJustification"
-            placeholder="Ex: Serviço não foi prestado..."
-            :rows="3"
-            class="w-full"
-          />
-        </UFormField>
-        <div class="flex justify-end gap-3">
-          <UButton
-            label="Voltar"
-            color="neutral"
-            variant="ghost"
-            :disabled="isCancelling"
-            @click="showCancelModal = false"
-          />
-          <UButton
-            label="Confirmar cancelamento"
-            color="error"
-            :loading="isCancelling"
-            @click="confirmCancel"
-          />
-        </div>
-      </div>
-    </template>
-  </UModal>
+    :nfse="nfsePendingCancel"
+    @update:open="(v) => { showCancelModal = v; if (!v) nfsePendingCancel = null }"
+    @cancelled="onCancelled"
+  />
 
-  <!-- ── Resend Email Modal ────────────────────────────────────────────────── -->
-  <UModal
+  <FinancialNfseEmailModal
     :open="showEmailModal"
-    title="Reenviar NFS-e por e-mail"
-    :ui="{ overlay: 'z-30', content: 'z-40' }"
-    @update:open="(v) => !v && !isSendingEmail && (showEmailModal = false)"
-  >
-    <template #body>
-      <div class="space-y-4">
-        <p class="text-sm text-muted">
-          Informe os e-mails que receberão a NFS-e
-          <span class="font-mono font-semibold text-highlighted">{{ nfseForEmail?.provider_reference }}</span>.
-          Separe múltiplos e-mails por vírgula ou linha.
-        </p>
-        <UFormField label="E-mails destinatários">
-          <UTextarea
-            v-model="emailList"
-            placeholder="cliente@email.com, outro@email.com"
-            :rows="3"
-            class="w-full"
-          />
-        </UFormField>
-        <div class="flex justify-end gap-3">
-          <UButton
-            label="Cancelar"
-            color="neutral"
-            variant="ghost"
-            :disabled="isSendingEmail"
-            @click="showEmailModal = false"
-          />
-          <UButton
-            label="Enviar"
-            icon="i-lucide-send"
-            :loading="isSendingEmail"
-            @click="confirmSendEmail"
-          />
-        </div>
-      </div>
-    </template>
-  </UModal>
+    :nfse="nfseForEmail"
+    @update:open="(v) => { showEmailModal = v; if (!v) nfseForEmail = null }"
+  />
+
+  <FinancialFiscalSyncModal
+    v-if="syncStatusData"
+    :open="showSyncModal"
+    :organization="syncStatusData.organization"
+    :organization-id="syncStatusData.organization_id"
+    @update:open="(v) => (showSyncModal = v)"
+    @synced="refreshSyncStatus"
+  />
 </template>

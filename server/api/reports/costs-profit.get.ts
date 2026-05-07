@@ -14,7 +14,7 @@ function normalizeCategoryName(category: string) {
 function calculatePeriodData(orders: ReportRow[], transactions: ReportRow[], start: Date, end: Date, statusFilters: string[]) {
   const periodOrders = orders.filter((o: ReportRow) => {
     const entryDate = o?.entry_date ? new Date(`${o.entry_date}T00:00:00`) : null
-    const isCompleted = o?.status === 'completed' || o?.status === 'delivered'
+    const isCompleted = o?.status === 'completed' || o?.status === 'invoiced' || o?.status === 'delivered'
     return !!entryDate && !Number.isNaN(entryDate.getTime()) && isCompleted && matchesStatusFilters(o?.payment_status, statusFilters) && entryDate >= start && entryDate <= end
   })
   const periodCosts = transactions.filter((t: ReportRow) => {
@@ -120,7 +120,7 @@ export default defineEventHandler(async (event) => {
     if (!entryDate || Number.isNaN(entryDate.getTime())) return false
     if (dateFrom && entryDate < dateFrom) return false
     if (dateTo && entryDate > dateTo) return false
-    if (!(o?.status === 'completed' || o?.status === 'delivered')) return false
+    if (!(o?.status === 'completed' || o?.status === 'invoiced' || o?.status === 'delivered')) return false
     return matchesStatusFilters(o?.payment_status, statusFilters)
   })
 
