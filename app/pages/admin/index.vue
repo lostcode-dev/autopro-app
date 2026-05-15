@@ -213,8 +213,8 @@ function formatDate(val: string | null) {
       <UTabs
         v-model="activeTab"
         :items="[
-          { label: 'Assinaturas', slot: 'subscriptions' as const, icon: 'i-lucide-credit-card' },
-          { label: 'Faturas', slot: 'invoices' as const, icon: 'i-lucide-receipt' }
+          { label: 'Assinaturas', value: 'subscriptions', slot: 'subscriptions' as const, icon: 'i-lucide-credit-card' },
+          { label: 'Faturas', value: 'invoices', slot: 'invoices' as const, icon: 'i-lucide-receipt' }
         ]"
         variant="link"
         class="w-full"
