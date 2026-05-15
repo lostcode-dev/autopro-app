@@ -66,35 +66,38 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo(resolveAuthenticatedDestination(bootstrap))
   }
 
-  // ── 5. /admin routes: require isOwner flag ────────────────────────────────
+  // ── 5. Owner users: always land on /admin, never on app/subscription/etc. ──
+  if (isOwner && !isAdminRoute && isProtectedRoute) {
+    return navigateTo('/admin')
+  }
+
+  // ── 6. /admin routes: require isOwner flag ────────────────────────────────
   if (isAdminRoute) {
     if (!isOwner) return navigateTo(hasOrganization ? (onboardingComplete ? '/app' : '/onboarding') : '/subscription')
     return
   }
 
-  // ── 6. /app routes: require org with completed onboarding ─────────────────
+  // ── 7. /app routes: require org with completed onboarding ─────────────────
   if (isAppRoute) {
     if (!hasOrganization) return navigateTo('/subscription')
     if (!onboardingComplete) return navigateTo('/onboarding')
     return
   }
 
-  // ── 7. /onboarding route: require org, block if already complete ──────────
+  // ── 8. /onboarding route: require org, block if already complete ──────────
   if (isOnboardingRoute) {
-    if (isOwner) return navigateTo('/admin')
     if (!hasOrganization) return navigateTo('/subscription')
     if (onboardingComplete) return navigateTo('/app')
     return
   }
 
-  // ── 8. /subscription route: block if user already has org or is owner ──────
+  // ── 9. /subscription route: block if user already has org ──────────────────
   if (isSubscriptionRoute) {
-    if (isOwner) return navigateTo('/admin')
     if (hasOrganization) return navigateTo(onboardingComplete ? '/app' : '/onboarding')
     return
   }
 
-  // ── 9. /checkout/** routes: auth-only, no org requirement ─────────────────
+  // ── 10. /checkout/** routes: auth-only, no org requirement ─────────────────
   // (The success page handles polling for org creation after webhook fires)
   if (isCheckoutRoute) {
     return
