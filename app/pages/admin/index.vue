@@ -119,7 +119,7 @@ const STATUS_LABELS: Record<string, string> = {
   <UDashboardPanel>
     <UDashboardNavbar title="Admin Dashboard" />
 
-    <div class="p-6 space-y-8">
+    <div class="p-6 space-y-8 overflow-auto">
       <!-- Stats cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <template v-if="statsStatus === 'pending'">
