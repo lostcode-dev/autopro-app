@@ -91,7 +91,6 @@ const PLAN_DEFINITIONS = [
       'Cadastro de clientes e veículos',
       'Gestão financeira',
       'Relatórios essenciais',
-      'Sem emissão fiscal',
       'Suporte por email'
     ],
     cta: 'Começar com Starter'
