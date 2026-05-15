@@ -35,4 +35,6 @@ export type WorkshopBootstrapResponse = {
   termination_reason: string | null
   user: WorkshopEntity | null
   role: WorkshopEntity | null
+  planKey: string | null
+  maxEmployees: number | null
 }

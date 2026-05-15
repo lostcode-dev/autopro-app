@@ -31,6 +31,7 @@ const canCreate = computed(() => workshop.can(ActionCode.ORDERS_CREATE))
 const canUpdate = computed(() => workshop.can(ActionCode.ORDERS_UPDATE))
 const canDelete = computed(() => workshop.can(ActionCode.ORDERS_DELETE))
 const canCancel = computed(() => workshop.can(ActionCode.ORDERS_CANCEL))
+const canIssueNfse = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_CREATE))
 
 // ─── Filters (URL-synced) ──────────────────────────────────────────────────────
 
@@ -638,7 +639,7 @@ function onNfseIssued() {
   <ServiceOrdersNfseIssueModal
     v-model:open="showNfseIssueModal"
     :order="nfseIssueOrder"
-    :can-create="canCreate"
+    :can-create="canIssueNfse"
     @issued="onNfseIssued"
   />
 </template>

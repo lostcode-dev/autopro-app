@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { watchDebounced } from '@vueuse/core'
+import { ActionCode } from '~/constants/action-codes'
 import type { NfseRow, SyncStatusResponse } from '~/types/nfse'
 
-definePageMeta({ layout: 'app' })
+definePageMeta({
+  layout: 'app',
+  requiredPermission: ActionCode.SERVICE_INVOICE_READ
+})
 useSeoMeta({ title: 'NFS-e — Notas de Serviço' })
+
+const workshop = useWorkshopPermissions()
+const canCreate = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_CREATE))
+const canDelete = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_DELETE))
 
 // ─── Sync status ──────────────────────────────────────────────────────────────
 
@@ -284,7 +292,7 @@ function requestEmail(row: NfseRow) {
                 @click="requestEmail(row.original as NfseRow)"
               />
             </UTooltip>
-            <UTooltip text="Cancelar NFS-e">
+            <UTooltip v-if="canDelete" text="Cancelar NFS-e">
               <UButton
                 icon="i-lucide-x-circle"
                 color="error"

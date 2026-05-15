@@ -1,4 +1,5 @@
 import { defineEventHandler, readBody, createError } from 'h3'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
@@ -11,9 +12,7 @@ import type { NfseInput, NfseResult } from '../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  if (!user) {
-    throw createError({ statusCode: 403, message: 'Acesso negado' })
-  }
+  await requireOrgPermission(user.id, 'service_invoice.create')
 
   const body: NfseInput = await readBody(event)
   if (!body || typeof body !== 'object') {

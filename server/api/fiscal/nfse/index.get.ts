@@ -1,5 +1,7 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
-import { requireOwner } from '../../../utils/require-owner'
+import { requireAuthUser } from '../../../utils/require-auth'
+import { requireOrgPermission } from '../../../utils/require-org-permission'
+import { resolveOrganizationId } from '../../../utils/organization'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 
 const SUMMARY_COLUMNS = [
@@ -25,7 +27,9 @@ const SUMMARY_COLUMNS = [
 ].join(', ')
 
 export default defineEventHandler(async (event) => {
-  await requireOwner(event)
+  const authUser = await requireAuthUser(event)
+  await requireOrgPermission(authUser.id, 'service_invoice.read')
+  const organizationId = await resolveOrganizationId(event, authUser.id)
 
   const query = getQuery(event)
 
@@ -33,7 +37,6 @@ export default defineEventHandler(async (event) => {
   const limit = Math.min(100, Math.max(1, Number(query.limit) || 20))
   const offset = (page - 1) * limit
 
-  const organizationId = query.organization_id as string | undefined
   const serviceOrderId = query.service_order_id as string | undefined
   const status = query.status as string | undefined
   const search = (query.search as string | undefined)?.trim()
@@ -43,19 +46,16 @@ export default defineEventHandler(async (event) => {
   let countQuery = supabase
     .from('service_order_nfse')
     .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId)
     .is('deleted_at', null)
 
   let dataQuery = supabase
     .from('service_order_nfse')
     .select(SUMMARY_COLUMNS)
+    .eq('organization_id', organizationId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
-
-  if (organizationId) {
-    countQuery = countQuery.eq('organization_id', organizationId)
-    dataQuery = dataQuery.eq('organization_id', organizationId)
-  }
 
   if (serviceOrderId) {
     countQuery = countQuery.eq('service_order_id', serviceOrderId)

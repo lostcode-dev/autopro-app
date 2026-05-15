@@ -38,6 +38,8 @@ export function useWorkshopBootstrap() {
   const isAdmin = computed(() => data.value?.isAdmin === true)
   const isOnboardingComplete = computed(() => data.value?.onboardingCompleted === true)
   const terminated = computed(() => data.value?.terminated === true)
+  const planKey = computed(() => data.value?.planKey ?? null)
+  const maxEmployees = computed(() => data.value?.maxEmployees ?? null)
   const ready = computed(() => state.value.ready)
   const pending = computed(() => state.value.pending)
   const errorMessage = computed(() => state.value.errorMessage)
@@ -124,6 +126,8 @@ export function useWorkshopBootstrap() {
     isAdmin,
     isOnboardingComplete,
     terminated,
+    planKey,
+    maxEmployees,
     ready,
     pending,
     errorMessage,

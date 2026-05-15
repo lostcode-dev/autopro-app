@@ -1,11 +1,10 @@
 import { defineEventHandler, getRouterParam, createError } from 'h3'
+import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import { getSupabaseAdminClient } from '../../../../utils/supabase'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  if (!user) {
-    throw createError({ statusCode: 403, message: 'Acesso negado' })
-  }
+  await requireOrgPermission(user.id, 'service_invoice.read')
   const id = getRouterParam(event, 'id')
   if (!id) {
     throw createError({ statusCode: 400, message: 'ID é obrigatório' })

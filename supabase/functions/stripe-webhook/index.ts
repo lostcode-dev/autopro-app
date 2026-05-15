@@ -62,6 +62,17 @@ const ORG_SUSPENDING_INVOICE_STATUSES = new Set(['failed', 'overdue', 'action_re
 const ORG_CANCELLING_INVOICE_STATUSES = new Set(['uncollectible'])
 const BILLING_LINK_PATH = '/app/settings/subscription'
 
+const PLAN_KEY_BY_PRICE_ID: Record<string, string> = {
+  [Deno.env.get('STRIPE_PRICE_ID_STARTER') ?? '']: 'starter',
+  [Deno.env.get('STRIPE_PRICE_ID_PRO') ?? '']: 'pro',
+  [Deno.env.get('STRIPE_PRICE_ID_FISCAL') ?? '']: 'fiscal'
+}
+
+function resolvePlanKey(priceId: string | null | undefined): string | null {
+  if (!priceId) return null
+  return PLAN_KEY_BY_PRICE_ID[priceId] ?? null
+}
+
 function getEnv(): Env {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -438,6 +449,7 @@ async function upsertOrgSubscription(
     stripeCustomerId: string | null
     stripeSubscriptionId: string | null
     planName: string | null
+    planKey: string | null
     monthlyAmount: number | null
     startDate: string | null
     nextPaymentDate: string | null
@@ -458,6 +470,7 @@ async function upsertOrgSubscription(
         stripe_customer_id: opts.stripeCustomerId,
         stripe_subscription_id: opts.stripeSubscriptionId,
         plan_name: opts.planName,
+        plan_key: opts.planKey,
         monthly_amount: opts.monthlyAmount,
         start_date: opts.startDate,
         next_payment_date: opts.nextPaymentDate,
@@ -475,6 +488,7 @@ async function upsertOrgSubscription(
         stripe_customer_id: opts.stripeCustomerId,
         stripe_subscription_id: opts.stripeSubscriptionId,
         plan_name: opts.planName,
+        plan_key: opts.planKey,
         monthly_amount: opts.monthlyAmount,
         start_date: opts.startDate,
         next_payment_date: opts.nextPaymentDate,
@@ -808,6 +822,7 @@ async function onCheckoutCompleted(
       const planName = typeof product === 'object' && product !== null && 'name' in product
         ? (product as { name: string }).name
         : null
+      const planKey = resolvePlanKey(price?.id)
 
       await upsertOrgSubscription(supabase, {
         organizationId,
@@ -816,6 +831,7 @@ async function onCheckoutCompleted(
         stripeCustomerId: customerId,
         stripeSubscriptionId: subId,
         planName,
+        planKey,
         monthlyAmount: price?.unit_amount ? price.unit_amount / 100 : null,
         startDate: toIso(getSubscriptionPeriodStart(sub)),
         nextPaymentDate: toIso(getSubscriptionPeriodEnd(sub)),
@@ -864,6 +880,7 @@ async function onSubscriptionEvent(
       const planName = typeof product === 'object' && product !== null && 'name' in product
         ? (product as { name: string }).name
         : null
+      const planKey = resolvePlanKey(price?.id)
 
       await upsertOrgSubscription(supabase, {
         organizationId,
@@ -872,6 +889,7 @@ async function onSubscriptionEvent(
         stripeCustomerId: customerId,
         stripeSubscriptionId: subscription.id,
         planName,
+        planKey,
         monthlyAmount: price?.unit_amount ? price.unit_amount / 100 : null,
         startDate: toIso(getSubscriptionPeriodStart(subscription)),
         nextPaymentDate: toIso(getSubscriptionPeriodEnd(subscription)),

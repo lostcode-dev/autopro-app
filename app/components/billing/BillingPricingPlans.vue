@@ -39,8 +39,7 @@ const props = withDefaults(defineProps<{
 const isYearly = ref('0')
 
 const items = ref([
-  { label: 'Mensal', value: '0' },
-  { label: 'Anual', value: '1' }
+  { label: 'Mensal', value: '0' }
 ])
 
 const toast = useToast()

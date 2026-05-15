@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows, type SupabaseReportRow } from '../../utils/supabase-pagination'
 import { parseDateRange, toNumber, qArr, formatDateKey, formatDayLabel, normalizeStatusFilters, matchesStatusFilters, paginate, sortFactor, getPreviousRangeByMode, calculateVariation, getComparisonModeLabel, formatPeriodLabel, normalizeReportStatus } from '../../utils/report-helpers'
+import { enforceReportAccess } from '../../utils/license'
 
 type ReportRow = SupabaseReportRow
 
@@ -51,6 +52,7 @@ export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
+  await enforceReportAccess(organizationId, 'costs')
 
   const query = getQuery(event)
 

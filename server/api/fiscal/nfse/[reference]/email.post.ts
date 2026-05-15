@@ -1,4 +1,5 @@
 import { defineEventHandler, getRouterParam, readBody, createError } from 'h3'
+import { requireOrgPermission } from '../../../../utils/require-org-permission'
 import {
   getFocusNfeApiBaseUrl,
   getFocusNfeBasicAuthHeader,
@@ -8,9 +9,7 @@ import { mapFiscalErrorDetails } from '../../../../utils/fiscal-mappers'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  if (!user) {
-    throw createError({ statusCode: 403, message: 'Acesso negado' })
-  }
+  await requireOrgPermission(user.id, 'service_invoice.read')
 
   const reference = getRouterParam(event, 'reference')
   if (!reference) {

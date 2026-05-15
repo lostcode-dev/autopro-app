@@ -2,6 +2,7 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { enforceEmployeeLimit } from '../../utils/license'
 
 /**
  * POST /api/employees
@@ -13,6 +14,8 @@ export default defineEventHandler(async (event) => {
   const organizationId = await resolveOrganizationId(event, authUser.id)
 
   const body = await readBody(event)
+
+  await enforceEmployeeLimit(organizationId)
 
   if (!body?.name?.trim()) {
     throw createError({ statusCode: 400, statusMessage: 'name is required' })
