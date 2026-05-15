@@ -13,11 +13,6 @@ const { data: stats, status: statsStatus } = await useAsyncData(
   () => requestFetch<Record<string, any>>('/api/admin/stats', { headers: requestHeaders })
 )
 
-const { data: quotas, status: quotasStatus } = await useAsyncData(
-  'admin-quotas',
-  () => requestFetch<Record<string, any>>('/api/fiscal/quotas', { headers: requestHeaders }).catch(() => null)
-)
-
 const statsCards = computed(() => [
   {
     label: 'Organizações',
@@ -47,11 +42,6 @@ const statsCards = computed(() => [
   }
 ])
 
-const quotaList = computed(() => {
-  const d = quotas.value?.data
-  if (!d || !Array.isArray(d['@value'])) return []
-  return d['@value'] as Array<Record<string, any>>
-})
 </script>
 
 <template>
@@ -80,48 +70,6 @@ const quotaList = computed(() => {
           </UPageCard>
         </template>
       </div>
-
-      <!-- NuvemFiscal quotas -->
-      <UPageCard title="Cotas NuvemFiscal" description="Uso atual das cotas da API de notas fiscais.">
-        <template v-if="quotasStatus === 'pending'">
-          <USkeleton class="h-32" />
-        </template>
-        <template v-else-if="quotaList.length === 0">
-          <p class="text-sm text-muted py-4">
-            Não foi possível carregar as cotas ou nenhuma cota disponível.
-          </p>
-        </template>
-        <template v-else>
-          <div class="divide-y divide-default">
-            <div
-              v-for="quota in quotaList"
-              :key="quota.nome"
-              class="flex items-center justify-between py-3 gap-4"
-            >
-              <div class="min-w-0">
-                <p class="text-sm font-medium truncate">
-                  {{ quota.nome }}
-                </p>
-                <p class="text-xs text-muted">
-                  {{ quota.descricao }}
-                </p>
-              </div>
-              <div class="flex items-center gap-2 shrink-0">
-                <span class="text-sm font-semibold">{{ quota.uso_atual }}</span>
-                <span class="text-xs text-muted">/</span>
-                <span class="text-sm text-muted">{{ quota.limite }}</span>
-                <UBadge
-                  :color="quota.uso_atual >= quota.limite ? 'error' : quota.uso_atual >= quota.limite * 0.8 ? 'warning' : 'success'"
-                  variant="subtle"
-                  size="sm"
-                >
-                  {{ quota.limite > 0 ? Math.round((quota.uso_atual / quota.limite) * 100) : 0 }}%
-                </UBadge>
-              </div>
-            </div>
-          </div>
-        </template>
-      </UPageCard>
     </div>
   </UDashboardPanel>
 </template>

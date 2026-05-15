@@ -1,11 +1,11 @@
-import { defineEventHandler, getQuery, createError } from 'h3'
-import { requireAuthUser } from '../../../utils/require-auth'
+import { defineEventHandler, getQuery } from 'h3'
+import { requireOwner } from '../../../utils/require-owner'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 
 /**
  * GET /api/admin/organizations
  * Lists all organizations in the system for admin use.
- * Restricted to NUVEM_FISCAL_OWNER_EMAIL (super admin).
+ * Restricted to users with is_owner = true.
  *
  * Query params:
  *   search    — filter by name or tax_id
@@ -13,11 +13,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
  *   page_size — items per page (default 30)
  */
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
-  const ownerEmail = process.env.NUVEM_FISCAL_OWNER_EMAIL
-  if (!ownerEmail || user.email !== ownerEmail) {
-    throw createError({ statusCode: 403, statusMessage: 'Acesso negado' })
-  }
+  await requireOwner(event)
 
   const supabase = getSupabaseAdminClient()
   const query = getQuery(event)

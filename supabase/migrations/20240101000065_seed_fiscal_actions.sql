@@ -17,5 +17,5 @@ VALUES
   ('service_invoice.read',   'Visualizar NFS-e',  'service_invoice', 'read',   'Permite visualizar notas fiscais de serviço emitidas.',            'migration'),
   ('service_invoice.create', 'Emitir NFS-e',      'service_invoice', 'create', 'Permite emitir notas fiscais de serviço.',                         'migration'),
   ('service_invoice.update', 'Editar NFS-e',      'service_invoice', 'update', 'Permite editar/corrigir notas fiscais de serviço.',                 'migration'),
-  ('service_invoice.delete', 'Cancelar NFS-e',    'service_invoice', 'delete', 'Permite cancelar notas fiscais de serviço.',                       'migration'),
+  ('service_invoice.delete', 'Cancelar NFS-e',    'service_invoice', 'delete', 'Permite cancelar notas fiscais de serviço.',                       'migration')
 ON CONFLICT (code) DO NOTHING;
