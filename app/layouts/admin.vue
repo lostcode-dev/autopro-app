@@ -19,9 +19,8 @@ function item(label: string, icon: string, to: string): NavigationMenuItem {
 }
 
 const links = computed<NavigationMenuItem[][]>(() => [[
-  item('Dashboard', 'i-lucide-layout-dashboard', '/admin/dashboard'),
+  item('Dashboard', 'i-lucide-layout-dashboard', '/admin'),
   item('Organizacoes', 'i-lucide-buildings', '/admin/organizations'),
-  item('Sistema', 'i-lucide-wrench', '/admin/system'),
   item('Fiscal empresas', 'i-lucide-file-stack', '/admin/fiscal/companies'),
   item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
 ], [

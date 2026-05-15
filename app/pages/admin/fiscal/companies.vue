@@ -12,7 +12,7 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 // ─── List ──────────────────────────────────────────────────────────────────────
 
 const searchCnpj = ref('')
-const offset = ref(0)
+const page = ref(1)
 const PAGE_SIZE = 50
 
 const { data, status, refresh } = await useAsyncData(
@@ -22,26 +22,21 @@ const { data, status, refresh } = await useAsyncData(
     {
       headers: requestHeaders,
       query: {
-        offset: offset.value,
+        offset: (page.value - 1) * PAGE_SIZE,
         business_id: searchCnpj.value || undefined
       }
     }
-  ),
-  { watch: [offset] }
+  )
 )
 
 watch(searchCnpj, () => {
-  offset.value = 0
+  page.value = 1
   refresh()
 })
+watch(page, () => refresh())
 
 const companies = computed(() => data.value?.data ?? [])
 const total = computed(() => data.value?.total ?? companies.value.length)
-const hasMore = computed(() => offset.value + PAGE_SIZE < total.value)
-const hasPrev = computed(() => offset.value > 0)
-
-function nextPage() { offset.value += PAGE_SIZE }
-function prevPage() { offset.value = Math.max(0, offset.value - PAGE_SIZE) }
 
 // ─── Form helpers ──────────────────────────────────────────────────────────────
 
@@ -204,13 +199,13 @@ async function confirmDelete() {
 // ─── Table ─────────────────────────────────────────────────────────────────────
 
 const columns = [
-  { key: 'id', label: 'ID' },
-  { key: 'document', label: 'CNPJ/CPF' },
-  { key: 'name', label: 'Razão Social' },
-  { key: 'email', label: 'E-mail' },
-  { key: 'nfse_enabled', label: 'NFS-e' },
-  { key: 'certificate_valid_until', label: 'Certificado' },
-  { key: 'actions', label: '' }
+  { accessorKey: 'id', header: 'ID', enableSorting: false },
+  { id: 'document', header: 'CNPJ/CPF', enableSorting: false },
+  { accessorKey: 'name', header: 'Razão Social', enableSorting: false },
+  { accessorKey: 'email', header: 'E-mail', enableSorting: false },
+  { accessorKey: 'nfse_enabled', header: 'NFS-e', enableSorting: false },
+  { accessorKey: 'certificate_valid_until', header: 'Certificado', enableSorting: false },
+  { id: 'actions', header: '', enableSorting: false }
 ]
 
 function formatDocument(company: any) {
@@ -237,104 +232,61 @@ function certificateColor(val: string | null) {
 
 <template>
   <UDashboardPanel>
-    <UDashboardNavbar title="Empresas Focus NFe">
-      <template #right>
-        <div class="flex items-center gap-2">
-          <UInput
-            v-model="searchCnpj"
-            icon="i-lucide-search"
-            placeholder="Buscar por CNPJ..."
-            class="w-56"
-          />
-          <UButton
-            icon="i-lucide-plus"
-            @click="openCreate"
-          >
-            Nova empresa
-          </UButton>
+    <UDashboardNavbar title="Empresas Focus NFe" />
+
+    <AppDataTable
+      v-model:search-term="searchCnpj"
+      v-model:page="page"
+      :columns="columns"
+      :data="companies as Record<string, unknown>[]"
+      :loading="status === 'pending'"
+      :page-size="PAGE_SIZE"
+      :total="total"
+      show-search
+      search-placeholder="Buscar por CNPJ..."
+      empty-icon="i-lucide-building"
+      empty-title="Nenhuma empresa encontrada"
+      empty-description="Nenhuma empresa Focus NFe foi cadastrada ainda."
+    >
+      <template #toolbar-right>
+        <UButton icon="i-lucide-plus" @click="openCreate">
+          Nova empresa
+        </UButton>
+      </template>
+
+      <template #document-cell="{ row }">
+        <span class="font-mono text-sm">{{ formatDocument(row.original) }}</span>
+      </template>
+
+      <template #nfse_enabled-cell="{ row }">
+        <UBadge
+          :color="row.original.nfse_enabled ? 'success' : 'neutral'"
+          variant="subtle"
+          size="sm"
+        >
+          {{ row.original.nfse_enabled ? 'Habilitado' : 'Desabilitado' }}
+        </UBadge>
+      </template>
+
+      <template #certificate_valid_until-cell="{ row }">
+        <UBadge
+          v-if="row.original.certificate_valid_until"
+          :color="certificateColor(String(row.original.certificate_valid_until))"
+          variant="subtle"
+          size="sm"
+        >
+          {{ formatCertificate(String(row.original.certificate_valid_until)) }}
+        </UBadge>
+        <span v-else class="text-xs text-muted">—</span>
+      </template>
+
+      <template #actions-cell="{ row }">
+        <div class="flex items-center justify-end gap-1">
+          <UButton variant="ghost" size="xs" icon="i-lucide-pencil" @click="openEdit(row.original)" />
+          <UButton variant="ghost" size="xs" color="error" icon="i-lucide-trash-2" @click="openDelete(row.original)" />
         </div>
       </template>
-    </UDashboardNavbar>
-
-    <div class="p-6 space-y-4">
-      <div v-if="status === 'pending'" class="space-y-2">
-        <USkeleton v-for="i in 6" :key="i" class="h-12 rounded" />
-      </div>
-
-      <template v-else>
-        <UTable :rows="companies" :columns="columns">
-          <template #document-data="{ row }">
-            <span class="font-mono text-sm">{{ formatDocument(row) }}</span>
-          </template>
-
-          <template #nfse_enabled-data="{ row }">
-            <UBadge
-              :color="row.nfse_enabled ? 'success' : 'neutral'"
-              variant="subtle"
-              size="sm"
-            >
-              {{ row.nfse_enabled ? 'Habilitado' : 'Desabilitado' }}
-            </UBadge>
-          </template>
-
-          <template #certificate_valid_until-data="{ row }">
-            <UBadge
-              v-if="row.certificate_valid_until"
-              :color="certificateColor(row.certificate_valid_until)"
-              variant="subtle"
-              size="sm"
-            >
-              {{ formatCertificate(row.certificate_valid_until) }}
-            </UBadge>
-            <span v-else class="text-xs text-muted">—</span>
-          </template>
-
-          <template #actions-data="{ row }">
-            <div class="flex items-center justify-end gap-1">
-              <UButton
-                variant="ghost"
-                size="xs"
-                icon="i-lucide-pencil"
-                @click="openEdit(row)"
-              />
-              <UButton
-                variant="ghost"
-                size="xs"
-                color="error"
-                icon="i-lucide-trash-2"
-                @click="openDelete(row)"
-              />
-            </div>
-          </template>
-        </UTable>
-
-        <p v-if="companies.length === 0" class="text-center text-sm text-muted py-8">
-          Nenhuma empresa encontrada.
-        </p>
-
-        <div v-if="hasPrev || hasMore" class="flex justify-between items-center pt-2">
-          <UButton
-            variant="ghost"
-            icon="i-lucide-chevron-left"
-            :disabled="!hasPrev"
-            @click="prevPage"
-          >
-            Anterior
-          </UButton>
-          <span class="text-sm text-muted">
-            {{ offset + 1 }}–{{ Math.min(offset + PAGE_SIZE, total) }} de {{ total }}
-          </span>
-          <UButton
-            variant="ghost"
-            trailing-icon="i-lucide-chevron-right"
-            :disabled="!hasMore"
-            @click="nextPage"
-          >
-            Próxima
-          </UButton>
-        </div>
-      </template>
-    </div>
+    </AppDataTable>
   </UDashboardPanel>
 
   <!-- ─── Create / Edit Modal ──────────────────────────────────────────────── -->

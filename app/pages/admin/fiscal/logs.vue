@@ -26,15 +26,22 @@ watch(page, () => refresh())
 
 const logs = computed(() => data.value?.data?.logs ?? [])
 const hasMore = computed(() => data.value?.data?.hasMore ?? false)
-const hasPrev = computed(() => page.value > 1)
+
+// Synthetic total so AppDataTable can show/hide next page button
+const total = computed(() => {
+  const count = logs.value.length
+  if (!count) return 0
+  const currentEnd = (page.value - 1) * pageSize + count
+  return hasMore.value ? currentEnd + 1 : currentEnd
+})
 
 const columns = [
-  { key: 'created_at', label: 'Data/Hora' },
-  { key: 'function_name', label: 'Função' },
-  { key: 'status_code', label: 'Status' },
-  { key: 'auth_user_email', label: 'Usuário' },
-  { key: 'request_url', label: 'URL' },
-  { key: 'duration_ms', label: 'Duração (ms)' }
+  { accessorKey: 'created_at', header: 'Data/Hora', enableSorting: false },
+  { accessorKey: 'function_name', header: 'Função', enableSorting: false },
+  { accessorKey: 'status_code', header: 'Status', enableSorting: false },
+  { accessorKey: 'auth_user_email', header: 'Usuário', enableSorting: false },
+  { accessorKey: 'request_url', header: 'URL', enableSorting: false },
+  { accessorKey: 'duration_ms', header: 'Duração (ms)', enableSorting: false }
 ]
 
 function formatDate(val: string | null) {
@@ -54,62 +61,43 @@ function statusColor(code: number | null) {
   <UDashboardPanel>
     <UDashboardNavbar title="Logs de Integração Fiscal" />
 
-    <div class="p-6 space-y-4">
-      <div v-if="status === 'pending'" class="space-y-2">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 rounded" />
-      </div>
-
-      <template v-else>
-        <UTable :rows="logs" :columns="columns">
-          <template #created_at-data="{ row }">
-            <span class="text-xs font-mono">{{ formatDate(row.created_at) }}</span>
-          </template>
-
-          <template #status_code-data="{ row }">
-            <UBadge
-              :color="statusColor(row.status_code)"
-              variant="subtle"
-              size="sm"
-            >
-              {{ row.status_code ?? '—' }}
-            </UBadge>
-          </template>
-
-          <template #request_url-data="{ row }">
-            <span class="text-xs font-mono truncate max-w-64 block" :title="row.request_url">
-              {{ row.request_url || '—' }}
-            </span>
-          </template>
-
-          <template #duration_ms-data="{ row }">
-            {{ row.duration_ms != null ? `${row.duration_ms}ms` : '—' }}
-          </template>
-        </UTable>
-
-        <p v-if="logs.length === 0" class="text-center text-sm text-muted py-8">
-          Nenhum log encontrado.
-        </p>
-
-        <div v-if="hasPrev || hasMore" class="flex justify-between items-center pt-2">
-          <UButton
-            variant="ghost"
-            icon="i-lucide-chevron-left"
-            :disabled="!hasPrev"
-            @click="page--"
-          >
-            Anterior
-          </UButton>
-          <span class="text-sm text-muted">Página {{ page }}</span>
-          <UButton
-            variant="ghost"
-            trailing-icon="i-lucide-chevron-right"
-            :disabled="!hasMore"
-            @click="page++"
-          >
-            Próxima
-          </UButton>
-        </div>
+    <AppDataTable
+      v-model:page="page"
+      :columns="columns"
+      :data="logs as Record<string, unknown>[]"
+      :loading="status === 'pending'"
+      :page-size="pageSize"
+      :total="total"
+      empty-icon="i-lucide-scroll-text"
+      empty-title="Nenhum log encontrado"
+      empty-description="Os logs de integração fiscal aparecerão aqui."
+    >
+      <template #created_at-cell="{ row }">
+        <span class="font-mono text-xs">{{ formatDate(String(row.original.created_at ?? '')) }}</span>
       </template>
-    </div>
+
+      <template #status_code-cell="{ row }">
+        <UBadge
+          :color="statusColor(Number(row.original.status_code) || null)"
+          variant="subtle"
+          size="sm"
+        >
+          {{ row.original.status_code ?? '—' }}
+        </UBadge>
+      </template>
+
+      <template #request_url-cell="{ row }">
+        <span
+          class="block max-w-64 truncate font-mono text-xs"
+          :title="String(row.original.request_url ?? '')"
+        >
+          {{ row.original.request_url || '—' }}
+        </span>
+      </template>
+
+      <template #duration_ms-cell="{ row }">
+        {{ row.original.duration_ms != null ? `${row.original.duration_ms}ms` : '—' }}
+      </template>
+    </AppDataTable>
   </UDashboardPanel>
 </template>
