@@ -26,11 +26,6 @@ const links = computed<NavigationMenuItem[][]>(() => [[
   item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
 ], [
   {
-    label: 'Voltar ao app',
-    icon: 'i-lucide-arrow-left-right',
-    to: '/app/'
-  },
-  {
     label: 'Ajuda',
     icon: 'i-lucide-info',
     to: '/docs'
