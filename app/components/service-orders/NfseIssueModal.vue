@@ -32,7 +32,7 @@ const form = reactive<NfseIssueForm>({
   description: '',
   serviceValue: '',
   takerName: '',
-  takerBusinessId: '',
+  takerBusinessId: ''
 })
 
 // ─── Init on open ─────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ async function init() {
         data: {
           order: {
             reported_defect: string | null
-            items: Array<{ name?: string | null; quantity: number }> | null
+            items: Array<{ name?: string | null, quantity: number }> | null
           }
         }
       }
@@ -117,24 +117,24 @@ async function submit() {
         organization_id: organizationId.value,
         service: {
           description: form.description.trim(),
-          service_value: serviceValue,
+          service_value: serviceValue
         },
         ...(form.takerName || form.takerBusinessId
           ? {
               taker: {
                 company_name: form.takerName || undefined,
-                business_id: form.takerBusinessId.replace(/\D/g, '') || undefined,
-              },
+                business_id: form.takerBusinessId.replace(/\D/g, '') || undefined
+              }
             }
-          : {}),
-      },
+          : {})
+      }
     })
 
     // Mark OS as invoiced
     try {
       await $fetch('/api/service-orders', {
         method: 'POST',
-        body: { orderId: props.order.id, orderData: { status: 'invoiced' } },
+        body: { orderId: props.order.id, orderData: { status: 'invoiced' } }
       })
     } catch {
       // Non-critical: NFS-e was issued; status update failure should not block
@@ -144,13 +144,13 @@ async function submit() {
     emit('issued', props.order.id)
     emit('update:open', false)
   } catch (err: unknown) {
-    type ApiErr = { data?: { data?: { error?: string; details?: { message?: string } }; statusMessage?: string } }
+    type ApiErr = { data?: { data?: { error?: string, details?: { message?: string } }, statusMessage?: string } }
     const e = err as ApiErr
-    const detail =
-      e?.data?.data?.details?.message
-      ?? e?.data?.data?.error
-      ?? e?.data?.statusMessage
-      ?? 'Tente novamente.'
+    const detail
+      = e?.data?.data?.details?.message
+        ?? e?.data?.data?.error
+        ?? e?.data?.statusMessage
+        ?? 'Tente novamente.'
     toast.add({ title: 'Erro ao emitir NF-e', description: detail, color: 'error' })
   } finally {
     isSubmitting.value = false

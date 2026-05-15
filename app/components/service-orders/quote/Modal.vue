@@ -106,8 +106,8 @@ async function downloadPdf() {
 
     // Each page in DocumentPrint is exactly PAGE_PX_H px tall;
     // at PIXEL_RATIO=2 each page stripe in the PNG is PAGE_PX_H*2 px tall.
-    const stripeH  = PAGE_PX_H * PIXEL_RATIO
-    const stripeW  = fullImg.naturalWidth
+    const stripeH = PAGE_PX_H * PIXEL_RATIO
+    const stripeW = fullImg.naturalWidth
     const numPages = Math.max(1, Math.round(fullImg.naturalHeight / stripeH))
 
     const PDF_W = 595.28
@@ -118,7 +118,7 @@ async function downloadPdf() {
     for (let i = 0; i < numPages; i++) {
       // Slice exactly one page-stripe from the full image
       const canvas = document.createElement('canvas')
-      canvas.width  = stripeW
+      canvas.width = stripeW
       canvas.height = stripeH
       const ctx = canvas.getContext('2d')!
       ctx.fillStyle = '#ffffff'
@@ -131,9 +131,9 @@ async function downloadPdf() {
           'image/png'
         )
       })
-      const bytes   = new Uint8Array(await blob.arrayBuffer())
-      const pdfImg  = await pdf.embedPng(bytes)
-      const page    = pdf.addPage([PDF_W, PDF_H])
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      const pdfImg = await pdf.embedPng(bytes)
+      const page = pdf.addPage([PDF_W, PDF_H])
       // Full-bleed: the document already has its own internal padding
       page.drawImage(pdfImg, { x: 0, y: 0, width: PDF_W, height: PDF_H })
     }

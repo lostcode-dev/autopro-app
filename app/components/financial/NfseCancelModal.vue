@@ -8,7 +8,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  cancelled: []
+  'cancelled': []
 }>()
 
 const toast = useToast()
@@ -65,8 +65,19 @@ async function confirm() {
           />
         </UFormField>
         <div class="flex justify-end gap-3">
-          <UButton label="Voltar" color="neutral" variant="ghost" :disabled="isCancelling" @click="$emit('update:open', false)" />
-          <UButton label="Confirmar cancelamento" color="error" :loading="isCancelling" @click="confirm" />
+          <UButton
+            label="Voltar"
+            color="neutral"
+            variant="ghost"
+            :disabled="isCancelling"
+            @click="$emit('update:open', false)"
+          />
+          <UButton
+            label="Confirmar cancelamento"
+            color="error"
+            :loading="isCancelling"
+            @click="confirm"
+          />
         </div>
       </div>
     </template>

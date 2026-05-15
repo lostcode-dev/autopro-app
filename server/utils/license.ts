@@ -5,7 +5,7 @@ import { getSupabaseAdminClient } from './supabase'
 const EMPLOYEE_LIMITS: Record<string, number | null> = {
   starter: 2,
   pro: 10,
-  fiscal: null,
+  fiscal: null
 }
 
 export type OrgLicense = {

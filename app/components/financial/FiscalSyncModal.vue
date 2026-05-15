@@ -44,7 +44,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  synced: []
+  'synced': []
 }>()
 
 const toast = useToast()
@@ -108,7 +108,7 @@ async function lookupCnpj(cnpj: string) {
   if (!cnpj || cnpj.length !== 14) return
   isFetchingCnpj.value = true
   try {
-    const res = await $fetch<{ success: boolean; data: CnpjLookupResult }>(`/api/fiscal/business_id/${encodeURIComponent(cnpj)}`)
+    const res = await $fetch<{ success: boolean, data: CnpjLookupResult }>(`/api/fiscal/business_id/${encodeURIComponent(cnpj)}`)
     if (res?.data) {
       const d = res.data
       if (d.company_name && !syncForm.value.name) syncForm.value.name = d.company_name
@@ -189,64 +189,138 @@ async function submit() {
           Buscando dados do CNPJ na Receita Federal...
         </div>
 
-        <UAlert v-if="syncFormError" color="error" variant="subtle" :title="syncFormError" icon="i-lucide-alert-circle" />
+        <UAlert
+          v-if="syncFormError"
+          color="error"
+          variant="subtle"
+          :title="syncFormError"
+          icon="i-lucide-alert-circle"
+        />
 
         <!-- Identity -->
         <div class="grid grid-cols-2 gap-4">
           <UFormField label="CNPJ" class="col-span-2 sm:col-span-1" required>
-            <UInput v-model="syncForm.business_id" placeholder="00000000000000" :disabled="isSyncing" class="w-full font-mono" />
+            <UInput
+              v-model="syncForm.business_id"
+              placeholder="00000000000000"
+              :disabled="isSyncing"
+              class="w-full font-mono"
+            />
           </UFormField>
           <UFormField label="Razão Social" class="col-span-2 sm:col-span-1" required>
-            <UInput v-model="syncForm.name" placeholder="Razão social da empresa" :disabled="isSyncing" class="w-full" />
+            <UInput
+              v-model="syncForm.name"
+              placeholder="Razão social da empresa"
+              :disabled="isSyncing"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Nome Fantasia" class="col-span-2">
-            <UInput v-model="syncForm.trade_name" placeholder="Nome fantasia (opcional)" :disabled="isSyncing" class="w-full" />
+            <UInput
+              v-model="syncForm.trade_name"
+              placeholder="Nome fantasia (opcional)"
+              :disabled="isSyncing"
+              class="w-full"
+            />
           </UFormField>
         </div>
 
         <!-- Tax registrations -->
         <div class="grid grid-cols-2 gap-4">
           <UFormField label="Inscrição Estadual">
-            <UInput v-model="syncForm.state_registration" placeholder="Apenas números" :disabled="isSyncing" class="w-full" />
+            <UInput
+              v-model="syncForm.state_registration"
+              placeholder="Apenas números"
+              :disabled="isSyncing"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="Inscrição Municipal">
-            <UInput v-model="syncForm.municipal_registration" placeholder="Apenas números" :disabled="isSyncing" class="w-full" />
+            <UInput
+              v-model="syncForm.municipal_registration"
+              placeholder="Apenas números"
+              :disabled="isSyncing"
+              class="w-full"
+            />
           </UFormField>
         </div>
 
         <!-- Address -->
         <fieldset class="space-y-3">
-          <legend class="text-xs font-semibold uppercase tracking-wide text-muted">Endereço</legend>
+          <legend class="text-xs font-semibold uppercase tracking-wide text-muted">
+            Endereço
+          </legend>
           <div class="grid grid-cols-3 gap-4">
             <UFormField label="Logradouro" class="col-span-2">
-              <UInput v-model="syncForm.street" placeholder="Nome da rua/avenida" :disabled="isSyncing" class="w-full" />
+              <UInput
+                v-model="syncForm.street"
+                placeholder="Nome da rua/avenida"
+                :disabled="isSyncing"
+                class="w-full"
+              />
             </UFormField>
             <UFormField label="Número">
-              <UInput v-model="syncForm.address_number" placeholder="Nº" :disabled="isSyncing" class="w-full" />
+              <UInput
+                v-model="syncForm.address_number"
+                placeholder="Nº"
+                :disabled="isSyncing"
+                class="w-full"
+              />
             </UFormField>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <UFormField label="Complemento">
-              <UInput v-model="syncForm.complement" placeholder="Apto, sala..." :disabled="isSyncing" class="w-full" />
+              <UInput
+                v-model="syncForm.complement"
+                placeholder="Apto, sala..."
+                :disabled="isSyncing"
+                class="w-full"
+              />
             </UFormField>
             <UFormField label="Bairro">
-              <UInput v-model="syncForm.neighborhood" placeholder="Bairro" :disabled="isSyncing" class="w-full" />
+              <UInput
+                v-model="syncForm.neighborhood"
+                placeholder="Bairro"
+                :disabled="isSyncing"
+                class="w-full"
+              />
             </UFormField>
           </div>
           <div class="grid grid-cols-3 gap-4">
             <UFormField label="Cidade" class="col-span-2">
-              <UInput v-model="syncForm.city" placeholder="Nome do município" :disabled="isSyncing" class="w-full" />
+              <UInput
+                v-model="syncForm.city"
+                placeholder="Nome do município"
+                :disabled="isSyncing"
+                class="w-full"
+              />
             </UFormField>
             <UFormField label="UF">
-              <UInput v-model="syncForm.state" placeholder="SP" maxlength="2" :disabled="isSyncing" class="w-full uppercase" />
+              <UInput
+                v-model="syncForm.state"
+                placeholder="SP"
+                maxlength="2"
+                :disabled="isSyncing"
+                class="w-full uppercase"
+              />
             </UFormField>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <UFormField label="CEP">
-              <UInput v-model="syncForm.zip_code" placeholder="00000000" :disabled="isSyncing" class="w-full" />
+              <UInput
+                v-model="syncForm.zip_code"
+                placeholder="00000000"
+                :disabled="isSyncing"
+                class="w-full"
+              />
             </UFormField>
             <UFormField label="Código IBGE do Município">
-              <UInput v-model="syncForm.municipality_code" placeholder="Ex: 3550308" :disabled="isSyncing" class="w-full" />
+              <UInput
+                v-model="syncForm.municipality_code"
+                placeholder="Ex: 3550308"
+                :disabled="isSyncing"
+                class="w-full"
+              />
             </UFormField>
           </div>
         </fieldset>
@@ -254,10 +328,21 @@ async function submit() {
         <!-- Contact -->
         <div class="grid grid-cols-2 gap-4">
           <UFormField label="Telefone">
-            <UInput v-model="syncForm.phone" placeholder="11999999999" :disabled="isSyncing" class="w-full" />
+            <UInput
+              v-model="syncForm.phone"
+              placeholder="11999999999"
+              :disabled="isSyncing"
+              class="w-full"
+            />
           </UFormField>
           <UFormField label="E-mail">
-            <UInput v-model="syncForm.email" type="email" placeholder="contato@empresa.com.br" :disabled="isSyncing" class="w-full" />
+            <UInput
+              v-model="syncForm.email"
+              type="email"
+              placeholder="contato@empresa.com.br"
+              :disabled="isSyncing"
+              class="w-full"
+            />
           </UFormField>
         </div>
 
@@ -265,15 +350,30 @@ async function submit() {
         <div class="flex items-center gap-3 rounded-md border border-default bg-muted/30 px-4 py-3">
           <UToggle v-model="syncForm.nfse_enabled" :disabled="isSyncing" />
           <div>
-            <p class="text-sm font-medium text-highlighted">Habilitar emissão de NFS-e</p>
-            <p class="text-xs text-muted">Ativa a funcionalidade de emissão de Notas Fiscais de Serviço Eletrônicas</p>
+            <p class="text-sm font-medium text-highlighted">
+              Habilitar emissão de NFS-e
+            </p>
+            <p class="text-xs text-muted">
+              Ativa a funcionalidade de emissão de Notas Fiscais de Serviço Eletrônicas
+            </p>
           </div>
         </div>
 
         <!-- Actions -->
         <div class="flex justify-end gap-3 border-t border-default pt-4">
-          <UButton label="Cancelar" color="neutral" variant="ghost" :disabled="isSyncing" @click="$emit('update:open', false)" />
-          <UButton label="Sincronizar empresa" icon="i-lucide-cloud-upload" :loading="isSyncing" @click="submit" />
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="ghost"
+            :disabled="isSyncing"
+            @click="$emit('update:open', false)"
+          />
+          <UButton
+            label="Sincronizar empresa"
+            icon="i-lucide-cloud-upload"
+            :loading="isSyncing"
+            @click="submit"
+          />
         </div>
       </div>
     </template>

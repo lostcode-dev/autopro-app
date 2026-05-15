@@ -19,7 +19,7 @@ function buildNfseFields(raw: FocusNfeNfseResponse, rawJson: string) {
     dps_series: raw.serie_rps ?? null,
     dps_number: raw.numero_rps ?? null,
     response_json: rawJson,
-    messages_json: raw.erros?.length ? JSON.stringify(raw.erros) : null,
+    messages_json: raw.erros?.length ? JSON.stringify(raw.erros) : null
   }
 }
 
@@ -66,7 +66,7 @@ export async function upsertNfseRecord(params: UpsertNfseParams): Promise<string
       provider_reference: reference,
       payload_json: params.payloadJson,
       created_by: params.userEmail ?? null,
-      ...fields,
+      ...fields
     })
     .select('id')
     .single()
@@ -81,7 +81,7 @@ export async function upsertNfseRecord(params: UpsertNfseParams): Promise<string
 export async function syncNfseFromApi(
   reference: string,
   rawResponse: FocusNfeNfseResponse,
-  rawResponseJson: string,
+  rawResponseJson: string
 ): Promise<void> {
   const supabase = getSupabaseAdminClient()
   const fields = buildNfseFields(rawResponse, rawResponseJson)
@@ -104,7 +104,7 @@ export async function markNfseDbCancelled(reference: string, rawCancelJson?: str
     .update({
       status: 'canceled',
       provider_status: 'cancelado',
-      cancellation_json: rawCancelJson ?? null,
+      cancellation_json: rawCancelJson ?? null
     })
     .eq('provider_reference', reference)
     .is('deleted_at', null)

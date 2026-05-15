@@ -15,7 +15,7 @@ const ACTION_PLAN_REQUIREMENTS: Record<string, string> = {
   'product_invoice.create': 'fiscal',
   'product_invoice.update': 'fiscal',
   'product_invoice.delete': 'fiscal',
-  'fiscal.manage': 'fiscal',
+  'fiscal.manage': 'fiscal'
 }
 
 const PLAN_ORDER = ['starter', 'pro', 'fiscal']

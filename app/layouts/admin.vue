@@ -20,7 +20,7 @@ function item(label: string, icon: string, to: string): NavigationMenuItem {
 
 const links = computed<NavigationMenuItem[][]>(() => [[
   item('Dashboard', 'i-lucide-layout-dashboard', '/admin'),
-  item('Organizacoes', 'i-lucide-building-2', '/admin/organizations'),
+  item('Organizações', 'i-lucide-building-2', '/admin/organizations'),
   item('Fiscal empresas', 'i-lucide-file-stack', '/admin/fiscal/companies'),
   item('Fiscal logs', 'i-lucide-scroll-text', '/admin/fiscal/logs')
 ], [

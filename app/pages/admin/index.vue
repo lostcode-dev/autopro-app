@@ -44,7 +44,7 @@ const statsCards = computed(() => [
 ])
 
 // ─── Active tab ────────────────────────────────────────────────────────────────
-const activeTab = ref('subscriptions')
+const activeTab = ref('invoices')
 
 // ─── Subscriptions chart (last 12 months) ──────────────────────────────────────
 const { data: subsChartData, status: subsChartStatus } = await useAsyncData(
@@ -163,6 +163,7 @@ const INV_STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'neutr
 }
 
 const INV_STATUS_LABELS: Record<string, string> = {
+  open: 'Aberta',
   paid: 'Paga',
   pending: 'Pendente',
   failed: 'Falhou',

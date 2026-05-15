@@ -37,7 +37,7 @@ export type NfseDetail = {
   effective_rate: number | null
   services_description: string | null
   service_item_code: string | null
-  errors: Array<{ code: string; message: string; correction: string | null }>
+  errors: Array<{ code: string, message: string, correction: string | null }>
 }
 
 export type SyncStatusOrganization = {

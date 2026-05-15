@@ -1,58 +1,58 @@
 <script setup lang="ts">
 definePageMeta({
-  layout: "admin",
-  middleware: ["workshop-admin"],
-});
-useSeoMeta({ title: "Organizações — Admin" });
+  layout: 'admin',
+  middleware: ['workshop-admin']
+})
+useSeoMeta({ title: 'Organizações — Admin' })
 
-const requestFetch = useRequestFetch();
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
-const search = ref("");
-const page = ref(1);
-const pageSize = 30;
+const search = ref('')
+const page = ref(1)
+const pageSize = 30
 
 const { data, status, refresh } = await useAsyncData(
-  "admin-organizations",
+  'admin-organizations',
   () =>
     requestFetch<{
-      items: any[];
-      total: number;
-      page: number;
-      page_size: number;
-    }>("/api/admin/organizations", {
+      items: any[]
+      total: number
+      page: number
+      page_size: number
+    }>('/api/admin/organizations', {
       headers: requestHeaders,
       query: {
         search: search.value || undefined,
         page: page.value,
-        page_size: pageSize,
-      },
-    }),
-);
+        page_size: pageSize
+      }
+    })
+)
 
 watch(search, () => {
-  page.value = 1;
-  refresh();
-});
-watch(page, () => refresh());
+  page.value = 1
+  refresh()
+})
+watch(page, () => refresh())
 
-const items = computed(() => data.value?.items ?? []);
-const total = computed(() => data.value?.total ?? 0);
+const items = computed(() => data.value?.items ?? [])
+const total = computed(() => data.value?.total ?? 0)
 
 const columns = [
-  { accessorKey: "name", header: "Razão Social", enableSorting: false },
-  { accessorKey: "tax_id", header: "CNPJ/CPF", enableSorting: false },
-  { accessorKey: "email", header: "E-mail", enableSorting: false },
-  { accessorKey: "user_count", header: "Usuários", enableSorting: false },
-  { accessorKey: "is_active", header: "Status", enableSorting: false },
-  { accessorKey: "created_at", header: "Criado em", enableSorting: false },
-];
+  { accessorKey: 'name', header: 'Razão Social', enableSorting: false },
+  { accessorKey: 'tax_id', header: 'CNPJ/CPF', enableSorting: false },
+  { accessorKey: 'email', header: 'E-mail', enableSorting: false },
+  { accessorKey: 'user_count', header: 'Usuários', enableSorting: false },
+  { accessorKey: 'is_active', header: 'Status', enableSorting: false },
+  { accessorKey: 'created_at', header: 'Criado em', enableSorting: false }
+]
 
 function formatDate(val: string | null) {
-  if (!val) return "—";
-  return new Date(val).toLocaleDateString("pt-BR");
+  if (!val) return '—'
+  return new Date(val).toLocaleDateString('pt-BR')
 }
 </script>
 

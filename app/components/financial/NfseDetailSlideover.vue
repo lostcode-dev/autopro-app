@@ -8,8 +8,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  cancel: [row: NfseRow]
-  email: [row: NfseRow]
+  'cancel': [row: NfseRow]
+  'email': [row: NfseRow]
 }>()
 
 const toast = useToast()
@@ -28,7 +28,7 @@ async function loadDetail(row: NfseRow) {
   detailData.value = null
   isLoading.value = true
   try {
-    const res = await $fetch<{ success: boolean; data: NfseDetail }>(
+    const res = await $fetch<{ success: boolean, data: NfseDetail }>(
       `/api/fiscal/nfse/${encodeURIComponent(row.provider_reference)}`
     )
     detailData.value = res.data
@@ -70,8 +70,12 @@ function formatDate(val: string | null) {
   >
     <template #header>
       <div>
-        <h2 class="text-lg font-bold text-highlighted">Detalhes da NFS-e</h2>
-        <p v-if="row" class="mt-0.5 font-mono text-xs text-muted">{{ row.provider_reference }}</p>
+        <h2 class="text-lg font-bold text-highlighted">
+          Detalhes da NFS-e
+        </h2>
+        <p v-if="row" class="mt-0.5 font-mono text-xs text-muted">
+          {{ row.provider_reference }}
+        </p>
       </div>
     </template>
 
@@ -115,19 +119,33 @@ function formatDate(val: string | null) {
         <!-- Info grid -->
         <dl class="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
           <div>
-            <dt class="text-xs font-medium text-muted">Número NFS-e</dt>
-            <dd class="mt-0.5 font-semibold text-highlighted">{{ detailData.nfse_number ?? '—' }}</dd>
+            <dt class="text-xs font-medium text-muted">
+              Número NFS-e
+            </dt>
+            <dd class="mt-0.5 font-semibold text-highlighted">
+              {{ detailData.nfse_number ?? '—' }}
+            </dd>
           </div>
           <div>
-            <dt class="text-xs font-medium text-muted">Cód. Verificação</dt>
-            <dd class="mt-0.5 font-mono text-xs text-highlighted">{{ detailData.verification_code ?? '—' }}</dd>
+            <dt class="text-xs font-medium text-muted">
+              Cód. Verificação
+            </dt>
+            <dd class="mt-0.5 font-mono text-xs text-highlighted">
+              {{ detailData.verification_code ?? '—' }}
+            </dd>
           </div>
           <div>
-            <dt class="text-xs font-medium text-muted">Emissão</dt>
-            <dd class="mt-0.5">{{ formatDate(detailData.issued_at) }}</dd>
+            <dt class="text-xs font-medium text-muted">
+              Emissão
+            </dt>
+            <dd class="mt-0.5">
+              {{ formatDate(detailData.issued_at) }}
+            </dd>
           </div>
           <div>
-            <dt class="text-xs font-medium text-muted">Ambiente</dt>
+            <dt class="text-xs font-medium text-muted">
+              Ambiente
+            </dt>
             <dd class="mt-0.5">
               <UBadge
                 :label="detailData.environment === 'production' ? 'Produção' : 'Homologação'"
@@ -138,26 +156,42 @@ function formatDate(val: string | null) {
             </dd>
           </div>
           <div class="col-span-2">
-            <dt class="text-xs font-medium text-muted">Tomador</dt>
-            <dd class="mt-0.5 font-semibold text-highlighted">{{ detailData.taker_name ?? '—' }}</dd>
-            <dd v-if="detailData.taker_id" class="font-mono text-xs text-muted">{{ detailData.taker_id }}</dd>
-            <dd v-if="detailData.taker_email" class="text-xs text-muted">{{ detailData.taker_email }}</dd>
+            <dt class="text-xs font-medium text-muted">
+              Tomador
+            </dt>
+            <dd class="mt-0.5 font-semibold text-highlighted">
+              {{ detailData.taker_name ?? '—' }}
+            </dd>
+            <dd v-if="detailData.taker_id" class="font-mono text-xs text-muted">
+              {{ detailData.taker_id }}
+            </dd>
+            <dd v-if="detailData.taker_email" class="text-xs text-muted">
+              {{ detailData.taker_email }}
+            </dd>
           </div>
           <div>
-            <dt class="text-xs font-medium text-muted">Valor serviços</dt>
+            <dt class="text-xs font-medium text-muted">
+              Valor serviços
+            </dt>
             <dd class="mt-0.5 font-semibold text-highlighted">
               {{ detailData.services_amount != null ? detailData.services_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—' }}
             </dd>
           </div>
           <div>
-            <dt class="text-xs font-medium text-muted">ISS retido</dt>
+            <dt class="text-xs font-medium text-muted">
+              ISS retido
+            </dt>
             <dd class="mt-0.5">
               {{ detailData.iss_amount != null ? detailData.iss_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—' }}
             </dd>
           </div>
           <div v-if="detailData.services_description" class="col-span-2">
-            <dt class="text-xs font-medium text-muted">Descrição dos serviços</dt>
-            <dd class="mt-0.5 whitespace-pre-line text-sm">{{ detailData.services_description }}</dd>
+            <dt class="text-xs font-medium text-muted">
+              Descrição dos serviços
+            </dt>
+            <dd class="mt-0.5 whitespace-pre-line text-sm">
+              {{ detailData.services_description }}
+            </dd>
           </div>
         </dl>
 
@@ -178,14 +212,20 @@ function formatDate(val: string | null) {
 
         <!-- Errors -->
         <div v-if="detailData.errors?.length" class="space-y-2">
-          <p class="text-xs font-semibold uppercase tracking-wide text-error">Erros</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-error">
+            Erros
+          </p>
           <div
             v-for="(e, i) in detailData.errors"
             :key="i"
             class="rounded-md border border-error/30 bg-error/5 p-3 text-sm"
           >
-            <p class="font-semibold text-error">{{ e.code }}: {{ e.message }}</p>
-            <p v-if="e.correction" class="mt-1 text-xs text-muted">{{ e.correction }}</p>
+            <p class="font-semibold text-error">
+              {{ e.code }}: {{ e.message }}
+            </p>
+            <p v-if="e.correction" class="mt-1 text-xs text-muted">
+              {{ e.correction }}
+            </p>
           </div>
         </div>
       </div>

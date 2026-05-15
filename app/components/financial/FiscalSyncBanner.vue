@@ -13,7 +13,9 @@ defineEmits<{
     <div class="flex items-start gap-3">
       <UIcon name="i-lucide-alert-triangle" class="mt-0.5 h-5 w-5 shrink-0 text-warning" />
       <div class="flex-1">
-        <p class="font-semibold text-highlighted">Integração fiscal não configurada</p>
+        <p class="font-semibold text-highlighted">
+          Integração fiscal não configurada
+        </p>
         <p class="mt-0.5 text-sm text-muted">
           Sua empresa ainda não está registrada na Focus NFe. Configure a integração para emitir notas fiscais de serviço (NFS-e).
         </p>

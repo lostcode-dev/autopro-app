@@ -2,10 +2,10 @@ import { monitoredNuvemFiscalFetch, sanitizeCpfCnpj, normalizeText } from './nuv
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const FOCUS_NFE_OWNER_EMAIL =
-  process.env.FOCUSNFE_OWNER_EMAIL ||
-  process.env.NUVEMFISCAL_OWNER_EMAIL ||
-  'beenkoficial@gmail.com'
+export const FOCUS_NFE_OWNER_EMAIL
+  = process.env.FOCUSNFE_OWNER_EMAIL
+    || process.env.NUVEMFISCAL_OWNER_EMAIL
+    || 'beenkoficial@gmail.com'
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 

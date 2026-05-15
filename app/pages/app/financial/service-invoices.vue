@@ -32,7 +32,7 @@ const showSyncModal = ref(false)
 type NfseListResponse = {
   success: boolean
   data: NfseRow[]
-  meta: { total: number; page: number; limit: number; pages: number }
+  meta: { total: number, page: number, limit: number, pages: number }
 }
 
 const DEFAULT_PAGE_SIZE = 20
@@ -280,7 +280,13 @@ function requestEmail(row: NfseRow) {
         <template #actions-cell="{ row }">
           <div class="flex items-center justify-end gap-1">
             <UTooltip text="Ver detalhes">
-              <UButton icon="i-lucide-eye" color="neutral" variant="ghost" size="xs" @click="openDetail(row.original as NfseRow)" />
+              <UButton
+                icon="i-lucide-eye"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                @click="openDetail(row.original as NfseRow)"
+              />
             </UTooltip>
             <UTooltip text="Reenviar por e-mail">
               <UButton

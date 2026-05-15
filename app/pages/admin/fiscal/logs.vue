@@ -1,53 +1,53 @@
 <script setup lang="ts">
 definePageMeta({
-  layout: "admin",
-  middleware: ["workshop-admin"],
-});
-useSeoMeta({ title: "Fiscal — Logs" });
+  layout: 'admin',
+  middleware: ['workshop-admin']
+})
+useSeoMeta({ title: 'Fiscal — Logs' })
 
-const requestFetch = useRequestFetch();
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
-const page = ref(1);
-const pageSize = 50;
+const page = ref(1)
+const pageSize = 50
 
-const { data, status, refresh } = await useAsyncData("admin-fiscal-logs", () =>
+const { data, status, refresh } = await useAsyncData('admin-fiscal-logs', () =>
   requestFetch<{
-    success: boolean;
-    data: any[];
-    meta: { total: number; page: number; pageSize: number };
-  }>("/api/fiscal/config/logs", {
+    success: boolean
+    data: any[]
+    meta: { total: number, page: number, pageSize: number }
+  }>('/api/fiscal/config/logs', {
     headers: requestHeaders,
-    query: { page: page.value, pageSize },
-  }),
-);
+    query: { page: page.value, pageSize }
+  })
+)
 
-watch(page, () => refresh());
+watch(page, () => refresh())
 
-const logs = computed(() => data.value?.data ?? []);
-const total = computed(() => data.value?.meta?.total ?? 0);
+const logs = computed(() => data.value?.data ?? [])
+const total = computed(() => data.value?.meta?.total ?? 0)
 
 const columns = [
-  { accessorKey: "created_at", header: "Data/Hora", enableSorting: false },
-  { accessorKey: "function_name", header: "Função", enableSorting: false },
-  { accessorKey: "response_status", header: "Status", enableSorting: false },
-  { accessorKey: "user_email", header: "Usuário", enableSorting: false },
-  { accessorKey: "request_url", header: "URL", enableSorting: false },
-  { accessorKey: "duration_ms", header: "Duração (ms)", enableSorting: false },
-];
+  { accessorKey: 'created_at', header: 'Data/Hora', enableSorting: false },
+  { accessorKey: 'function_name', header: 'Função', enableSorting: false },
+  { accessorKey: 'response_status', header: 'Status', enableSorting: false },
+  { accessorKey: 'user_email', header: 'Usuário', enableSorting: false },
+  { accessorKey: 'request_url', header: 'URL', enableSorting: false },
+  { accessorKey: 'duration_ms', header: 'Duração (ms)', enableSorting: false }
+]
 
 function formatDate(val: string | null) {
-  if (!val) return "—";
-  return new Date(val).toLocaleString("pt-BR");
+  if (!val) return '—'
+  return new Date(val).toLocaleString('pt-BR')
 }
 
 function statusColor(code: number | null) {
-  if (!code) return "neutral";
-  if (code >= 500) return "error";
-  if (code >= 400) return "warning";
-  return "success";
+  if (!code) return 'neutral'
+  if (code >= 500) return 'error'
+  if (code >= 400) return 'warning'
+  return 'success'
 }
 </script>
 

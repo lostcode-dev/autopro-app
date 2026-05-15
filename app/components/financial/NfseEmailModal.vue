@@ -8,7 +8,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
-  sent: []
+  'sent': []
 }>()
 
 const toast = useToast()
@@ -70,8 +70,19 @@ async function send() {
           />
         </UFormField>
         <div class="flex justify-end gap-3">
-          <UButton label="Cancelar" color="neutral" variant="ghost" :disabled="isSending" @click="$emit('update:open', false)" />
-          <UButton label="Enviar" icon="i-lucide-send" :loading="isSending" @click="send" />
+          <UButton
+            label="Cancelar"
+            color="neutral"
+            variant="ghost"
+            :disabled="isSending"
+            @click="$emit('update:open', false)"
+          />
+          <UButton
+            label="Enviar"
+            icon="i-lucide-send"
+            :loading="isSending"
+            @click="send"
+          />
         </div>
       </div>
     </template>

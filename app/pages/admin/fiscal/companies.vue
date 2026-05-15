@@ -1,296 +1,296 @@
 <script setup lang="ts">
 definePageMeta({
-  layout: "admin",
-  middleware: ["workshop-admin"],
-});
-useSeoMeta({ title: "Fiscal — Empresas Focus NFe" });
+  layout: 'admin',
+  middleware: ['workshop-admin']
+})
+useSeoMeta({ title: 'Fiscal — Empresas Focus NFe' })
 
-const toast = useToast();
-const requestFetch = useRequestFetch();
+const toast = useToast()
+const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
-  ? useRequestHeaders(["cookie"])
-  : undefined;
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
 // ─── List ──────────────────────────────────────────────────────────────────────
 
-const searchCnpj = ref("");
-const page = ref(1);
-const PAGE_SIZE = 50;
+const searchCnpj = ref('')
+const page = ref(1)
+const PAGE_SIZE = 50
 
 const { data, status, refresh } = await useAsyncData(
-  "admin-focusnfe-companies",
+  'admin-focusnfe-companies',
   () =>
-    requestFetch<{ success: boolean; data: any[]; total?: number }>(
-      "/api/fiscal/company",
+    requestFetch<{ success: boolean, data: any[], total?: number }>(
+      '/api/fiscal/company',
       {
         headers: requestHeaders,
         query: {
           offset: (page.value - 1) * PAGE_SIZE,
-          business_id: searchCnpj.value || undefined,
-        },
-      },
-    ),
-);
+          business_id: searchCnpj.value || undefined
+        }
+      }
+    )
+)
 
 watch(searchCnpj, () => {
-  page.value = 1;
-  refresh();
-});
-watch(page, () => refresh());
+  page.value = 1
+  refresh()
+})
+watch(page, () => refresh())
 
-const companies = computed(() => data.value?.data ?? []);
-const total = computed(() => data.value?.total ?? companies.value.length);
+const companies = computed(() => data.value?.data ?? [])
+const total = computed(() => data.value?.total ?? companies.value.length)
 
 // ─── Form helpers ──────────────────────────────────────────────────────────────
 
 const TAX_REGIME_OPTIONS = [
-  { value: 1, label: "Simples Nacional" },
-  { value: 2, label: "Simples Nacional - excesso sublimite" },
-  { value: 3, label: "Regime Normal" },
-];
+  { value: 1, label: 'Simples Nacional' },
+  { value: 2, label: 'Simples Nacional - excesso sublimite' },
+  { value: 3, label: 'Regime Normal' }
+]
 
 const STATE_OPTIONS = [
-  "AC",
-  "AL",
-  "AP",
-  "AM",
-  "BA",
-  "CE",
-  "DF",
-  "ES",
-  "GO",
-  "MA",
-  "MT",
-  "MS",
-  "MG",
-  "PA",
-  "PB",
-  "PR",
-  "PE",
-  "PI",
-  "RJ",
-  "RN",
-  "RS",
-  "RO",
-  "RR",
-  "SC",
-  "SP",
-  "SE",
-  "TO",
-].map((s) => ({ value: s, label: s }));
+  'AC',
+  'AL',
+  'AP',
+  'AM',
+  'BA',
+  'CE',
+  'DF',
+  'ES',
+  'GO',
+  'MA',
+  'MT',
+  'MS',
+  'MG',
+  'PA',
+  'PB',
+  'PR',
+  'PE',
+  'PI',
+  'RJ',
+  'RN',
+  'RS',
+  'RO',
+  'RR',
+  'SC',
+  'SP',
+  'SE',
+  'TO'
+].map(s => ({ value: s, label: s }))
 
 function defaultForm() {
   return {
-    name: "",
-    trade_name: "",
-    business_id: "",
-    individual_id: "",
-    state_registration: "" as string | number,
-    municipal_registration: "" as string | number,
+    name: '',
+    trade_name: '',
+    business_id: '',
+    individual_id: '',
+    state_registration: '' as string | number,
+    municipal_registration: '' as string | number,
     tax_regime: undefined as number | undefined,
-    street: "",
-    address_number: "" as string | number,
-    complement: "",
-    neighborhood: "",
-    municipality: "",
-    state: "",
-    zip_code: "" as string | number,
-    email: "",
-    phone: "",
-    nfse_enabled: false,
-  };
+    street: '',
+    address_number: '' as string | number,
+    complement: '',
+    neighborhood: '',
+    municipality: '',
+    state: '',
+    zip_code: '' as string | number,
+    email: '',
+    phone: '',
+    nfse_enabled: false
+  }
 }
 
 // ─── Create / Edit modal ───────────────────────────────────────────────────────
 
-const showFormModal = ref(false);
-const editingCompany = ref<any>(null);
-const formLoading = ref(false);
-const form = ref(defaultForm());
+const showFormModal = ref(false)
+const editingCompany = ref<any>(null)
+const formLoading = ref(false)
+const form = ref(defaultForm())
 
 function openCreate() {
-  editingCompany.value = null;
-  form.value = defaultForm();
-  showFormModal.value = true;
+  editingCompany.value = null
+  form.value = defaultForm()
+  showFormModal.value = true
 }
 
 function openEdit(company: any) {
-  editingCompany.value = company;
+  editingCompany.value = company
   form.value = {
-    name: company.name ?? "",
-    trade_name: company.trade_name ?? "",
-    business_id: company.business_id ?? "",
-    individual_id: company.individual_id ?? "",
-    state_registration: company.state_registration ?? "",
-    municipal_registration: company.municipal_registration ?? "",
+    name: company.name ?? '',
+    trade_name: company.trade_name ?? '',
+    business_id: company.business_id ?? '',
+    individual_id: company.individual_id ?? '',
+    state_registration: company.state_registration ?? '',
+    municipal_registration: company.municipal_registration ?? '',
     tax_regime: company.tax_regime ? Number(company.tax_regime) : undefined,
-    street: company.street ?? "",
-    address_number: company.address_number ?? "",
-    complement: company.complement ?? "",
-    neighborhood: company.neighborhood ?? "",
-    municipality: company.municipality ?? "",
-    state: company.state ?? "",
-    zip_code: company.zip_code ?? "",
-    email: company.email ?? "",
-    phone: company.phone ?? "",
-    nfse_enabled: company.nfse_enabled ?? false,
-  };
-  showFormModal.value = true;
+    street: company.street ?? '',
+    address_number: company.address_number ?? '',
+    complement: company.complement ?? '',
+    neighborhood: company.neighborhood ?? '',
+    municipality: company.municipality ?? '',
+    state: company.state ?? '',
+    zip_code: company.zip_code ?? '',
+    email: company.email ?? '',
+    phone: company.phone ?? '',
+    nfse_enabled: company.nfse_enabled ?? false
+  }
+  showFormModal.value = true
 }
 
 async function submitForm() {
   if (!form.value.name?.trim()) {
-    toast.add({ title: "Razão social é obrigatória", color: "error" });
-    return;
+    toast.add({ title: 'Razão social é obrigatória', color: 'error' })
+    return
   }
   if (
-    !form.value.business_id?.toString().trim() &&
-    !form.value.individual_id?.toString().trim()
+    !form.value.business_id?.toString().trim()
+    && !form.value.individual_id?.toString().trim()
   ) {
-    toast.add({ title: "CNPJ ou CPF é obrigatório", color: "error" });
-    return;
+    toast.add({ title: 'CNPJ ou CPF é obrigatório', color: 'error' })
+    return
   }
 
-  formLoading.value = true;
+  formLoading.value = true
   try {
     const payload: Record<string, any> = {
       name: form.value.name,
-      nfse_enabled: form.value.nfse_enabled,
-    };
+      nfse_enabled: form.value.nfse_enabled
+    }
 
-    if (form.value.trade_name) payload.trade_name = form.value.trade_name;
+    if (form.value.trade_name) payload.trade_name = form.value.trade_name
     if (form.value.business_id)
-      payload.business_id = String(form.value.business_id).replace(/\D/g, "");
+      payload.business_id = String(form.value.business_id).replace(/\D/g, '')
     if (form.value.individual_id)
       payload.individual_id = String(form.value.individual_id).replace(
         /\D/g,
-        "",
-      );
+        ''
+      )
     if (form.value.state_registration)
-      payload.state_registration = Number(form.value.state_registration);
+      payload.state_registration = Number(form.value.state_registration)
     if (form.value.municipal_registration)
       payload.municipal_registration = Number(
-        form.value.municipal_registration,
-      );
+        form.value.municipal_registration
+      )
     if (form.value.tax_regime)
-      payload.tax_regime = Number(form.value.tax_regime);
-    if (form.value.street) payload.street = form.value.street;
+      payload.tax_regime = Number(form.value.tax_regime)
+    if (form.value.street) payload.street = form.value.street
     if (form.value.address_number)
-      payload.address_number = Number(form.value.address_number);
-    if (form.value.complement) payload.complement = form.value.complement;
-    if (form.value.neighborhood) payload.neighborhood = form.value.neighborhood;
-    if (form.value.municipality) payload.municipality = form.value.municipality;
-    if (form.value.state) payload.state = form.value.state;
+      payload.address_number = Number(form.value.address_number)
+    if (form.value.complement) payload.complement = form.value.complement
+    if (form.value.neighborhood) payload.neighborhood = form.value.neighborhood
+    if (form.value.municipality) payload.municipality = form.value.municipality
+    if (form.value.state) payload.state = form.value.state
     if (form.value.zip_code)
-      payload.zip_code = Number(String(form.value.zip_code).replace(/\D/g, ""));
-    if (form.value.email) payload.email = form.value.email;
-    if (form.value.phone) payload.phone = form.value.phone;
+      payload.zip_code = Number(String(form.value.zip_code).replace(/\D/g, ''))
+    if (form.value.email) payload.email = form.value.email
+    if (form.value.phone) payload.phone = form.value.phone
 
     if (editingCompany.value) {
       await $fetch(`/api/fiscal/company/${editingCompany.value.id}`, {
-        method: "PUT",
-        body: payload,
-      });
-      toast.add({ title: "Empresa atualizada com sucesso", color: "success" });
+        method: 'PUT',
+        body: payload
+      })
+      toast.add({ title: 'Empresa atualizada com sucesso', color: 'success' })
     } else {
-      await $fetch("/api/fiscal/company", {
-        method: "POST",
-        body: payload,
-      });
-      toast.add({ title: "Empresa criada com sucesso", color: "success" });
+      await $fetch('/api/fiscal/company', {
+        method: 'POST',
+        body: payload
+      })
+      toast.add({ title: 'Empresa criada com sucesso', color: 'success' })
     }
 
-    showFormModal.value = false;
-    refresh();
+    showFormModal.value = false
+    refresh()
   } catch (e: any) {
-    const detail =
-      e?.data?.data?.error ??
-      e?.data?.message ??
-      e?.message ??
-      "Erro desconhecido";
+    const detail
+      = e?.data?.data?.error
+        ?? e?.data?.message
+        ?? e?.message
+        ?? 'Erro desconhecido'
     toast.add({
-      title: "Erro ao salvar empresa",
+      title: 'Erro ao salvar empresa',
       description: detail,
-      color: "error",
-    });
+      color: 'error'
+    })
   } finally {
-    formLoading.value = false;
+    formLoading.value = false
   }
 }
 
 // ─── Delete modal ──────────────────────────────────────────────────────────────
 
-const showDeleteModal = ref(false);
-const deletingCompany = ref<any>(null);
-const deleteLoading = ref(false);
+const showDeleteModal = ref(false)
+const deletingCompany = ref<any>(null)
+const deleteLoading = ref(false)
 
 function openDelete(company: any) {
-  deletingCompany.value = company;
-  showDeleteModal.value = true;
+  deletingCompany.value = company
+  showDeleteModal.value = true
 }
 
 async function confirmDelete() {
-  if (!deletingCompany.value) return;
-  deleteLoading.value = true;
+  if (!deletingCompany.value) return
+  deleteLoading.value = true
   try {
     await $fetch(`/api/fiscal/company/${deletingCompany.value.id}`, {
-      method: "DELETE",
-    });
-    toast.add({ title: "Empresa excluída com sucesso", color: "success" });
-    showDeleteModal.value = false;
-    deletingCompany.value = null;
-    refresh();
+      method: 'DELETE'
+    })
+    toast.add({ title: 'Empresa excluída com sucesso', color: 'success' })
+    showDeleteModal.value = false
+    deletingCompany.value = null
+    refresh()
   } catch (e: any) {
-    const detail =
-      e?.data?.data?.error ??
-      e?.data?.message ??
-      e?.message ??
-      "Erro desconhecido";
+    const detail
+      = e?.data?.data?.error
+        ?? e?.data?.message
+        ?? e?.message
+        ?? 'Erro desconhecido'
     toast.add({
-      title: "Erro ao excluir empresa",
+      title: 'Erro ao excluir empresa',
       description: detail,
-      color: "error",
-    });
+      color: 'error'
+    })
   } finally {
-    deleteLoading.value = false;
+    deleteLoading.value = false
   }
 }
 
 // ─── Table ─────────────────────────────────────────────────────────────────────
 
 const columns = [
-  { accessorKey: "id", header: "ID", enableSorting: false },
-  { id: "document", header: "CNPJ/CPF", enableSorting: false },
-  { accessorKey: "name", header: "Razão Social", enableSorting: false },
-  { accessorKey: "email", header: "E-mail", enableSorting: false },
-  { accessorKey: "nfse_enabled", header: "NFS-e", enableSorting: false },
+  { accessorKey: 'id', header: 'ID', enableSorting: false },
+  { id: 'document', header: 'CNPJ/CPF', enableSorting: false },
+  { accessorKey: 'name', header: 'Razão Social', enableSorting: false },
+  { accessorKey: 'email', header: 'E-mail', enableSorting: false },
+  { accessorKey: 'nfse_enabled', header: 'NFS-e', enableSorting: false },
   {
-    accessorKey: "certificate_valid_until",
-    header: "Certificado",
-    enableSorting: false,
+    accessorKey: 'certificate_valid_until',
+    header: 'Certificado',
+    enableSorting: false
   },
-  { id: "actions", header: "", enableSorting: false },
-];
+  { id: 'actions', header: '', enableSorting: false }
+]
 
 function formatDocument(company: any) {
-  return company.business_id || company.individual_id || "—";
+  return company.business_id || company.individual_id || '—'
 }
 
 function formatCertificate(val: string | null) {
-  if (!val) return null;
-  const d = new Date(val);
-  if (isNaN(d.getTime())) return val;
-  return d.toLocaleDateString("pt-BR");
+  if (!val) return null
+  const d = new Date(val)
+  if (isNaN(d.getTime())) return val
+  return d.toLocaleDateString('pt-BR')
 }
 
 function certificateColor(val: string | null) {
-  if (!val) return "neutral";
-  const d = new Date(val);
-  const now = new Date();
-  const diffDays = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  if (diffDays < 0) return "error";
-  if (diffDays < 30) return "warning";
-  return "success";
+  if (!val) return 'neutral'
+  const d = new Date(val)
+  const now = new Date()
+  const diffDays = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+  if (diffDays < 0) return 'error'
+  if (diffDays < 30) return 'warning'
+  return 'success'
 }
 </script>
 

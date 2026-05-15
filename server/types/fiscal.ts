@@ -61,14 +61,14 @@ export interface BusinessIdResult {
 
 // ─── Municipality ─────────────────────────────────────────────────────────────
 
-export type MunicipalityNfseStatus =
-  | 'active'
-  | 'offline'
-  | 'paused'
-  | 'in_implementation'
-  | 'in_reimplementation'
-  | 'inactive'
-  | 'not_implemented'
+export type MunicipalityNfseStatus
+  = | 'active'
+    | 'offline'
+    | 'paused'
+    | 'in_implementation'
+    | 'in_reimplementation'
+    | 'inactive'
+    | 'not_implemented'
 
 export interface MunicipalityResult {
   municipality_code: string
@@ -287,11 +287,11 @@ export interface CompanyResult extends CompanyFields {
 
 // ─── NFSe ─────────────────────────────────────────────────────────────────────
 
-export type NfseStatus =
-  | 'processing_authorization'
-  | 'authorized'
-  | 'cancelled'
-  | 'authorization_error'
+export type NfseStatus
+  = | 'processing_authorization'
+    | 'authorized'
+    | 'cancelled'
+    | 'authorization_error'
 
 export interface NfseError {
   code: string

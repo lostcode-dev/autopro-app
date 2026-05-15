@@ -290,11 +290,11 @@ export interface FocusNfeMunicipioCodigoTributario {
 
 // ─── NFSe types ───────────────────────────────────────────────────────────────
 
-export type FocusNfeNfseStatus =
-  | 'processando_autorizacao'
-  | 'autorizado'
-  | 'cancelado'
-  | 'erro_autorizacao'
+export type FocusNfeNfseStatus
+  = | 'processando_autorizacao'
+    | 'autorizado'
+    | 'cancelado'
+    | 'erro_autorizacao'
 
 export interface FocusNfeNfseErro {
   codigo: string
