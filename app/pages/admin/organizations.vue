@@ -38,7 +38,6 @@ const total = computed(() => data.value?.total ?? 0)
 
 const columns = [
   { accessorKey: 'name', header: 'Razão Social', enableSorting: false },
-  { accessorKey: 'trade_name', header: 'Nome Fantasia', enableSorting: false },
   { accessorKey: 'tax_id', header: 'CNPJ/CPF', enableSorting: false },
   { accessorKey: 'email', header: 'E-mail', enableSorting: false },
   { accessorKey: 'user_count', header: 'Usuários', enableSorting: false },

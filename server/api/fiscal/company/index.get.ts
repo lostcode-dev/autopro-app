@@ -16,7 +16,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const queryParams = getQuery(event)
-  const authHeader = getFocusNfeBasicAuthHeader()
+
+  let authHeader: string
+  try {
+    authHeader = getFocusNfeBasicAuthHeader()
+  } catch {
+    throw createError({ statusCode: 503, message: 'Integração Focus NFe não configurada no servidor' })
+  }
+
   const apiBaseUrl = getFocusNfeApiBaseUrl()
 
   const offset = Math.max(0, Number(queryParams.offset) || 0)
@@ -28,19 +35,25 @@ export default defineEventHandler(async (event) => {
   if (businessId) params.set('cnpj', businessId)
   if (individualId) params.set('cpf', individualId)
 
-  const { response, responseBodyRaw } = await monitoredFocusNfeFetch({
-    authUserEmail: user.email!,
-    functionName: 'listFocusNfeEmpresas',
-    url: `${apiBaseUrl}/v2/empresas?${params.toString()}`,
-    captureResponseBody: 'always',
-    init: {
-      method: 'GET',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/json'
+  let response: Response
+  let responseBodyRaw: string | null
+  try {
+    ;({ response, responseBodyRaw } = await monitoredFocusNfeFetch({
+      authUserEmail: user.email!,
+      functionName: 'listFocusNfeEmpresas',
+      url: `${apiBaseUrl}/v2/empresas?${params.toString()}`,
+      captureResponseBody: 'always',
+      init: {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        }
       }
-    }
-  })
+    }))
+  } catch (err: any) {
+    throw createError({ statusCode: 502, message: `Erro ao conectar com a Focus NFe: ${err?.message ?? 'falha de rede'}` })
+  }
 
   if (!response.ok) {
     const raw = responseBodyRaw ? JSON.parse(responseBodyRaw) : null

@@ -13,8 +13,8 @@ const pageSize = 50
 
 const { data, status, refresh } = await useAsyncData(
   'admin-fiscal-logs',
-  () => requestFetch<{ data: { logs: any[], page: number, pageSize: number, hasMore: boolean } }>(
-    '/api/fiscal/integration-logs',
+  () => requestFetch<{ success: boolean, data: any[], meta: { total: number, page: number, pageSize: number } }>(
+    '/api/fiscal/config/logs',
     {
       headers: requestHeaders,
       query: { page: page.value, pageSize }
@@ -24,22 +24,14 @@ const { data, status, refresh } = await useAsyncData(
 
 watch(page, () => refresh())
 
-const logs = computed(() => data.value?.data?.logs ?? [])
-const hasMore = computed(() => data.value?.data?.hasMore ?? false)
-
-// Synthetic total so AppDataTable can show/hide next page button
-const total = computed(() => {
-  const count = logs.value.length
-  if (!count) return 0
-  const currentEnd = (page.value - 1) * pageSize + count
-  return hasMore.value ? currentEnd + 1 : currentEnd
-})
+const logs = computed(() => data.value?.data ?? [])
+const total = computed(() => data.value?.meta?.total ?? 0)
 
 const columns = [
   { accessorKey: 'created_at', header: 'Data/Hora', enableSorting: false },
   { accessorKey: 'function_name', header: 'Função', enableSorting: false },
-  { accessorKey: 'status_code', header: 'Status', enableSorting: false },
-  { accessorKey: 'auth_user_email', header: 'Usuário', enableSorting: false },
+  { accessorKey: 'response_status', header: 'Status', enableSorting: false },
+  { accessorKey: 'user_email', header: 'Usuário', enableSorting: false },
   { accessorKey: 'request_url', header: 'URL', enableSorting: false },
   { accessorKey: 'duration_ms', header: 'Duração (ms)', enableSorting: false }
 ]
@@ -76,13 +68,13 @@ function statusColor(code: number | null) {
         <span class="font-mono text-xs">{{ formatDate(String(row.original.created_at ?? '')) }}</span>
       </template>
 
-      <template #status_code-cell="{ row }">
+      <template #response_status-cell="{ row }">
         <UBadge
-          :color="statusColor(Number(row.original.status_code) || null)"
+          :color="statusColor(Number(row.original.response_status) || null)"
           variant="subtle"
           size="sm"
         >
-          {{ row.original.status_code ?? '—' }}
+          {{ row.original.response_status ?? '—' }}
         </UBadge>
       </template>
 
