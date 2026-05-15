@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
     .range(offset, offset + pageSize - 1)
 
   if (search) {
-    dbQuery = dbQuery.or(`name.ilike.%${search}%,trade_name.ilike.%${search}%,tax_id.ilike.%${search}%`)
+    dbQuery = dbQuery.or(`name.ilike.%${search}%,tax_id.ilike.%${search}%`)
   }
 
   const { data, error, count } = await dbQuery

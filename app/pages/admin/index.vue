@@ -11,7 +11,7 @@ const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : unde
 // ─── Stats ─────────────────────────────────────────────────────────────────────
 const { data: stats, status: statsStatus } = await useAsyncData(
   'admin-stats',
-  () => requestFetch<Record<string, any>>('/api/admin/stats', { headers: requestHeaders })
+  () => requestFetch<Record<string, unknown>>('/api/admin/stats', { headers: requestHeaders })
 )
 
 const statsCards = computed(() => [
@@ -43,8 +43,11 @@ const statsCards = computed(() => [
   }
 ])
 
-// ─── Chart: last 12 months ──────────────────────────────────────────────────────
-const { data: chartData, status: chartStatus } = await useAsyncData(
+// ─── Active tab ────────────────────────────────────────────────────────────────
+const activeTab = ref('subscriptions')
+
+// ─── Subscriptions chart (last 12 months) ──────────────────────────────────────
+const { data: subsChartData, status: subsChartStatus } = await useAsyncData(
   'admin-subscriptions-chart',
   () => requestFetch<{ categories: string[], series: { name: string, data: number[] }[] }>(
     '/api/admin/subscriptions/chart',
@@ -52,8 +55,8 @@ const { data: chartData, status: chartStatus } = await useAsyncData(
   )
 )
 
-const chartCategories = computed(() => chartData.value?.categories ?? [])
-const chartSeries = computed(() => chartData.value?.series ?? [])
+const subsChartCategories = computed(() => subsChartData.value?.categories ?? [])
+const subsChartSeries = computed(() => subsChartData.value?.series ?? [])
 
 // ─── Subscriptions table ────────────────────────────────────────────────────────
 const subsPage = ref(1)
@@ -62,7 +65,7 @@ const subsSearch = ref('')
 
 const { data: subsData, status: subsStatus, refresh: refreshSubs } = await useAsyncData(
   'admin-subscriptions-list',
-  () => requestFetch<{ items: any[], total: number }>(
+  () => requestFetch<{ items: Record<string, unknown>[], total: number }>(
     '/api/admin/subscriptions',
     {
       headers: requestHeaders,
@@ -90,7 +93,84 @@ const subsColumns = [
   { accessorKey: 'created_at', header: 'Início', enableSorting: false }
 ]
 
-function formatCurrency(val: any) {
+const SUB_STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
+  active: 'success',
+  trial: 'warning',
+  suspended: 'error',
+  cancelled: 'neutral'
+}
+
+const SUB_STATUS_LABELS: Record<string, string> = {
+  active: 'Ativa',
+  trial: 'Trial',
+  suspended: 'Suspensa',
+  cancelled: 'Cancelada'
+}
+
+// ─── Invoices chart ─────────────────────────────────────────────────────────────
+const { data: invChartData, status: invChartStatus } = await useAsyncData(
+  'admin-invoices-chart',
+  () => requestFetch<{ categories: string[], series: { name: string, data: number[] }[] }>(
+    '/api/admin/invoices/chart',
+    { headers: requestHeaders }
+  )
+)
+
+const invChartCategories = computed(() => invChartData.value?.categories ?? [])
+const invChartSeries = computed(() => invChartData.value?.series ?? [])
+
+// ─── Invoices table ─────────────────────────────────────────────────────────────
+const invPage = ref(1)
+const invPageSize = 15
+const invSearch = ref('')
+
+const { data: invData, status: invStatus, refresh: refreshInv } = await useAsyncData(
+  'admin-invoices-list',
+  () => requestFetch<{ items: Record<string, unknown>[], total: number }>(
+    '/api/admin/invoices',
+    {
+      headers: requestHeaders,
+      query: {
+        page: invPage.value,
+        page_size: invPageSize,
+        search: invSearch.value || undefined
+      }
+    }
+  )
+)
+
+watch([invPage, invSearch], () => refreshInv())
+
+const invItems = computed(() => invData.value?.items ?? [])
+const invTotal = computed(() => invData.value?.total ?? 0)
+
+const invColumns = [
+  { accessorKey: 'organization_name', header: 'Organização', enableSorting: false },
+  { accessorKey: 'user_email', header: 'E-mail', enableSorting: false },
+  { accessorKey: 'invoice_number', header: 'Nº Fatura', enableSorting: false },
+  { accessorKey: 'amount', header: 'Valor', enableSorting: false },
+  { accessorKey: 'status', header: 'Status', enableSorting: false },
+  { accessorKey: 'issue_date', header: 'Emissão', enableSorting: false },
+  { accessorKey: 'payment_date', header: 'Pagamento', enableSorting: false },
+  { id: 'pdf', header: '', enableSorting: false }
+]
+
+const INV_STATUS_COLORS: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
+  paid: 'success',
+  pending: 'warning',
+  failed: 'error',
+  cancelled: 'neutral'
+}
+
+const INV_STATUS_LABELS: Record<string, string> = {
+  paid: 'Paga',
+  pending: 'Pendente',
+  failed: 'Falhou',
+  cancelled: 'Cancelada'
+}
+
+// ─── Shared helpers ──────────────────────────────────────────────────────────────
+function formatCurrency(val: unknown) {
   if (val == null) return '—'
   return Number(val).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
@@ -98,20 +178,6 @@ function formatCurrency(val: any) {
 function formatDate(val: string | null) {
   if (!val) return '—'
   return new Date(val).toLocaleDateString('pt-BR')
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  active: 'success',
-  trial: 'warning',
-  suspended: 'error',
-  cancelled: 'neutral'
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Ativa',
-  trial: 'Trial',
-  suspended: 'Suspensa',
-  cancelled: 'Cancelada'
 }
 </script>
 
@@ -142,71 +208,150 @@ const STATUS_LABELS: Record<string, string> = {
         </template>
       </div>
 
-      <!-- Subscriptions chart -->
-      <UPageCard :ui="{ body: 'p-4' }">
-        <div class="mb-4 flex items-center gap-2">
-          <UIcon name="i-lucide-chart-line" class="size-4 text-primary" />
-          <p class="text-sm font-semibold text-highlighted">
-            Assinaturas — últimos 12 meses
-          </p>
-        </div>
+      <!-- Tabs: Assinaturas / Faturas -->
+      <UTabs
+        v-model="activeTab"
+        :items="[
+          { label: 'Assinaturas', slot: 'subscriptions' as const, icon: 'i-lucide-credit-card' },
+          { label: 'Faturas', slot: 'invoices' as const, icon: 'i-lucide-receipt' }
+        ]"
+        variant="link"
+        class="w-full"
+      >
+        <!-- ── Assinaturas ── -->
+        <template #subscriptions>
+          <div class="space-y-6 pt-4">
+            <!-- Chart -->
+            <UPageCard :ui="{ body: 'p-4' }">
+              <div class="mb-4 flex items-center gap-2">
+                <UIcon name="i-lucide-chart-line" class="size-4 text-primary" />
+                <p class="text-sm font-semibold text-highlighted">
+                  Assinaturas — últimos 12 meses
+                </p>
+              </div>
+              <USkeleton v-if="subsChartStatus === 'pending'" class="h-56 rounded-xl" />
+              <ChartsArea
+                v-else
+                :categories="subsChartCategories"
+                :series="subsChartSeries"
+                :height="220"
+                :colors="['#22c55e', '#ef4444']"
+              />
+            </UPageCard>
 
-        <USkeleton v-if="chartStatus === 'pending'" class="h-56 rounded-xl" />
-        <ChartsArea
-          v-else
-          :categories="chartCategories"
-          :series="chartSeries"
-          :height="220"
-          :colors="['#22c55e', '#ef4444']"
-        />
-      </UPageCard>
-
-      <!-- Subscriptions table -->
-      <div>
-        <div class="mb-3 flex items-center gap-2">
-          <UIcon name="i-lucide-credit-card" class="size-4 text-primary" />
-          <p class="text-sm font-semibold text-highlighted">
-            Assinaturas
-          </p>
-        </div>
-
-        <AppDataTable
-          v-model:search-term="subsSearch"
-          v-model:page="subsPage"
-          :columns="subsColumns"
-          :data="subsItems as Record<string, unknown>[]"
-          :loading="subsStatus === 'pending'"
-          :page-size="subsPageSize"
-          :total="subsTotal"
-          show-search
-          search-placeholder="Buscar por e-mail ou plano..."
-          empty-icon="i-lucide-credit-card"
-          empty-title="Nenhuma assinatura encontrada"
-          empty-description="As assinaturas das organizações aparecerão aqui."
-        >
-          <template #status-cell="{ row }">
-            <UBadge
-              :color="STATUS_COLORS[String(row.original.status)] ?? 'neutral'"
-              variant="subtle"
-              size="sm"
+            <!-- Table -->
+            <AppDataTable
+              v-model:search-term="subsSearch"
+              v-model:page="subsPage"
+              :columns="subsColumns"
+              :data="subsItems as Record<string, unknown>[]"
+              :loading="subsStatus === 'pending'"
+              :page-size="subsPageSize"
+              :total="subsTotal"
+              show-search
+              search-placeholder="Buscar por e-mail ou plano..."
+              empty-icon="i-lucide-credit-card"
+              empty-title="Nenhuma assinatura encontrada"
+              empty-description="As assinaturas das organizações aparecerão aqui."
             >
-              {{ STATUS_LABELS[String(row.original.status)] ?? row.original.status }}
-            </UBadge>
-          </template>
+              <template #status-cell="{ row }">
+                <UBadge
+                  :color="SUB_STATUS_COLORS[String(row.original.status)] ?? 'neutral'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ SUB_STATUS_LABELS[String(row.original.status)] ?? row.original.status }}
+                </UBadge>
+              </template>
 
-          <template #monthly_amount-cell="{ row }">
-            <span class="font-mono text-sm">{{ formatCurrency(row.original.monthly_amount) }}</span>
-          </template>
+              <template #monthly_amount-cell="{ row }">
+                <span class="font-mono text-sm">{{ formatCurrency(row.original.monthly_amount) }}</span>
+              </template>
 
-          <template #next_payment_date-cell="{ row }">
-            {{ formatDate(String(row.original.next_payment_date ?? '')) }}
-          </template>
+              <template #next_payment_date-cell="{ row }">
+                {{ formatDate(String(row.original.next_payment_date ?? '')) }}
+              </template>
 
-          <template #created_at-cell="{ row }">
-            {{ formatDate(String(row.original.created_at ?? '')) }}
-          </template>
-        </AppDataTable>
-      </div>
+              <template #created_at-cell="{ row }">
+                {{ formatDate(String(row.original.created_at ?? '')) }}
+              </template>
+            </AppDataTable>
+          </div>
+        </template>
+
+        <!-- ── Faturas ── -->
+        <template #invoices>
+          <div class="space-y-6 pt-4">
+            <!-- Chart -->
+            <UPageCard :ui="{ body: 'p-4' }">
+              <div class="mb-4 flex items-center gap-2">
+                <UIcon name="i-lucide-chart-line" class="size-4 text-primary" />
+                <p class="text-sm font-semibold text-highlighted">
+                  Faturas — últimos 12 meses
+                </p>
+              </div>
+              <USkeleton v-if="invChartStatus === 'pending'" class="h-56 rounded-xl" />
+              <ChartsArea
+                v-else
+                :categories="invChartCategories"
+                :series="invChartSeries"
+                :height="220"
+                :colors="['#22c55e', '#f59e0b', '#ef4444']"
+                :format-value="(v: number) => formatCurrency(v)"
+              />
+            </UPageCard>
+
+            <!-- Table -->
+            <AppDataTable
+              v-model:search-term="invSearch"
+              v-model:page="invPage"
+              :columns="invColumns"
+              :data="invItems as Record<string, unknown>[]"
+              :loading="invStatus === 'pending'"
+              :page-size="invPageSize"
+              :total="invTotal"
+              show-search
+              search-placeholder="Buscar por e-mail ou nº da fatura..."
+              empty-icon="i-lucide-receipt"
+              empty-title="Nenhuma fatura encontrada"
+              empty-description="As faturas das organizações aparecerão aqui."
+            >
+              <template #status-cell="{ row }">
+                <UBadge
+                  :color="INV_STATUS_COLORS[String(row.original.status)] ?? 'neutral'"
+                  variant="subtle"
+                  size="sm"
+                >
+                  {{ INV_STATUS_LABELS[String(row.original.status)] ?? row.original.status }}
+                </UBadge>
+              </template>
+
+              <template #amount-cell="{ row }">
+                <span class="font-mono text-sm font-medium">{{ formatCurrency(row.original.amount) }}</span>
+              </template>
+
+              <template #issue_date-cell="{ row }">
+                {{ formatDate(String(row.original.issue_date ?? '')) }}
+              </template>
+
+              <template #payment_date-cell="{ row }">
+                {{ formatDate(String(row.original.payment_date ?? '')) }}
+              </template>
+
+              <template #pdf-cell="{ row }">
+                <UButton
+                  v-if="row.original.pdf_url"
+                  variant="ghost"
+                  size="xs"
+                  icon="i-lucide-file-down"
+                  :to="String(row.original.pdf_url)"
+                  target="_blank"
+                />
+              </template>
+            </AppDataTable>
+          </div>
+        </template>
+      </UTabs>
     </div>
   </UDashboardPanel>
 </template>

@@ -3,8 +3,8 @@ import { requireOwner } from '../../../utils/require-owner'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 
 /**
- * GET /api/admin/subscriptions
- * Lists all subscriptions with organization name for admin use.
+ * GET /api/admin/invoices
+ * Lists all billing invoices for admin use.
  * Restricted to users with is_owner = true.
  *
  * Query params:
@@ -26,8 +26,11 @@ export default defineEventHandler(async (event) => {
   const statusFilter = String(query.status || '').trim()
 
   let dbQuery = supabase
-    .from('subscriptions')
-    .select('id, organization_id, user_email, status, plan_name, plan_key, monthly_amount, start_date, next_payment_date, cancellation_date, created_at', { count: 'exact' })
+    .from('billing_invoices')
+    .select(
+      'id, organization_id, user_email, stripe_invoice_id, invoice_number, amount, status, issue_date, due_date, payment_date, pdf_url, created_at',
+      { count: 'exact' }
+    )
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + pageSize - 1)
@@ -37,16 +40,16 @@ export default defineEventHandler(async (event) => {
   }
 
   if (search) {
-    dbQuery = dbQuery.or(`user_email.ilike.%${search}%,plan_name.ilike.%${search}%`)
+    dbQuery = dbQuery.or(`user_email.ilike.%${search}%,invoice_number.ilike.%${search}%`)
   }
 
   const { data, error, count } = await dbQuery
 
   if (error) {
-    throw createError({ statusCode: 500, statusMessage: 'Erro ao listar assinaturas' })
+    throw createError({ statusCode: 500, statusMessage: 'Erro ao listar faturas' })
   }
 
-  const orgIds = [...new Set((data || []).map((s: any) => s.organization_id).filter(Boolean))]
+  const orgIds = [...new Set((data || []).map((inv: any) => inv.organization_id).filter(Boolean))]
   const orgNameMap: Record<string, string> = {}
 
   if (orgIds.length > 0) {
@@ -60,9 +63,9 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  const items = (data || []).map((sub: any) => ({
-    ...sub,
-    organization_name: orgNameMap[sub.organization_id] ?? '—'
+  const items = (data || []).map((inv: any) => ({
+    ...inv,
+    organization_name: orgNameMap[inv.organization_id] ?? '—'
   }))
 
   return { items, total: count ?? items.length, page, page_size: pageSize }
