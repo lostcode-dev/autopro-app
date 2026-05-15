@@ -65,9 +65,7 @@ export type Plan = {
   key: PlanKey
   name: string
   price: string
-  priceYearly: string
   priceAmount: number
-  priceYearlyAmount: number
   description: string
   icon: string
   highlight: boolean
@@ -75,7 +73,6 @@ export type Plan = {
   features: string[]
   cta: string
   priceId: string | null
-  priceYearlyId: string | null
 }
 
 const PLAN_DEFINITIONS = [
@@ -83,9 +80,7 @@ const PLAN_DEFINITIONS = [
     key: PlanKey.Starter,
     name: 'Starter',
     price: 'R$ 199',
-    priceYearly: 'R$ 1.990',
     priceAmount: 199,
-    priceYearlyAmount: 1990,
     description: 'Ideal para oficinas que estão começando a organizar sua operação.',
     icon: 'i-lucide-wrench',
     highlight: false,
@@ -105,9 +100,7 @@ const PLAN_DEFINITIONS = [
     key: PlanKey.Pro,
     name: 'Pro',
     price: 'R$ 399',
-    priceYearly: 'R$ 3.990',
     priceAmount: 399,
-    priceYearlyAmount: 3990,
     description: 'Para oficinas que precisam de controle completo e escala.',
     icon: 'i-lucide-zap',
     highlight: true,
@@ -124,9 +117,7 @@ const PLAN_DEFINITIONS = [
     key: PlanKey.Fiscal,
     name: 'Fiscal',
     price: 'R$ 599',
-    priceYearly: 'R$ 5.990',
     priceAmount: 599,
-    priceYearlyAmount: 5990,
     description: 'Para oficinas que precisam de emissão fiscal integrada e suporte completo.',
     icon: 'i-lucide-file-check',
     highlight: false,
@@ -149,13 +140,12 @@ export function usePlans() {
     ...p,
     features: [...p.features],
     badge: p.badge ?? null,
-    priceId: (config.public as Record<string, string>)[`stripe${p.key.charAt(0).toUpperCase() + p.key.slice(1)}PriceId`] || null,
-    priceYearlyId: (config.public as Record<string, string>)[`stripe${p.key.charAt(0).toUpperCase() + p.key.slice(1)}PriceIdYearly`] || null
+    priceId: (config.public as Record<string, string>)[`stripe${p.key.charAt(0).toUpperCase() + p.key.slice(1)}PriceId`] || null
   }))
 
   function getPlanByPriceId(priceId: string | null | undefined): Plan | null {
     if (!priceId) return null
-    return plans.find(p => p.priceId === priceId || p.priceYearlyId === priceId) ?? null
+    return plans.find(p => p.priceId === priceId) ?? null
   }
 
   /** Shape esperada pelo BillingPricingPlans / UPricingPlan */
@@ -169,12 +159,10 @@ export function usePlans() {
       button: { label: plan.cta },
       features: plan.features.map(f => ({ title: f })),
       price: {
-        month: plan.price,
-        year: plan.priceYearly
+        month: plan.price
       },
       stripePriceId: {
-        month: plan.priceId ?? '',
-        year: plan.priceYearlyId ?? ''
+        month: plan.priceId ?? ''
       }
     }
   }

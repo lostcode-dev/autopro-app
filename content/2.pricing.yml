@@ -5,61 +5,53 @@ seo:
   description: Conheça os planos do AutoPro para oficinas mecânicas. Do atendimento básico ao controle financeiro completo com emissão de nota fiscal.
 navigation.icon: i-lucide-credit-card
 plans:
-  - title: Oficina Inicial
-    description: Para a oficina que quer parar de perder informação e centralizar clientes, veículos e ordens de serviço em um lugar só.
+  - title: Starter
+    description: Ideal para oficinas que estão começando a organizar sua operação.
     price:
-      month: R$ 49
-      year: R$ 490
+      month: R$ 199
     stripePriceId:
       month: ''
-      year: ''
     button:
-      label: Começar agora
+      label: Começar com Starter
       color: neutral
       variant: subtle
     features:
-      - Ordens de serviço completas
+      - Até 2 funcionários
+      - Ordens de serviço ilimitadas
       - Cadastro de clientes e veículos
-      - Agenda de atendimentos
-      - Histórico por veículo e cliente
-      - Dashboard operacional
-  - title: Oficina Pro
-    description: Para quem precisa fechar o mês sabendo quanto faturou, quanto gastou, quanto sobrou — e pagar comissões sem divergência.
+      - Gestão financeira
+      - Relatórios essenciais
+      - Sem emissão fiscal
+      - Suporte por email
+  - title: Pro
+    description: Para oficinas que precisam de controle completo e escala.
     price:
-      month: R$ 99
-      year: R$ 990
+      month: R$ 399
     stripePriceId:
       month: ''
-      year: ''
     highlight: true
     scale: true
     button:
-      label: Assinar Pro
+      label: Começar com Pro
     features:
-      - Tudo do Oficina Inicial
-      - Controle de estoque e peças
-      - Compras e fornecedores
-      - Financeiro e contas bancárias
-      - Comissões automáticas por funcionário
-      - Relatórios gerenciais
-      - Permissões por função
-  - title: Oficina Completa
-    description: Para operações maiores que precisam de nota fiscal integrada, múltiplas unidades ou suporte prioritário para o time.
+      - Tudo do Starter
+      - Até 10 funcionários
+      - Relatórios avançados e análises
+      - Suporte prioritário
+  - title: Fiscal
+    description: Para oficinas que precisam de emissão fiscal integrada e suporte completo.
     price:
-      month: R$ 199
-      year: R$ 1990
+      month: R$ 599
     stripePriceId:
       month: ''
-      year: ''
     button:
-      label: Falar com o time
+      label: Começar com Fiscal
     features:
-      - Tudo do Oficina Pro
-      - Emissão de NFS-e e NF-e
-      - Suporte a múltiplas unidades
-      - Painel administrativo separado
-      - Suporte prioritário
-      - Acompanhamento de implantação
+      - Tudo do Pro
+      - Funcionários ilimitados
+      - Emissão de NFS-e integrada
+      - Onboarding assistido
+      - Suporte dedicado
 logos:
   title: Tecnologia confiável por baixo do capô
   icons:
