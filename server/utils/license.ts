@@ -8,6 +8,32 @@ const EMPLOYEE_LIMITS: Record<string, number | null> = {
   fiscal: null
 }
 
+/**
+ * Resources that are gated behind a specific plan.
+ * If the org plan does not match, actions for these resources are hidden.
+ * Mirrors ACTION_PLAN_REQUIREMENTS in app/composables/usePlans.ts.
+ */
+export const PLAN_GATED_RESOURCES: Record<string, string> = {
+  service_invoice: 'fiscal',
+  product_invoice: 'fiscal',
+  fiscal: 'fiscal'
+}
+
+/**
+ * Filters an action list to only include actions the org's plan allows.
+ */
+export function filterActionsByPlan<T extends { resource?: string | null }>(
+  actions: T[],
+  planKey: string | null
+): T[] {
+  return actions.filter((action) => {
+    const resource = action.resource ?? ''
+    const requiredPlan = PLAN_GATED_RESOURCES[resource]
+    if (!requiredPlan) return true
+    return planKey === requiredPlan
+  })
+}
+
 export type OrgLicense = {
   planKey: string | null
   maxEmployees: number | null

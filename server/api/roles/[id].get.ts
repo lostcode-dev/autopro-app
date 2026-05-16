@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
+import { resolveOrgLicense, filterActionsByPlan } from '../../utils/license'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -26,7 +27,7 @@ export default defineEventHandler(async (event) => {
   if (!role)
     throw createError({ statusCode: 404, statusMessage: 'Perfil não encontrado' })
 
-  const [{ data: actions, error: actionsError }, { data: roleActions, error: roleActionsError }, { data: users, error: usersError }] = await Promise.all([
+  const [{ data: actions, error: actionsError }, { data: roleActions, error: roleActionsError }, { data: users, error: usersError }, { planKey }] = await Promise.all([
     supabase
       .from('actions')
       .select('id, code, name, description, resource')
@@ -41,7 +42,8 @@ export default defineEventHandler(async (event) => {
       .select('id, email, display_name, employee_id, role_id, is_active')
       .eq('organization_id', organizationId)
       .eq('role_id', id)
-      .order('display_name', { ascending: true })
+      .order('display_name', { ascending: true }),
+    resolveOrgLicense(organizationId)
   ])
 
   if (actionsError)
@@ -75,6 +77,8 @@ export default defineEventHandler(async (event) => {
     .filter(roleAction => roleAction.is_granted)
     .map(roleAction => roleAction.action_id as string))
 
+  const allowedActions = filterActionsByPlan(actions ?? [], planKey)
+
   const assignedUsers = (users ?? []).map(user => ({
     id: user.id as string,
     email: user.email as string | null,
@@ -88,12 +92,12 @@ export default defineEventHandler(async (event) => {
   return {
     item: {
       role,
-      actions: actions ?? [],
+      actions: allowedActions,
       role_actions: roleActions ?? [],
       assigned_users: assignedUsers,
       summary: {
         granted_actions_count: grantedActionIds.size,
-        total_actions_count: (actions ?? []).length,
+        total_actions_count: allowedActions.length,
         assigned_users_count: assignedUsers.length
       }
     }

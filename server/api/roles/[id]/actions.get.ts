@@ -1,6 +1,7 @@
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 import { requireAuthUser } from '../../../utils/require-auth'
 import { resolveOrganizationId } from '../../../utils/organization'
+import { resolveOrgLicense, filterActionsByPlan } from '../../../utils/license'
 
 export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
@@ -12,13 +13,16 @@ export default defineEventHandler(async (event) => {
   if (!id) throw createError({ statusCode: 400, statusMessage: 'ID obrigatório' })
 
   // Verify the role belongs to this org (or is a system role)
-  const { data: role } = await supabase
-    .from('roles')
-    .select('id')
-    .eq('id', id)
-    .or(`organization_id.eq.${organizationId},is_system_role.eq.true`)
-    .is('deleted_at', null)
-    .maybeSingle()
+  const [{ data: role }, { planKey }] = await Promise.all([
+    supabase
+      .from('roles')
+      .select('id')
+      .eq('id', id)
+      .or(`organization_id.eq.${organizationId},is_system_role.eq.true`)
+      .is('deleted_at', null)
+      .maybeSingle(),
+    resolveOrgLicense(organizationId)
+  ])
 
   if (!role) throw createError({ statusCode: 404, statusMessage: 'Perfil não encontrado' })
 
@@ -40,5 +44,5 @@ export default defineEventHandler(async (event) => {
   if (roleActionsError)
     throw createError({ statusCode: 500, statusMessage: roleActionsError.message })
 
-  return { actions, role_actions }
+  return { actions: filterActionsByPlan(actions ?? [], planKey), role_actions }
 })
