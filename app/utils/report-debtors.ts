@@ -57,6 +57,7 @@ export function formatOrderStatusLabel(status: string) {
   if (value === 'in_progress') return 'Em andamento'
   if (value === 'waiting_for_part') return 'Aguard. peça'
   if (value === 'completed') return 'Concluída'
+  if (value === 'invoiced') return 'Faturada'
   if (value === 'delivered') return 'Entregue'
   if (value === 'estimate') return 'Orçamento'
   if (value === 'cancelled') return 'Cancelada'
@@ -67,7 +68,7 @@ export function orderStatusColor(status: string): 'neutral' | 'info' | 'warning'
   const value = String(status || '').toLowerCase()
   if (value === 'open') return 'info'
   if (value === 'in_progress' || value === 'waiting_for_part') return 'warning'
-  if (value === 'completed' || value === 'delivered') return 'success'
+  if (value === 'completed' || value === 'invoiced' || value === 'delivered') return 'success'
   if (value === 'cancelled') return 'error'
   return 'neutral'
 }

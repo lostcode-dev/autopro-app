@@ -52,12 +52,13 @@ const orderStatusOptions: TagFilterOption[] = [
   'in_progress',
   'waiting_for_part',
   'completed',
+  'invoiced',
   'delivered',
   'estimate'
 ].map(status => ({
   value: status,
   label: formatOrderStatusLabel(status),
-  color: status === 'completed' || status === 'delivered' ? 'success' : status === 'estimate' ? 'neutral' : status === 'open' ? 'info' : 'warning',
+  color: status === 'completed' || status === 'delivered' ? 'success' : status === 'invoiced' ? 'primary' : status === 'estimate' ? 'neutral' : status === 'open' ? 'info' : 'warning',
   icon: status === 'open'
     ? 'i-lucide-circle-dot'
     : status === 'in_progress'
@@ -66,9 +67,11 @@ const orderStatusOptions: TagFilterOption[] = [
         ? 'i-lucide-package-search'
         : status === 'estimate'
           ? 'i-lucide-file-text'
-          : status === 'delivered'
-            ? 'i-lucide-truck'
-            : 'i-lucide-check-circle-2'
+          : status === 'invoiced'
+            ? 'i-lucide-file-check-2'
+            : status === 'delivered'
+              ? 'i-lucide-truck'
+              : 'i-lucide-check-circle-2'
 }))
 
 const clientOptions = computed<TagFilterOption[]>(() =>

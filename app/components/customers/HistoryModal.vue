@@ -49,7 +49,7 @@ watch(() => props.open, async (val) => {
 
 const historyStats = computed(() => {
   const orders = historyOrders.value
-  const billed = orders.filter(o => ['completed', 'delivered'].includes(o.status))
+  const billed = orders.filter(o => ['completed', 'invoiced', 'delivered'].includes(o.status))
   const totalRevenue = billed.reduce((sum, o) => sum + (o.total_amount ?? 0), 0)
   return {
     totalOrders: orders.length,

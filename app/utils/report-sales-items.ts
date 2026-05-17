@@ -4,6 +4,7 @@ export function formatSalesOrderStatusLabel(status: string) {
     in_progress: 'Em andamento',
     waiting_for_part: 'Aguard. peça',
     completed: 'Concluída',
+    invoiced: 'Faturada',
     delivered: 'Entregue',
     estimate: 'Orçamento',
     cancelled: 'Cancelada'
@@ -17,6 +18,7 @@ export function salesOrderStatusColor(status: string) {
     in_progress: 'warning',
     waiting_for_part: 'warning',
     completed: 'success',
+    invoiced: 'primary',
     delivered: 'success',
     estimate: 'neutral',
     cancelled: 'error'
@@ -90,6 +92,7 @@ export function salesOrderStatusIcon(status: string) {
     in_progress: 'i-lucide-wrench',
     waiting_for_part: 'i-lucide-package-search',
     completed: 'i-lucide-check-circle-2',
+    invoiced: 'i-lucide-file-check-2',
     delivered: 'i-lucide-truck',
     estimate: 'i-lucide-file-text',
     cancelled: 'i-lucide-x-circle'

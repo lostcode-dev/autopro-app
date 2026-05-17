@@ -49,6 +49,12 @@ const orderStatusOptions: TagFilterOption[] = [
     icon: 'i-lucide-check-circle-2'
   },
   {
+    value: 'invoiced',
+    label: 'Faturada',
+    color: 'primary',
+    icon: 'i-lucide-file-check-2'
+  },
+  {
     value: 'delivered',
     label: 'Entregue',
     color: 'success',
