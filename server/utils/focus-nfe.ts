@@ -57,3 +57,62 @@ export function createServerCache<T>(ttlMs: number) {
 // ─── Re-exports ───────────────────────────────────────────────────────────────
 
 export { monitoredNuvemFiscalFetch as monitoredFocusNfeFetch, sanitizeCpfCnpj, normalizeText }
+
+// ─── Subscription cancellation cleanup ───────────────────────────────────────
+
+/**
+ * Checks if an organization has a synced company in FocusNFe and, if so,
+ * deletes it. Silently logs errors — caller should not fail on this.
+ */
+export async function deleteFocusNfeCompanyForOrg(organizationId: string): Promise<void> {
+  let authHeader: string
+  let apiBaseUrl: string
+  try {
+    authHeader = getFocusNfeBasicAuthHeader()
+    apiBaseUrl = getFocusNfeApiBaseUrl()
+  } catch {
+    // FocusNFe not configured — nothing to do
+    return
+  }
+
+  const supabase = (await import('./supabase')).getSupabaseAdminClient()
+
+  const { data: syncStatus } = await supabase
+    .from('fiscal_sync_status')
+    .select('id, tax_id, is_company_synced')
+    .eq('organization_id', organizationId)
+    .maybeSingle()
+
+  if (!syncStatus?.is_company_synced || !syncStatus.tax_id) return
+
+  const taxId = syncStatus.tax_id.replace(/\D/g, '')
+  if (!taxId) return
+
+  try {
+    const response = await fetch(
+      `${apiBaseUrl}/v2/empresas/${encodeURIComponent(taxId)}`,
+      {
+        method: 'DELETE',
+        headers: { 'Authorization': authHeader }
+      }
+    )
+
+    if (response.ok || response.status === 404) {
+      await supabase
+        .from('fiscal_sync_status')
+        .update({
+          is_company_synced: false,
+          integration_status: 'inactive',
+          sync_status: 'never',
+          updated_by: 'subscription-cancellation'
+        })
+        .eq('id', syncStatus.id)
+    } else {
+      console.warn(
+        `[deleteFocusNfeCompanyForOrg] FocusNFe returned ${response.status} for org ${organizationId}`
+      )
+    }
+  } catch (err) {
+    console.error(`[deleteFocusNfeCompanyForOrg] Network error for org ${organizationId}:`, err)
+  }
+}

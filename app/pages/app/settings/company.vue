@@ -932,14 +932,11 @@ async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
           <p class="text-sm font-medium mb-0.5">
             Responsável pela empresa
           </p>
-          <p class="text-xs text-muted mb-4">
-            Pessoa responsável pela emissão fiscal. Exigido por alguns municípios.
-          </p>
 
           <div class="grid gap-4 grid-cols-2">
             <UFormField
               name="_contact_name"
-              label="Nome do responsável"
+              label="Nome"
               class="grid gap-2"
             >
               <UInput
@@ -952,7 +949,7 @@ async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
 
             <UFormField
               name="_contact_cpf"
-              label="CPF do responsável"
+              label="CPF"
               class="grid gap-2"
             >
               <UInput
