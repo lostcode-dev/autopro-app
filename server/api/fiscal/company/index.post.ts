@@ -1,48 +1,53 @@
-import { defineEventHandler, readBody, createError } from 'h3'
-import { requireAuthUser } from '../../../utils/require-auth'
+import { defineEventHandler, readBody, getQuery, createError } from 'h3'
 import {
-  NUVEM_FISCAL_OWNER_EMAIL,
-  getNuvemFiscalApiToken,
-  getNuvemFiscalApiBaseUrl,
-  monitoredNuvemFiscalFetch
-} from '../../../utils/nuvem-fiscal'
+  getFocusNfeApiBaseUrl,
+  getFocusNfeBasicAuthHeader,
+  monitoredFocusNfeFetch
+} from '../../../utils/focus-nfe'
+import { mapCompanyInput, mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
+import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'
+import type { CompanyInput, CompanyResult } from '../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  if (user.email !== NUVEM_FISCAL_OWNER_EMAIL) {
+  if (!user) {
     throw createError({ statusCode: 403, message: 'Acesso negado' })
   }
 
-  const body = await readBody(event)
+  const body: CompanyInput = await readBody(event)
   if (!body || typeof body !== 'object') {
     throw createError({ statusCode: 400, message: 'Payload da empresa é obrigatório' })
   }
 
-  const apiToken = await getNuvemFiscalApiToken()
-  const apiBaseUrl = getNuvemFiscalApiBaseUrl()
+  const { dry_run } = getQuery(event)
+  const authHeader = getFocusNfeBasicAuthHeader()
+  const apiBaseUrl = getFocusNfeApiBaseUrl()
 
-  const { response, responseBodyRaw } = await monitoredNuvemFiscalFetch({
+  const url = dry_run === '1' ? `${apiBaseUrl}/v2/empresas?dry_run=1` : `${apiBaseUrl}/v2/empresas`
+
+  const { response, responseBodyRaw } = await monitoredFocusNfeFetch({
     authUserEmail: user.email!,
-    functionName: 'createNuvemFiscalEmpresa',
-    url: `${apiBaseUrl}/empresas`,
+    functionName: 'createFocusNfeEmpresa',
+    url,
+    captureResponseBody: 'always',
     init: {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiToken}`,
+        'Authorization': authHeader,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(mapCompanyInput(body))
     }
   })
 
-  const data = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
-
   if (!response.ok) {
+    const raw = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao criar empresa na Nuvem Fiscal', details: data }
+      data: { error: 'Erro ao criar empresa na Focus NFe', details: mapFiscalErrorDetails(raw) }
     })
   }
 
-  return { success: true, data }
+  const result: CompanyResult = mapCompanyResult(JSON.parse(responseBodyRaw!) as FocusNfeEmpresaResponse)
+  return { success: true, data: result }
 })

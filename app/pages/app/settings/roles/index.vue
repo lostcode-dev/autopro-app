@@ -283,7 +283,7 @@ function openRoleDetails(role: Role | null) {
               </p>
 
               <p v-else class="text-xs text-muted">
-                Sem descrição.
+                -
               </p>
             </div>
 

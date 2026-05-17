@@ -23,16 +23,24 @@ const emit = defineEmits<{
   'duplicate': [order: ServiceOrder]
   'pay': [order: ServiceOrder]
   'pdf': [order: ServiceOrder]
+  'issue-nfse': [order: ServiceOrder]
 }>()
 
-const statusColorMap: Record<string, string> = {
+type BadgeColor = 'neutral' | 'info' | 'warning' | 'success' | 'error' | 'primary' | 'secondary'
+
+const statusColorMap: Record<string, BadgeColor> = {
   estimate: 'neutral',
   open: 'info',
   in_progress: 'warning',
   waiting_for_part: 'warning',
   completed: 'success',
+  invoiced: 'primary',
   delivered: 'success',
   cancelled: 'error'
+}
+
+function statusColor(s: string): BadgeColor {
+  return statusColorMap[s] ?? 'neutral'
 }
 const statusLabelMap: Record<string, string> = {
   estimate: 'Orçamento',
@@ -40,6 +48,7 @@ const statusLabelMap: Record<string, string> = {
   in_progress: 'Em andamento',
   waiting_for_part: 'Aguard. peça',
   completed: 'Concluída',
+  invoiced: 'Faturada',
   delivered: 'Entregue',
   cancelled: 'Cancelada'
 }
@@ -49,13 +58,18 @@ const statusIconMap: Record<string, string> = {
   in_progress: 'i-lucide-wrench',
   waiting_for_part: 'i-lucide-clock-3',
   completed: 'i-lucide-circle-check',
+  invoiced: 'i-lucide-file-badge',
   delivered: 'i-lucide-truck',
   cancelled: 'i-lucide-x-circle'
 }
-const paymentStatusColorMap: Record<string, string> = {
+const paymentStatusColorMap: Record<string, BadgeColor> = {
   pending: 'warning',
   paid: 'success',
   partial: 'info'
+}
+
+function paymentColor(s: string | null): BadgeColor {
+  return paymentStatusColorMap[s ?? ''] ?? 'neutral'
 }
 const paymentStatusLabelMap: Record<string, string> = {
   pending: 'Pendente',
@@ -86,6 +100,12 @@ const canPay = computed(() =>
   props.canUpdate
   && props.order.payment_status === 'pending'
   && props.order.status === 'completed'
+  && !props.order.installments_progress
+)
+
+const canIssueNfse = computed(() =>
+  props.canCreate
+  && ['completed', 'invoiced', 'delivered'].includes(props.order.status)
 )
 
 function formatCurrency(value: number | string | null | undefined) {
@@ -178,6 +198,17 @@ function initials(value: string | null | undefined) {
                 variant="ghost"
                 size="sm"
                 @click="emit('pay', order)"
+              />
+            </UTooltip>
+
+            <!-- Emitir NF-e -->
+            <UTooltip v-if="canIssueNfse" text="Emitir NF-e">
+              <UButton
+                icon="i-lucide-file-badge"
+                color="primary"
+                variant="ghost"
+                size="sm"
+                @click="emit('issue-nfse', order)"
               />
             </UTooltip>
 
@@ -278,7 +309,7 @@ function initials(value: string | null | undefined) {
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex flex-wrap items-center gap-2">
             <UBadge
-              :color="statusColorMap[order.status] ?? 'neutral'"
+              :color="statusColor(order.status)"
               :label="statusLabelMap[order.status] ?? order.status"
               :leading-icon="statusIconMap[order.status] ?? 'i-lucide-circle-dot'"
               variant="subtle"
@@ -287,7 +318,7 @@ function initials(value: string | null | undefined) {
             />
             <UBadge
               v-if="order.payment_status"
-              :color="paymentStatusColorMap[order.payment_status] ?? 'neutral'"
+              :color="paymentColor(order.payment_status)"
               :label="paymentStatusLabelMap[order.payment_status] ?? order.payment_status"
               :leading-icon="paymentStatusIconMap[order.payment_status] ?? 'i-lucide-credit-card'"
               variant="soft"

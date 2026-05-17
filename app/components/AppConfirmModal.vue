@@ -1,31 +1,31 @@
 <script setup lang="ts">
 const props = withDefaults(
   defineProps<{
-    open: boolean;
-    title?: string;
-    description?: string;
-    confirmLabel?: string;
-    confirmColor?: string;
-    loading?: boolean;
+    open: boolean
+    title?: string
+    description?: string
+    confirmLabel?: string
+    confirmColor?: string
+    loading?: boolean
   }>(),
   {
-    title: "Confirmar exclusão",
+    title: 'Confirmar exclusão',
     description:
-      "Tem certeza que deseja realizar esta ação? Ela não pode ser desfeita.",
-    confirmLabel: "Confirmar",
-    confirmColor: "error",
-    loading: false,
-  },
-);
+      'Tem certeza que deseja realizar esta ação? Ela não pode ser desfeita.',
+    confirmLabel: 'Confirmar',
+    confirmColor: 'error',
+    loading: false
+  }
+)
 
 const emit = defineEmits<{
-  "update:open": [value: boolean];
-  confirm: [];
-}>();
+  'update:open': [value: boolean]
+  'confirm': []
+}>()
 
 function close() {
-  if (props.loading) return;
-  emit("update:open", false);
+  if (props.loading) return
+  emit('update:open', false)
 }
 </script>
 

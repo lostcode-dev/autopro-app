@@ -8,6 +8,7 @@ export const STATUS_COLOR: Record<string, string> = {
   in_progress: 'warning',
   waiting_for_part: 'warning',
   completed: 'success',
+  invoiced: 'primary',
   delivered: 'success',
   cancelled: 'error'
 }
@@ -18,6 +19,7 @@ export const STATUS_LABEL: Record<string, string> = {
   in_progress: 'Em andamento',
   waiting_for_part: 'Aguard. peça',
   completed: 'Concluída',
+  invoiced: 'Faturada',
   delivered: 'Entregue',
   cancelled: 'Cancelada'
 }
@@ -28,6 +30,7 @@ export const STATUS_ICON: Record<string, string> = {
   in_progress: 'i-lucide-wrench',
   waiting_for_part: 'i-lucide-clock',
   completed: 'i-lucide-circle-check',
+  invoiced: 'i-lucide-file-badge',
   delivered: 'i-lucide-truck',
   cancelled: 'i-lucide-x-circle'
 }

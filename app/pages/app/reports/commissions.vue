@@ -219,11 +219,11 @@ const commissionStatusLabelMap: Record<string, string> = { pending: 'Pendente', 
 
 const orderStatusColorMap: Record<string, BadgeColor> = {
   open: 'info', in_progress: 'warning', waiting_for_part: 'warning',
-  completed: 'success', delivered: 'success', estimate: 'neutral'
+  completed: 'success', invoiced: 'primary', delivered: 'success', estimate: 'neutral'
 }
 const orderStatusLabelMap: Record<string, string> = {
   open: 'Aberta', in_progress: 'Em andamento', waiting_for_part: 'Aguard. peça',
-  completed: 'Concluída', delivered: 'Entregue', estimate: 'Orçamento'
+  completed: 'Concluída', invoiced: 'Faturada', delivered: 'Entregue', estimate: 'Orçamento'
 }
 
 const paymentStatusColorMap: Record<string, BadgeColor> = { pending: 'warning', paid: 'success', partial: 'info' }

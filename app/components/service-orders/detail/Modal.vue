@@ -17,6 +17,7 @@ const emit = defineEmits<{
   'deleted': []
   'quote': [orderId: string]
   'edit': [order: ServiceOrderRaw]
+  'issue-nfse': [orderId: string]
 }>()
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
@@ -254,7 +255,9 @@ const orderProxy = computed<ServiceOrder | null>(() => {
     entry_date: o.entry_date,
     reported_defect: o.reported_defect,
     total_amount: o.total_amount,
+    master_product_name: detail.value.masterProduct?.name ?? null,
     responsible_name: null,
+    responsible_names: detail.value.responsibleNames.map(r => r.name).filter((n): n is string => n !== null),
     has_commissions: detail.value.commissions.length > 0,
     installments_progress: null
   }
@@ -264,6 +267,22 @@ const estimatedCommissionAmount = computed(() => {
   if (!detail.value) return 0
   return computeServiceOrderCommissionBreakdown(detail.value.order, detail.value.employees).total
 })
+
+// ─── NFS-e ────────────────────────────────────────────────────────────────────
+
+type NfseInfoCardRef = { refresh: () => void }
+const nfseInfoCardRef = ref<NfseInfoCardRef | null>(null)
+
+function requestIssueNfse() {
+  if (!detail.value) return
+  emit('issue-nfse', detail.value.order.id)
+}
+
+function refreshNfseCard() {
+  nfseInfoCardRef.value?.refresh()
+}
+
+defineExpose({ refreshNfseCard })
 </script>
 
 <template>
@@ -374,6 +393,15 @@ const estimatedCommissionAmount = computed(() => {
           :responsible-names="detail.responsibleNames"
           :employees="detail.employees"
           :commissions="detail.commissions"
+        />
+
+        <!-- NFS-e -->
+        <ServiceOrdersNfseInfoCard
+          ref="nfseInfoCardRef"
+          :order-id="detail.order.id"
+          :order-status="detail.order.status"
+          :can-create="canCreate"
+          @issue-nfse="requestIssueNfse"
         />
       </div>
     </template>

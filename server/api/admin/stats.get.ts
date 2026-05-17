@@ -1,18 +1,14 @@
-import { defineEventHandler, createError } from 'h3'
-import { requireAuthUser } from '../../utils/require-auth'
+import { defineEventHandler } from 'h3'
+import { requireOwner } from '../../utils/require-owner'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 
 /**
  * GET /api/admin/stats
  * Global system stats for the admin dashboard.
- * Restricted to NUVEM_FISCAL_OWNER_EMAIL (super admin).
+ * Restricted to users with is_owner = true.
  */
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
-  const ownerEmail = process.env.NUVEM_FISCAL_OWNER_EMAIL
-  if (!ownerEmail || user.email !== ownerEmail) {
-    throw createError({ statusCode: 403, statusMessage: 'Acesso negado' })
-  }
+  await requireOwner(event)
 
   const supabase = getSupabaseAdminClient()
 

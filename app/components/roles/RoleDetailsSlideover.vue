@@ -66,6 +66,8 @@ const loading = ref(false)
 const detail = ref<RoleDetailResponse['item'] | null>(null)
 const activePermissionTab = ref('')
 
+const { getResourceIcon, formatResourceLabel } = useRoleResources()
+
 const grantedGroupedActions = computed<Record<string, ActionItem[]>>(() => {
   if (!detail.value)
     return {}
@@ -92,107 +94,6 @@ function roleLabel(role: RoleItem | null) {
     return 'Detalhes do papel'
 
   return role.display_name?.trim() || role.name
-}
-
-function normalizeResourceKey(resource: string | null | undefined) {
-  return String(resource || 'geral')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-}
-
-function getResourceIcon(resource: string | null | undefined) {
-  const key = normalizeResourceKey(resource)
-
-  if (key.includes('appointment') || key.includes('agenda'))
-    return 'i-lucide-calendar-days'
-  if (key.includes('authorization'))
-    return 'i-lucide-badge-check'
-  if (key.includes('bank_account') || key.includes('bank'))
-    return 'i-lucide-landmark'
-  if (key.includes('client') || key.includes('customer'))
-    return 'i-lucide-users'
-  if (key.includes('consult'))
-    return 'i-lucide-stethoscope'
-  if (key.includes('employee') || key.includes('team'))
-    return 'i-lucide-users-round'
-  if (key.includes('financial') || key.includes('billing'))
-    return 'i-lucide-badge-dollar-sign'
-  if (key.includes('inventory') || key.includes('product') || key.includes('part'))
-    return 'i-lucide-package'
-  if (key.includes('notification'))
-    return 'i-lucide-bell'
-  if (key.includes('order') || key.includes('service'))
-    return 'i-lucide-clipboard-list'
-  if (key.includes('purchase'))
-    return 'i-lucide-shopping-cart'
-  if (key.includes('report'))
-    return 'i-lucide-bar-chart-3'
-  if (key.includes('role') || key.includes('permission'))
-    return 'i-lucide-shield-check'
-  if (key.includes('setting'))
-    return 'i-lucide-settings-2'
-  if (key.includes('supplier'))
-    return 'i-lucide-truck'
-  if (key.includes('tax'))
-    return 'i-lucide-percent'
-  if (key.includes('vehicle'))
-    return 'i-lucide-car-front'
-
-  return 'i-lucide-folder'
-}
-
-function formatResourceLabel(resource: string | null | undefined) {
-  const key = normalizeResourceKey(resource)
-
-  if (!key || key === 'geral' || key === 'general')
-    return 'Geral'
-  if (key.includes('appointment') || key.includes('agenda'))
-    return 'Agendamentos'
-  if (key.includes('authorization'))
-    return 'Autorizações'
-  if (key.includes('bank_account') || key.includes('bank'))
-    return 'Contas bancárias'
-  if (key.includes('client') || key.includes('customer'))
-    return 'Clientes'
-  if (key.includes('consult'))
-    return 'Consultas'
-  if (key.includes('employee') || key.includes('team'))
-    return 'Funcionários'
-  if (key.includes('financial') || key.includes('billing'))
-    return 'Financeiro'
-  if (key.includes('inventory'))
-    return 'Estoque'
-  if (key.includes('product'))
-    return 'Produtos'
-  if (key.includes('part'))
-    return 'Peças'
-  if (key.includes('notification'))
-    return 'Notificações'
-  if (key.includes('service_order') || key.includes('order') || key.includes('service'))
-    return 'Ordens de serviço'
-  if (key.includes('purchase'))
-    return 'Compras'
-  if (key.includes('report'))
-    return 'Relatórios'
-  if (key.includes('permission'))
-    return 'Permissões'
-  if (key.includes('role'))
-    return 'Papéis'
-  if (key.includes('setting'))
-    return 'Configurações'
-  if (key.includes('supplier'))
-    return 'Fornecedores'
-  if (key.includes('tax'))
-    return 'Impostos'
-  if (key.includes('vehicle'))
-    return 'Veículos'
-  if (key.includes('user'))
-    return 'Usuários'
-
-  return 'Outros'
 }
 
 function userLabel(user: AssignedUser) {

@@ -97,7 +97,7 @@ export default defineEventHandler(async (event) => {
   const openOrdersCount = orders.filter(order => ['open', 'in_progress'].includes(String(order.status))).length
 
   const grossRevenue = orders
-    .filter(order => ['completed', 'delivered'].includes(String(order.status))
+    .filter(order => ['completed', 'invoiced', 'delivered'].includes(String(order.status))
       && String(order.entry_date || '') >= defaultFrom
       && String(order.entry_date || '') <= defaultTo)
     .reduce((sum, order) => sum + (Number(order.total_amount) || 0), 0)

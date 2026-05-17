@@ -58,6 +58,7 @@ const orderStatusOptions: TagFilterOption[] = [
   { value: 'in_progress', label: 'Em andamento', color: 'warning', icon: 'i-lucide-wrench' },
   { value: 'waiting_for_part', label: 'Aguard. peça', color: 'warning', icon: 'i-lucide-package-search' },
   { value: 'completed', label: 'Concluída', color: 'success', icon: 'i-lucide-check-circle-2' },
+  { value: 'invoiced', label: 'Faturada', color: 'primary', icon: 'i-lucide-receipt' },
   { value: 'delivered', label: 'Entregue', color: 'success', icon: 'i-lucide-truck' },
   { value: 'estimate', label: 'Orçamento', color: 'neutral', icon: 'i-lucide-file-text' }
 ]

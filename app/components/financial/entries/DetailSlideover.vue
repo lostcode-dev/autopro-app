@@ -197,7 +197,7 @@ function linkedEntryStatus(status: string) {
   <USlideover
     :open="open"
     side="right"
-    :ui="{ content: 'max-w-xl z-40', overlay: 'z-30', }"
+    :ui="{ content: 'max-w-xl z-40', overlay: 'z-30' }"
     @update:open="emit('update:open', $event)"
   >
     <!-- Header -->
@@ -416,7 +416,6 @@ function linkedEntryStatus(status: string) {
                 <span class="text-sm font-semibold tabular-nums" :class="amountClass">
                   {{ formatCurrency(sibling.amount) }}
                 </span>
-              
               </div>
             </div>
           </div>

@@ -2,6 +2,7 @@ import type { H3Event } from 'h3'
 import type Stripe from 'stripe'
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { getStripe, getStripeWebhookSecret } from '../../utils/stripe'
+import { deleteFocusNfeCompanyForOrg } from '../../utils/focus-nfe'
 
 type SupabaseClient = ReturnType<typeof getSupabaseAdminClient>
 type SubRow = { id: string, organization_id: string }
@@ -493,6 +494,10 @@ async function handleSubscriptionUpdated(
       .update({ is_active: isActive, updated_by: 'stripe-webhook' })
       .eq('id', sub.organization_id)
   ])
+
+  if (newStatus === 'cancelled') {
+    await deleteFocusNfeCompanyForOrg(sub.organization_id)
+  }
 }
 
 /**
@@ -521,4 +526,6 @@ async function handleSubscriptionDeleted(
       .update({ is_active: false, updated_by: 'stripe-webhook' })
       .eq('id', sub.organization_id)
   ])
+
+  await deleteFocusNfeCompanyForOrg(sub.organization_id)
 }

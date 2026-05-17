@@ -316,7 +316,7 @@ async function save() {
   <UModal
     :open="open"
     title="Processar pagamento"
-    :description="order ? `OS #${order.number}` : ''"
+    :description="order ? `#${order.number}` : ''"
     :ui="{ content: 'sm:max-w-5xl lg:max-w-6xl', body: 'overflow-y-auto max-h-[82vh]' }"
     @update:open="emit('update:open', $event)"
   >
@@ -403,7 +403,7 @@ async function save() {
                 Condição de pagamento
               </p>
               <p class="text-xs text-muted">
-                Igual ao fluxo do legado: à vista ou parcelado com parcelas editáveis.
+                À vista ou parcelado com parcelas editáveis.
               </p>
             </div>
 

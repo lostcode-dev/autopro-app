@@ -26,6 +26,7 @@ const statusOptions = [
   { label: 'Em andamento', value: 'in_progress' },
   { label: 'Aguard. peça', value: 'waiting_for_part' },
   { label: 'Concluída', value: 'completed' },
+  { label: 'Faturada', value: 'invoiced' },
   { label: 'Entregue', value: 'delivered' },
   { label: 'Cancelada', value: 'cancelled' }
 ]

@@ -6,6 +6,7 @@ useSeoMeta({ title: 'Funcionários' })
 
 const toast = useToast()
 const workshop = useWorkshopPermissions()
+const bootstrap = useWorkshopBootstrap()
 const requestFetch = useRequestFetch()
 const requestHeaders = import.meta.server
   ? useRequestHeaders(['cookie'])
@@ -33,6 +34,26 @@ const { data, status, refresh } = await useAsyncData('employees-list', () =>
 )
 
 const employees = computed(() => data.value?.items ?? [])
+
+// ─── License limits ────────────────────────────────────────
+const maxEmployees = computed(() => bootstrap.maxEmployees.value)
+const activeEmployeeCount = computed(() =>
+  employees.value.filter((e) => {
+    const t = (e as Record<string, unknown>).termination_date
+    if (!t) return true
+    return String(t) > new Date().toISOString().split('T')[0]!
+  }).length
+)
+const isAtEmployeeLimit = computed(() =>
+  maxEmployees.value !== null && activeEmployeeCount.value >= maxEmployees.value
+)
+const employeeLimitColor = computed(() => {
+  if (maxEmployees.value === null) return 'success'
+  const ratio = activeEmployeeCount.value / maxEmployees.value
+  if (ratio >= 1) return 'error'
+  if (ratio >= 0.8) return 'warning'
+  return 'success'
+})
 
 watch([search, includeTerminated], () => refresh())
 
@@ -632,14 +653,36 @@ const columns = [
       orientation="horizontal"
       class="mb-4"
     >
-      <UButton
-        v-if="canCreate"
-        label="Novo funcionário"
-        icon="i-lucide-plus"
-        color="neutral"
-        class="w-fit lg:ms-auto"
-        @click="openCreate"
-      />
+      <div class="flex flex-wrap items-center gap-3 lg:ms-auto">
+        <div
+          v-if="maxEmployees !== null"
+          class="flex items-center gap-2"
+        >
+          <span class="text-sm text-muted">
+            {{ activeEmployeeCount }} / {{ maxEmployees }} funcionários
+          </span>
+          <UProgress
+            :value="activeEmployeeCount"
+            :max="maxEmployees"
+            :color="employeeLimitColor"
+            size="sm"
+            class="w-20"
+          />
+        </div>
+        <UTooltip
+          v-if="canCreate"
+          :text="isAtEmployeeLimit ? `Limite do plano atingido (${maxEmployees} funcionários). Faça upgrade para adicionar mais.` : ''"
+          :disabled="!isAtEmployeeLimit"
+        >
+          <UButton
+            label="Novo funcionário"
+            icon="i-lucide-plus"
+            color="neutral"
+            :disabled="isAtEmployeeLimit"
+            @click="openCreate"
+          />
+        </UTooltip>
+      </div>
     </UPageCard>
 
     <AppDataTable

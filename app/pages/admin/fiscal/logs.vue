@@ -6,35 +6,36 @@ definePageMeta({
 useSeoMeta({ title: 'Fiscal — Logs' })
 
 const requestFetch = useRequestFetch()
-const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
+const requestHeaders = import.meta.server
+  ? useRequestHeaders(['cookie'])
+  : undefined
 
 const page = ref(1)
 const pageSize = 50
 
-const { data, status, refresh } = await useAsyncData(
-  'admin-fiscal-logs',
-  () => requestFetch<{ data: { logs: any[], page: number, pageSize: number, hasMore: boolean } }>(
-    '/api/fiscal/integration-logs',
-    {
-      headers: requestHeaders,
-      query: { page: page.value, pageSize }
-    }
-  )
+const { data, status, refresh } = await useAsyncData('admin-fiscal-logs', () =>
+  requestFetch<{
+    success: boolean
+    data: any[]
+    meta: { total: number, page: number, pageSize: number }
+  }>('/api/fiscal/config/logs', {
+    headers: requestHeaders,
+    query: { page: page.value, pageSize }
+  })
 )
 
 watch(page, () => refresh())
 
-const logs = computed(() => data.value?.data?.logs ?? [])
-const hasMore = computed(() => data.value?.data?.hasMore ?? false)
-const hasPrev = computed(() => page.value > 1)
+const logs = computed(() => data.value?.data ?? [])
+const total = computed(() => data.value?.meta?.total ?? 0)
 
 const columns = [
-  { key: 'created_at', label: 'Data/Hora' },
-  { key: 'function_name', label: 'Função' },
-  { key: 'status_code', label: 'Status' },
-  { key: 'auth_user_email', label: 'Usuário' },
-  { key: 'request_url', label: 'URL' },
-  { key: 'duration_ms', label: 'Duração (ms)' }
+  { accessorKey: 'created_at', header: 'Data/Hora', enableSorting: false },
+  { accessorKey: 'function_name', header: 'Função', enableSorting: false },
+  { accessorKey: 'response_status', header: 'Status', enableSorting: false },
+  { accessorKey: 'user_email', header: 'Usuário', enableSorting: false },
+  { accessorKey: 'request_url', header: 'URL', enableSorting: false },
+  { accessorKey: 'duration_ms', header: 'Duração (ms)', enableSorting: false }
 ]
 
 function formatDate(val: string | null) {
@@ -53,63 +54,51 @@ function statusColor(code: number | null) {
 <template>
   <UDashboardPanel>
     <UDashboardNavbar title="Logs de Integração Fiscal" />
+    <div class="p-6 space-y-8 overflow-auto">
+      <AppDataTable
+        v-model:page="page"
+        :columns="columns"
+        :data="logs as Record<string, unknown>[]"
+        :loading="status === 'pending'"
+        :page-size="pageSize"
+        :total="total"
+        empty-icon="i-lucide-scroll-text"
+        empty-title="Nenhum log encontrado"
+        empty-description="Os logs de integração fiscal aparecerão aqui."
+      >
+        <template #created_at-cell="{ row }">
+          <span class="font-mono text-xs">{{
+            formatDate(String(row.original.created_at ?? ""))
+          }}</span>
+        </template>
 
-    <div class="p-6 space-y-4">
-      <div v-if="status === 'pending'" class="space-y-2">
-        <USkeleton v-for="i in 8" :key="i" class="h-10 rounded" />
-      </div>
-
-      <template v-else>
-        <UTable :rows="logs" :columns="columns">
-          <template #created_at-data="{ row }">
-            <span class="text-xs font-mono">{{ formatDate(row.created_at) }}</span>
-          </template>
-
-          <template #status_code-data="{ row }">
-            <UBadge
-              :color="statusColor(row.status_code)"
-              variant="subtle"
-              size="sm"
-            >
-              {{ row.status_code ?? '—' }}
-            </UBadge>
-          </template>
-
-          <template #request_url-data="{ row }">
-            <span class="text-xs font-mono truncate max-w-64 block" :title="row.request_url">
-              {{ row.request_url || '—' }}
-            </span>
-          </template>
-
-          <template #duration_ms-data="{ row }">
-            {{ row.duration_ms != null ? `${row.duration_ms}ms` : '—' }}
-          </template>
-        </UTable>
-
-        <p v-if="logs.length === 0" class="text-center text-sm text-muted py-8">
-          Nenhum log encontrado.
-        </p>
-
-        <div v-if="hasPrev || hasMore" class="flex justify-between items-center pt-2">
-          <UButton
-            variant="ghost"
-            icon="i-lucide-chevron-left"
-            :disabled="!hasPrev"
-            @click="page--"
+        <template #response_status-cell="{ row }">
+          <UBadge
+            :color="statusColor(Number(row.original.response_status) || null)"
+            variant="subtle"
+            size="sm"
           >
-            Anterior
-          </UButton>
-          <span class="text-sm text-muted">Página {{ page }}</span>
-          <UButton
-            variant="ghost"
-            trailing-icon="i-lucide-chevron-right"
-            :disabled="!hasMore"
-            @click="page++"
+            {{ row.original.response_status ?? "—" }}
+          </UBadge>
+        </template>
+
+        <template #request_url-cell="{ row }">
+          <span
+            class="block max-w-64 truncate font-mono text-xs"
+            :title="String(row.original.request_url ?? '')"
           >
-            Próxima
-          </UButton>
-        </div>
-      </template>
+            {{ row.original.request_url || "—" }}
+          </span>
+        </template>
+
+        <template #duration_ms-cell="{ row }">
+          {{
+            row.original.duration_ms != null
+              ? `${row.original.duration_ms}ms`
+              : "—"
+          }}
+        </template>
+      </AppDataTable>
     </div>
   </UDashboardPanel>
 </template>

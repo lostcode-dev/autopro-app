@@ -5,6 +5,7 @@ import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import type { SupabaseClientLike } from '../../utils/supabase-pagination'
 import { parseDateRange, toNumber, roundMoney, paginate, sortFactor, normalizeReportStatus, formatStatusLabel } from '../../utils/report-helpers'
+import { enforceReportAccess } from '../../utils/license'
 
 interface ClientRecord {
   id: string
@@ -431,6 +432,7 @@ export default defineEventHandler(async (event) => {
   const supabase = getSupabaseAdminClient()
   const reportSupabase = supabase as unknown as SupabaseClientLike
   const organizationId = await resolveOrganizationId(event, authUser.id)
+  await enforceReportAccess(organizationId, 'sales-items')
 
   const query = getQuery(event)
 

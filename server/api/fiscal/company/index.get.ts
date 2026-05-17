@@ -1,49 +1,70 @@
 import { defineEventHandler, getQuery, createError } from 'h3'
-import { requireAuthUser } from '../../../utils/require-auth'
 import {
-  NUVEM_FISCAL_OWNER_EMAIL,
-  getNuvemFiscalApiToken,
-  getNuvemFiscalApiBaseUrl,
-  monitoredNuvemFiscalFetch,
+  getFocusNfeApiBaseUrl,
+  getFocusNfeBasicAuthHeader,
+  monitoredFocusNfeFetch,
   sanitizeCpfCnpj
-} from '../../../utils/nuvem-fiscal'
+} from '../../../utils/focus-nfe'
+import { mapCompanyResult, mapFiscalErrorDetails } from '../../../utils/fiscal-mappers'
+import type { FocusNfeEmpresaResponse } from '../../../types/focus-nfe'
+import type { CompanyResult } from '../../../types/fiscal'
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuthUser(event)
-  if (user.email !== NUVEM_FISCAL_OWNER_EMAIL) {
+  if (!user) {
     throw createError({ statusCode: 403, message: 'Acesso negado' })
   }
 
-  const body = getQuery(event)
-  const cpfCnpj = sanitizeCpfCnpj(body?.cpf_cnpj)
-  if (!cpfCnpj) {
-    throw createError({ statusCode: 400, message: 'cpf_cnpj é obrigatório' })
+  const queryParams = getQuery(event)
+
+  let authHeader: string
+  try {
+    authHeader = getFocusNfeBasicAuthHeader()
+  } catch {
+    throw createError({ statusCode: 503, message: 'Integração Focus NFe não configurada no servidor' })
   }
 
-  const apiToken = await getNuvemFiscalApiToken()
-  const apiBaseUrl = getNuvemFiscalApiBaseUrl()
+  const apiBaseUrl = getFocusNfeApiBaseUrl()
 
-  const { response, responseBodyRaw } = await monitoredNuvemFiscalFetch({
-    authUserEmail: user.email!,
-    functionName: 'getNuvemFiscalEmpresa',
-    url: `${apiBaseUrl}/empresas/${encodeURIComponent(cpfCnpj)}`,
-    init: {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${apiToken}`,
-        'Content-Type': 'application/json'
+  const offset = Math.max(0, Number(queryParams.offset) || 0)
+  const businessId = sanitizeCpfCnpj(queryParams.business_id)
+  const individualId = sanitizeCpfCnpj(queryParams.individual_id)
+
+  const params = new URLSearchParams()
+  params.set('offset', String(offset))
+  if (businessId) params.set('cnpj', businessId)
+  if (individualId) params.set('cpf', individualId)
+
+  let response: Response
+  let responseBodyRaw: string | null
+  try {
+    ;({ response, responseBodyRaw } = await monitoredFocusNfeFetch({
+      authUserEmail: user.email!,
+      functionName: 'listFocusNfeEmpresas',
+      url: `${apiBaseUrl}/v2/empresas?${params.toString()}`,
+      captureResponseBody: 'always',
+      init: {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json'
+        }
       }
-    }
-  })
-
-  const data = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
+    }))
+  } catch (err: any) {
+    throw createError({ statusCode: 502, message: `Erro ao conectar com a Focus NFe: ${err?.message ?? 'falha de rede'}` })
+  }
 
   if (!response.ok) {
+    const raw = responseBodyRaw ? JSON.parse(responseBodyRaw) : null
     throw createError({
       statusCode: response.status,
-      data: { error: 'Erro ao consultar empresa na Nuvem Fiscal', details: data }
+      data: { error: 'Erro ao listar empresas na Focus NFe', details: mapFiscalErrorDetails(raw) }
     })
   }
 
-  return { success: true, data }
+  const rawList: FocusNfeEmpresaResponse[] = responseBodyRaw ? JSON.parse(responseBodyRaw) : []
+  const results: CompanyResult[] = rawList.map(mapCompanyResult)
+  const total = response.headers.get('x-total-count')
+  return { success: true, data: results, total: total ? Number(total) : undefined }
 })

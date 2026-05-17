@@ -4,6 +4,7 @@ import { requireAuthUser } from '../../utils/require-auth'
 import { resolveOrganizationId } from '../../utils/organization'
 import { fetchAllOrganizationRows } from '../../utils/supabase-pagination'
 import { parseDateRange, toNumber, qArr, paginate, sortFactor, normalizeReportStatus } from '../../utils/report-helpers'
+import { enforceReportAccess } from '../../utils/license'
 
 interface ServiceOrderRecord {
   id?: string | null
@@ -83,6 +84,7 @@ export default defineEventHandler(async (event) => {
   const authUser = await requireAuthUser(event)
   const supabase = getSupabaseAdminClient()
   const organizationId = await resolveOrganizationId(event, authUser.id)
+  await enforceReportAccess(organizationId, 'debtors')
 
   const query = getQuery(event)
 

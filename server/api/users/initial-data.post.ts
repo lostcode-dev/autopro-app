@@ -1,5 +1,6 @@
 import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
+import { resolveOrgLicense } from '../../utils/license'
 
 /**
  * POST /api/users/initial-data
@@ -22,6 +23,8 @@ export default eventHandler(async (event) => {
   }
 
   const organizationId = profile.organization_id ?? null
+
+  const license = organizationId ? await resolveOrgLicense(organizationId) : { planKey: null, maxEmployees: null }
 
   const [orgResult, roleResult, employeeResult, rolesResult] = await Promise.all([
     organizationId
@@ -94,6 +97,9 @@ export default eventHandler(async (event) => {
   }
 
   const permissions = roleActions.reduce<Record<string, boolean>>((acc, roleAction) => {
+    if (!roleAction.is_granted)
+      return acc
+
     const action = actions.find(item => item.id === roleAction.action_id)
     if (action?.code)
       acc[action.code] = true
@@ -117,6 +123,8 @@ export default eventHandler(async (event) => {
     termination_reason: null,
     onboardingCompleted,
     user: profile,
-    role: userRole
+    role: userRole,
+    planKey: license.planKey,
+    maxEmployees: license.maxEmployees
   }
 })

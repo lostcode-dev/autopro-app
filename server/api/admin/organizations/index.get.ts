@@ -1,11 +1,11 @@
-import { defineEventHandler, getQuery, createError } from 'h3'
-import { requireAuthUser } from '../../../utils/require-auth'
+import { defineEventHandler, getQuery } from 'h3'
+import { requireOwner } from '../../../utils/require-owner'
 import { getSupabaseAdminClient } from '../../../utils/supabase'
 
 /**
  * GET /api/admin/organizations
  * Lists all organizations in the system for admin use.
- * Restricted to NUVEM_FISCAL_OWNER_EMAIL (super admin).
+ * Restricted to users with is_owner = true.
  *
  * Query params:
  *   search    — filter by name or tax_id
@@ -13,11 +13,7 @@ import { getSupabaseAdminClient } from '../../../utils/supabase'
  *   page_size — items per page (default 30)
  */
 export default defineEventHandler(async (event) => {
-  const user = await requireAuthUser(event)
-  const ownerEmail = process.env.NUVEM_FISCAL_OWNER_EMAIL
-  if (!ownerEmail || user.email !== ownerEmail) {
-    throw createError({ statusCode: 403, statusMessage: 'Acesso negado' })
-  }
+  await requireOwner(event)
 
   const supabase = getSupabaseAdminClient()
   const query = getQuery(event)
@@ -29,13 +25,13 @@ export default defineEventHandler(async (event) => {
 
   let dbQuery = supabase
     .from('organizations')
-    .select('id, name, trade_name, tax_id, email, phone, created_at, is_active', { count: 'exact' })
+    .select('id, name, tax_id, email, phone, created_at, is_active', { count: 'exact' })
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + pageSize - 1)
 
   if (search) {
-    dbQuery = dbQuery.or(`name.ilike.%${search}%,trade_name.ilike.%${search}%,tax_id.ilike.%${search}%`)
+    dbQuery = dbQuery.or(`name.ilike.%${search}%,tax_id.ilike.%${search}%`)
   }
 
   const { data, error, count } = await dbQuery

@@ -113,13 +113,7 @@ export enum ActionCode {
   SERVICE_INVOICE_READ = 'service_invoice.read',
   SERVICE_INVOICE_CREATE = 'service_invoice.create',
   SERVICE_INVOICE_UPDATE = 'service_invoice.update',
-  SERVICE_INVOICE_DELETE = 'service_invoice.delete',
-  PRODUCT_INVOICE_READ = 'product_invoice.read',
-  PRODUCT_INVOICE_CREATE = 'product_invoice.create',
-  PRODUCT_INVOICE_UPDATE = 'product_invoice.update',
-  PRODUCT_INVOICE_DELETE = 'product_invoice.delete',
-
-  FISCAL_MANAGE = 'fiscal.manage'
+  SERVICE_INVOICE_DELETE = 'service_invoice.delete'
 }
 
 export function isValidActionCode(code: string): code is ActionCode {

@@ -2,6 +2,7 @@ import { getSupabaseAdminClient } from '../../utils/supabase'
 import { requireAuthUser } from '../../utils/require-auth'
 import { getStripe } from '../../utils/stripe'
 import { resolveOrganizationId } from '../../utils/organization'
+import { deleteFocusNfeCompanyForOrg } from '../../utils/focus-nfe'
 
 /**
  * POST /api/stripe/cancel-subscription
@@ -60,6 +61,9 @@ export default eventHandler(async (event) => {
       .update({ is_active: false, updated_by: authUser.email })
       .eq('id', organizationId)
   }
+
+  // Remove company from FocusNFe if synced
+  await deleteFocusNfeCompanyForOrg(organizationId)
 
   return {
     success: true,
