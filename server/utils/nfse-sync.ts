@@ -1,16 +1,10 @@
 import { getSupabaseAdminClient } from './supabase'
-import type { FocusNfeNfseResponse, FocusNfeNfseStatus } from '../types/focus-nfe'
-
-type NfseDbStatus = 'draft' | 'issued' | 'error' | 'canceled'
-
-function focusNfeStatusToDbStatus(status: FocusNfeNfseStatus): NfseDbStatus {
-  if (status === 'erro_autorizacao') return 'error'
-  return 'issued'
-}
+import { mapNfseStatus } from './fiscal-mappers'
+import type { FocusNfeNfseResponse } from '../types/focus-nfe'
 
 function buildNfseFields(raw: FocusNfeNfseResponse, rawJson: string) {
   return {
-    status: focusNfeStatusToDbStatus(raw.status),
+    status: mapNfseStatus(raw.status),
     provider_status: raw.status,
     nfse_number: raw.numero ?? null,
     verification_code: raw.codigo_verificacao ?? null,
@@ -26,6 +20,7 @@ function buildNfseFields(raw: FocusNfeNfseResponse, rawJson: string) {
 export interface UpsertNfseParams {
   serviceOrderId: string
   organizationId: string
+  serviceOrderNumber?: string | null
   payloadJson: string
   rawResponse: FocusNfeNfseResponse
   rawResponseJson: string
@@ -63,6 +58,7 @@ export async function upsertNfseRecord(params: UpsertNfseParams): Promise<string
     .insert({
       service_order_id: params.serviceOrderId,
       organization_id: params.organizationId,
+      service_order_number: params.serviceOrderNumber ?? null,
       provider_reference: reference,
       payload_json: params.payloadJson,
       created_by: params.userEmail ?? null,
@@ -102,7 +98,7 @@ export async function markNfseDbCancelled(reference: string, rawCancelJson?: str
   await supabase
     .from('service_order_nfse')
     .update({
-      status: 'canceled',
+      status: 'cancelled',
       provider_status: 'cancelado',
       cancellation_json: rawCancelJson ?? null
     })

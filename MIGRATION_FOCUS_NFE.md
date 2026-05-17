@@ -1,3 +1,1 @@
 - Integração OS com NF.
-- Relatórios precisa levar em consideração o novo tipo "faturado"
-- normalizar o Status da OS para todos estarem seguindo o mesmo.

@@ -386,6 +386,7 @@ export interface NfseTakerInput {
 export interface NfseInput {
   reference: string
   service_order_id?: string
+  service_order_number?: string | null
   organization_id?: string
   issued_at?: string
   provider_business_id?: string

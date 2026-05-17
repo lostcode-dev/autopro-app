@@ -58,6 +58,7 @@ export default defineEventHandler(async (event) => {
     await upsertNfseRecord({
       serviceOrderId: body.service_order_id,
       organizationId: body.organization_id,
+      serviceOrderNumber: body.service_order_number ?? null,
       payloadJson: JSON.stringify(focusNfePayload),
       rawResponse: rawNfse,
       rawResponseJson: responseBodyRaw!,

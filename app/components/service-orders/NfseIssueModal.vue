@@ -20,6 +20,7 @@ const isInitializing = ref(false)
 const isSubmitting = ref(false)
 const syncError = ref<string | null>(null)
 const organizationId = ref<string | null>(null)
+const providerTaxId = ref<string | null>(null)
 
 interface NfseIssueForm {
   description: string
@@ -46,10 +47,11 @@ async function init() {
   try {
     const syncRes = await $fetch<SyncStatusResponse>('/api/fiscal/company/sync-status')
     if (!syncRes.is_synced) {
-      syncError.value = 'Empresa não sincronizada com Focus NFe. Configure a integração fiscal antes de emitir NF-e.'
+      syncError.value = 'Empresa não habilitada para emissão fiscal. Configure a integração fiscal nas configurações de empresa antes de emitir NFS-e.'
       return
     }
     organizationId.value = syncRes.organization_id
+    providerTaxId.value = syncRes.sync?.tax_id ?? null
 
     form.takerName = props.order.client_name ?? ''
     form.serviceValue = String(props.order.total_amount ?? 0)
@@ -114,7 +116,10 @@ async function submit() {
       body: {
         reference,
         service_order_id: props.order.id,
+        service_order_number: String(props.order.number ?? ''),
         organization_id: organizationId.value,
+        issued_at: new Date().toISOString(),
+        provider_business_id: providerTaxId.value || undefined,
         service: {
           description: form.description.trim(),
           service_value: serviceValue
