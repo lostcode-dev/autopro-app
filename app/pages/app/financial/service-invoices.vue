@@ -18,14 +18,19 @@ const canDelete = computed(() => workshop.can(ActionCode.SERVICE_INVOICE_DELETE)
 const requestHeaders = import.meta.server ? useRequestHeaders(['cookie']) : undefined
 const requestFetch = useRequestFetch()
 
-const { data: syncStatusData, refresh: refreshSyncStatus } = await useAsyncData(
+const router = useRouter()
+
+const { data: syncStatusData } = await useAsyncData(
   'fiscal-company-sync-status',
   () => requestFetch<SyncStatusResponse>('/api/fiscal/company/sync-status', { headers: requestHeaders }),
   { default: () => null as SyncStatusResponse | null }
 )
 
 const isSynced = computed(() => syncStatusData.value?.is_synced === true)
-const showSyncModal = ref(false)
+
+function goToCompanySettings() {
+  router.push('/app/settings/company')
+}
 
 // ─── NFS-e list ───────────────────────────────────────────────────────────────
 
@@ -218,7 +223,7 @@ function requestEmail(row: NfseRow) {
       <FinancialFiscalSyncBanner
         v-if="!isSynced"
         :error-message="syncStatusData?.sync?.sync_error_message"
-        @configure="showSyncModal = true"
+        @configure="goToCompanySettings"
       />
 
       <AppDataTable
@@ -335,12 +340,5 @@ function requestEmail(row: NfseRow) {
     @update:open="(v) => { showEmailModal = v; if (!v) nfseForEmail = null }"
   />
 
-  <FinancialFiscalSyncModal
-    v-if="syncStatusData"
-    :open="showSyncModal"
-    :organization="syncStatusData.organization"
-    :organization-id="syncStatusData.organization_id"
-    @update:open="(v) => (showSyncModal = v)"
-    @synced="refreshSyncStatus"
-  />
+
 </template>
