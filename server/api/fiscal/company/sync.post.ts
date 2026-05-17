@@ -30,10 +30,15 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'name (razão social) é obrigatório' })
   }
 
-  // Normalize: CNPJ/CPF must be digits-only for the API; use the already-sanitized taxId
-  const syncInput: CompanyInput = companyInput.business_id
-    ? { ...companyInput, business_id: taxId }
-    : { ...companyInput, individual_id: taxId }
+  // Normalize: CNPJ/CPF must be digits-only for the API; use the already-sanitized taxId.
+  // Always enable NFS-e emission and email delivery to recipient.
+  const syncInput: CompanyInput = {
+    ...(companyInput.business_id
+      ? { ...companyInput, business_id: taxId }
+      : { ...companyInput, individual_id: taxId }),
+    nfse_enabled: true,
+    send_email_to_recipient: true
+  }
 
   const authHeader = getFocusNfeBasicAuthHeader()
   const apiBaseUrl = getFocusNfeApiBaseUrl()
@@ -87,7 +92,9 @@ export default defineEventHandler(async (event) => {
       last_synced_at: saveResp.ok ? nowIso : (existing?.last_synced_at ?? null),
       last_sync_attempt_at: nowIso,
       selected_state: companyInput.state?.toUpperCase().slice(0, 2) ?? existing?.selected_state ?? null,
-      provider_response_json: JSON.stringify(saveData)?.slice(0, 5000)
+      provider_response_json: JSON.stringify(saveData)?.slice(0, 5000),
+      contact_name: companyInput.contact_name?.trim() || null,
+      contact_cpf: sanitizeCpfCnpj(companyInput.contact_id) || null
     }
 
     if (existing?.id) {

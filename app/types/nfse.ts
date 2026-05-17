@@ -69,6 +69,8 @@ export type SyncStatusResponse = {
     last_synced_at: string | null
     last_sync_attempt_at: string | null
     selected_state: string | null
+    contact_name: string | null
+    contact_cpf: string | null
   } | null
   organization: SyncStatusOrganization
 }

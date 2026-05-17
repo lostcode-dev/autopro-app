@@ -249,8 +249,15 @@ type FiscalSyncResult = {
 }
 
 const fiscalCompanyInfo = ref<FiscalCompanyInfo | null>(null)
-const fiscalNfseEnabled = ref(false)
 const isSyncingFiscal = ref(false)
+
+const contactName = ref('')
+const contactCpf = ref('')
+
+watch(fiscalSyncStatus, (val) => {
+  if (val?.sync?.contact_name) contactName.value = val.sync.contact_name
+  if (val?.sync?.contact_cpf) contactCpf.value = val.sync.contact_cpf
+}, { immediate: true })
 
 const certFileRef = ref<HTMLInputElement>()
 const certBase64 = ref<string | null>(null)
@@ -311,6 +318,8 @@ async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
       neighborhood: form.address_neighborhood || undefined,
       municipality: form.address_city || undefined,
       zip_code: zipCode ? Number(zipCode) || undefined : undefined,
+      contact_name: contactName.value.trim() || undefined,
+      contact_id: contactCpf.value.replace(/\D/g, '') || undefined,
       ...overrides
     }
 
@@ -326,7 +335,6 @@ async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
 
     if (result.data) {
       fiscalCompanyInfo.value = result.data
-      fiscalNfseEnabled.value = result.data.nfse_enabled ?? false
     }
 
     clearCert()
@@ -345,10 +353,6 @@ async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
   } finally {
     isSyncingFiscal.value = false
   }
-}
-
-async function handleNfseToggle(newVal: boolean) {
-  await syncFiscalCompany({ nfse_enabled: newVal })
 }
 </script>
 
@@ -923,25 +927,41 @@ async function handleNfseToggle(newVal: boolean) {
           </div>
         </div>
 
-        <!-- Ativação da emissão de NFS-e -->
-        <div
-          v-if="isFiscalSynced"
-          class="mb-6 border-t border-default/60 pt-5"
-        >
-          <div class="flex items-center justify-between gap-4 rounded-lg border border-default/60 bg-elevated/20 px-4 py-3">
-            <div>
-              <p class="text-sm font-medium">
-                Emissão de NFS-e
-              </p>
-              <p class="text-xs text-muted mt-0.5">
-                Habilite para permitir a emissão de notas fiscais de serviço eletrônicas.
-              </p>
-            </div>
-            <UToggle
-              :model-value="fiscalNfseEnabled"
-              :disabled="!canUpdate || isSyncingFiscal"
-              @update:model-value="handleNfseToggle"
-            />
+        <!-- Responsável pela empresa -->
+        <div class="mb-6 border-t border-default/60 pt-5">
+          <p class="text-sm font-medium mb-0.5">
+            Responsável pela empresa
+          </p>
+          <p class="text-xs text-muted mb-4">
+            Pessoa responsável pela emissão fiscal. Exigido por alguns municípios.
+          </p>
+
+          <div class="grid gap-4 grid-cols-2">
+            <UFormField
+              name="_contact_name"
+              label="Nome do responsável"
+              class="grid gap-2"
+            >
+              <UInput
+                v-model="contactName"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="Nome completo"
+              />
+            </UFormField>
+
+            <UFormField
+              name="_contact_cpf"
+              label="CPF do responsável"
+              class="grid gap-2"
+            >
+              <UInput
+                v-model="contactCpf"
+                :disabled="!canUpdate"
+                class="w-full"
+                placeholder="000.000.000-00"
+              />
+            </UFormField>
           </div>
         </div>
 

@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
   // Fetch fiscal sync status row (may not exist yet)
   const { data: syncStatus, error: syncError } = await supabase
     .from('fiscal_sync_status')
-    .select('id, tax_id, integration_status, is_company_synced, sync_status, sync_error_message, last_synced_at, last_sync_attempt_at, selected_state')
+    .select('id, tax_id, integration_status, is_company_synced, sync_status, sync_error_message, last_synced_at, last_sync_attempt_at, selected_state, contact_name, contact_cpf')
     .eq('organization_id', organizationId)
     .maybeSingle()
 
@@ -59,7 +59,9 @@ export default defineEventHandler(async (event) => {
           sync_error_message: syncStatus.sync_error_message,
           last_synced_at: syncStatus.last_synced_at,
           last_sync_attempt_at: syncStatus.last_sync_attempt_at,
-          selected_state: syncStatus.selected_state
+          selected_state: syncStatus.selected_state,
+          contact_name: syncStatus.contact_name ?? null,
+          contact_cpf: syncStatus.contact_cpf ?? null
         }
       : null,
     organization: {
