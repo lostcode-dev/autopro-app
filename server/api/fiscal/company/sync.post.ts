@@ -30,6 +30,11 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'name (razão social) é obrigatório' })
   }
 
+  // Normalize: CNPJ/CPF must be digits-only for the API; use the already-sanitized taxId
+  const syncInput: CompanyInput = companyInput.business_id
+    ? { ...companyInput, business_id: taxId }
+    : { ...companyInput, individual_id: taxId }
+
   const authHeader = getFocusNfeBasicAuthHeader()
   const apiBaseUrl = getFocusNfeApiBaseUrl()
   const headers = { 'Authorization': authHeader, 'Content-Type': 'application/json' }
@@ -53,7 +58,7 @@ export default defineEventHandler(async (event) => {
     functionName: companyExists ? 'syncFocusNfeEmpresa:update' : 'syncFocusNfeEmpresa:create',
     captureResponseBody: 'always',
     url: saveUrl,
-    init: { method, headers, body: JSON.stringify(mapCompanyInput(companyInput)) }
+    init: { method, headers, body: JSON.stringify(mapCompanyInput(syncInput)) }
   })
 
   const saveData = saveRaw ? JSON.parse(saveRaw) : null

@@ -227,9 +227,10 @@ const isFiscalSynced = computed(() => fiscalSyncStatus.value?.is_synced === true
 const fiscalSyncErrorMsg = computed(() => fiscalSyncStatus.value?.sync?.sync_error_message ?? null)
 const lastFiscalSync = computed(() => fiscalSyncStatus.value?.sync?.last_synced_at ?? null)
 
+// regime_tributario: 1=Simples Nacional, 2=SN Excesso Sublimite, 3=Regime Normal, 4=MEI
 const FISCAL_TAX_REGIME_MAP: Record<string, number> = {
   simples_nacional: 1,
-  mei: 1,
+  mei: 4,
   lucro_presumido: 3,
   lucro_real: 3
 }
@@ -288,6 +289,7 @@ async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
     const payload: Record<string, unknown> = {
       organization_id: orgId,
       name: form.name?.trim() || undefined,
+      trade_name: form.trade_name?.trim() || undefined,
       business_id: taxId || undefined,
       phone: form.phone || undefined,
       email: form.email || undefined,
