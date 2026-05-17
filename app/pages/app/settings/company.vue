@@ -2,6 +2,8 @@
 import * as z from 'zod'
 import type { FormSubmitEvent } from '@nuxt/ui'
 import { ActionCode } from '~/constants/action-codes'
+import { PLAN_LICENSES, type PlanKey } from '~/composables/usePlans'
+import type { SyncStatusResponse } from '~/types/nfse'
 
 definePageMeta({ layout: 'app' })
 useSeoMeta({ title: 'Empresa' })
@@ -202,6 +204,150 @@ const fiscalRegimeOptions = [
   { label: 'Lucro Real', value: 'lucro_real' },
   { label: 'MEI', value: 'mei' }
 ]
+
+// ─── Integração Fiscal ────────────────────────────────────────────────────────
+
+const canEmitNfse = computed(() => {
+  const planK = workshop.planKey.value as PlanKey | null
+  return !!(planK && PLAN_LICENSES[planK]?.nfseEmission)
+})
+
+const {
+  data: fiscalSyncStatus,
+  refresh: refreshFiscalStatus
+} = useAsyncData(
+  'company-fiscal-sync-status',
+  () => canEmitNfse.value
+    ? requestFetch<SyncStatusResponse>('/api/fiscal/company/sync-status', { headers: requestHeaders })
+    : Promise.resolve(null as SyncStatusResponse | null),
+  { lazy: true, default: () => null as SyncStatusResponse | null }
+)
+
+const isFiscalSynced = computed(() => fiscalSyncStatus.value?.is_synced === true)
+const fiscalSyncErrorMsg = computed(() => fiscalSyncStatus.value?.sync?.sync_error_message ?? null)
+const lastFiscalSync = computed(() => fiscalSyncStatus.value?.sync?.last_synced_at ?? null)
+
+const FISCAL_TAX_REGIME_MAP: Record<string, number> = {
+  simples_nacional: 1,
+  mei: 1,
+  lucro_presumido: 3,
+  lucro_real: 3
+}
+
+type FiscalCompanyInfo = {
+  nfse_enabled?: boolean
+  certificate_valid_until?: string | null
+  certificate_valid_from?: string | null
+  certificate_business_id?: string | null
+}
+
+type FiscalSyncResult = {
+  success: boolean
+  action: string
+  data: FiscalCompanyInfo
+}
+
+const fiscalCompanyInfo = ref<FiscalCompanyInfo | null>(null)
+const fiscalNfseEnabled = ref(false)
+const isSyncingFiscal = ref(false)
+
+const certFileRef = ref<HTMLInputElement>()
+const certBase64 = ref<string | null>(null)
+const certPassword = ref('')
+const certFileName = ref<string | null>(null)
+
+async function onCertFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (!input.files?.length) return
+  const file = input.files[0]!
+  certFileName.value = file.name
+  const buffer = await file.arrayBuffer()
+  const bytes = new Uint8Array(buffer)
+  let binary = ''
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]!)
+  certBase64.value = btoa(binary)
+  if (input) input.value = ''
+}
+
+function clearCert() {
+  certBase64.value = null
+  certPassword.value = ''
+  certFileName.value = null
+}
+
+async function syncFiscalCompany(overrides: Record<string, unknown> = {}) {
+  if (isSyncingFiscal.value) return
+  isSyncingFiscal.value = true
+  try {
+    const orgId = workshop.organizationId.value
+    if (!orgId) throw new Error('Organização não identificada')
+
+    const taxId = (form.tax_id ?? '').replace(/\D/g, '')
+    const zipCode = (form.address_zip_code ?? '').replace(/\D/g, '')
+
+    const payload: Record<string, unknown> = {
+      organization_id: orgId,
+      name: form.name?.trim() || undefined,
+      business_id: taxId || undefined,
+      phone: form.phone || undefined,
+      email: form.email || undefined,
+      state: form.address_state ? form.address_state.toUpperCase() : undefined,
+      state_registration: form.state_registration
+        ? Number(String(form.state_registration).replace(/\D/g, '')) || undefined
+        : undefined,
+      municipal_registration: form.municipal_registration
+        ? Number(String(form.municipal_registration).replace(/\D/g, '')) || undefined
+        : undefined,
+      tax_regime: form.fiscal_regime
+        ? FISCAL_TAX_REGIME_MAP[form.fiscal_regime]
+        : undefined,
+      street: form.address_street || undefined,
+      address_number: form.address_number
+        ? Number(form.address_number) || undefined
+        : undefined,
+      complement: form.address_complement || undefined,
+      neighborhood: form.address_neighborhood || undefined,
+      municipality: form.address_city || undefined,
+      zip_code: zipCode ? Number(zipCode) || undefined : undefined,
+      ...overrides
+    }
+
+    if (certBase64.value) {
+      payload.certificate_base64 = certBase64.value
+      payload.certificate_password = certPassword.value || ''
+    }
+
+    const result = await $fetch<FiscalSyncResult>('/api/fiscal/company/sync', {
+      method: 'POST',
+      body: payload
+    })
+
+    if (result.data) {
+      fiscalCompanyInfo.value = result.data
+      fiscalNfseEnabled.value = result.data.nfse_enabled ?? false
+    }
+
+    clearCert()
+    await refreshFiscalStatus()
+    toast.add({ title: 'Dados sincronizados com sucesso', color: 'success' })
+  } catch (error: unknown) {
+    const err = error as {
+      data?: { statusMessage?: string }
+      statusMessage?: string
+    }
+    toast.add({
+      title: 'Erro ao sincronizar dados',
+      description: err?.data?.statusMessage || err?.statusMessage || 'Não foi possível sincronizar',
+      color: 'error'
+    })
+  } finally {
+    isSyncingFiscal.value = false
+  }
+}
+
+async function handleNfseToggle(newVal: boolean) {
+  await syncFiscalCompany({ nfse_enabled: newVal })
+}
 </script>
 
 <template>
@@ -595,6 +741,225 @@ const fiscalRegimeOptions = [
             class="w-full sm:max-w-32"
           />
         </UFormField>
+      </UPageCard>
+
+      <!-- Integração Fiscal -->
+      <UPageCard v-if="canEmitNfse" variant="subtle" class="mb-4">
+        <p class="text-xs font-semibold uppercase tracking-widest text-muted mb-4">
+          Integração Fiscal
+        </p>
+
+        <!-- Status da sincronização -->
+        <div class="mb-6">
+          <div
+            v-if="isFiscalSynced"
+            class="flex items-center gap-3 rounded-lg border border-success/30 bg-success/5 px-4 py-3"
+          >
+            <UIcon name="i-lucide-check-circle-2" class="size-5 shrink-0 text-success" />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-highlighted">
+                Empresa habilitada para emissão fiscal
+              </p>
+              <p v-if="lastFiscalSync" class="text-xs text-muted mt-0.5">
+                Última sincronização: {{ new Date(lastFiscalSync).toLocaleString('pt-BR') }}
+              </p>
+            </div>
+            <UBadge color="success" variant="subtle" label="Ativo" />
+          </div>
+
+          <div
+            v-else-if="fiscalSyncErrorMsg"
+            class="flex items-start gap-3 rounded-lg border border-error/30 bg-error/5 px-4 py-3"
+          >
+            <UIcon name="i-lucide-alert-circle" class="mt-0.5 size-5 shrink-0 text-error" />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium text-highlighted">
+                Erro na última sincronização
+              </p>
+              <p class="text-xs text-muted mt-0.5">
+                {{ fiscalSyncErrorMsg }}
+              </p>
+            </div>
+          </div>
+
+          <div
+            v-else
+            class="flex items-start gap-3 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3"
+          >
+            <UIcon name="i-lucide-alert-triangle" class="mt-0.5 size-5 shrink-0 text-warning" />
+            <div>
+              <p class="text-sm font-medium text-highlighted">
+                Configuração pendente
+              </p>
+              <p class="text-xs text-muted mt-0.5">
+                Preencha os dados cadastrais (CNPJ, regime tributário e endereço) nas seções
+                acima, faça o upload do certificado digital e clique em
+                <strong>Sincronizar dados</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guia de etapas (apenas quando não sincronizado) -->
+        <div v-if="!isFiscalSynced" class="mb-6 grid sm:grid-cols-3 gap-3">
+          <div class="flex items-start gap-2 rounded-lg border border-default/50 bg-elevated/20 p-3">
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary"
+            >1</span>
+            <div>
+              <p class="text-xs font-semibold">
+                Dados cadastrais
+              </p>
+              <p class="text-xs text-muted mt-0.5">
+                Complete CNPJ, regime tributário e endereço nas seções acima.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 rounded-lg border border-default/50 bg-elevated/20 p-3">
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary"
+            >2</span>
+            <div>
+              <p class="text-xs font-semibold">
+                Certificado digital
+              </p>
+              <p class="text-xs text-muted mt-0.5">
+                Envie o certificado A1 (.pfx ou .p12) no campo abaixo.
+              </p>
+            </div>
+          </div>
+          <div class="flex items-start gap-2 rounded-lg border border-default/50 bg-elevated/20 p-3">
+            <span
+              class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary"
+            >3</span>
+            <div>
+              <p class="text-xs font-semibold">
+                Sincronizar
+              </p>
+              <p class="text-xs text-muted mt-0.5">
+                Clique em <strong>Sincronizar dados</strong> para ativar a emissão.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Certificado Digital A1 -->
+        <div class="mb-6 border-t border-default/60 pt-5">
+          <p class="text-sm font-medium mb-0.5">
+            Certificado Digital A1
+          </p>
+          <p class="text-xs text-muted mb-4">
+            Utilizado para assinar eletronicamente as notas fiscais. Formatos aceitos: .pfx ou .p12.
+          </p>
+
+          <!-- Certificado ativo (retornado após sync) -->
+          <div
+            v-if="fiscalCompanyInfo?.certificate_valid_until && !certFileName"
+            class="mb-4 flex items-center gap-3 rounded-lg border border-success/20 bg-success/5 px-4 py-3"
+          >
+            <UIcon name="i-lucide-shield-check" class="size-4 shrink-0 text-success" />
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-medium">
+                Certificado ativo
+              </p>
+              <p class="text-xs text-muted">
+                Válido até
+                {{ new Date(fiscalCompanyInfo.certificate_valid_until).toLocaleDateString('pt-BR') }}
+                <template v-if="fiscalCompanyInfo.certificate_business_id">
+                  · CNPJ: {{ fiscalCompanyInfo.certificate_business_id }}
+                </template>
+              </p>
+            </div>
+          </div>
+
+          <!-- Arquivo selecionado -->
+          <div
+            v-if="certFileName"
+            class="mb-4 flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3"
+          >
+            <UIcon name="i-lucide-file-key-2" class="size-4 shrink-0 text-primary" />
+            <span class="flex-1 text-sm truncate">{{ certFileName }}</span>
+            <UButton
+              color="neutral"
+              variant="ghost"
+              size="xs"
+              icon="i-lucide-x"
+              @click="clearCert"
+            />
+          </div>
+
+          <div class="flex flex-wrap items-end gap-3">
+            <UButton
+              v-if="canUpdate"
+              color="neutral"
+              variant="outline"
+              icon="i-lucide-upload"
+              size="sm"
+              :label="certFileName ? 'Trocar certificado' : 'Selecionar certificado (.pfx / .p12)'"
+              @click="certFileRef?.click()"
+            />
+            <input
+              ref="certFileRef"
+              type="file"
+              class="hidden"
+              accept=".pfx,.p12"
+              @change="onCertFileChange"
+            >
+            <UFormField
+              v-if="certFileName"
+              name="_cert_password"
+              label="Senha do certificado"
+            >
+              <UInput
+                v-model="certPassword"
+                type="password"
+                placeholder="••••••••"
+                size="sm"
+                class="w-full"
+              />
+            </UFormField>
+          </div>
+        </div>
+
+        <!-- Ativação da emissão de NFS-e -->
+        <div
+          v-if="isFiscalSynced"
+          class="mb-6 border-t border-default/60 pt-5"
+        >
+          <div class="flex items-center justify-between gap-4 rounded-lg border border-default/60 bg-elevated/20 px-4 py-3">
+            <div>
+              <p class="text-sm font-medium">
+                Emissão de NFS-e
+              </p>
+              <p class="text-xs text-muted mt-0.5">
+                Habilite para permitir a emissão de notas fiscais de serviço eletrônicas.
+              </p>
+            </div>
+            <UToggle
+              :model-value="fiscalNfseEnabled"
+              :disabled="!canUpdate || isSyncingFiscal"
+              @update:model-value="handleNfseToggle"
+            />
+          </div>
+        </div>
+
+        <!-- Ação de sincronização -->
+        <div class="border-t border-default/60 pt-5 flex items-center justify-between gap-4">
+          <p class="text-xs text-muted">
+            Os dados cadastrais serão enviados para o sistema de emissão fiscal.
+            Se a empresa já estiver cadastrada, as informações serão atualizadas automaticamente.
+          </p>
+          <UButton
+            v-if="canUpdate"
+            color="neutral"
+            icon="i-lucide-refresh-cw"
+            :label="isFiscalSynced ? 'Sincronizar novamente' : 'Sincronizar dados'"
+            :loading="isSyncingFiscal"
+            :disabled="isSyncingFiscal"
+            class="shrink-0"
+            @click="syncFiscalCompany()"
+          />
+        </div>
       </UPageCard>
     </template>
   </UForm>

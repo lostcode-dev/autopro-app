@@ -17,7 +17,7 @@ defineEmits<{
           Integração fiscal não configurada
         </p>
         <p class="mt-0.5 text-sm text-muted">
-          Sua empresa ainda não está registrada na Focus NFe. Configure a integração para emitir notas fiscais de serviço (NFS-e).
+          Sua empresa ainda não está habilitada para emissão fiscal. Acesse as configurações de empresa para configurar a integração e emitir notas fiscais de serviço (NFS-e).
         </p>
         <div v-if="errorMessage" class="mt-2 rounded border border-error/30 bg-error/5 px-3 py-2 text-xs text-error">
           Último erro: {{ errorMessage }}
