@@ -45,7 +45,6 @@ const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
 const MANAGED_QUERY_KEYS = ['search', 'page', 'pageSize', 'status'] as const
 
 const route = useRoute()
-const router = useRouter()
 
 function parsePage(v: unknown) {
   const n = Number(v)
